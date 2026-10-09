@@ -216,6 +216,24 @@ void Renderer::rect(float x, float y, float w, float h, D3DCOLOR c)
 	m_dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
 }
 
+void Renderer::line(float x0, float y0, float x1, float y1, D3DCOLOR c)
+{
+	if (!m_in_frame) return;
+	flush_text();
+
+	ColVert v[2] = {
+		{ x0, y0, 0, 1, c },
+		{ x1, y1, 0, 1, c },
+	};
+	m_dev->SetTexture(0, nullptr);
+	m_dev->SetFVF(FVF_COL);
+	m_dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG2);
+	m_dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG2);
+	m_dev->DrawPrimitiveUP(D3DPT_LINELIST, 1, v, sizeof(ColVert));
+	m_dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
+	m_dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
+}
+
 float Renderer::text_width(const char *s) const
 {
 	float w = 0;

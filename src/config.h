@@ -22,6 +22,7 @@ struct Config
 	int key_boost       = 0xA4;  // VK_LMENU (left alt), hold
 	int key_brake       = 0x08;  // VK_BACK, hold
 	int key_hud         = 0x7A;  // VK_F11
+	int key_outlines    = 0x78;  // VK_F9
 
 	// airbreak movement keys
 	int key_ab_forward  = 'W';
@@ -36,6 +37,7 @@ struct Config
 	float airbreak_fast_mult  = 4.0f;
 	float boost_factor        = 1.5f;   // velocity multiplier per second while held
 	float boost_max           = 4.0f;   // max move-speed magnitude (~720 km/h)
+	float outline_distance    = 150.0f; // ped outlines draw range
 
 	bool  hud_enabled   = true;
 	bool  start_godmode = false;

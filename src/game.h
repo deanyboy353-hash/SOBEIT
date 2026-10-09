@@ -47,14 +47,20 @@ namespace game
 		constexpr uintptr_t TargetBlipIndex  = 0xBA6774;  // FrontEndMenuManager.m_nTargetBlipIndex
 		constexpr uintptr_t RadarTraces      = 0xBA86F0;  // CRadar::ms_RadarTrace[], 0x28 bytes each
 
+		constexpr uintptr_t ViewMatrix       = 0xB6FA2C;  // RwCamera view matrix (world -> camera)
+		constexpr uintptr_t PedPool          = 0xB74490;  // CPools::ms_pPedPool
+		constexpr uintptr_t PedPoolSlotSize  = 0x7C4;
+
 		constexpr uintptr_t FnFindGroundZForCoord = 0x569660;  // float __cdecl (float x, float y)
 		constexpr uintptr_t FnLoadScene           = 0x40ED80;  // void __cdecl (const CVector *)
+		constexpr uintptr_t FnGetBonePosition     = 0x5E4280;  // void __thiscall CPed::(RwV3d &, unsigned bone, bool updateSkin)
 	}
 
 	// ---- entity offsets ---------------------------------------------------------------------
 	namespace off
 	{
 		constexpr uintptr_t Matrix        = 0x14;   // CPlaceable::m_matrix
+		constexpr uintptr_t RwObject      = 0x18;   // CEntity::m_pRwObject (clump), null until modelled
 		constexpr uintptr_t AreaCode      = 0x2F;   // CEntity::m_nAreaCode
 		constexpr uintptr_t PhysFlags     = 0x40;   // CPhysical::m_nPhysicalFlags
 		constexpr uintptr_t MoveSpeed     = 0x44;   // CPhysical::m_vecMoveSpeed
@@ -66,6 +72,7 @@ namespace game
 		constexpr uintptr_t PedArmour     = 0x548;
 		constexpr uintptr_t PedRotCurrent = 0x558;
 		constexpr uintptr_t PedRotAim     = 0x55C;
+		constexpr uintptr_t PedType       = 0x598;  // CPed::m_nPedType
 		constexpr uintptr_t PedWeapons    = 0x5A0;  // CWeapon[13], 0x1C bytes each
 		constexpr uintptr_t WeaponSize    = 0x1C;
 		constexpr uintptr_t WeaponType    = 0x00;
@@ -120,6 +127,42 @@ namespace game
 	inline void load_scene(const Vec3 &p)
 	{
 		reinterpret_cast<void(__cdecl *)(const Vec3 *)>(addr::FnLoadScene)(&p);
+	}
+
+	inline Vec3 bone_position(void *ped, unsigned bone)
+	{
+		Vec3 out = {};
+		reinterpret_cast<void(__thiscall *)(void *, Vec3 *, unsigned, bool)>(addr::FnGetBonePosition)(ped, &out, bone, false);
+		return out;
+	}
+
+	// World -> screen pixels using the camera view matrix (the same projection s0beit used).
+	// Returns false for points behind the camera.
+	inline bool world_to_screen(const Vec3 &w, float screen_w, float screen_h, float &sx, float &sy)
+	{
+		const float *m = reinterpret_cast<const float *>(addr::ViewMatrix);
+		float x = w.x * m[0] + w.y * m[4] + w.z * m[8]  + m[12];
+		float y = w.x * m[1] + w.y * m[5] + w.z * m[9]  + m[13];
+		float z = w.x * m[2] + w.y * m[6] + w.z * m[10] + m[14];
+		if (z < 1.0f) return false;
+		sx = x / z * screen_w;
+		sy = y / z * screen_h;
+		return true;
+	}
+
+	// Iterate the ped pool. fn(ped) is called for every occupied slot.
+	template <typename Fn>
+	inline void for_each_ped(Fn fn)
+	{
+		uint8_t *pool = mem<uint8_t *>(addr::PedPool);
+		if (!pool) return;
+		uint8_t *objects = *reinterpret_cast<uint8_t **>(pool + 0x0);
+		uint8_t *flags   = *reinterpret_cast<uint8_t **>(pool + 0x4);
+		int size         = *reinterpret_cast<int *>(pool + 0x8);
+		if (!objects || !flags) return;
+		for (int i = 0; i < size; i++)
+			if (!(flags[i] & 0x80))  // high bit = free slot
+				fn(static_cast<void *>(objects + i * addr::PedPoolSlotSize));
 	}
 
 	inline float length(const Vec3 &v) { return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z); }

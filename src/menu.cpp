@@ -204,6 +204,11 @@ void menu::init()
 			toggle("Freeze time", &g_cheats.freeze_time),
 			float_value("Game speed", &g_cheats.game_speed, 0.1f, 4.0f, 0.1f, [] { cheats::apply_game_speed(); }),
 		}),
+		sub("Visuals", {
+			toggle("Ped outlines", &g_cheats.ped_outlines),
+			toggle("Distance / health labels", &g_cheats.outline_labels),
+			float_value("Outline distance", &g_cfg.outline_distance, 25.0f, 500.0f, 25.0f),
+		}),
 		sub("Settings", {
 			toggle("Status HUD", &g_cheats.hud),
 		}),

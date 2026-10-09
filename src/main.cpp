@@ -9,6 +9,7 @@
 
 #include "cheats.h"
 #include "config.h"
+#include "esp.h"
 #include "game.h"
 #include "input.h"
 #include "menu.h"
@@ -127,6 +128,7 @@ namespace
 		if (g_cheats.infinite_ammo) flags += " AMMO";
 		if (g_cheats.never_wanted) flags += " NOWANTED";
 		if (g_cheats.freeze_time) flags += " TIME";
+		if (g_cheats.ped_outlines) flags += " OUTLINES";
 
 		float lh = r.line_height() + 2.0f;
 		r.rect(0, 0, r.screen_w(), lh, 0x90000000);
@@ -184,6 +186,7 @@ namespace
 
 		if (!g_render_ok || dev->TestCooperativeLevel() != D3D_OK) return;
 		if (!g_render.begin()) return;
+		if (g_cheats.ped_outlines) esp::draw_ped_outlines(g_render);
 		if (g_cheats.hud) draw_hud(g_render);
 		menu::draw(g_render);
 		draw_toast(g_render);

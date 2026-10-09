@@ -106,7 +106,7 @@ bool Config::load(const std::string &file)
 				{ "menu", &key_menu }, { "airbreak", &key_airbreak }, { "godmode", &key_godmode },
 				{ "marker_teleport", &key_marker_tp }, { "vehicle_repair", &key_repair },
 				{ "vehicle_unflip", &key_unflip }, { "vehicle_boost", &key_boost },
-				{ "vehicle_brake", &key_brake }, { "hud", &key_hud },
+				{ "vehicle_brake", &key_brake }, { "hud", &key_hud }, { "ped_outlines", &key_outlines },
 				{ "airbreak_forward", &key_ab_forward }, { "airbreak_back", &key_ab_back },
 				{ "airbreak_left", &key_ab_left }, { "airbreak_right", &key_ab_right },
 				{ "airbreak_up", &key_ab_up }, { "airbreak_down", &key_ab_down },
@@ -121,6 +121,7 @@ bool Config::load(const std::string &file)
 			else if (lkey == "airbreak_fast_mult") airbreak_fast_mult = parse_float(val);
 			else if (lkey == "boost_factor") boost_factor = parse_float(val);
 			else if (lkey == "boost_max") boost_max = parse_float(val);
+			else if (lkey == "outline_distance") outline_distance = parse_float(val);
 			else if (lkey == "hud") hud_enabled = parse_bool(val);
 			else if (lkey == "start_godmode") start_godmode = parse_bool(val);
 			else if (lkey == "menu_x") menu_x = parse_float(val);

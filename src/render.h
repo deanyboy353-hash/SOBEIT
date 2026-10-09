@@ -1,4 +1,4 @@
-// Minimal 2D renderer on top of the game's D3D9 device: filled rects and a bitmap font baked
+// Minimal 2D renderer on top of the game's D3D9 device: filled rects, lines and a bitmap font baked
 // from a GDI font into a texture (same approach as the CD3DFont class the original mod used).
 #pragma once
 
@@ -19,6 +19,7 @@ public:
 	void end();    // flushes and restores device state
 
 	void rect(float x, float y, float w, float h, D3DCOLOR c);
+	void line(float x0, float y0, float x1, float y1, D3DCOLOR c);
 	void text(float x, float y, D3DCOLOR c, const char *s, bool shadow = true);
 	float text_width(const char *s) const;
 	float line_height() const { return (float)m_line_h; }

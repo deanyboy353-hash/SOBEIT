@@ -303,6 +303,11 @@ void cheats::handle_hotkeys(float dt)
 	if (g_input.pressed(g_cfg.key_repair)) repair_vehicle();
 	if (g_input.pressed(g_cfg.key_unflip)) unflip_vehicle();
 	if (g_input.pressed(g_cfg.key_hud)) g_cheats.hud = !g_cheats.hud;
+	if (g_input.pressed(g_cfg.key_outlines))
+	{
+		g_cheats.ped_outlines = !g_cheats.ped_outlines;
+		notify(g_cheats.ped_outlines ? "Ped outlines ON" : "Ped outlines OFF");
+	}
 
 	if (void *veh = player_vehicle())
 	{

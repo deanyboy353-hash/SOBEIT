@@ -16,6 +16,7 @@ arguments that SA-MP uses.
 | Vehicle | Vehicle godmode, repair, unflip, speed boost and brake settings |
 | Teleports | Map-marker teleport, save current position, every entry from the ini (with interiors) |
 | World | Weather (all 23 IDs), set hour/minute, freeze time, game speed |
+| Visuals | Ped outlines: NPC skeletons drawn through walls, coloured by type (cops blue, Grove green, other gangs orange, dealers/criminals red, civilians white), with optional distance/health labels |
 | Settings | Status HUD on/off |
 
 Status bar: FPS, health, armour, position, interior, vehicle health/speed and the active cheats.
@@ -32,6 +33,7 @@ Status bar: FPS, health, armour, position, interior, vehicle health/speed and th
 | Page Down | Unflip vehicle |
 | Left Alt (hold) | Vehicle speed boost |
 | Backspace (hold) | Vehicle brake |
+| F9 | Toggle ped outlines |
 | F11 | Toggle status bar |
 
 You can change all of these in `s0beit_sp.ini`.
@@ -69,6 +71,7 @@ src/game.h      gta_sa 1.0 US addresses, struct offsets, helpers
 src/cheats.*    cheat logic (runs once per frame on the game thread)
 src/menu.*      menu tree, navigation and drawing
 src/render.*    D3D9 2D renderer: rects + GDI-baked texture font (CD3DFont-style)
+src/esp.*       ped outlines (bone skeletons projected to screen)
 src/config.*    ini loading, key names, saving teleports
 src/main.cpp    DllMain, version/multiplayer guard, Present/Reset vtable hooks, status bar
 ```

@@ -24,6 +24,8 @@ struct CheatState
 
 	// display
 	bool  hud           = true;
+	bool  ped_outlines  = false;  // NPC skeletons through walls
+	bool  outline_labels = true;  // distance / health under each outline
 };
 
 extern CheatState g_cheats;

@@ -13,6 +13,7 @@ add_library(s0beit_sp SHARED
     src/main.cpp
     src/cheats.cpp
     src/config.cpp
+    src/esp.cpp
     src/menu.cpp
     src/render.cpp
 )
