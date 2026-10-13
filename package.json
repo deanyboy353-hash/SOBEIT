@@ -4,6 +4,7 @@
   "description": "Google Apps Script automation for training and organisation",
   "scripts": {
     "test": "node --test test/*.test.js",
-    "push": "clasp push --force"
+    "push": "clasp push --force",
+    "deploy": "clasp push --force && clasp update-deployment AKfycbyGglsy-_DOdaCn7DFhNyD8JH89jGapkUXUHdWp-JmdpuupiMPPEp6gm8e23x-yOVbsYQ --description update"
   }
 }
