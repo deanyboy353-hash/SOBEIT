@@ -19,7 +19,7 @@ test('setup adds Presets tab, food settings and the food page link', () => {
   assert.strictEqual(val('Daily kcal target'), '1800');
   assert.strictEqual(val('Protein min (g)'), '130');
   assert.strictEqual(val('Protein max (g)'), '160');
-  assert.match(val('Food page'), new RegExp('/exec\\?key=' + key + '$'));
+  assert.match(val('Your app link'), new RegExp('/exec\\?key=' + key + '$'));
 });
 
 test('an older Config tab gets the new settings without losing edits', () => {
@@ -27,7 +27,7 @@ test('an older Config tab gets the new settings without losing edits', () => {
   const cfg = g.tab('Config');
   // Simulate a Config tab made before food tracking: drop the food rows, change a value.
   const rows = cfg.data;
-  ['Daily kcal target', 'Protein min (g)', 'Protein max (g)', 'Evening food check', 'Claude model', 'Food page']
+  ['Daily kcal target', 'Protein min (g)', 'Protein max (g)', 'Evening food check', 'Claude model', 'Your app link']
     .forEach(k => { const i = rows.findIndex(r => r && r[0] === k); rows.splice(i, 1); });
   rows.find(r => r && r[0] === 'Wake time')[1] = '07:45';
   g.ctx.dailyRun();
@@ -35,7 +35,7 @@ test('an older Config tab gets the new settings without losing edits', () => {
   assert.strictEqual(after.find(r => r[0] === 'Wake time')[1], '07:45');
   assert.strictEqual(after.find(r => r[0] === 'Daily kcal target')[1], '1800');
   // still inside the SETTINGS block, before the weekly plan
-  assert.ok(after.findIndex(r => r[0] === 'Food page') < after.findIndex(r => r[0] === 'WEEKLY PLAN'));
+  assert.ok(after.findIndex(r => r[0] === 'Your app link') < after.findIndex(r => r[0] === 'WEEKLY PLAN'));
   assert.strictEqual(after.find(r => r[0] === 'Tue')[2], 'Upper A');
 });
 
@@ -125,7 +125,7 @@ test('11pm check: booked each morning, event shows what is left', () => {
   assert.strictEqual(ev.title, '🍽️ 1560 kcal left · 84g protein to go');
   assert.strictEqual(g.ctx.Utilities.formatDate(ev.start, 'Europe/London', 'HH:mm'), '23:00');
   assert.deepStrictEqual([...ev.reminders], [0]);
-  assert.match(ev.opts.description, /Food page: https:\/\/script\.google\.com/);
+  assert.match(ev.opts.description, /Open the app: https:\/\/script\.google\.com/);
   g.ctx.foodCheck();
   assert.strictEqual(g.calendar.live().filter(e => /🍽️/.test(e.title)).length, 1, 'no duplicates');
 });

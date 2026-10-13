@@ -15,22 +15,25 @@ test('setup adds Chores, Chores log and Later tabs, and two chores links', () =>
   assert.ok(g.tab('Chores').getLastRow() > 5);
   assert.ok(g.tab('Chores log') && g.tab('Later'));
   assert.notStrictEqual(me, partner);
-  assert.match(val(g, 'Chores page (you)'), new RegExp('\\?page=chores&key=' + me + '$'));
-  assert.match(val(g, 'Chores page (partner)'), new RegExp('\\?key=' + partner + '$'));
+  assert.match(val(g, 'Your app link'), new RegExp('\\?key=' + me + '$'));
+  assert.match(val(g, 'Partner app link'), new RegExp('\\?key=' + partner + '$'));
 });
 
 test('partner link opens chores only; it cannot reach food or post data', () => {
   const { g, me, partner } = ready();
   const page = g.ctx.doGet({ parameter: { key: partner } });
-  assert.match(page.html, /🧹 Chores/);
-  assert.match(page.html, /var OTHER = "";/);
+  const boot = JSON.parse(page.html.match(/var BOOT = (.*);/)[1]);
+  assert.deepStrictEqual(Object.keys(boot).sort(), ['chores', 'who']);
+  assert.strictEqual(boot.who, 'partner');
+  assert.throws(() => g.ctx.todayState(partner), /out of date/);
+  assert.throws(() => g.ctx.gymDone(partner), /out of date/);
   assert.throws(() => g.ctx.foodState(partner), /out of date/);
   assert.throws(() => g.ctx.logPreset(partner, 'Protein shake'), /out of date/);
   assert.match(g.ctx.doPost({ parameter: { key: partner }, postData: { contents: '{}' } }).text, /bad key/);
   assert.throws(() => g.ctx.choresState('nope'), /out of date/);
-  // your food page links to chores and back
-  assert.match(g.ctx.doGet({ parameter: { key: me } }).html, /var OTHER = ".*page=chores/);
-  assert.match(g.ctx.doGet({ parameter: { key: me, page: 'chores' } }).html, /var OTHER = ".*\?key=/);
+  // your link opens everything in one app
+  const mine = JSON.parse(g.ctx.doGet({ parameter: { key: me } }).html.match(/var BOOT = (.*);/)[1]);
+  assert.deepStrictEqual(Object.keys(mine).sort(), ['chores', 'food', 'today', 'who']);
   assert.doesNotMatch(page.html, /<\?/);
 });
 

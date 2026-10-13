@@ -28,9 +28,9 @@ function doPost(e) {
 }
 
 /**
- * Pages: your key opens the food page (or chores with ?page=chores); your
- * partner's key only ever opens chores. No valid key (or ?status=1): a short
- * "I'm alive" reply that shows no data.
+ * The app: one page with Today, Food and Chores tabs. Your partner's key
+ * opens the same app with only the Chores tab. No valid key (or ?status=1):
+ * a short "I'm alive" reply that shows no data.
  */
 function doGet(e) {
   var params = (e && e.parameter) || {};
@@ -39,17 +39,21 @@ function doGet(e) {
   if (!who || params.status) {
     return json_({ ok: true, service: 'sobeit', keyAccepted: validKey_(params.key), time: now_() });
   }
-  var chores = who === 'partner' || params.page === 'chores';
-  var page = HtmlService.createTemplateFromFile(chores ? 'ChoresPage' : 'FoodPage');
+  var page = HtmlService.createTemplateFromFile('App');
   page.key = params.key;
-  page.otherUrl = who === 'me' ? (chores ? foodPageUrl_() : WEBAPP_URL + '?page=chores&key=' + params.key) : '';
-  page.initialJson = JSON.stringify(chores ? choresState_(who) : foodState_()).replace(/</g, '\\u003c');
+  page.tab = who === 'partner' ? 'chores' : String(params.page || '');
+  page.initialJson = JSON.stringify(appState_(who)).replace(/</g, '\\u003c');
   return page.evaluate()
-    .setTitle(chores ? 'Chores' : 'Food')
+    .setTitle(who === 'partner' ? 'Chores' : 'Life')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover');
 }
 
-function foodPageUrl_() {
+function appState_(who) {
+  if (who === 'partner') return { who: who, chores: choresState_('partner') };
+  return { who: who, today: todayState_(), food: foodState_(), chores: choresState_('me') };
+}
+
+function appUrl_() {
   var key = PropertiesService.getScriptProperties().getProperty('WEBAPP_KEY');
   return key ? WEBAPP_URL + '?key=' + key : '';
 }

@@ -7,7 +7,7 @@
  * Live sessions are kept in Script Properties (CHORE_me / CHORE_partner);
  * finished jobs go to the Chores log tab, parked things to the Later tab.
  * Only your phone gets a calendar alert; your partner's page chimes while open.
- * Functions without a trailing underscore are called from ChoresPage.html.
+ * Functions without a trailing underscore are called from App.html (Chores tab).
  */
 
 var CHORE_PEOPLE = ['me', 'partner'];

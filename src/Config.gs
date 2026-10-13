@@ -29,11 +29,10 @@ var DEFAULT_SETTINGS = [
   ['Protein max (g)', '160', 'Protein target range: top'],
   ['Evening food check', '23:00', 'When the "what\'s left today" alert goes off'],
   ['Claude model', 'claude-opus-5-5', 'Model used for quick-add estimates'],
-  ['Food page', '', 'Filled in automatically. Open on your phone, then ⋮ → Add to home screen.'],
   ['Your name', '', 'Shown on your partner\'s chores page'],
   ['Partner name', '', 'Shown on your chores page'],
-  ['Chores page (you)', '', 'Filled in automatically. Your link: food and chores.'],
-  ['Chores page (partner)', '', 'Filled in automatically. Send this to your partner: it only opens chores.'],
+  ['Your app link', '', 'Filled in automatically. Open on your phone, then ⋮ → Add to home screen. Keep it private.'],
+  ['Partner app link', '', 'Filled in automatically. Send this to your partner: it only opens Chores.'],
   ['Email me if something breaks', 'TRUE', 'Untick to stop error emails'],
   ['Web app URL', '', 'Filled in automatically. Used later by HC Webhook and MacroDroid.'],
   ['Web app key', '', 'Filled in automatically. Add it to the URL as ?key=… (keep it private)']

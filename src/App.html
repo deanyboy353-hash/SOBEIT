@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --text: #1b1d21; --muted: #626875; --line: #e3e6eb;
+    --accent: #1a73e8; --accent-text: #ffffff; --good: #188038; --warn: #b3261e; --bar: #e8eaed;
+    --btn: #eef3fd; --btn-text: #0b57d0; --protein: #9334e6; --amber: #fef7e0; --amber-text: #7a4f01; --ring: #1a73e8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111316; --card: #1c1f24; --text: #e8eaed; --muted: #9aa0a6; --line: #2d3138;
+      --accent: #8ab4f8; --accent-text: #0b1a33; --good: #81c995; --warn: #f28b82; --bar: #2d3138;
+      --btn: #233149; --btn-text: #d3e3fd; --protein: #c58af9; --amber: #3d2e05; --amber-text: #fdd663; --ring: #8ab4f8;
+    }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body.timesup { background: var(--amber); }
+  main { max-width: 560px; margin: 0 auto; padding: 16px 16px 48px; }
+  .top { display: flex; justify-content: space-between; align-items: center; margin: 0 4px 12px; }
+  .top h1 { font-size: 20px; margin: 0; }
+  .top a { color: var(--accent); font-weight: 600; text-decoration: none; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 16px; margin-bottom: 14px; }
+  .label { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; font-weight: 600; margin-bottom: 8px; }
+  .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .person { background: var(--bg); border-radius: 14px; padding: 12px; min-width: 0; }
+  .person b { display: block; font-size: 15px; }
+  .person .st { font-size: 14px; margin-top: 2px; overflow-wrap: anywhere; }
+  .person .mini { height: 6px; border-radius: 3px; background: var(--bar); margin-top: 8px; overflow: hidden; }
+  .person .mini i { display: block; height: 100%; background: var(--accent); }
+  .person .dn { color: var(--muted); font-size: 13px; margin-top: 6px; overflow-wrap: anywhere; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  button { font: inherit; border: 0; border-radius: 14px; cursor: pointer; }
+  .job { background: var(--btn); color: var(--btn-text); text-align: left; padding: 14px; min-height: 72px; display: flex; flex-direction: column; justify-content: space-between; font-weight: 600; transition: transform .08s; }
+  .job:active { transform: scale(.97); }
+  .job small { font-weight: 400; opacity: .85; font-size: 13px; }
+  .primary { background: var(--accent); color: var(--accent-text); font-weight: 600; padding: 14px 18px; }
+  .ghost { background: transparent; color: var(--accent); font-weight: 600; padding: 10px 6px; }
+  .soft { background: var(--btn); color: var(--btn-text); font-weight: 600; padding: 14px 10px; }
+  .wide { width: 100%; }
+  form { display: flex; gap: 8px; }
+  input[type=text] { flex: 1; min-width: 0; font: inherit; padding: 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+  .plan h2 { margin: 0 0 4px; font-size: 20px; }
+  .mins { display: flex; align-items: center; gap: 12px; margin: 10px 0; }
+  .mins span { font-size: 28px; font-weight: 700; min-width: 90px; text-align: center; font-variant-numeric: tabular-nums; }
+  .mins button { width: 52px; height: 44px; }
+  ol.steps { margin: 6px 0 12px; padding-left: 22px; }
+  ol.steps li { margin: 3px 0; }
+  .focus { text-align: center; }
+  .focus .task { font-size: 22px; font-weight: 700; margin: 0 0 6px; }
+  .ringwrap { position: relative; width: 220px; height: 220px; margin: 6px auto 10px; }
+  .ringwrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ringwrap .t { position: absolute; inset: 0; display: grid; place-items: center; font-size: 44px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -1px; }
+  .ringwrap .t small { display: block; font-size: 14px; font-weight: 500; color: var(--muted); letter-spacing: 0; text-align: center; }
+  .now { background: var(--bg); border-radius: 16px; padding: 14px; margin: 6px 0 12px; text-align: left; }
+  .now .k { font-size: 13px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .6px; }
+  .now .s { font-size: 20px; font-weight: 600; margin: 2px 0 10px; }
+  .checks { list-style: none; padding: 0; margin: 0 0 12px; text-align: left; }
+  .checks li { display: flex; gap: 10px; align-items: center; padding: 8px 2px; border-top: 1px solid var(--line); font-size: 15px; cursor: pointer; }
+  .checks li:first-child { border-top: 0; }
+  .checks .box { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--muted); flex: none; display: grid; place-items: center; font-size: 13px; }
+  .checks li.done { color: var(--muted); text-decoration: line-through; }
+  .checks li.done .box { background: var(--good); border-color: var(--good); color: var(--card); }
+  .checks li.cur { font-weight: 600; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .up { background: var(--card); border: 2px solid var(--amber-text); color: var(--amber-text); border-radius: 18px; padding: 14px; margin-bottom: 12px; font-weight: 600; }
+  .later li { display: flex; gap: 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line); font-size: 15px; }
+  .later li:first-child { border-top: 0; }
+  .later ul { list-style: none; margin: 0; padding: 0; }
+  .later .who { color: var(--muted); font-size: 13px; }
+  .later .x { margin-left: auto; background: var(--btn); color: var(--btn-text); width: 40px; height: 36px; flex: none; }
+  .note { color: var(--muted); font-size: 14px; margin: 8px 0 0; }
+  .center { text-align: center; }
+  #toast { position: fixed; left: 16px; right: 16px; bottom: 20px; max-width: 528px; margin: 0 auto; background: var(--text); color: var(--bg); padding: 14px 16px; border-radius: 14px; font-size: 15px; transform: translateY(150%); transition: transform .2s; z-index: 5; }
+  #toast:not(.show) { visibility: hidden; }
+  #toast.show { transform: none; }
+  #toast.err { background: var(--warn); color: #fff; }
+  .stat { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .big { font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.5px; }
+  .of { color: var(--muted); font-size: 15px; }
+  .left { font-weight: 600; font-size: 15px; text-align: right; }
+  .left.good { color: var(--good); } .left.warn { color: var(--warn); }
+  .bar { position: relative; height: 10px; border-radius: 5px; background: var(--bar); margin: 8px 0 14px; overflow: hidden; }
+  .bar > i { position: absolute; inset: 0 auto 0 0; border-radius: 5px; background: var(--accent); transition: width .25s; }
+  .bar.p > i { background: var(--protein); }
+  .bar.over > i { background: var(--warn); }
+  .bar .zone { position: absolute; top: 0; bottom: 0; border-left: 2px solid var(--text); border-right: 2px solid var(--text); opacity: .35; }
+  input[type=text], input[type=password] { flex: 1; min-width: 0; font: inherit; padding: 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+  .primary:disabled { opacity: .5; }
+  .preset { background: var(--btn); color: var(--btn-text); text-align: left; padding: 14px; min-height: 76px; display: flex; flex-direction: column; justify-content: space-between; font-weight: 600; transition: transform .08s; }
+  .preset:active { transform: scale(.97); }
+  .preset small { font-weight: 400; opacity: .85; font-size: 13px; }
+  .entries { list-style: none; margin: 0; padding: 0; }
+  .entries li { display: flex; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); font-size: 15px; }
+  .entries li:first-child { border-top: 0; }
+  .entries .t { color: var(--muted); font-variant-numeric: tabular-nums; width: 44px; flex: none; }
+  .entries .n { flex: 1; }
+  .entries .v { color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .entries li.pending { opacity: .5; }
+  .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .undo { background: transparent; color: var(--accent); font-weight: 600; padding: 8px 4px; }
+  .undo:disabled { color: var(--muted); opacity: .6; }
+  .empty { color: var(--muted); font-size: 15px; margin: 4px 0; }
+  details summary { color: var(--muted); font-size: 14px; cursor: pointer; padding: 4px 0; }
+  .setup { border-color: var(--accent); }
+  .setup ol { padding-left: 20px; margin: 8px 0 12px; font-size: 15px; }
+  .setup a { color: var(--accent); }
+  main { padding-bottom: 110px; }
+  .big2 { font-size: 24px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 12px; font-size: 15px; }
+  ol.ex { margin: 0 0 14px; padding-left: 22px; }
+  ol.ex li { padding: 6px 0; border-top: 1px solid var(--line); }
+  ol.ex li:first-child { border-top: 0; }
+  ol.ex b { display: block; font-size: 15px; }
+  ol.ex span { color: var(--muted); font-size: 14px; }
+  ol.ex small { display: block; color: var(--muted); font-size: 13px; }
+  .okmsg { color: var(--good); font-weight: 600; margin: 4px 0; }
+  nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; gap: 4px; padding: 8px 8px calc(8px + env(safe-area-inset-bottom)); background: var(--card); border-top: 1px solid var(--line); z-index: 4; }
+  nav.tabs[hidden] { display: none; }
+  nav.tabs button { flex: 1; max-width: 180px; background: transparent; color: var(--muted); padding: 6px 4px; font-size: 13px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 2px; position: relative; }
+  nav.tabs button .i { font-size: 22px; line-height: 1.2; padding: 2px 18px; border-radius: 16px; }
+  nav.tabs button[aria-current="page"] { color: var(--text); }
+  nav.tabs button[aria-current="page"] .i { background: var(--btn); }
+  nav.tabs .badge { position: absolute; top: 0; right: 50%; transform: translateX(46px); background: var(--accent); color: var(--accent-text); font-size: 11px; border-radius: 8px; padding: 1px 6px; font-variant-numeric: tabular-nums; }
+  nav.tabs .badge:empty { display: none; }
+  #toast { bottom: calc(86px + env(safe-area-inset-bottom)); }
+</style>
+</head>
+<body>
+<main>
+
+<section class="tab" id="tab-today" hidden>
+  <div id="todayGym"></div>
+  <section class="card" id="weighCard"></section>
+</section>
+
+<section class="tab" id="tab-food" hidden>
+
+  <section class="card" aria-live="polite">
+    <div class="label">Calories</div>
+    <div class="stat"><div><span class="big" id="kcal">0</span> <span class="of" id="kcalOf"></span></div><div class="left" id="kcalLeft"></div></div>
+    <div class="bar" id="kcalBar"><i></i></div>
+    <div class="label">Protein</div>
+    <div class="stat"><div><span class="big" id="prot">0</span> <span class="of" id="protOf"></span></div><div class="left" id="protLeft"></div></div>
+    <div class="bar p" id="protBar"><i></i><span class="zone" id="protZone"></span></div>
+  </section>
+
+  <section class="card">
+    <form id="quick" autocomplete="off">
+      <input type="text" id="quickText" placeholder="2 protein weetabix 200ml milk" enterkeyhint="send" aria-label="Describe what you ate">
+      <button class="primary" id="quickBtn" type="submit">Add</button>
+    </form>
+    <p class="note" id="quickNote">Claude estimates it and logs it.</p>
+  </section>
+
+  <section class="card setup" id="setupCard" hidden>
+    <div class="label">Turn on quick-add</div>
+    <ol>
+      <li>Get a key at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a></li>
+      <li>Paste it here. It's stored in your Google account's script settings, not in the code.</li>
+    </ol>
+    <form id="keyForm"><input type="password" id="keyText" placeholder="sk-ant-…" aria-label="Claude API key"><button class="primary" type="submit">Save</button></form>
+  </section>
+
+  <section class="grid" id="presets" style="margin-bottom:14px"></section>
+
+  <section class="card">
+    <div class="row"><div class="label">Today</div><button class="undo" id="undo" type="button">↶ Undo last</button></div>
+    <ul class="entries" id="entries"></ul>
+  </section>
+
+  <details id="keyDetails" hidden><summary>Replace Claude API key</summary>
+    <form id="keyForm2" style="margin-top:8px"><input type="password" id="keyText2" placeholder="sk-ant-…" aria-label="New Claude API key"><button class="primary" type="submit">Save</button></form>
+  </details>
+  <p class="note">Edit buttons and targets in the Sheet: Presets and Config tabs.</p>
+
+</section>
+
+<section class="tab" id="tab-chores" hidden>
+
+  <section class="card"><div class="label">Together</div><div class="duo" id="duo"></div></section>
+  <div id="view"></div>
+  <section class="card later" id="laterCard" hidden><div class="label">🅿️ Parked for later</div><ul id="later"></ul></section>
+  <p class="note center">Change jobs, times and steps in the Sheet: Chores tab.</p>
+
+</section>
+</main>
+<nav class="tabs" id="nav" hidden>
+  <button type="button" data-tab="today"><span class="i">🏠</span>Today</button>
+  <button type="button" data-tab="food"><span class="i">🍽️</span>Food</button>
+  <button type="button" data-tab="chores"><span class="i">🧹</span>Chores<span class="badge" id="badgeChores"></span></button>
+</nav>
+<div id="toast" role="status"></div>
+
+<script>
+  var KEY = <?!= JSON.stringify(key) ?>;
+  var BOOT = <?!= initialJson ?>;
+  var START_TAB = <?!= JSON.stringify(tab) ?>;
+  var TABS = {};   // tab name -> refresh function, filled in by each tab below
+
+  var toastTimer;
+  function toast(msg, isErr) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'show' + (isErr ? ' err' : '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.className = isErr ? 'err' : ''; }, isErr ? 6000 : 2800);
+  }
+</script>
+<script>
+if (BOOT.today) {
+
+(function () {
+  var state = BOOT.today;
+  function el(id) { return document.getElementById(id); }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function call(fn, args, ok) {
+    var r = google.script.run.withSuccessHandler(ok).withFailureHandler(function (err) { toast(err.message || String(err), true); render(); });
+    r[fn].apply(r, [KEY].concat(args));
+  }
+  function render() {
+    var g = state.gym;
+    el('todayGym').innerHTML = g ? '<section class="card"><div class="label">' + esc(state.day) + ' · Gym</div>' +
+      '<h2 class="big2">🏋️ ' + esc(g.session) + '</h2>' +
+      (g.travel ? '<p class="sub">' + (g.travel === 'Bike' ? '🚲 Bike' : '🚌 Bus') + (g.leaveAt ? ' · leave ' + esc(g.leaveAt) : '') + (g.weather ? '<br>' + esc(g.weather) : '') + '</p>' : '<p class="sub">Plan arrives at 6am.</p>') +
+      '<ol class="ex">' + g.exercises.map(function (x) {
+        return '<li><b>' + esc(x.exercise) + '</b><span>' + esc(x.sets) + ' × ' + esc(x.reps) + (x.rpe ? ' @ RPE ' + esc(x.rpe) : '') + (x.rest ? ' · rest ' + esc(x.rest) : '') + '</span>' + (x.notes ? '<small>' + esc(x.notes) + '</small>' : '') + '</li>';
+      }).join('') + '</ol>' +
+      (g.done ? '<p class="okmsg">✅ Logged. Nice work.</p>' : '<button class="primary wide" type="button" id="gymDone">✅ Gym done</button>') + '</section>'
+      : '<section class="card"><div class="label">' + esc(state.day) + '</div><h2 class="big2">Rest day 😌</h2><p class="sub">No gym today.</p></section>';
+    var lw = state.lastWeight;
+    el('weighCard').innerHTML = '<div class="label">⚖️ Weight' + (state.weighDay && !state.weighedToday ? ' · weigh-in day' : '') + '</div>' +
+      (state.weighedToday ? '<p class="okmsg">✅ ' + lw.kg + ' kg logged today' + (lw.change !== '' && lw.change !== undefined ? ' (' + (lw.change > 0 ? '+' : '') + lw.change + ')' : '') + '</p>'
+        : '<form id="weighForm" autocomplete="off"><input type="text" id="weighText" inputmode="decimal" placeholder="82.4 or 13st 2" aria-label="Your weight"><button class="primary" type="submit">Log</button></form>' +
+          (lw ? '<p class="note">Last: ' + lw.kg + ' kg on ' + esc(lw.date) + '</p>' : ''));
+  }
+  el('tab-today').addEventListener('click', function (ev) {
+    if (ev.target.id !== 'gymDone') return;
+    ev.target.disabled = true;
+    call('gymDone', [], function (s) { state = s; render(); toast('✅ Gym logged. Nice work.'); });
+  });
+  el('tab-today').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var v = el('weighText').value.trim();
+    if (!v) return;
+    call('logWeightNow', [v], function (s) { state = s; render(); toast('⚖️ Logged ' + s.lastWeight.kg + ' kg'); });
+  });
+  render();
+  TABS.today = function () { call('todayState', [], function (s) { state = s; render(); }); };
+})();
+
+}
+</script>
+<script>
+if (BOOT.food) (function () {
+
+  var state = BOOT.food;
+  var pending = [];
+
+  function el(id) { return document.getElementById(id); }
+  function fmt(n) { return Math.round(n).toLocaleString('en-GB'); }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+  function render() {
+    var t = state.targets;
+    var kcal = state.totals.kcal, prot = state.totals.protein;
+    pending.forEach(function (p) { kcal += p.kcal; prot += p.protein; });
+
+    el('kcal').textContent = fmt(kcal);
+    el('kcalOf').textContent = '/ ' + fmt(t.kcal);
+    var kl = t.kcal - kcal;
+    el('kcalLeft').textContent = kl >= 0 ? fmt(kl) + ' left' : fmt(-kl) + ' over';
+    el('kcalLeft').className = 'left ' + (kl >= 0 ? 'good' : 'warn');
+    el('kcalBar').className = 'bar' + (kl < 0 ? ' over' : '');
+    el('kcalBar').firstChild.style.width = Math.min(100, kcal / t.kcal * 100) + '%';
+
+    var scale = t.proteinMax * 1.15;
+    el('prot').textContent = fmt(prot) + 'g';
+    el('protOf').textContent = '/ ' + t.proteinMin + '–' + t.proteinMax + 'g';
+    var pl = t.proteinMin - prot;
+    el('protLeft').textContent = pl > 0 ? fmt(pl) + 'g to go' : (prot > t.proteinMax ? 'above range' : 'in range ✓');
+    el('protLeft').className = 'left ' + (pl > 0 ? '' : 'good');
+    el('protBar').firstChild.style.width = Math.min(100, prot / scale * 100) + '%';
+    el('protZone').style.left = (t.proteinMin / scale * 100) + '%';
+    el('protZone').style.width = ((t.proteinMax - t.proteinMin) / scale * 100) + '%';
+
+    el('presets').innerHTML = state.presets.map(function (p, i) {
+      return '<button class="preset" type="button" data-i="' + i + '">' + esc(p.name) + '<small>' + fmt(p.kcal) + ' kcal · ' + fmt(p.protein) + 'g</small></button>';
+    }).join('');
+
+    var rows = pending.map(function (p) { return { time: '…', item: p.name, kcal: p.kcal, protein: p.protein, pending: true }; })
+      .concat(state.entries.slice().reverse());
+    el('entries').innerHTML = rows.length ? rows.map(function (e) {
+      return '<li' + (e.pending ? ' class="pending"' : '') + '><span class="t">' + esc(e.time) + '</span><span class="n">' + esc(e.item) +
+        '</span><span class="v">' + fmt(e.kcal) + ' · ' + fmt(e.protein) + 'g</span></li>';
+    }).join('') : '<li class="empty">Nothing yet today.</li>';
+    el('undo').disabled = !state.entries.length;
+
+    el('setupCard').hidden = state.hasClaudeKey;
+    el('keyDetails').hidden = !state.hasClaudeKey;
+    el('quickText').disabled = el('quickBtn').disabled = !state.hasClaudeKey;
+    if (!state.hasClaudeKey) el('quickNote').textContent = 'Quick-add needs a Claude API key (see below).';
+  }
+
+
+  function call(fn, args, ok, fail) {
+    var r = google.script.run
+      .withSuccessHandler(ok)
+      .withFailureHandler(function (err) { if (fail) fail(); toast(err.message || String(err), true); render(); });
+    r[fn].apply(r, [KEY].concat(args));
+  }
+
+  function itemsText(items) {
+    return items.map(function (i) { return i.name; }).join(', ') + ' (+' +
+      fmt(items.reduce(function (s, i) { return s + i.kcal; }, 0)) + ' kcal, ' +
+      fmt(items.reduce(function (s, i) { return s + i.protein; }, 0)) + 'g)';
+  }
+
+  // Preset tap: show it straight away, then confirm with the server.
+  el('presets').addEventListener('click', function (ev) {
+    var b = ev.target.closest('.preset');
+    if (!b) return;
+    var p = state.presets[Number(b.dataset.i)];
+    var mine = { name: p.name, kcal: p.kcal, protein: p.protein };
+    pending.push(mine);
+    render();
+  TABS.food = function () { if (!pending.length) call('foodState', [], function (s) { state = s; render(); }); };
+    if (navigator.vibrate) navigator.vibrate(15);
+    var drop = function () { pending.splice(pending.indexOf(mine), 1); };
+    call('logPreset', [p.name], function (res) { drop(); state = res.state; render(); toast('Logged ' + itemsText(res.added)); }, drop);
+  });
+
+  el('quick').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var text = el('quickText').value.trim();
+    if (!text) return;
+    el('quickBtn').disabled = true;
+    el('quickBtn').textContent = '…';
+    el('quickNote').textContent = 'Asking Claude…';
+    var done = function () { el('quickBtn').disabled = false; el('quickBtn').textContent = 'Add'; el('quickNote').textContent = 'Claude estimates it and logs it.'; };
+    call('quickAdd', [text], function (res) {
+      done(); el('quickText').value = ''; state = res.state; render(); toast('Logged ' + itemsText(res.added));
+    }, done);
+  });
+
+  el('undo').addEventListener('click', function () {
+    el('undo').disabled = true;
+    call('undoLast', [], function (res) { state = res.state; render(); toast('Removed ' + res.removed.join(', ')); });
+  });
+
+  function saveKey(input) {
+    return function (ev) {
+      ev.preventDefault();
+      var v = el(input).value.trim();
+      if (!v) return;
+      call('saveClaudeKey', [v], function (s) { el(input).value = ''; state = s; render(); toast('Claude key saved. Quick-add is on.'); });
+    };
+  }
+  el('keyForm').addEventListener('submit', saveKey('keyText'));
+  el('keyForm2').addEventListener('submit', saveKey('keyText2'));
+
+  // Coming back to the page (e.g. from the home screen) refreshes the numbers, and rolls over at midnight.
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible' && !pending.length) call('foodState', [], function (s) { state = s; render(); });
+  });
+
+  render();
+  TABS.food = function () { if (!pending.length) call('foodState', [], function (s) { state = s; render(); }); };
+
+})();
+</script>
+<script>
+(function () {
+
+  var state = BOOT.chores;
+  var offset = state.now - Date.now();
+  var plan = null;      // job being set up, before Start
+  var parking = false;  // the "park a distraction" box is open
+  var busy = false;
+  var halfwayShown = '', upShown = '';
+
+  function el(id) { return document.getElementById(id); }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function now() { return Date.now() + offset; }
+  function me() { return state.people[state.you]; }
+  function them() { return state.people[state.you === 'me' ? 'partner' : 'me']; }
+  function clock(ms) { var s = Math.max(0, Math.round(ms / 1000)); return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); }
+  function minsLeft(sess) { return Math.max(0, Math.ceil((sess.endsAt - now()) / 60000)); }
+
+  // ---- sound (unlocked by the first tap, which iPhones require) ----
+  var audio;
+  function unlockAudio() {
+    try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); if (audio.state === 'suspended') audio.resume(); } catch (e) {}
+  }
+  function chime(times) {
+    if (!audio) return;
+    for (var i = 0; i < times; i++) {
+      var o = audio.createOscillator(), g = audio.createGain(), t = audio.currentTime + i * 0.45;
+      o.frequency.value = 880; o.connect(g); g.connect(audio.destination);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.4, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+      o.start(t); o.stop(t + 0.4);
+    }
+    if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
+  }
+  document.addEventListener('pointerdown', unlockAudio, { capture: true });
+
+  var wake;
+  function keepAwake(on) {
+    try {
+      if (on && !wake && navigator.wakeLock) navigator.wakeLock.request('screen').then(function (w) { wake = w; }).catch(function () {});
+      if (!on && wake) { wake.release(); wake = null; }
+    } catch (e) {}
+  }
+
+  // ---- drawing ----
+  function personCard(p, label) {
+    var s = p.session;
+    var st = s ? esc(s.task) + ' · ' + (s.endsAt > now() ? minsLeft(s) + ' min left' : "time's up") + (s.steps.length ? ' · step ' + Math.min(s.step + 1, s.steps.length) + '/' + s.steps.length : '') : 'Free';
+    var pct = s ? Math.min(100, (now() - s.startedAt) / (s.endsAt - s.startedAt) * 100) : 0;
+    return '<div class="person"><b>' + esc(label) + '</b><div class="st">' + st + '</div>' +
+      (s ? '<div class="mini"><i style="width:' + pct + '%"></i></div>' : '') +
+      (p.doneToday.length ? '<div class="dn">✅ ' + esc(p.doneToday.join(', ')) + '</div>' : '') + '</div>';
+  }
+
+  function render() {
+    el('duo').innerHTML = personCard(me(), 'You') + personCard(them(), them().name || 'Your partner');
+    var s = me().session;
+    document.body.className = s && now() >= s.endsAt ? 'timesup' : '';
+    keepAwake(!!s);
+    el('view').innerHTML = s ? focusView(s) : plan ? planView() : pickView();
+    el('laterCard').hidden = !!s || !state.later.length;
+    el('later').innerHTML = state.later.map(function (l) {
+      var who = l.who === state.you ? 'you' : (them().name || 'your partner');
+      return '<li><span>' + esc(l.thing) + ' <span class="who">· ' + esc(who) + '</span></span><button class="x" type="button" data-clear="' + esc(l.id) + '" aria-label="Done">✓</button></li>';
+    }).join('');
+    tick();
+  }
+
+  function pickView() {
+    return '<section class="card"><div class="label">Pick one job</div><div class="grid">' +
+      state.chores.map(function (c, i) {
+        return '<button class="job" type="button" data-job="' + i + '">' + esc(c.name) + '<small>' + c.minutes + ' min' + (c.usual ? ' · usually ' + c.usual : '') + '</small></button>';
+      }).join('') + '</div></section>' +
+      '<section class="card"><form id="custom" autocomplete="off"><input type="text" id="customText" placeholder="Something else, e.g. clean the oven" enterkeyhint="go" aria-label="Another job">' +
+      '<button class="primary" type="submit">Plan</button></form><p class="note">' +
+      (state.hasClaudeKey ? 'Claude times it and breaks it into steps.' : 'You set the time. (Add a Claude key on the food page and it will time it for you.)') + '</p></section>';
+  }
+
+  function planView() {
+    return '<section class="card plan"><div class="label">Ready?</div><h2>' + esc(plan.name) + '</h2>' +
+      '<div class="mins"><button class="soft" type="button" data-mins="-5" aria-label="5 minutes less">−5</button><span>' + plan.minutes + ' min</span><button class="soft" type="button" data-mins="5" aria-label="5 minutes more">+5</button></div>' +
+      (plan.steps.length ? '<ol class="steps">' + plan.steps.map(function (st) { return '<li>' + esc(st) + '</li>'; }).join('') + '</ol>' : '') +
+      '<button class="primary wide" type="button" id="go">Start ⏱ just this job</button>' +
+      '<div class="center"><button class="ghost" type="button" id="back">Pick something else</button></div></section>';
+  }
+
+  function focusView(s) {
+    var up = now() >= s.endsAt;
+    var cur = s.steps[s.step];
+    var started = now() - s.startedAt < 2 * 60000;
+    return (up ? '<div class="up">⏰ Time\'s up for ' + esc(s.task) + '. Done? Or take 5 more and finish.</div>' : '') +
+      '<section class="card focus"><div class="label">Only this</div><p class="task">' + esc(s.task) + '</p>' +
+      '<div class="ringwrap"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="none" stroke="var(--bar)" stroke-width="10"/>' +
+      '<circle id="arc" cx="60" cy="60" r="52" fill="none" stroke="var(--ring)" stroke-width="10" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="0"/></svg>' +
+      '<div class="t"><div><span id="left">' + clock(s.endsAt - now()) + '</span><small id="leftLabel">' + (up ? 'over' : 'left') + '</small></div></div></div>' +
+      (s.steps.length ? (cur ? '<div class="now"><div class="k">Now</div><div class="s">' + esc(cur) + '</div><button class="primary wide" type="button" data-step="' + s.step + '">✓ Step done</button></div>' : '<div class="now"><div class="s">All steps done 🎉</div></div>') +
+        '<ul class="checks">' + s.steps.map(function (st, i) {
+          return '<li class="' + (i < s.step ? 'done' : i === s.step ? 'cur' : '') + '" data-step="' + (i < s.step ? i - 1 : i) + '"><span class="box">' + (i < s.step ? '✓' : '') + '</span>' + esc(st) + '</li>';
+        }).join('') + '</ul>' : '') +
+      (parking ? '<form id="park" autocomplete="off" style="margin-bottom:10px"><input type="text" id="parkText" placeholder="What popped into your head?" aria-label="Thing to park"><button class="primary" type="submit">Park</button></form>' : '') +
+      '<div class="row3"><button class="soft" type="button" id="parkBtn">🅿️ Park it</button><button class="soft" type="button" id="more">+5 min</button><button class="primary" type="button" id="done">✅ Done</button></div>' +
+      '<div class="center"><button class="ghost" type="button" id="stop">Stop and park the rest</button>' +
+      (started ? '<button class="ghost" type="button" id="cancel">Wrong job</button>' : '') + '</div>' +
+      '<p class="note">Noticed something else that needs doing? Park it. Don\'t go and do it.</p></section>';
+  }
+
+  // Runs every second: countdown, ring, halfway and time's-up nudges.
+  function tick() {
+    var s = me().session;
+    if (!s) return;
+    var left = s.endsAt - now();
+    var l = el('left');
+    if (l) {
+      l.textContent = clock(Math.abs(left));
+      el('arc').setAttribute('stroke-dashoffset', left <= 0 ? '0' : String(326.7 * Math.min(1, Math.max(0, 1 - left / (s.endsAt - s.startedAt)))));
+      el('arc').setAttribute('stroke', left <= 0 ? 'var(--amber-text)' : 'var(--ring)');
+    }
+    var id = s.startedAt + ':' + s.endsAt;
+    if (left <= (s.endsAt - s.startedAt) / 2 && left > 0 && halfwayShown !== id && s.endsAt - s.startedAt >= 6 * 60000) {
+      halfwayShown = id; chime(1); toast('Halfway. Still on ' + s.task + '? 👍');
+    }
+    if (left <= 0) {
+      if (upShown !== id) { upShown = id; render(); }
+      if (Math.floor(-left / 1000) % 60 === 0) chime(3);   // repeats each minute until you choose
+    }
+  }
+  // While a job runs, the Chores tab button shows the time left, so it follows you to other tabs.
+  function badge() { var s = me().session, b = el('badgeChores'); if (b) b.textContent = s ? (s.endsAt > now() ? clock(s.endsAt - now()) : '⏰') : ''; }
+  setInterval(function () { tick(); badge(); if (me().session) el('duo').innerHTML = personCard(me(), 'You') + personCard(them(), them().name || 'Your partner'); }, 1000);
+
+
+  function call(fn, args, ok) {
+    busy = true;
+    var r = google.script.run
+      .withSuccessHandler(function (res) { busy = false; ok(res); })
+      .withFailureHandler(function (err) { busy = false; toast(err.message || String(err), true); render(); });
+    r[fn].apply(r, [KEY].concat(args));
+  }
+  function apply(s, msg) { state = s; offset = s.now - Date.now(); render(); if (msg) toast(msg); }
+
+  // ---- taps ----
+  el('tab-chores').addEventListener('click', function (ev) {
+    var t = ev.target.closest('button, li[data-step]');
+    if (!t || busy) return;
+    if (t.dataset.job) { var c = state.chores[Number(t.dataset.job)]; plan = { name: c.name, minutes: c.minutes, steps: c.steps.slice() }; render(); }
+    else if (t.dataset.mins) { plan.minutes = Math.max(5, Math.min(180, plan.minutes + Number(t.dataset.mins))); render(); }
+    else if (t.id === 'back') { plan = null; render(); }
+    else if (t.id === 'go') { var p = plan; call('startChore', [p], function (s) { plan = null; apply(s, 'Go. Just ' + p.name + ' for ' + p.minutes + ' min.'); }); }
+    else if (t.dataset.step !== undefined) { call('stepDone', [Number(t.dataset.step)], function (s) { apply(s); }); }
+    else if (t.id === 'parkBtn') { parking = !parking; render(); if (parking) el('parkText').focus(); }
+    else if (t.id === 'more') { call('extendChore', [5], function (s) { upShown = ''; apply(s, '+5 min. Finish it off.'); }); }
+    else if (t.id === 'done') { var task = me().session.task; call('finishChore', ['Done'], function (s) { parking = false; apply(s, '✅ ' + task + ' done. Nice.'); }); }
+    else if (t.id === 'stop') { call('finishChore', ['Stopped'], function (s) { parking = false; apply(s, 'Stopped. The rest is parked for later.'); }); }
+    else if (t.id === 'cancel') { call('finishChore', ['Cancelled'], function (s) { parking = false; apply(s, 'Cancelled. Pick the right one.'); }); }
+    else if (t.dataset.clear) { call('clearLater', [t.dataset.clear], function (s) { apply(s); }); }
+  });
+
+  el('tab-chores').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    if (busy) return;
+    if (ev.target.id === 'custom') {
+      var text = el('customText').value.trim();
+      if (!text) return;
+      toast(state.hasClaudeKey ? 'Asking Claude how long that takes…' : 'Set the time, then start.');
+      call('planChore', [text], function (p) { plan = p; render(); });
+    }
+    if (ev.target.id === 'park') {
+      var v = el('parkText').value.trim();
+      if (!v) return;
+      var task = me().session.task;
+      call('parkThing', [v], function (s) { parking = false; apply(s, 'Parked. Back to ' + task + '.'); });
+    }
+  });
+
+  // See what your partner is up to: refresh every 20 s while the page is open.
+  function refresh() { if (!busy && !parking && document.visibilityState === 'visible') call('choresState', [], function (s) { apply(s); }); }
+  setInterval(refresh, 20000);
+  document.addEventListener('visibilitychange', refresh);
+
+  render();
+  TABS.chores = refresh;
+
+})();
+</script>
+<script>
+  // Tabs. Your partner only gets Chores, so they see no tab bar.
+  (function () {
+    var nav = document.getElementById('nav');
+    var only = BOOT.who === 'partner';
+    nav.hidden = only;
+    function show(name, refresh) {
+      if (!TABS[name]) name = 'chores';
+      document.querySelectorAll('section.tab').forEach(function (s) { s.hidden = s.id !== 'tab-' + name; });
+      nav.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-current', b.dataset.tab === name ? 'page' : 'false'); });
+      try { localStorage.setItem('tab', name); } catch (e) {}
+      if (refresh) TABS[name]();
+      window.scrollTo(0, 0);
+    }
+    nav.addEventListener('click', function (ev) { var b = ev.target.closest('button'); if (b) show(b.dataset.tab, true); });
+    var saved = null;
+    try { saved = localStorage.getItem('tab'); } catch (e) {}
+    show(only ? 'chores' : (START_TAB || saved || 'today'), false);
+  })();
+</script>
+</body>
+</html>

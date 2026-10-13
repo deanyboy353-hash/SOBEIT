@@ -58,11 +58,9 @@ function prepareSheet_() {
   var settings = readConfig_().settings;
   if (settings['Web app key'] !== props.getProperty('WEBAPP_KEY')) setSetting_('Web app key', props.getProperty('WEBAPP_KEY'));
   if (settings['Web app URL'] !== WEBAPP_URL) setSetting_('Web app URL', WEBAPP_URL);
-  if (settings['Food page'] !== foodPageUrl_()) setSetting_('Food page', foodPageUrl_());
-  var mine = WEBAPP_URL + '?page=chores&key=' + props.getProperty('WEBAPP_KEY');
   var theirs = WEBAPP_URL + '?key=' + props.getProperty('PARTNER_KEY');
-  if (settings['Chores page (you)'] !== mine) setSetting_('Chores page (you)', mine);
-  if (settings['Chores page (partner)'] !== theirs) setSetting_('Chores page (partner)', theirs);
+  if (settings['Your app link'] !== appUrl_()) setSetting_('Your app link', appUrl_());
+  if (settings['Partner app link'] !== theirs) setSetting_('Partner app link', theirs);
 }
 
 var RECURRING_TRIGGERS = ['dailyRun', 'pollTasks', 'weeklySummary'];

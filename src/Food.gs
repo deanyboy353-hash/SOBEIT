@@ -2,7 +2,7 @@
  * Food.gs: calorie and protein tracking.
  *
  * Functions without a trailing underscore are called from the food page
- * (FoodPage.html) via google.script.run. Each one checks the web app key
+ * (App.html) via google.script.run. Each one checks the web app key
  * first, because the page is reachable by anyone who has its address.
  */
 
@@ -49,7 +49,7 @@ function addFood_(items, source) {
 }
 
 function requireKey_(key) {
-  if (!validKey_(key)) throw new Error('This link is out of date. Open the Food page link from the Config tab again.');
+  if (!validKey_(key)) throw new Error('This link is out of date. Open your app link from the Config tab again.');
 }
 
 // ---- called from the page ----
@@ -132,7 +132,7 @@ function foodCheck() {
     var at = cellClock_(settings['Evening food check']);
     if (at === null) at = parseClock('23:00');
     var entries = foodEntries_(ymd);
-    var text = buildFoodCheckText(sumFood_(entries), foodTargets_(settings), entries.length, foodPageUrl_());
+    var text = buildFoodCheckText(sumFood_(entries), foodTargets_(settings), entries.length, appUrl_());
     removeTaggedEvents_(ymd, 'food');
     var event = CalendarApp.getDefaultCalendar().createEvent(text.title, atTime_(ymd, at), atTime_(ymd, at + 5), { description: text.description });
     event.setTag(EVENT_TAG, 'food');

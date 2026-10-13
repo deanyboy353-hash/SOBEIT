@@ -236,7 +236,7 @@ function buildFoodCheckText(totals, targets, entryCount, pageUrl) {
     advice
   ];
   if (protein > targets.proteinMax) lines.push('(Protein is above your range. Fine, just noting it.)');
-  if (pageUrl) lines.push('', 'Food page: ' + pageUrl);
+  if (pageUrl) lines.push('', 'Open the app: ' + pageUrl);
   return { title: title, description: lines.join('\n') };
 }
 
