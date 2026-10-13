@@ -24,6 +24,12 @@ var DEFAULT_SETTINGS = [
   ['Weather latitude', '55.8622', 'Where to check the forecast (Coatbridge)'],
   ['Weather longitude', '-4.0266', ''],
   ['Gym name', 'JD Gym Coatbridge', 'Shown as the event location, so Maps works'],
+  ['Daily kcal target', '1800', 'Calories per day'],
+  ['Protein min (g)', '130', 'Protein target range: bottom'],
+  ['Protein max (g)', '160', 'Protein target range: top'],
+  ['Evening food check', '23:00', 'When the "what\'s left today" alert goes off'],
+  ['Claude model', 'claude-opus-5-5', 'Model used for quick-add estimates'],
+  ['Food page', '', 'Filled in automatically. Open on your phone, then ⋮ → Add to home screen.'],
   ['Email me if something breaks', 'TRUE', 'Untick to stop error emails'],
   ['Web app URL', '', 'Filled in automatically. Used later by HC Webhook and MacroDroid.'],
   ['Web app key', '', 'Filled in automatically. Add it to the URL as ?key=… (keep it private)']
@@ -89,6 +95,61 @@ function seedConfig_() {
   sh.setColumnWidth(1, 230);
   sh.setColumnWidth(3, 420);
   return true;
+}
+
+var PRESET_HEADERS = ['Food', 'kcal', 'Protein (g)'];
+
+// Placeholders until your own list goes in. One row per button, in this order.
+var DEFAULT_PRESETS = [
+  ['Protein shake', '120', '24'],
+  ['Greek yogurt 0% (170g)', '95', '17'],
+  ['Weetabix Protein ×2 + 200ml semi-skimmed', '300', '23'],
+  ['Chicken breast (150g)', '240', '46'],
+  ['Banana', '105', '1'],
+  ['Coffee with milk', '30', '2']
+];
+
+function seedPresets_() {
+  var sh = sheet_('presets');
+  if (sh.getLastRow() > 0) return false;
+  sh.getRange(1, 1, 1, PRESET_HEADERS.length).setValues([PRESET_HEADERS]).setFontWeight('bold');
+  sh.getRange(2, 1, DEFAULT_PRESETS.length, PRESET_HEADERS.length).setValues(DEFAULT_PRESETS);
+  sh.setFrozenRows(1);
+  sh.setColumnWidth(1, 280);
+  return true;
+}
+
+function readPresets_() {
+  var rows = sheet_('presets').getDataRange().getValues();
+  var out = [];
+  for (var i = 1; i < rows.length; i++) {
+    var name = String(rows[i][0]).trim();
+    if (!name) continue;
+    out.push({ name: name, kcal: Number(rows[i][1]) || 0, protein: Number(rows[i][2]) || 0 });
+  }
+  return out;
+}
+
+/** Adds settings introduced after your Config tab was first made, without touching your values. */
+function ensureSettings_() {
+  var sh = sheet_('config');
+  var rows = sh.getDataRange().getValues();
+  var have = {};
+  var lastSettingRow = 0;
+  var inSettings = false;
+  for (var i = 0; i < rows.length; i++) {
+    var a = String(rows[i][0]).trim();
+    if (a === 'Setting') { inSettings = true; continue; }
+    if (inSettings && !a) break;
+    if (inSettings) { have[a] = true; lastSettingRow = i + 1; }
+  }
+  if (!lastSettingRow) return;
+  DEFAULT_SETTINGS.forEach(function (d) {
+    if (have[d[0]]) return;
+    sh.insertRowAfter(lastSettingRow);
+    lastSettingRow++;
+    sh.getRange(lastSettingRow, 1, 1, 3).setNumberFormat('@').setValues([d]);
+  });
 }
 
 function seedSessions_() {

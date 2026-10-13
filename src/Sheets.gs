@@ -13,6 +13,7 @@ var TABS = {
   weight: 'Weight',
   health: 'Health',
   food: 'Food',
+  presets: 'Presets',
   inbox: 'Inbox',
   log: 'Log'
 };
@@ -23,7 +24,7 @@ var HEADERS = {
   gym: ['Date', 'Day', 'Session', 'Travel', 'Leave at', 'Weather', 'Status', 'Ticked at', 'Arrived', 'Left', 'Minutes at gym', 'Notes'],
   weight: ['Date', 'Time', 'Weight (kg)', 'You typed', 'Change (kg)'],
   health: ['Date', 'Sleep (h)', 'Steps', 'Resting HR', 'Avg HR', 'Source', 'Received at'],
-  food: ['Date', 'Time', 'Photo', 'File name', 'Notes', 'Calories (est.)'],
+  food: ['Date', 'Time', 'Item', 'kcal', 'Protein (g)', 'Source', 'Entry', 'Photo', 'Notes'],
   inbox: ['Received at', 'Source', 'Body'],
   log: ['Time', 'Level', 'Message']
 };
@@ -49,6 +50,7 @@ function ensureTab_(key) {
   var sh = sheet_(key);
   var headers = HEADERS[key];
   if (!headers) return sh;
+  if (sh.getLastRow() <= 1) sh.getRange(1, 1, 1, Math.max(sh.getLastColumn(), 1)).clearContent(); // no data yet: lay the headers out fresh
   var lastCol = Math.max(sh.getLastColumn(), 1);
   var existing = sh.getRange(1, 1, 1, lastCol).getValues()[0];
   headers.forEach(function (h) {
@@ -112,6 +114,22 @@ function updateRow_(key, rowNum, obj) {
   Object.keys(obj).forEach(function (k) {
     if (k in map) sh.getRange(rowNum, map[k] + 1).setValue(obj[k]);
   });
+}
+
+/** Rows whose Date (yyyy-MM-dd) is between from and to, inclusive, as objects. */
+function rowsBetween_(key, fromYmd, toYmd) {
+  var sh = sheet_(key);
+  var values = sh.getDataRange().getValues();
+  var headers = values[0];
+  var out = [];
+  for (var i = 1; i < values.length; i++) {
+    var d = String(values[i][headers.indexOf('Date')]);
+    if (d < fromYmd || d > toYmd) continue;
+    var obj = {};
+    headers.forEach(function (h, j) { if (h) obj[h] = values[i][j]; });
+    out.push(obj);
+  }
+  return out;
 }
 
 function lastRowObject_(key) {

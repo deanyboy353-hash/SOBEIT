@@ -37,7 +37,7 @@ const Utilities = {
     }
     return new RealDate(guess);
   },
-  getUuid: () => 'aaaa-bbbb-cccc-dddd'
+  getUuid: () => 'uuid-' + Math.random().toString(16).slice(2, 14)
 };
 
 class FakeRange {
@@ -65,6 +65,7 @@ class FakeRange {
   }
   setValue(v) { return this.setValues([[v]]); }
   setNumberFormat() { return this; }
+  clearContent() { return this.setValues(Array.from({ length: this.nr }, () => Array(this.nc).fill(''))); }
   setFontWeight() { return this; }
   insertCheckboxes() { return this; }
 }
@@ -85,6 +86,8 @@ class FakeSheet {
   getRange(r, c, nr = 1, nc = 1) { return new FakeRange(this, r, c, nr, nc); }
   getDataRange() { return this.getRange(1, 1, Math.max(this.getLastRow(), 1), Math.max(this.getLastColumn(), 1)); }
   setFrozenRows() {}
+  insertRowAfter(r) { this.data.splice(r, 0, []); }
+  deleteRow(r) { this.data.splice(r - 1, 1); }
   setColumnWidth() {}
   rows() { return this.getDataRange().getValues(); }
 }
@@ -151,7 +154,9 @@ function loadProject(opts = {}) {
   const state = {
     now: opts.now || new RealDate('2026-10-13T05:00:00Z'),
     rainy: false, weatherDown: false,
-    props: {}, mails: [], triggers: [], fetches: []
+    props: {}, mails: [], triggers: [], fetches: [], claudeRequests: [],
+    claudeReply: { body: { stop_reason: 'end_turn', content: [{ type: 'text', text: JSON.stringify({ items: [
+      { name: '2 Weetabix Protein', kcal: 200, protein_g: 14 }, { name: '200ml semi-skimmed milk', kcal: 100, protein_g: 7 }] }) }] } }
   };
   const ss = new FakeSpreadsheet();
   const calendar = makeCalendar();
@@ -173,11 +178,16 @@ function loadProject(opts = {}) {
       })
     },
     LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock() {} }) },
-    CalendarApp: { getDefaultCalendar: () => calendar, EventColor: { GREEN: '10', BLUE: '9', YELLOW: '5' } },
+    CalendarApp: { getDefaultCalendar: () => calendar, EventColor: { GREEN: '10', BLUE: '9', YELLOW: '5', ORANGE: '6', PALE_BLUE: '1' } },
     Tasks: { Tasks: tasks },
     UrlFetchApp: {
-      fetch(url) {
+      fetch(url, opts) {
         state.fetches.push(url);
+        if (/anthropic/.test(url)) {
+          state.claudeRequests.push({ headers: opts.headers, body: JSON.parse(opts.payload) });
+          const r = state.claudeReply;
+          return { getResponseCode: () => r.code || 200, getContentText: () => JSON.stringify(r.body) };
+        }
         if (state.weatherDown) return { getResponseCode: () => 503, getContentText: () => 'down' };
         const ymd = url.match(/start_date=([\d-]+)/)[1];
         return { getResponseCode: () => 200, getContentText: () => JSON.stringify(forecastJson(ymd, state.rainy)) };
@@ -188,13 +198,26 @@ function loadProject(opts = {}) {
       deleteTrigger: t => { state.triggers = state.triggers.filter(x => x !== t); },
       newTrigger(fn) {
         const t = { fn, getHandlerFunction: () => fn };
-        const chain = { timeBased: () => chain, everyDays: () => chain, atHour: () => chain, inTimezone: () => chain, everyMinutes: () => chain, create: () => { state.triggers.push(t); return t; } };
+        const chain = { timeBased: () => chain, everyDays: () => chain, atHour: () => chain, inTimezone: () => chain, everyMinutes: () => chain,
+          onWeekDay: () => chain, at: d => { t.at = d; return chain; }, create: () => { state.triggers.push(t); return t; } };
         return chain;
       },
-      getService: () => ({ getUrl: () => 'https://script.google.com/macros/s/FAKE/exec' })
+      getService: () => ({ getUrl: () => 'https://script.google.com/macros/s/FAKE/exec' }),
+      WeekDay: { SUNDAY: 'SUNDAY' }
     },
     MailApp: { sendEmail: (to, subject, body) => state.mails.push({ to, subject, body }) },
     Session: { getEffectiveUser: () => ({ getEmail: () => 'me@example.com' }) },
+    HtmlService: {
+      createTemplateFromFile(name) {
+        const tpl = { evaluate() {
+          const html = fs.readFileSync(path.join(__dirname, '..', 'src', name + '.html'), 'utf8')
+            .replace('<?!= JSON.stringify(key) ?>', JSON.stringify(tpl.key)).replace('<?!= initialJson ?>', tpl.initialJson);
+          const out = { html, setTitle: () => out, addMetaTag: () => out };
+          return out;
+        } };
+        return tpl;
+      }
+    },
     ContentService: {
       MimeType: { JSON: 'json' },
       createTextOutput: s => ({ text: s, setMimeType() { return this; } })

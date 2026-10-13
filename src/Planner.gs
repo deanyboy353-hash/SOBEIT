@@ -203,6 +203,45 @@ function buildGymEventText(plan) {
   return { title: title, description: lines.join('\n') };
 }
 
+/**
+ * The 11pm alert. totals {kcal, protein}, targets {kcal, proteinMin, proteinMax}.
+ * Over on calories → suggest a small protein snack instead of "kcal left".
+ */
+function buildFoodCheckText(totals, targets, entryCount, pageUrl) {
+  var kcal = Math.round(totals.kcal);
+  var protein = Math.round(totals.protein);
+  var proteinShort = Math.max(0, targets.proteinMin - protein);
+  var proteinPart = proteinShort ? proteinShort + 'g protein to go' : 'protein ✅';
+  var title;
+  var advice;
+  if (!entryCount) {
+    title = '🍽️ No food logged today';
+    advice = 'If you ate, add it now. A rough guess beats a blank day.';
+  } else if (kcal > targets.kcal) {
+    var over = kcal - targets.kcal;
+    if (proteinShort) {
+      title = '🍽️ Over by ' + over + ' kcal · ' + proteinShort + 'g protein short → shake or yogurt';
+      advice = FOOD_SNACKS + ' closes most of the protein gap for very few calories.';
+    } else {
+      title = '🍽️ Over by ' + over + ' kcal · protein ✅ · kitchen closed';
+      advice = "Protein's done, so nothing else needed today.";
+    }
+  } else {
+    title = '🍽️ ' + (targets.kcal - kcal) + ' kcal left · ' + proteinPart;
+    advice = proteinShort ? 'Make whatever you eat next mostly protein. ' + FOOD_SNACKS + ' are easy wins.' : 'Targets hit. Nice.';
+  }
+  var lines = [
+    'Today: ' + kcal + ' of ' + targets.kcal + ' kcal · ' + protein + 'g protein (target ' + targets.proteinMin + '–' + targets.proteinMax + 'g)',
+    '',
+    advice
+  ];
+  if (protein > targets.proteinMax) lines.push('(Protein is above your range. Fine, just noting it.)');
+  if (pageUrl) lines.push('', 'Food page: ' + pageUrl);
+  return { title: title, description: lines.join('\n') };
+}
+
+var FOOD_SNACKS = 'A protein shake (~120 kcal, 24 g) or a 0% Greek yogurt (~95 kcal, 17 g)';
+
 // Node test hook. Apps Script ignores this because `module` doesn't exist there.
 if (typeof module !== 'undefined') {
   module.exports = {

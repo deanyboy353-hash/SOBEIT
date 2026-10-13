@@ -27,10 +27,26 @@ function doPost(e) {
   }
 }
 
-/** Opening the URL in a browser just confirms it's alive (no data shown). */
+/**
+ * With the key: the food page. Without it (or with ?status=1): a short
+ * "I'm alive" reply that shows no data.
+ */
 function doGet(e) {
   var params = (e && e.parameter) || {};
-  return json_({ ok: true, service: 'sobeit', keyAccepted: validKey_(params.key), time: now_() });
+  if (!validKey_(params.key) || params.status) {
+    return json_({ ok: true, service: 'sobeit', keyAccepted: validKey_(params.key), time: now_() });
+  }
+  var page = HtmlService.createTemplateFromFile('FoodPage');
+  page.key = params.key;
+  page.initialJson = JSON.stringify(foodState_()).replace(/</g, '\\u003c');
+  return page.evaluate()
+    .setTitle('Food')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover');
+}
+
+function foodPageUrl_() {
+  var key = PropertiesService.getScriptProperties().getProperty('WEBAPP_KEY');
+  return key ? WEBAPP_URL + '?key=' + key : '';
 }
 
 function validKey_(key) {
