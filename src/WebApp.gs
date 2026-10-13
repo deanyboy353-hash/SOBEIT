@@ -12,8 +12,42 @@ var POST_ROUTES = {
   raw: function () { return 'stored'; }
 };
 
+// What the installable app may call, by name. Everything checks the key itself.
+function rpcTable_() {
+  return {
+    appState: appState, choresState: choresState, questDone: questDone, claimQuest: claimQuest, whatNow: whatNow,
+    brainDump: brainDump, saveBrainDump: saveBrainDump, addQuest: addQuest, addShopping: addShopping, toggleShopping: toggleShopping,
+    askToJoin: askToJoin, planChore: planChore, startChore: startChore, stepDone: stepDone, extendChore: extendChore,
+    finishChore: finishChore, parkThing: parkThing, clearLater: clearLater, redeemReward: redeemReward, highFive: highFive,
+    routineStep: routineStep, addWater: addWater, setTheme: setTheme, todayState: todayState, gymDone: gymDone,
+    logWeightNow: logWeightNow, foodState: foodState, logPreset: logPreset, quickAdd: quickAdd, undoLast: undoLast,
+    saveClaudeKey: saveClaudeKey, trainState: trainState, setTrainingMax: setTrainingMax, saveWorkout: saveWorkout,
+    respreadSchedule: respreadSchedule, saveQuest: saveQuest, deleteQuest: deleteQuest,
+    gamesState: gamesState, guessWord: guessWord, submitTarget: submitTarget, submitRecall: submitRecall,
+    registerDevice: registerDevice, sendNudge: sendNudge, ask: ask, clearAsk: clearAsk, getBrief: getBrief,
+    mealIdeas: mealIdeas, logIdea: logIdea
+  };
+}
+
+/** {fn, key, args} from the installable app → {ok, result} or {ok: false, error}. */
+function rpc_(body) {
+  var fn = rpcTable_()[body.fn];
+  if (!fn) return json_({ ok: false, error: 'Unknown action.' });
+  try {
+    return json_({ ok: true, result: fn.apply(null, [body.key].concat(body.args || [])) });
+  } catch (err) {
+    return json_({ ok: false, error: String(err && err.message || err) });
+  }
+}
+
 function doPost(e) {
   var params = (e && e.parameter) || {};
+  var raw = e && e.postData ? e.postData.contents : '';
+  if (raw && raw.charAt(0) === '{' && !params.source) {
+    var body;
+    try { body = JSON.parse(raw); } catch (x) { body = null; }
+    if (body && body.fn) return rpc_(body);
+  }
   if (!validKey_(params.key)) return json_({ ok: false, error: 'bad key' });
   var source = String(params.source || 'raw');
   var body = e.postData ? e.postData.contents : '';
@@ -50,9 +84,12 @@ function doGet(e) {
 }
 
 function appState_(who) {
+  var brief = JSON.parse(prop_('BRIEF_' + who) || 'null');
   var s = {
-    who: who, now: new Date().getTime(), game: gameState_(who), quests: questsState_(who), chores: choresState_(who),
-    routines: routinesState_(who), shopping: shoppingState_(), hasClaudeKey: !!claudeKey_()
+    who: who, now: new Date().getTime(), names: names_(), game: gameState_(who), quests: questsState_(who), chores: choresState_(who),
+    routines: routinesState_(who), shopping: shoppingState_(), hasClaudeKey: !!claudeKey_(), schedule: scheduleState_(),
+    games: gamesState_(who), push: pushStatus_(who), brief: brief && brief.date === todayYmd_() ? brief : null,
+    theme: String(prop_('THEME_' + who) || 'light')
   };
   if (who === 'me') {
     s.today = todayState_();

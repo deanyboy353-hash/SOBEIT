@@ -64,7 +64,7 @@ test('bike only when every hour of the trip is fine', () => {
 
 // --- whole days, with fake Google services ---
 
-const gymEvents = g => g.calendar.live().filter(e => /🏋️/.test(e.title));
+const gymEvents = g => g.calendar.live().filter(e => e.tags.sobeit === 'gym');
 const gymTasks = g => g.tasks.open().filter(t => /Gym done/.test(t.title));
 
 function at(state, iso) { state.now = new Date(iso); }
@@ -79,7 +79,7 @@ test('Tuesday: setup builds the sheet and plans a dry-day bike session', () => {
 
   const ev = gymEvents(g);
   assert.strictEqual(ev.length, 1, 'one event (gym, no weigh-in on Tue)');
-  assert.match(ev[0].title, /Upper A · 🚲 Bike · leave 15:15/);
+  assert.match(ev[0].title, /Upper A · Bike · leave 15:15/);
   assert.match(ev[0].opts.description, /1\. Bench press \(T1\): set a training max/);
   assert.match(ev[0].opts.description, /3\. Barbell row: 4 × 6-8 @ RPE 8 · rest 2 min/);
   assert.strictEqual(ev[0].opts.location, 'JD Gym Coatbridge');
@@ -99,7 +99,7 @@ test('rain means bus, with a latest-leave time from the last bus', () => {
   g.state.rainy = true;
   g.ctx.setup();
   const ev = gymEvents(g)[0];
-  assert.match(ev.title, /🚌 Bus · leave 15:15/);
+  assert.match(ev.title, /Bus · leave 15:15/);
   assert.match(ev.opts.description, /Latest you can leave: \d\d:\d\d \(and still make the last bus at 18:15\)/);
   assert.match(ev.opts.description, /80% chance of rain/);
 });
@@ -130,11 +130,11 @@ test('ticking Gym done logs it; re-planning afterwards does not bring the task b
   at(g.state, '2026-10-13T16:45:00Z');
   g.ctx.pollTasks();
   const row = g.tab('Gym log').rows()[1];
-  assert.strictEqual(row[6], 'Done ✅');
+  assert.strictEqual(row[6], 'Done');
   assert.strictEqual(row[7], '2026-10-13 17:40');
   g.ctx.dailyRun();
   assert.strictEqual(gymTasks(g).length, 0);
-  assert.strictEqual(g.tab('Gym log').rows()[1][6], 'Done ✅');
+  assert.strictEqual(g.tab('Gym log').rows()[1][6], 'Done');
 });
 
 test('Wednesday: weigh-in alert + task; typed weight is logged when ticked', () => {
@@ -147,7 +147,7 @@ test('Wednesday: weigh-in alert + task; typed weight is logged when ticked', () 
   assert.strictEqual(g.tab('Gym log').rows()[1][6], 'Not ticked');
   const titles = g.calendar.live().map(e => e.title);
   assert.ok(titles.some(t => /Lower A/.test(t)));
-  const weigh = g.calendar.live().find(e => e.title === '⚖️ Weigh in');
+  const weigh = g.calendar.live().find(e => e.title === 'Weigh in');
   assert.strictEqual(g.ctx.Utilities.formatDate(weigh.start, 'Europe/London', 'HH:mm'), '08:30');
   assert.deepStrictEqual(weigh.reminders, [0]);
 

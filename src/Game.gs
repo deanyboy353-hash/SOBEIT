@@ -102,25 +102,25 @@ function streakNow_(id, todayYmd, goal) {
 // ---------- badges ----------
 
 var BADGES = [
-  ['first-quest', '🌱', 'First quest', 'Finish your first quest', function (s) { return s.quests >= 1; }],
-  ['quests-25', '🧹', 'House hero', '25 quests done', function (s) { return s.quests >= 25; }],
-  ['quests-100', '🏠', 'Home legend', '100 quests done', function (s) { return s.quests >= 100; }],
-  ['streak-3', '🔥', 'On a roll', '3-day streak', function (s) { return s.bestStreak >= 3; }],
-  ['streak-7', '🔥', 'One whole week', '7-day streak', function (s) { return s.bestStreak >= 7; }],
-  ['streak-30', '💫', 'Unstoppable', '30-day streak', function (s) { return s.bestStreak >= 30; }],
-  ['streak-100', '💯', 'Century', '100-day streak', function (s) { return s.bestStreak >= 100; }],
-  ['gym-1', '🏋️', 'First session', 'Log a gym session', function (s) { return s.gym >= 1; }],
-  ['gym-10', '💪', 'Regular', '10 gym sessions', function (s) { return s.gym >= 10; }],
-  ['gym-50', '🦾', 'Gym rat', '50 gym sessions', function (s) { return s.gym >= 50; }],
-  ['pr', '🏆', 'New PR', 'Beat a lift record', function (s) { return s.prs >= 1; }],
-  ['weigh-8', '⚖️', 'Consistent', '8 weigh-ins', function (s) { return s.weighs >= 8; }],
-  ['routine-7', '🌅', 'Routine machine', 'Finish 7 routines', function (s) { return s.routines >= 7; }],
-  ['protein-7', '🥚', 'Protein pro', 'Hit protein 7 times', function (s) { return s.protein >= 7; }],
-  ['cover-5', '🤝', 'Teammate', 'Cover 5 of your partner\'s jobs', function (s) { return s.covers >= 5; }],
-  ['hi5-10', '🙌', 'Hype squad', 'Give 10 high-fives', function (s) { return s.hi5 >= 10; }],
-  ['brain', '🧠', 'Brain dumped', 'Use the brain dump', function (s) { return s.brain >= 1; }],
-  ['level-5', '⭐', 'Level 5', 'Reach level 5', function (s) { return s.level >= 5; }],
-  ['level-10', '🌟', 'Level 10', 'Reach level 10', function (s) { return s.level >= 10; }]
+  ['first-quest', '', 'First quest', 'Finish your first quest', function (s) { return s.quests >= 1; }],
+  ['quests-25', '', 'House hero', '25 quests done', function (s) { return s.quests >= 25; }],
+  ['quests-100', '', 'Home legend', '100 quests done', function (s) { return s.quests >= 100; }],
+  ['streak-3', '', 'On a roll', '3-day streak', function (s) { return s.bestStreak >= 3; }],
+  ['streak-7', '', 'One whole week', '7-day streak', function (s) { return s.bestStreak >= 7; }],
+  ['streak-30', '', 'Unstoppable', '30-day streak', function (s) { return s.bestStreak >= 30; }],
+  ['streak-100', '', 'Century', '100-day streak', function (s) { return s.bestStreak >= 100; }],
+  ['gym-1', '', 'First session', 'Log a gym session', function (s) { return s.gym >= 1; }],
+  ['gym-10', '', 'Regular', '10 gym sessions', function (s) { return s.gym >= 10; }],
+  ['gym-50', '', 'Gym rat', '50 gym sessions', function (s) { return s.gym >= 50; }],
+  ['pr', '', 'New PR', 'Beat a lift record', function (s) { return s.prs >= 1; }],
+  ['weigh-8', '', 'Consistent', '8 weigh-ins', function (s) { return s.weighs >= 8; }],
+  ['routine-7', '', 'Routine machine', 'Finish 7 routines', function (s) { return s.routines >= 7; }],
+  ['protein-7', '', 'Protein pro', 'Hit protein 7 times', function (s) { return s.protein >= 7; }],
+  ['cover-5', '', 'Teammate', 'Cover 5 of your partner\'s jobs', function (s) { return s.covers >= 5; }],
+  ['hi5-10', '', 'Hype squad', 'Give 10 high-fives', function (s) { return s.hi5 >= 10; }],
+  ['brain', '', 'Brain dumped', 'Use the brain dump', function (s) { return s.brain >= 1; }],
+  ['level-5', '', 'Level 5', 'Reach level 5', function (s) { return s.level >= 5; }],
+  ['level-10', '', 'Level 10', 'Reach level 10', function (s) { return s.level >= 10; }]
 ];
 
 function badges_(who, streak) {
@@ -191,7 +191,7 @@ function redeemReward(key, name) {
     if (!r) throw new Error('That reward is no longer in the Rewards tab.');
     if (xpBalance_(who) < r.cost) throw new Error('Not quite yet: you need ' + (r.cost - xpBalance_(who)) + ' more XP.');
     addXp_(who, 'Reward: ' + r.name, -r.cost, 'reward');
-    addFeed_(who, '🎁 Treated themselves: ' + r.name, 'reward');
+    addFeed_(who, 'Treated themselves: ' + r.name, 'reward');
     return appState_(who);
   });
 }
@@ -206,6 +206,7 @@ function highFive(key, feedId) {
       var props = PROPS;
       props.setProperty('FEED', JSON.stringify(f));
       props.setProperty('HI5_' + who, String(Number(props.getProperty('HI5_' + who) || 0) + 1));
+      push_(item.who, names_()[who] + ' sent you a high-five', item.text, 'home');
     }
     return appState_(who);
   });

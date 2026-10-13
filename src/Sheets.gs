@@ -25,6 +25,7 @@ var TABS = {
   programme: 'Programme',
   workoutLog: 'Workout log',
   tmHistory: 'TM history',
+  games: 'Games',
   inbox: 'Inbox',
   log: 'Log'
 };
@@ -42,6 +43,7 @@ var HEADERS = {
   shopping: ['Date', 'Item', 'Who', 'Got', 'ID'],
   workoutLog: ['Date', 'Session', 'Exercise', 'Tier', 'Set', 'Weight (kg)', 'Reps', 'Target', 'e1RM'],
   tmHistory: ['Date', 'Lift', 'Old TM', 'New TM', 'Change', '1+ reps'],
+  games: ['Date', 'Time', 'Who', 'Game', 'Score', 'Detail'],
   inbox: ['Received at', 'Source', 'Body'],
   log: ['Time', 'Level', 'Message']
 };

@@ -37,7 +37,7 @@ var DEFAULT_SETTINGS = [
   ['Daily XP goal', '30', 'XP each of you aims for per day. Hitting it keeps your streak going.'],
   ['Quests per day', '6', 'Most quests put on the daily board, so it never feels like a wall'],
   ['Water goal (glasses)', '8', 'Shown on the Home tab. Set to 0 to hide it.'],
-  ['Meds reminder', '', 'Optional time, e.g. 08:30, for a daily 💊 calendar alert. Leave blank for none.'],
+  ['Meds reminder', '', 'Optional time, e.g. 08:30, for a daily calendar alert. Leave blank for none.'],
   ['Plate step (kg)', '2.5', 'Gym weights are rounded to this'],
   ['Email me if something breaks', 'TRUE', 'Untick to stop error emails'],
   ['Web app URL', '', 'Filled in automatically. Used later by HC Webhook and MacroDroid.'],
@@ -192,7 +192,7 @@ function seedChores_() {
 
 // Columns added to the Chores tab. Every: daily, 3 days, weekly, 2 weeks,
 // monthly, monthly 15, yearly, or weekdays like "Wed". Who: Anyone / Me / Partner.
-var QUEST_COLUMNS = ['Every', 'Who', 'Energy', 'XP', 'Last done', 'Last done by'];
+var QUEST_COLUMNS = ['Every', 'Who', 'Energy', 'XP', 'Last done', 'Last done by', 'Next due'];
 
 // [Job, Minutes, Steps, Every, Who, Energy]
 var DEFAULT_QUESTS = [

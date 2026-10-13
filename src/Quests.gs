@@ -39,12 +39,11 @@ function planQuests_(ymd, cfg) {
   quests.forEach(function (q) { byName[q.name] = q; });
   b.items.forEach(function (name) {
     var q = byName[name];
-    if (q && q.who !== 'partner') createTrackedTask_('quest', ymd, '✨ ' + name, (q.minutes ? '~' + q.minutes + ' min · ' : '') + q.xp + ' XP. Tick here or in the app.', name);
+    if (q && q.who !== 'partner') createTrackedTask_('quest', ymd, '' + name, (q.minutes ? '~' + q.minutes + ' min · ' : '') + q.xp + ' XP. Tick here or in the app.', name);
   });
   var mine = b.items.filter(function (n) { return byName[n] && byName[n].who !== 'me'; });
   if (mine.length) {
-    emailPartner_('Today\'s quests ✨', 'Morning! Today\'s quests:\n\n' + mine.map(function (n) { return '• ' + n + ' (~' + byName[n].minutes + ' min)'; }).join('\n') +
-      '\n\nOpen the app to start one: ' + partnerUrl_());
+    push_('partner', 'Today: ' + mine.length + ' quest' + (mine.length === 1 ? '' : 's'), mine.slice(0, 4).join(', ') + (mine.length > 4 ? '…' : ''), 'quests', true);
   }
   return b.items.length + ' quests on the board';
 }
@@ -66,7 +65,10 @@ function completeQuest_(who, name, opts) {
   var q = readChores_().filter(function (x) { return x.name === name; })[0];
   if (!q) return 0;
   if (opts.partial) return addXp_(who, 'Made a start: ' + name, Math.max(2, Math.round(q.xp / 3)), 'start');
-  updateRow_('chores', q.row, { 'Last done': today, 'Last done by': who });
+  var upd = { 'Last done': today, 'Last done by': who };
+  var rule = parseEvery(q.every);
+  if (rule.kind !== 'none') upd['Next due'] = nextAfterDone(rule, today, q.nextDue);
+  updateRow_('chores', q.row, upd);
   var xp = addXp_(who, name, q.xp, 'quest');
   var owner = q.who === 'me' || q.who === 'partner' ? q.who : null;
   if (owner && owner !== who) addXp_(who, 'Covered: ' + name, Math.round(q.xp / 2), 'cover');
@@ -104,7 +106,7 @@ function questDone(key, name) {
   return withLock_(function () {
     var q = readChores_().filter(function (x) { return x.name === name; })[0];
     if (!q) throw new Error('"' + name + '" is no longer in the Chores tab.');
-    if (q.lastDone === todayYmd_()) throw new Error(name + ' is already done today. 🎉');
+    if (q.lastDone === todayYmd_()) throw new Error(name + ' is already done today.');
     completeQuest_(who, name, {});
     return appState_(who);
   });
@@ -194,7 +196,7 @@ function saveBrainDump(key, items) {
       else if (it.kind === 'park') park_(who, t);
       else if (it.kind === 'recurring') addQuestRow_(t, Number(it.minutes) || 10, it.every || 'weekly', who === 'me' ? 'Anyone' : 'Anyone');
       else {
-        park_(who, '📝 ' + t);
+        park_(who, '' + t);
         if (who === 'me') Tasks.Tasks.insert({ title: t, due: todayYmd_() + 'T00:00:00.000Z' }, TASK_LIST);
       }
     });
@@ -257,7 +259,7 @@ function planPrep_(ymd, cfg) {
   var events = CalendarApp.getDefaultCalendar().getEvents(atTime_(tomorrow, 0), atTime_(addDays_(tomorrow, 1), 0))
     .filter(function (ev) { return !ev.getTag(EVENT_TAG) && !(ev.isAllDayEvent && ev.isAllDayEvent()); });
   events.slice(0, 5).forEach(function (ev) {
-    createTrackedTask_('prep', ymd, '🗓️ Prep for tomorrow: ' + ev.getTitle() + ' at ' + Utilities.formatDate(ev.getStartTime(), TZ, 'HH:mm'),
+    createTrackedTask_('prep', ymd, 'Prep for tomorrow: ' + ev.getTitle() + ' at ' + Utilities.formatDate(ev.getStartTime(), TZ, 'HH:mm'),
       'What do you need? Travel time, documents, clothes, questions to ask.', ev.getTitle());
   });
   return events.length + ' things tomorrow';
@@ -281,22 +283,12 @@ function emailPartner_(subject, body) {
   try { MailApp.sendEmail(to, subject, body); return true; } catch (e) { log_('WARN', 'Partner email: ' + e); return false; }
 }
 
-/** "Come and do chores with me": an email (if set) and a banner in their app. */
+/** "Come and do chores with me": a push (email or calendar alert if push isn't set up) and a banner in their app. */
 function askToJoin(key) {
   var who = who_(key);
-  var names = { me: String(readConfig_().settings['Your name'] || 'Your partner'), partner: String(readConfig_().settings['Partner name'] || 'Your partner') };
-  var props = PROPS;
-  props.setProperty('INVITE', JSON.stringify({ from: who, at: new Date().getTime() }));
-  var sent = false;
-  if (who === 'me') {
-    sent = emailPartner_(names.me + ' is doing chores now 🧹', names.me + ' is starting a job and would love company. Pick one: ' + partnerUrl_());
-  } else {
-    // Your phone and watch buzz in a minute's time.
-    var at = new Date(Math.ceil((new Date().getTime() + 60000) / 60000) * 60000);
-    var ev = CalendarApp.getDefaultCalendar().createEvent('🧹 ' + names.partner + ' wants company for chores', at, new Date(at.getTime() + 60000), { description: 'Open the app and pick a job: ' + appUrl_() });
-    ev.setTag(EVENT_TAG, 'invite'); ev.removeAllReminders(); ev.addPopupReminder(0);
-    sent = true;
-  }
-  addFeed_(who, '📣 Wants company for chores', 'invite');
+  setProp_('INVITE', JSON.stringify({ from: who, at: new Date().getTime() }));
+  var other = who === 'me' ? 'partner' : 'me';
+  var sent = push_(other, names_()[who] + ' wants company for chores', 'Pick a job and do it together.', 'quests', true) > 0;
+  addFeed_(who, 'Wants company for chores', 'invite');
   return { sent: sent, state: appState_(who) };
 }

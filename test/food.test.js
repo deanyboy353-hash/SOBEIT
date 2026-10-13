@@ -121,23 +121,23 @@ test('11pm check: booked each morning, event shows what is left', () => {
   g.ctx.logPreset(key, 'Chicken breast (150g)');
   g.state.now = new Date('2026-10-13T21:40:00Z');
   g.ctx.foodCheck();
-  const ev = g.calendar.live().find(e => /🍽️/.test(e.title));
-  assert.strictEqual(ev.title, '🍽️ 1560 kcal left · 84g protein to go');
+  const ev = g.calendar.live().find(e => e.tags.sobeit === 'food');
+  assert.strictEqual(ev.title, '1560 kcal left · 84g protein to go');
   assert.strictEqual(g.ctx.Utilities.formatDate(ev.start, 'Europe/London', 'HH:mm'), '23:00');
   assert.deepStrictEqual([...ev.reminders], [0]);
   assert.match(ev.opts.description, /Open the app: https:\/\/script\.google\.com/);
   g.ctx.foodCheck();
-  assert.strictEqual(g.calendar.live().filter(e => /🍽️/.test(e.title)).length, 1, 'no duplicates');
+  assert.strictEqual(g.calendar.live().filter(e => e.tags.sobeit === 'food').length, 1, 'no duplicates');
 });
 
 test('food check wording: over → protein snack; nothing logged; all good', () => {
   const P = loadProject().ctx;
   const t = { kcal: 1800, proteinMin: 130, proteinMax: 160 };
-  assert.strictEqual(P.buildFoodCheckText({ kcal: 1950, protein: 100 }, t, 5).title, '🍽️ Over by 150 kcal · 30g protein short → shake or yogurt');
+  assert.strictEqual(P.buildFoodCheckText({ kcal: 1950, protein: 100 }, t, 5).title, 'Over by 150 kcal · 30g protein short → shake or yogurt');
   assert.match(P.buildFoodCheckText({ kcal: 1950, protein: 100 }, t, 5).description, /protein shake .* Greek yogurt/);
-  assert.strictEqual(P.buildFoodCheckText({ kcal: 1950, protein: 140 }, t, 5).title, '🍽️ Over by 150 kcal · protein ✅ · kitchen closed');
-  assert.strictEqual(P.buildFoodCheckText({ kcal: 0, protein: 0 }, t, 0).title, '🍽️ No food logged today');
-  assert.strictEqual(P.buildFoodCheckText({ kcal: 1700, protein: 135 }, t, 4).title, '🍽️ 100 kcal left · protein ✅');
+  assert.strictEqual(P.buildFoodCheckText({ kcal: 1950, protein: 140 }, t, 5).title, 'Over by 150 kcal · protein done · kitchen closed');
+  assert.strictEqual(P.buildFoodCheckText({ kcal: 0, protein: 0 }, t, 0).title, 'No food logged today');
+  assert.strictEqual(P.buildFoodCheckText({ kcal: 1700, protein: 135 }, t, 4).title, '100 kcal left · protein done');
 });
 
 test('Sunday summary includes daily food averages, gym, weight and the week ahead', () => {
@@ -146,20 +146,20 @@ test('Sunday summary includes daily food averages, gym, weight and the week ahea
   days.forEach(([d, k, p]) => g.ctx.appendRow_('food', { Date: d, Time: '12:00', Item: 'x', kcal: k, 'Protein (g)': p, Source: 'test', Entry: d }));
   g.ctx.appendRow_('weight', { Date: '2026-10-14', 'Weight (kg)': 83.5 });
   g.ctx.appendRow_('weight', { Date: '2026-10-16', 'Weight (kg)': 83.1 });
-  g.ctx.appendRow_('gym', { Date: '2026-10-14', Day: 'Wed', Session: 'Lower A', Status: 'Done ✅' });
+  g.ctx.appendRow_('gym', { Date: '2026-10-14', Day: 'Wed', Session: 'Lower A', Status: 'Done' });
   g.ctx.appendRow_('gym', { Date: '2026-10-16', Day: 'Fri', Session: 'Upper B', Status: 'Not ticked' });
   g.ctx.appendRow_('choresLog', { Date: '2026-10-15', Who: 'me', Task: 'Do the dishes', 'Actual (min)': 12, Result: 'Done' });
   g.ctx.appendRow_('choresLog', { Date: '2026-10-16', Who: 'partner', Task: 'Change the bedding', 'Actual (min)': 14, Result: 'Done' });
   g.ctx.appendRow_('choresLog', { Date: '2026-10-16', Who: 'me', Task: 'Hoover downstairs', 'Actual (min)': 20, Result: 'Done' });
   g.state.now = new Date('2026-10-18T17:30:00Z'); // Sun 18:30
   g.ctx.weeklySummary();
-  const ev = g.calendar.live().find(e => e.title === '📊 Your week');
+  const ev = g.calendar.live().find(e => e.title === 'Your week');
   assert.strictEqual(g.ctx.Utilities.formatDate(ev.start, 'Europe/London', 'EEE HH:mm'.replace('EEE ', '')), '19:00');
   const d = ev.opts.description;
   assert.match(d, /Daily average: 1800 kcal \(target 1800\) · 130g protein \(target 130–160\)/);
   assert.match(d, /Logged 3 of 7 days · protein hit on 2 · within calories on 2/);
   assert.match(d, /1 of 2 sessions done \(Wed Lower A\)/);
   assert.match(d, /83\.5 → 83\.1 kg \(-0\.4\)/);
-  assert.match(d, /🧹 CHORES\nYou: 2 jobs, 32 min · Partner: 1 jobs, 14 min/);
-  assert.match(d, /Mon: ⚖️ weigh-in\nTue: 🏋️ Upper A\nWed: 🏋️ Lower A · ⚖️ weigh-in/);
+  assert.match(d, /CHORES\nYou: 2 jobs, 32 min · Partner: 1 jobs, 14 min/);
+  assert.match(d, /Mon: weigh-in\nTue: Upper A\nWed: Lower A · weigh-in/);
 });

@@ -47,7 +47,7 @@ test('do the dishes: timer, steps, alert on your phone, partner sees it, no hopp
   const sess = s.chores.people.me.session;
   assert.strictEqual(sess.endsAt - sess.startedAt, 15 * 60000);
   const alert = g.calendar.live().find(e => /time's up/.test(e.title));
-  assert.strictEqual(alert.title, "⏰ Do the dishes: time's up");
+  assert.strictEqual(alert.title, "Do the dishes: time's up");
   assert.strictEqual(g.ctx.Utilities.formatDate(alert.start, 'Europe/London', 'HH:mm'), '18:15');
   assert.deepStrictEqual([...alert.reminders], [0]);
 

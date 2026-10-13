@@ -186,7 +186,7 @@ function saveWorkout(key, session, sets) {
 
     // Best PR only, once per workout, so the XP stays sensible.
     var bestPr = prs.sort(function (a, b) { return b.e1rm - a.e1rm; })[0];
-    if (bestPr) addXp_('me', '🏆 PR: ' + bestPr.exercise + ' ' + bestPr.weight + '×' + bestPr.reps, 25, 'pr');
+    if (bestPr) addXp_('me', 'PR: ' + bestPr.exercise + ' ' + bestPr.weight + '×' + bestPr.reps, 25, 'pr');
     completeTracked_('gym', today);
     onGymTaskDone_({ completed: new Date().toISOString() }, { date: today });
     return { changes: changes, prs: prs, state: appState_('me') };

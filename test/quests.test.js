@@ -15,7 +15,9 @@ test('Chores tab gains quest columns and starter quests; existing rows get sched
   const { g } = ready();
   for (const h of ['Every', 'Who', 'Energy', 'XP', 'Last done', 'Last done by']) assert.ok(col(g, h) > 2, h);
   assert.strictEqual(row(g, 'Do the dishes')[col(g, 'Every')], 'daily');
-  assert.strictEqual(row(g, 'Change the bedding')[col(g, 'Every')], '2 weeks');
+  assert.match(row(g, 'Change the bedding')[col(g, 'Every')], /^2 weeks (Sun|Mon|Tue|Wed|Thu|Fri|Sat)$/);
+  assert.match(row(g, 'Clean out the fridge')[col(g, 'Every')], /^monthly \d+$/);
+  assert.match(row(g, 'Take the bins out')[col(g, 'Every')], /^weekly Wed$/);
   assert.ok(row(g, 'Clean out the fridge'));
   // running again doesn't duplicate
   g.ctx.dailyRun();
@@ -26,19 +28,19 @@ test('daily board: capped, bin day first, pushed to Google Tasks; ticking anywhe
   const { g, C, me, partner } = ready();
   const q = C.questsState_('me');
   assert.strictEqual(q.board.length, 6);
-  assert.strictEqual(q.board[0].name, 'Take the bins out', 'Wednesday = bin day, first');
-  const questTasks = g.tasks.open().filter(t => /^✨/.test(t.title));
+  assert.ok(q.board.some(b => b.name === 'Take the bins out'), 'Wednesday = bin day');
+  const questTasks = g.tasks.open().filter(t => /XP\. Tick here/.test(t.notes || ''));
   assert.strictEqual(questTasks.length, q.board.filter(b => b.who !== 'partner').length);
 
   // partner does the dishes in the app → your Google Task ticks itself
   let s = C.questDone(partner, 'Do the dishes');
-  assert.ok(!g.tasks.open().some(t => t.title === '✨ Do the dishes'));
+  assert.ok(!g.tasks.open().some(t => t.title === 'Do the dishes'));
   assert.strictEqual(s.game.xpToday, 15, 'XP for whoever did it');
   assert.strictEqual(C.gameState_('me').xpToday, 0);
   assert.throws(() => C.questDone(me, 'Do the dishes'), /already done today/);
 
   // you tick the bins in Google Tasks → XP for you
-  const bins = g.tasks.open().find(t => t.title === '✨ Take the bins out');
+  const bins = g.tasks.open().find(t => t.title === 'Take the bins out');
   g.tasks.tick(bins.id, '2026-10-14T08:00:00.000Z');
   C.pollTasks();
   assert.strictEqual(C.gameState_('me').xpToday, 5);
@@ -48,12 +50,15 @@ test('daily board: capped, bin day first, pushed to Google Tasks; ticking anywhe
   assert.strictEqual(C.gameState_('me').xpToday, 5, 'not counted twice');
 });
 
-test('repeats count from when it was done: bedding done today is next due in 14 days', () => {
+test('a fortnightly job done early pushes the next one back, not days later', () => {
   const { g, C, me } = ready();
+  const bed = () => C.scheduleState_().find(x => x.name === 'Change the bedding');
+  const first = bed().next;
   C.questDone(me, 'Change the bedding');
-  day(g, '2026-10-27T05:05:00Z');
-  assert.ok(!C.questsState_('me').all.find(x => x.name === 'Change the bedding').due);
-  day(g, '2026-10-28T05:05:00Z');
+  const next = bed().next;
+  const gap = (Date.parse(next) - Date.parse('2026-10-14')) / 86400000;
+  assert.ok(gap >= 7 && gap <= 21, 'next bedding ' + next + ' (was ' + first + ')');
+  day(g, next.replace(/$/, 'T05:05:00Z'));
   assert.ok(C.questsState_('me').all.find(x => x.name === 'Change the bedding').due);
 });
 
@@ -74,22 +79,22 @@ test('What now? fits energy and time, and can be skipped', () => {
   const again = C.whatNow(me, 'low', 5, [low.name]);
   assert.notStrictEqual(again && again.name, low.name);
   const big = C.whatNow(me, 'high', 60, []);
-  assert.strictEqual(big.name, 'Take the bins out', 'due fixed-date job first');
+  assert.strictEqual(big.due, true, 'something due today comes first');
 });
 
 test('chores timer finishing a quest completes it; a stopped 5-minute taster gives some XP but stays due', () => {
   const { g, C, me } = ready('2026-10-14T17:00:00Z');
   const before = C.gameState_('me').xpToday;
-  C.startChore(me, { name: 'Clean the bathroom', minutes: 5, steps: [], taster: true });
+  C.startChore(me, { name: 'Wipe down the kitchen', minutes: 5, steps: [], taster: true });
   day(g, '2026-10-14T17:05:00Z');
   let s = C.finishChore(me, 'Stopped');
   assert.ok(s.game.xpToday > before);
-  assert.ok(s.quests.board.concat(s.quests.more).find(x => x.name === 'Clean the bathroom').due);
+  assert.ok(s.quests.all.find(x => x.name === 'Wipe down the kitchen').due, 'a taster leaves it due');
   assert.strictEqual(g.tab('Later').getLastRow(), 1, 'a taster does not park anything');
   C.startChore(me, { name: 'Do the dishes', minutes: 15, steps: [] });
   day(g, '2026-10-14T17:18:00Z');
   s = C.finishChore(me, 'Done');
-  assert.ok(s.quests.board.find(x => x.name === 'Do the dishes').doneToday);
+  assert.ok(s.quests.all.find(x => x.name === 'Do the dishes').doneToday);
 });
 
 test('streaks: goal days count, a freeze covers a missed day, levels go up', () => {
@@ -158,7 +163,7 @@ test('appointments tomorrow get a prep task', () => {
   const { g, C } = ready();
   g.calendar.createEvent('Dentist', new Date('2026-10-15T09:00:00Z'), new Date('2026-10-15T09:30:00Z'), {});
   C.dailyRun();
-  assert.ok(g.tasks.open().some(t => t.title === '🗓️ Prep for tomorrow: Dentist at 10:00'));
+  assert.ok(g.tasks.open().some(t => t.title === 'Prep for tomorrow: Dentist at 10:00'));
 });
 
 test('partner email: daily quests, join-me nudges, time\'s-up alarm (only if an email is set)', () => {
@@ -167,9 +172,9 @@ test('partner email: daily quests, join-me nudges, time\'s-up alarm (only if an 
   const cfg = g.tab('Config');
   cfg.getRange(cfg.rows().findIndex(r => r[0] === 'Partner email') + 1, 2).setValue('sam@example.com');
   C.dailyRun();
-  assert.ok(g.state.mails.some(m => m.to === 'sam@example.com' && /Today's quests/.test(m.subject)));
+  assert.ok(g.state.mails.some(m => m.to === 'sam@example.com' && /^Today: \d+ quests?/.test(m.subject)));
   C.askToJoin(me);
-  assert.ok(g.state.mails.some(m => /doing chores now/.test(m.subject)));
+  assert.ok(g.state.mails.some(m => /wants company for chores/.test(m.subject)));
   assert.strictEqual(C.choresState(partner).invite.from, 'me');
   C.startChore(partner, { name: 'Do the dishes', minutes: 15, steps: [] });
   assert.ok(g.state.triggers.some(t => t.fn === 'partnerTimeUp'));

@@ -40,7 +40,7 @@ test('saving a workout: logs sets, progresses TM from the 1+ set, spots PRs, log
   assert.deepStrictEqual(JSON.parse(JSON.stringify(res.changes.map(c => [c.lift, c.from, c.to, c.reps]))), [['Bench press', 85, 87.5, 5]]);
   assert.strictEqual(g.tab('Lifts').rows()[1][1], 87.5);
   assert.strictEqual(g.tab('Workout log').getLastRow(), 1 + 9 + 8 + 1);
-  assert.strictEqual(g.tab('Gym log').rows()[1][6], 'Done ✅');
+  assert.strictEqual(g.tab('Gym log').rows()[1][6], 'Done');
   assert.ok(res.state.game.xpToday >= 50);
   assert.strictEqual(res.prs.length, 0, 'first ever workout: nothing to beat yet');
 
@@ -64,6 +64,6 @@ test('gym calendar event lists the main lifts with weights', () => {
   C.setTrainingMax(me, 'Bench press', 80, 5);
   g.state.now = new Date('2026-10-13T05:05:00Z');
   C.dailyRun();
-  const ev = g.calendar.live().find(e => /🏋️/.test(e.title));
+  const ev = g.calendar.live().find(e => e.tags.sobeit === 'gym');
   assert.match(ev.opts.description, /Bench press \(T1\): 65×5, 72\.5×3, 80×1\+/);
 });

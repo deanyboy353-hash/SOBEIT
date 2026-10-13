@@ -36,14 +36,14 @@ function planRoutines_(ymd, cfg) {
   var routines = readRoutines_('me');
   routines.forEach(function (r) {
     if (r.time === null || !r.steps.length) return;
-    var ev = CalendarApp.getDefaultCalendar().createEvent((r.name === 'Evening' ? '🌙 ' : '🌅 ') + r.name + ' routine (' + r.steps.length + ' steps)',
-      atTime_(ymd, r.time), atTime_(ymd, r.time + 10), { description: r.steps.map(function (s) { return '☐ ' + s; }).join('\n') + '\n\nTick them off in the app: ' + appUrl_() });
+    var ev = CalendarApp.getDefaultCalendar().createEvent((r.name === 'Evening' ? '' : '') + r.name + ' routine (' + r.steps.length + ' steps)',
+      atTime_(ymd, r.time), atTime_(ymd, r.time + 10), { description: r.steps.map(function (s) { return '- ' + s; }).join('\n') + '\n\nTick them off in the app: ' + appUrl_() });
     ev.setTag(EVENT_TAG, 'routine'); ev.removeAllReminders(); ev.addPopupReminder(0);
     ev.setColor(CalendarApp.EventColor.MAUVE);
   });
   var meds = cellClock_(cfg.settings['Meds reminder']);
   if (meds !== null) {
-    var m = CalendarApp.getDefaultCalendar().createEvent('💊 Meds', atTime_(ymd, meds), atTime_(ymd, meds + 5), { description: 'Take your meds, then tick the step in your routine.' });
+    var m = CalendarApp.getDefaultCalendar().createEvent('Meds', atTime_(ymd, meds), atTime_(ymd, meds + 5), { description: 'Take your meds, then tick the step in your routine.' });
     m.setTag(EVENT_TAG, 'routine'); m.removeAllReminders(); m.addPopupReminder(0);
   }
   return routines.length + ' routines';
@@ -92,7 +92,7 @@ function addWater(key, delta) {
     var goal = num_(readConfig_().settings, 'Water goal (glasses)', 8);
     var before = d.water[who] || 0;
     d.water[who] = Math.max(0, before + (Number(delta) || 1));
-    if (goal && before < goal && d.water[who] >= goal) addXp_(who, 'Water goal hit 💧', 5, 'water');
+    if (goal && before < goal && d.water[who] >= goal) addXp_(who, 'Water goal hit ', 5, 'water');
     saveDay_(d);
     return appState_(who);
   });

@@ -176,14 +176,14 @@ function formatExercise(ex, i) {
 function buildGymEventText(plan) {
   var t = plan.trip;
   var bike = t.mode === 'bike';
-  var title = (t.tight ? '⚠️ ' : '') + '🏋️ ' + plan.sessionName + ' · ' + (bike ? '🚲 Bike' : '🚌 Bus') + ' · leave ' + formatClock(t.leaveAt);
+  var title = (t.tight ? 'Tight: ' : '') + '' + plan.sessionName + ' · ' + (bike ? 'Bike' : 'Bus') + ' · leave ' + formatClock(t.leaveAt);
 
   var lines = [];
-  lines.push((bike ? '🚲 BIKE today: ' : '🚌 BUS today: ') + plan.travel.reasons.join(', ') + '.');
+  lines.push((bike ? 'BIKE today: ' : 'BUS today: ') + plan.travel.reasons.join(', ') + '.');
   lines.push('Leave home: ' + formatClock(t.leaveAt));
   if (!bike) {
     if (t.tight) {
-      lines.push('⚠️ Tight today: you need to leave by ' + formatClock(t.latestLeave) + ' to finish in time for the last bus (' +
+      lines.push('Tight today: you need to leave by ' + formatClock(t.latestLeave) + ' to finish in time for the last bus (' +
         formatClock(plan.lastBus) + '). That is ' + t.shortBy + ' min earlier than planned, so cut the last exercise or two.');
     } else {
       lines.push('Latest you can leave: ' + formatClock(t.latestLeave) + ' (and still make the last bus at ' + formatClock(plan.lastBus) + ')');
@@ -192,15 +192,15 @@ function buildGymEventText(plan) {
   lines.push('Training: ' + formatClock(t.arriveAt) + '–' + formatClock(t.finishAt) + ' (about ' + plan.sessionMinutes + ' min)');
   lines.push('Home about: ' + formatClock(t.homeAt));
   if (bike && plan.sunset !== null && plan.sunset !== undefined && t.homeAt > plan.sunset) {
-    lines.push('💡 Sunset is ' + formatClock(plan.sunset) + ', so lights on for the ride home.');
+    lines.push('Sunset is ' + formatClock(plan.sunset) + ', so lights on for the ride home.');
   }
   if (plan.travel.summary) lines.push('Weather: ' + plan.travel.summary);
-  (plan.warnings || []).forEach(function (w) { lines.push('⚠️ ' + w); });
+  (plan.warnings || []).forEach(function (w) { lines.push('Note: ' + w); });
   lines.push('');
   lines.push(plan.sessionName.toUpperCase());
   plan.exercises.forEach(function (ex, i) { lines.push(formatExercise(ex, i)); });
   lines.push('');
-  lines.push('✅ Log it in the app\'s Train tab (or tick "Gym done" in Google Tasks).');
+  lines.push('Log it in the app\'s Train tab (or tick "Gym done" in Google Tasks).');
   return { title: title, description: lines.join('\n') };
 }
 
@@ -212,23 +212,23 @@ function buildFoodCheckText(totals, targets, entryCount, pageUrl) {
   var kcal = Math.round(totals.kcal);
   var protein = Math.round(totals.protein);
   var proteinShort = Math.max(0, targets.proteinMin - protein);
-  var proteinPart = proteinShort ? proteinShort + 'g protein to go' : 'protein ✅';
+  var proteinPart = proteinShort ? proteinShort + 'g protein to go' : 'protein done';
   var title;
   var advice;
   if (!entryCount) {
-    title = '🍽️ No food logged today';
+    title = 'No food logged today';
     advice = 'If you ate, add it now. A rough guess beats a blank day.';
   } else if (kcal > targets.kcal) {
     var over = kcal - targets.kcal;
     if (proteinShort) {
-      title = '🍽️ Over by ' + over + ' kcal · ' + proteinShort + 'g protein short → shake or yogurt';
+      title = 'Over by ' + over + ' kcal · ' + proteinShort + 'g protein short → shake or yogurt';
       advice = FOOD_SNACKS + ' closes most of the protein gap for very few calories.';
     } else {
-      title = '🍽️ Over by ' + over + ' kcal · protein ✅ · kitchen closed';
+      title = 'Over by ' + over + ' kcal · protein done · kitchen closed';
       advice = "Protein's done, so nothing else needed today.";
     }
   } else {
-    title = '🍽️ ' + (targets.kcal - kcal) + ' kcal left · ' + proteinPart;
+    title = '' + (targets.kcal - kcal) + ' kcal left · ' + proteinPart;
     advice = proteinShort ? 'Make whatever you eat next mostly protein. ' + FOOD_SNACKS + ' are easy wins.' : 'Targets hit. Nice.';
   }
   var lines = [
@@ -273,6 +273,10 @@ function parseEvery(text) {
   if (!s || /as needed|never|^-$/.test(s)) return { kind: 'none' };
   var m = s.match(/^monthly\s+(?:on\s+)?(?:the\s+)?(\d{1,2})/);
   if (m) return { kind: 'monthly', day: Math.min(31, Math.max(1, Number(m[1]))) };
+  m = s.match(/^weekly\s+(?:on\s+)?([a-z ,]+)$/);
+  if (m && parseDays(m[1]).length) return { kind: 'weekdays', days: parseDays(m[1]) };
+  m = s.match(/^(?:2 weeks|fortnightly|biweekly|every 2 weeks)\s+(?:on\s+)?([a-z]+)$/);
+  if (m && parseDays(m[1]).length) return { kind: 'biweekly', day: parseDays(m[1])[0] };
   if (/^(daily|every ?day)$/.test(s)) return { kind: 'days', days: 1 };
   if (/^weekly$/.test(s)) return { kind: 'days', days: 7 };
   if (/^fortnightly$/.test(s)) return { kind: 'days', days: 14 };
@@ -295,12 +299,23 @@ function parseEvery(text) {
  * job never piles up. Returns {due, overdue, next, score}: a higher score
  * means more pressing (fixed-date jobs like bin day first).
  */
-function questDue(every, lastDoneYmd, todayYmd) {
+function questDue(every, lastDoneYmd, todayYmd, nextDueYmd) {
   var e = typeof every === 'string' || !every ? parseEvery(every) : every;
   var today = ymdToDays(todayYmd);
   var last = lastDoneYmd ? ymdToDays(lastDoneYmd) : null;
   var doneToday = last === today;
   if (e.kind === 'none') return { due: false, overdue: 0, next: '', score: 0 };
+  // Fixed schedules (set days or dates) follow the "Next due" date once it's set.
+  if (nextDueYmd && e.kind !== 'days') {
+    var nd = ymdToDays(nextDueYmd);
+    if (doneToday && nd <= today) nd = ymdToDays(nextOccurrence(e, todayYmd, nextDueYmd));
+    var od = today - nd;
+    return { due: od >= 0, overdue: Math.max(0, od), next: daysToYmd(Math.max(nd, today)), score: od >= 0 ? (e.kind === 'weekdays' ? 10 : 5) + od : 0 };
+  }
+  if (e.kind === 'biweekly') {
+    var first = ymdToDays(nextOccurrence(e, daysToYmd(today - 1), ''));
+    return { due: first === today && !doneToday, overdue: 0, next: daysToYmd(first), score: first === today ? 6 : 0 };
+  }
   if (e.kind === 'days') {
     if (last === null) return { due: true, overdue: 0, next: todayYmd, score: 0.5 };
     var next = last + e.days;
@@ -328,6 +343,81 @@ function questDue(every, lastDoneYmd, todayYmd) {
   var nextOcc = occurrence(mth === 11 ? y + 1 : y, (mth + 1) % 12);
   if (occurrence(y, mth) > today) nextOcc = occurrence(y, mth);
   return { due: dueM, overdue: dueM ? today - occ : 0, next: dueM ? todayYmd : daysToYmd(nextOcc), score: dueM ? 5 + (today - occ) : 0 };
+}
+
+/**
+ * The next date a fixed schedule falls on, strictly after `afterYmd`.
+ * Every-2-weeks keeps its rhythm from `anchorYmd` (the last due date).
+ */
+function nextOccurrence(every, afterYmd, anchorYmd) {
+  var e = typeof every === 'string' || !every ? parseEvery(every) : every;
+  var after = ymdToDays(afterYmd);
+  var n;
+  if (e.kind === 'days') return daysToYmd(after + e.days);
+  if (e.kind === 'weekdays') {
+    n = after + 1;
+    while (e.days.indexOf(weekdayOfDays(n)) === -1) n++;
+    return daysToYmd(n);
+  }
+  if (e.kind === 'biweekly') {
+    if (anchorYmd) {
+      n = ymdToDays(anchorYmd);
+      while (n <= after) n += 14;
+      while (n - 14 > after) n -= 14;
+      return daysToYmd(n);
+    }
+    n = after + 1;
+    while (weekdayOfDays(n) !== e.day) n++;
+    return daysToYmd(n);
+  }
+  if (e.kind === 'monthly') {
+    var t = new Date((after + 1) * 86400000), y = t.getUTCFullYear(), mo = t.getUTCMonth();
+    for (var k = 0; k < 14; k++) {
+      var yy = y + Math.floor((mo + k) / 12), mm = (mo + k) % 12;
+      var len = new Date(Date.UTC(yy, mm + 1, 0)).getUTCDate();
+      var cand = Math.round(Date.UTC(yy, mm, Math.min(e.day, len)) / 86400000);
+      if (cand > after) return daysToYmd(cand);
+    }
+  }
+  return '';
+}
+
+/**
+ * Next due date after finishing a job today. Doing a fortnightly or monthly
+ * job early pushes the next one back, so it doesn't come round again days later.
+ */
+function nextAfterDone(every, todayYmd, nextDueYmd) {
+  var e = typeof every === 'string' || !every ? parseEvery(every) : every;
+  var n = nextOccurrence(e, todayYmd, nextDueYmd);
+  if (!n) return '';
+  var gap = ymdToDays(n) - ymdToDays(todayYmd);
+  if (e.kind === 'biweekly' && gap < 7) n = daysToYmd(ymdToDays(n) + 14);
+  if (e.kind === 'monthly' && gap < 14) n = nextOccurrence(e, n, '');
+  return n;
+}
+
+/** Which of the four rhythms a schedule belongs to (for the Schedule page). */
+function rhythmOf(every) {
+  var e = typeof every === 'string' || !every ? parseEvery(every) : every;
+  if (e.kind === 'days' && e.days === 1) return 'daily';
+  if (e.kind === 'weekdays') return 'weekly';
+  if (e.kind === 'biweekly') return 'biweekly';
+  if (e.kind === 'monthly') return 'monthly';
+  if (e.kind === 'days' && e.days <= 10) return 'weekly';
+  if (e.kind === 'days' && e.days <= 20) return 'biweekly';
+  if (e.kind === 'days' && e.days <= 45) return 'monthly';
+  return 'other';
+}
+
+/** "Mon, Thu" / "Sun" / "15th" style label for a schedule. */
+function rhythmLabel(every) {
+  var e = typeof every === 'string' || !every ? parseEvery(every) : every;
+  var full = ['Sundays', 'Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays'];
+  if (e.kind === 'days') return e.days === 1 ? 'Every day' : e.days % 7 === 0 ? 'Every ' + (e.days / 7) + ' weeks' : 'Every ' + e.days + ' days';
+  if (e.kind === 'weekdays') return e.days.map(function (d) { return full[d]; }).join(' and ');
+  if (e.kind === 'biweekly') return 'Every other ' + full[e.day].replace(/s$/, '');
+  if (e.kind === 'monthly') return 'Monthly on the ' + e.day + (['th', 'st', 'nd', 'rd'][(e.day % 100 > 10 && e.day % 100 < 14) ? 0 : Math.min(e.day % 10, 4) % 4] || 'th');
+  return 'When needed';
 }
 
 // ---------- XP and levels ----------
@@ -378,6 +468,95 @@ function schemeSets(schemeText, tm, step) {
   return parseScheme(schemeText).map(function (s) {
     return { pct: s.pct, reps: s.reps, amrap: s.amrap, weight: tm ? roundTo(tm * s.pct / 100, step) : null };
   });
+}
+
+// ---------- Games ----------
+
+/** Colours for a guess: g = right place, y = in the word elsewhere, b = not in it. Repeated letters handled like Wordle. */
+function scoreGuess(guess, answer) {
+  var res = ['b', 'b', 'b', 'b', 'b'], left = {};
+  for (var i = 0; i < 5; i++) {
+    if (guess[i] === answer[i]) res[i] = 'g';
+    else left[answer[i]] = (left[answer[i]] || 0) + 1;
+  }
+  for (var j = 0; j < 5; j++) {
+    if (res[j] !== 'g' && left[guess[j]]) { res[j] = 'y'; left[guess[j]]--; }
+  }
+  return res.join('');
+}
+
+/** Today's word number: walks through every answer once before repeating (not the same order as NYT Wordle). */
+function wordIndex(ymd, count) {
+  var day = ymdToDays(ymd);
+  return ((1234 * day + 777) % count + count) % count;
+}
+
+/** A small seeded random generator so both of you get the same daily puzzle. */
+function seededRandom(seed) {
+  var x = 0;
+  for (var i = 0; i < seed.length; i++) x = (x * 31 + seed.charCodeAt(i)) >>> 0;
+  return function () { x = (x * 1664525 + 1013904223) >>> 0; return x / 4294967296; };
+}
+
+/** Countdown-style numbers puzzle for a date: six numbers and a target. */
+function numbersPuzzle(ymd) {
+  var r = seededRandom('numbers' + ymd);
+  var bigs = [25, 50, 75, 100], smalls = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10];
+  var bigCount = 1 + Math.floor(r() * 2);
+  var nums = [];
+  for (var i = 0; i < bigCount; i++) nums.push(bigs.splice(Math.floor(r() * bigs.length), 1)[0]);
+  while (nums.length < 6) nums.push(smalls.splice(Math.floor(r() * smalls.length), 1)[0]);
+  return { numbers: nums, target: 101 + Math.floor(r() * 899) };
+}
+
+/**
+ * Check a numbers answer like "(75 + 5) * 6 - 3". Only + - × ÷ and brackets,
+ * each number used at most once, whole numbers only. Returns {value} or {error}.
+ */
+function evalNumbers(expr, numbers) {
+  var s = String(expr || '').replace(/[×x]/g, '*').replace(/÷/g, '/').replace(/\s+/g, '');
+  if (!/^[0-9+\-*/()]+$/.test(s) || !s) return { error: 'Use only numbers, + − × ÷ and brackets.' };
+  var pool = numbers.slice(), pos = 0;
+  function num() {
+    var m = s.slice(pos).match(/^\d+/);
+    if (!m) throw new Error('Something is missing near "' + s.slice(pos, pos + 3) + '".');
+    pos += m[0].length;
+    var v = Number(m[0]), i = pool.indexOf(v);
+    if (i === -1) throw new Error(v + ' isn\'t one of your numbers (or it\'s used twice).');
+    pool.splice(i, 1);
+    return v;
+  }
+  function factor() {
+    if (s[pos] === '(') { pos++; var v = expr2(); if (s[pos] !== ')') throw new Error('A bracket isn\'t closed.'); pos++; return v; }
+    return num();
+  }
+  function term() {
+    var v = factor();
+    while (s[pos] === '*' || s[pos] === '/') {
+      var op = s[pos++], w = factor();
+      if (op === '*') v *= w;
+      else { if (w === 0 || v % w !== 0) throw new Error('Division has to come out as a whole number.'); v /= w; }
+    }
+    return v;
+  }
+  function expr2() {
+    var v = term();
+    while (s[pos] === '+' || s[pos] === '-') { var op = s[pos++], w = term(); v = op === '+' ? v + w : v - w; }
+    return v;
+  }
+  try {
+    var v = expr2();
+    if (pos !== s.length) throw new Error('Check the end of your sum.');
+    return { value: v, used: numbers.length - pool.length };
+  } catch (e) {
+    return { error: e.message };
+  }
+}
+
+/** Points for a numbers answer: 10 exact, 7 within 5, 5 within 10, else 0. */
+function numbersPoints(value, target) {
+  var d = Math.abs(value - target);
+  return d === 0 ? 10 : d <= 5 ? 7 : d <= 10 ? 5 : 0;
 }
 
 // Node test hook. Apps Script ignores this because `module` doesn't exist there.

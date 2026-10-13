@@ -3,7 +3,7 @@
  * weight into. Ticking it logs the weight to the Weight tab.
  */
 
-var WEIGH_TITLE = '⚖️ Weigh-in: type your weight here, then tick';
+var WEIGH_TITLE = 'Weigh-in: type your weight here, then tick';
 
 function planWeighIn_(ymd, cfg) {
   var s = cfg.settings;
@@ -15,7 +15,7 @@ function planWeighIn_(ymd, cfg) {
   if (wake === null) wake = parseClock('08:30');
 
   removeTaggedEvents_(ymd, 'weigh');
-  var event = CalendarApp.getDefaultCalendar().createEvent('⚖️ Weigh in', atTime_(ymd, wake), atTime_(ymd, wake + 5), {
+  var event = CalendarApp.getDefaultCalendar().createEvent('Weigh in', atTime_(ymd, wake), atTime_(ymd, wake + 5), {
     description: 'Loo first, then scales, before food or drink.\n\n' +
       'Open the "Weigh-in" task in Google Tasks, tap the title and add your weight (e.g. "82.4", "13st 2" or "185 lb"), then tick it.'
   });
@@ -37,7 +37,7 @@ function onWeighTaskDone_(task, info) {
   var w = weightFromTask_(task, readConfig_().settings);
   if (!w) {
     // Ticked without a number: reopen it and ask again, rather than silently losing it.
-    Tasks.Tasks.patch({ status: 'needsAction', completed: null, title: "⚖️ Didn't catch a number. Type your weight here, then tick" }, TASK_LIST, task.id);
+    Tasks.Tasks.patch({ status: 'needsAction', completed: null, title: "Didn't catch a number. Type your weight here, then tick" }, TASK_LIST, task.id);
     return true;
   }
   logWeight_(info.date, completedAt_(task).slice(11), w);
@@ -53,7 +53,7 @@ function onWeighTaskExpired_(task, info) {
 
 function logWeight_(ymd, time, w) {
   var prev = lastRowObject_('weight');
-  if (!prev || String(prev['Date']) !== ymd) addXp_('me', '⚖️ Weigh-in', 10, 'weigh');
+  if (!prev || String(prev['Date']) !== ymd) addXp_('me', 'Weigh-in', 10, 'weigh');
   var change = prev && prev['Weight (kg)'] !== '' ? Math.round((w.kg - Number(prev['Weight (kg)'])) * 10) / 10 : '';
   appendRow_('weight', { 'Date': ymd, 'Time': time, 'Weight (kg)': w.kg, 'You typed': w.typed, 'Change (kg)': change });
 }

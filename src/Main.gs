@@ -24,7 +24,8 @@ function dailyJobs_() {
     { name: 'Appointments', run: planPrep_ },
     { name: 'Gym plan', run: planGymDay_ },
     { name: 'Weigh-in', run: planWeighIn_ },
-    { name: 'Food check', run: scheduleFoodCheck_ }
+    { name: 'Food check', run: scheduleFoodCheck_ },
+    { name: 'Morning briefs', run: planBriefs_ }
   ];
 }
 
@@ -54,6 +55,8 @@ function prepareSheet_() {
   seedPresets_();
   seedChores_();
   ensureQuests_();
+  forget_('chores');
+  ensureSchedule_();
   upgradeSessions_();
   seedSimple_('rewards', ['Reward', 'Cost (XP)', 'Who'], DEFAULT_REWARDS, [320]);
   seedSimple_('routines', ['Routine', 'Who', 'Time', 'Steps (separate with ;)'], DEFAULT_ROUTINES, [120, 0, 0, 600]);

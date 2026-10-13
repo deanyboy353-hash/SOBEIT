@@ -53,7 +53,7 @@ function estimateFood_(text, presets, model) {
  * One Claude API call that must answer with JSON matching `schema` (structured output).
  * Turns API failures into plain-English errors for the page to show.
  */
-function callClaudeJson_(system, userText, schema, model) {
+function callClaudeJson_(system, userText, schema, model, maxChars) {
   var key = claudeKey_();
   if (!key) throw new Error('No Claude API key yet. Paste one in at the bottom of the food page.');
   var res = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
@@ -71,7 +71,7 @@ function callClaudeJson_(system, userText, schema, model) {
       fallbacks: 'default',
       output_config: { effort: 'low', format: { type: 'json_schema', schema: schema } },
       system: system,
-      messages: [{ role: 'user', content: String(userText).slice(0, 500) }]
+      messages: [{ role: 'user', content: String(userText).slice(0, maxChars || 500) }]
     })
   });
 

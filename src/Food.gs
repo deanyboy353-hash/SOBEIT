@@ -134,8 +134,8 @@ function foodCheck() {
     if (at === null) at = parseClock('23:00');
     var entries = foodEntries_(ymd);
     var totals = sumFood_(entries), targets = foodTargets_(settings);
-    if (totals.protein >= targets.proteinMin) addXp_('me', '🥚 Protein target hit', 15, 'protein');
-    if (entries.length >= 3 && totals.kcal <= targets.kcal) addXp_('me', '🍽️ Food logged, within calories', 10, 'food');
+    if (totals.protein >= targets.proteinMin) addXp_('me', 'Protein target hit', 15, 'protein');
+    if (entries.length >= 3 && totals.kcal <= targets.kcal) addXp_('me', 'Food logged, within calories', 10, 'food');
     var text = buildFoodCheckText(sumFood_(entries), foodTargets_(settings), entries.length, appUrl_());
     removeTaggedEvents_(ymd, 'food');
     var event = CalendarApp.getDefaultCalendar().createEvent(text.title, atTime_(ymd, at), atTime_(ymd, at + 5), { description: text.description });

@@ -63,7 +63,10 @@ function readChores_() {
     var last = col(rows[i], 'Last done', '');
     if (last instanceof Date) last = Utilities.formatDate(last, TZ, 'yyyy-MM-dd');
     var every = String(col(rows[i], 'Every', '') || '');
-    var due = questDue(every, String(last || ''), today);
+    var nextDue = col(rows[i], 'Next due', '');
+    if (nextDue instanceof Date) nextDue = Utilities.formatDate(nextDue, TZ, 'yyyy-MM-dd');
+    nextDue = /^\d{4}-\d{2}-\d{2}$/.test(String(nextDue || '')) ? String(nextDue) : '';
+    var due = questDue(every, String(last || ''), today, nextDue);
     out.push({
       name: name,
       row: i + 1,
@@ -76,6 +79,7 @@ function readChores_() {
       xp: Number(col(rows[i], 'XP', '')) || Math.max(5, Math.round(minutes / 5) * 5),
       lastDone: String(last || ''),
       lastBy: String(col(rows[i], 'Last done by', '') || ''),
+      nextDue: nextDue, rhythm: rhythmOf(every), label: rhythmLabel(every),
       due: due.due, overdue: due.overdue, next: due.next, score: due.score
     });
   }
@@ -145,7 +149,7 @@ function park_(p, text) {
 // Your phone and watch buzz when your time is up (a calendar alert at the end time).
 function setChoreAlert_(s) {
   var end = new Date(Math.ceil(s.endsAt / 60000) * 60000);
-  var ev = CalendarApp.getDefaultCalendar().createEvent('⏰ ' + s.task + ": time's up", end, new Date(end.getTime() + 60000), {
+  var ev = CalendarApp.getDefaultCalendar().createEvent('' + s.task + ": time's up", end, new Date(end.getTime() + 60000), {
     description: 'Finished? Tap Done on the chores page. Need longer? Tap +5 min.'
   });
   ev.setTag(EVENT_TAG, 'chore');
@@ -162,7 +166,7 @@ function removeChoreAlert_(s) {
 // Your partner's iPhone can't get app alerts, so their time's-up comes by email (if set).
 function setPartnerAlarm_(s) {
   clearPartnerAlarm_();
-  if (!/@/.test(String(readConfig_().settings['Partner email'] || ''))) return;
+  if (!/@/.test(String(readConfig_().settings['Partner email'] || '')) && !(devices_().partner || []).length) return;
   ScriptApp.newTrigger('partnerTimeUp').timeBased().at(new Date(s.endsAt)).create();
 }
 
@@ -177,7 +181,7 @@ function partnerTimeUp() {
   var s = session_('partner');
   if (!s) return;
   if (s.endsAt > new Date().getTime() + 30000) { setPartnerAlarm_(s); return; }
-  emailPartner_('⏰ Time\'s up: ' + s.task, 'Finished? Tap Done. Need longer? Tap +5 min.\n\n' + partnerUrl_());
+  push_('partner', 'Time\'s up: ' + s.task, 'Finished? Tap Done. Need longer? Tap +5 min.', 'quests', true);
 }
 
 // ---- called from the page ----

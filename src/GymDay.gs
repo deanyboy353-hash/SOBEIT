@@ -72,7 +72,7 @@ function planGymDay_(ymd, cfg) {
   event.addPopupReminder(0);
   event.setColor(trip.mode === 'bike' ? CalendarApp.EventColor.GREEN : CalendarApp.EventColor.BLUE);
 
-  createTrackedTask_('gym', ymd, '🏋️ Gym done: ' + day.session, 'Tick when you finish. That logs it.');
+  createTrackedTask_('gym', ymd, 'Gym done: ' + day.session, 'Tick when you finish. That logs it.');
 
   var row = {
     'Date': ymd, 'Day': DAY_NAMES[dow], 'Session': day.session, 'Travel': trip.mode === 'bike' ? 'Bike' : 'Bus',
@@ -87,8 +87,8 @@ function planGymDay_(ymd, cfg) {
 function onGymTaskDone_(task, info) {
   var r = findRow_('gym', 'Date', info.date);
   var before = r ? readRow_('gym', r) : {};
-  if (!/^Done/.test(String(before['Status'] || ''))) addXp_('me', '🏋️ Gym: ' + (before['Session'] || 'session done'), 50, 'gym');
-  var update = { 'Status': 'Done ✅', 'Ticked at': completedAt_(task) };
+  if (!/^Done/.test(String(before['Status'] || ''))) addXp_('me', 'Gym: ' + (before['Session'] || 'session done'), 50, 'gym');
+  var update = { 'Status': 'Done', 'Ticked at': completedAt_(task) };
   if (r) updateRow_('gym', r, update);
   else appendRow_('gym', Object.assign({ 'Date': info.date, 'Day': DAY_NAMES[dayOfWeek_(info.date)] }, update));
   return false;
