@@ -14,6 +14,9 @@ var TABS = {
   health: 'Health',
   food: 'Food',
   presets: 'Presets',
+  chores: 'Chores',
+  choresLog: 'Chores log',
+  later: 'Later',
   inbox: 'Inbox',
   log: 'Log'
 };
@@ -25,6 +28,8 @@ var HEADERS = {
   weight: ['Date', 'Time', 'Weight (kg)', 'You typed', 'Change (kg)'],
   health: ['Date', 'Sleep (h)', 'Steps', 'Resting HR', 'Avg HR', 'Source', 'Received at'],
   food: ['Date', 'Time', 'Item', 'kcal', 'Protein (g)', 'Source', 'Entry', 'Photo', 'Notes'],
+  choresLog: ['Date', 'Who', 'Task', 'Planned (min)', 'Actual (min)', 'Result', 'Started', 'Finished', 'Steps done'],
+  later: ['Date', 'Who', 'Thing', 'Done', 'ID'],
   inbox: ['Received at', 'Source', 'Body'],
   log: ['Time', 'Level', 'Message']
 };

@@ -30,6 +30,10 @@ var DEFAULT_SETTINGS = [
   ['Evening food check', '23:00', 'When the "what\'s left today" alert goes off'],
   ['Claude model', 'claude-opus-5-5', 'Model used for quick-add estimates'],
   ['Food page', '', 'Filled in automatically. Open on your phone, then ⋮ → Add to home screen.'],
+  ['Your name', '', 'Shown on your partner\'s chores page'],
+  ['Partner name', '', 'Shown on your chores page'],
+  ['Chores page (you)', '', 'Filled in automatically. Your link: food and chores.'],
+  ['Chores page (partner)', '', 'Filled in automatically. Send this to your partner: it only opens chores.'],
   ['Email me if something breaks', 'TRUE', 'Untick to stop error emails'],
   ['Web app URL', '', 'Filled in automatically. Used later by HC Webhook and MacroDroid.'],
   ['Web app key', '', 'Filled in automatically. Add it to the URL as ?key=… (keep it private)']
@@ -150,6 +154,33 @@ function ensureSettings_() {
     lastSettingRow++;
     sh.getRange(lastSettingRow, 1, 1, 3).setNumberFormat('@').setValues([d]);
   });
+}
+
+var CHORE_HEADERS = ['Job', 'Minutes', 'Steps (separate with ;)'];
+
+// Typical times for one person at a steady pace. Change them to match your house.
+var DEFAULT_CHORES = [
+  ['Do the dishes', '15', 'Clear and scrape plates; Fill the sink or load the dishwasher; Wash or load everything; Dry and put away (or start the dishwasher); Wipe the counters and sink'],
+  ['Change the bedding', '15', 'Strip the bed; Put the sheets in the wash; Fitted sheet on; Duvet cover on; Pillowcases on'],
+  ['Hoover downstairs', '20', 'Pick things up off the floor; Hoover the living room; Hoover the hall and stairs; Hoover the kitchen; Empty the hoover'],
+  ['Put a wash on', '5', 'Gather the washing; Sort lights and darks; Load the machine; Add detergent and start it'],
+  ['Hang up or fold laundry', '15', 'Empty the machine; Hang or fold; Put it away'],
+  ['Clean the bathroom', '20', 'Spray the toilet, sink and shower; Scrub the toilet; Wipe the sink and taps; Rinse the shower or bath; Wipe the mirror; Mop the floor'],
+  ['Tidy the living room', '10', 'Rubbish in the bin; Cups and plates to the kitchen; Things back where they live; Cushions and throws straight'],
+  ['Wipe down the kitchen', '10', 'Clear the counters; Spray and wipe counters; Wipe the hob; Wipe the table'],
+  ['Take the bins out', '5', 'Empty the small bins into the big one; New bin bags in; Bins out to the kerb'],
+  ['10-minute reset', '10', 'Rubbish in the bin; Dishes to the kitchen; Clothes to the wash basket; Clear one surface']
+];
+
+function seedChores_() {
+  var sh = sheet_('chores');
+  if (sh.getLastRow() > 0) return false;
+  sh.getRange(1, 1, 1, CHORE_HEADERS.length).setValues([CHORE_HEADERS]).setFontWeight('bold');
+  sh.getRange(2, 1, DEFAULT_CHORES.length, CHORE_HEADERS.length).setValues(DEFAULT_CHORES);
+  sh.setFrozenRows(1);
+  sh.setColumnWidth(1, 200);
+  sh.setColumnWidth(3, 600);
+  return true;
 }
 
 function seedSessions_() {

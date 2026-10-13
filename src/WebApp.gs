@@ -28,19 +28,24 @@ function doPost(e) {
 }
 
 /**
- * With the key: the food page. Without it (or with ?status=1): a short
+ * Pages: your key opens the food page (or chores with ?page=chores); your
+ * partner's key only ever opens chores. No valid key (or ?status=1): a short
  * "I'm alive" reply that shows no data.
  */
 function doGet(e) {
   var params = (e && e.parameter) || {};
-  if (!validKey_(params.key) || params.status) {
+  var who = null;
+  try { who = who_(params.key); } catch (err) { /* no valid key */ }
+  if (!who || params.status) {
     return json_({ ok: true, service: 'sobeit', keyAccepted: validKey_(params.key), time: now_() });
   }
-  var page = HtmlService.createTemplateFromFile('FoodPage');
+  var chores = who === 'partner' || params.page === 'chores';
+  var page = HtmlService.createTemplateFromFile(chores ? 'ChoresPage' : 'FoodPage');
   page.key = params.key;
-  page.initialJson = JSON.stringify(foodState_()).replace(/</g, '\\u003c');
+  page.otherUrl = who === 'me' ? (chores ? foodPageUrl_() : WEBAPP_URL + '?page=chores&key=' + params.key) : '';
+  page.initialJson = JSON.stringify(chores ? choresState_(who) : foodState_()).replace(/</g, '\\u003c');
   return page.evaluate()
-    .setTitle('Food')
+    .setTitle(chores ? 'Chores' : 'Food')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover');
 }
 

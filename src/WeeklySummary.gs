@@ -66,6 +66,20 @@ function buildWeeklySummary_(endYmd, cfg) {
   }
   lines.push('');
 
+  // Chores
+  var chores = rowsBetween_('choresLog', startYmd, endYmd).filter(function (r) { return r['Result'] === 'Done'; });
+  lines.push('🧹 CHORES');
+  if (chores.length) {
+    var names = { me: String(cfg.settings['Your name'] || 'You'), partner: String(cfg.settings['Partner name'] || 'Partner') };
+    lines.push(['me', 'partner'].map(function (p) {
+      var mine = chores.filter(function (r) { return r['Who'] === p; });
+      return names[p] + ': ' + mine.length + ' jobs, ' + mine.reduce(function (s, r) { return s + (Number(r['Actual (min)']) || 0); }, 0) + ' min';
+    }).join(' · '));
+  } else {
+    lines.push('No chores logged this week.');
+  }
+  lines.push('');
+
   // Week ahead
   lines.push('📅 WEEK AHEAD');
   var weighDays = parseDays(cfg.settings['Weigh-in days']);

@@ -174,11 +174,12 @@ function loadProject(opts = {}) {
     PropertiesService: {
       getScriptProperties: () => ({
         getProperty: k => (k in state.props ? state.props[k] : null),
-        setProperty: (k, v) => { state.props[k] = String(v); }
+        setProperty: (k, v) => { state.props[k] = String(v); },
+        deleteProperty: k => { delete state.props[k]; }
       })
     },
     LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock() {} }) },
-    CalendarApp: { getDefaultCalendar: () => calendar, EventColor: { GREEN: '10', BLUE: '9', YELLOW: '5', ORANGE: '6', PALE_BLUE: '1' } },
+    CalendarApp: { getDefaultCalendar: () => calendar, EventColor: { GREEN: '10', BLUE: '9', YELLOW: '5', ORANGE: '6', PALE_BLUE: '1', GRAY: '8' } },
     Tasks: { Tasks: tasks },
     UrlFetchApp: {
       fetch(url, opts) {
@@ -209,9 +210,9 @@ function loadProject(opts = {}) {
     Session: { getEffectiveUser: () => ({ getEmail: () => 'me@example.com' }) },
     HtmlService: {
       createTemplateFromFile(name) {
-        const tpl = { evaluate() {
+        const tpl = { name, evaluate() {
           const html = fs.readFileSync(path.join(__dirname, '..', 'src', name + '.html'), 'utf8')
-            .replace('<?!= JSON.stringify(key) ?>', JSON.stringify(tpl.key)).replace('<?!= initialJson ?>', tpl.initialJson);
+            .replace(/<\?!?=\s*([\s\S]*?)\s*\?>/g, (m, expr) => String(new Function('t', 'with (t) { return (' + expr + '); }')(tpl)));
           const out = { html, setTitle: () => out, addMetaTag: () => out };
           return out;
         } };

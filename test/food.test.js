@@ -102,7 +102,7 @@ test('Claude errors come back as plain-English messages', () => {
   g.state.claudeReply = { code: 401, body: { error: { message: 'invalid x-api-key' } } };
   assert.throws(() => g.ctx.quickAdd(key, 'toast'), /rejected the API key/);
   g.state.claudeReply = { body: { stop_reason: 'refusal', content: [] } };
-  assert.throws(() => g.ctx.quickAdd(key, 'toast'), /wouldn't estimate/);
+  assert.throws(() => g.ctx.quickAdd(key, 'toast'), /wouldn't answer/);
   assert.strictEqual(g.tab('Food').getLastRow(), 1);
 });
 
@@ -148,6 +148,9 @@ test('Sunday summary includes daily food averages, gym, weight and the week ahea
   g.ctx.appendRow_('weight', { Date: '2026-10-16', 'Weight (kg)': 83.1 });
   g.ctx.appendRow_('gym', { Date: '2026-10-14', Day: 'Wed', Session: 'Lower A', Status: 'Done ✅' });
   g.ctx.appendRow_('gym', { Date: '2026-10-16', Day: 'Fri', Session: 'Upper B', Status: 'Not ticked' });
+  g.ctx.appendRow_('choresLog', { Date: '2026-10-15', Who: 'me', Task: 'Do the dishes', 'Actual (min)': 12, Result: 'Done' });
+  g.ctx.appendRow_('choresLog', { Date: '2026-10-16', Who: 'partner', Task: 'Change the bedding', 'Actual (min)': 14, Result: 'Done' });
+  g.ctx.appendRow_('choresLog', { Date: '2026-10-16', Who: 'me', Task: 'Hoover downstairs', 'Actual (min)': 20, Result: 'Done' });
   g.state.now = new Date('2026-10-18T17:30:00Z'); // Sun 18:30
   g.ctx.weeklySummary();
   const ev = g.calendar.live().find(e => e.title === '📊 Your week');
@@ -157,5 +160,6 @@ test('Sunday summary includes daily food averages, gym, weight and the week ahea
   assert.match(d, /Logged 3 of 7 days · protein hit on 2 · within calories on 2/);
   assert.match(d, /1 of 2 sessions done \(Wed Lower A\)/);
   assert.match(d, /83\.5 → 83\.1 kg \(-0\.4\)/);
+  assert.match(d, /🧹 CHORES\nYou: 2 jobs, 32 min · Partner: 1 jobs, 14 min/);
   assert.match(d, /Mon: ⚖️ weigh-in\nTue: 🏋️ Upper A\nWed: 🏋️ Lower A · ⚖️ weigh-in/);
 });

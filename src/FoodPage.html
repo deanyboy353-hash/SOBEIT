@@ -64,6 +64,7 @@
 </head>
 <body>
 <main>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin:0 4px 12px"><h1 style="font-size:20px;margin:0">🍽️ Food</h1><a id="other" style="color:var(--accent);font-weight:600;text-decoration:none" hidden>🧹 Chores</a></div>
   <section class="card" aria-live="polite">
     <div class="label">Calories</div>
     <div class="stat"><div><span class="big" id="kcal">0</span> <span class="of" id="kcalOf"></span></div><div class="left" id="kcalLeft"></div></div>
@@ -106,6 +107,8 @@
 
 <script>
   var KEY = <?!= JSON.stringify(key) ?>;
+  var OTHER = <?!= JSON.stringify(otherUrl) ?>;
+  if (OTHER) { document.getElementById('other').href = OTHER; document.getElementById('other').hidden = false; }
   var state = <?!= initialJson ?>;
   var pending = [];
 

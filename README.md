@@ -13,8 +13,9 @@ Your training and weigh-ins, pushed to your phone and watch. You never need to o
 | Training days | A **🏋️ Gym done** task in Google Tasks. Tick it when you finish and it's logged in the **Gym log** tab within 10 minutes. |
 | 08:30 Mon and Wed | A **⚖️ Weigh in** alert, plus a task. Tap the task title, type your weight (`82.4`, `13st 2` or `185 lb` all work), then tick it. |
 | Whenever you eat | Open the **Food** page from your home screen. Tap a button to log a regular food, or type something like `2 protein weetabix 200ml milk` and Claude estimates it. **Undo last** fixes a wrong tap. |
+| Whenever there's a job to do | Open **Chores**. Pick one job (e.g. **Do the dishes, 15 min**) and you get a timer and the steps, one at a time. You and your partner see what each other is doing. Remembered something else that needs doing? **Park it**, don't do it. When time's up, your phone and watch buzz. Your partner's page chimes while it's open. Then tap **Done**, **+5 min** or **Stop and park the rest**. |
 | 11pm every day | A **🍽️** alert with calories and protein left. If you're over on calories but short on protein, it suggests a shake or yogurt instead. |
-| Sunday 7pm | A **📊 Your week** event: daily food averages, gym sessions done, weight change and the week ahead. |
+| Sunday 7pm | A **📊 Your week** event: daily food averages, gym sessions done, weight change, chores each of you did, and the week ahead. |
 
 You don't have to tidy up after yourself:
 - Tasks you didn't tick are cleared away the next morning, with no pile-up.
@@ -28,6 +29,8 @@ Everything is in the Sheet. You can change it on your phone (Google Sheets app) 
 - **Config tab, WEEKLY PLAN:** tick or untick **Train?** for any day. Change which **Session** that day does, what time you're **Free from**, and when the **Alert** goes off.
 - **Config tab, SETTINGS:** wake time, weigh-in days, last bus time, travel times, and how wet, cold or windy it can be before you get "bus" instead of "bike". Only change the **Value** column, never the names in column A.
 - **Presets tab:** your regular foods, one row per button: name, kcal, protein. Change, add or delete rows. The page shows them next time it opens.
+- **Chores tab:** your jobs, their usual minutes and the steps (separate steps with `;`). Each button also shows how long you *actually* take, once you've done a job a few times.
+- **Config tab, chores:** `Your name` and `Partner name`. **Chores page (you)** is your link, which also has a button to switch to Food. **Chores page (partner)** is the link to send your partner: it only opens chores, never your food or anything else. On an iPhone: open it in Safari, tap Share, then **Add to Home Screen**.
 - **Config tab, food:** `Daily kcal target`, `Protein min (g)`, `Protein max (g)` and `Evening food check` time. The **Food page** row holds your personal link to the page.
 - **Sessions tab:** your exercises, one row each. Change sets, reps, RPE or rest, or add rows. To make a new session, type a new name in the **Session** column and use that name in the weekly plan.
 
@@ -55,6 +58,7 @@ Health Connect data (sleep and steps will join the Sunday summary), automatic gy
 - `npm run push` uploads code. Triggers use it straight away. `npm run deploy` also updates the web app.
 - Script: https://script.google.com/d/1kGCjIZ6uRZteKZ0n_SFiOh5xnZxdoZY1Y1lWlMDno1Fi7D83lMjvuaCX/edit
 - Web app: https://script.google.com/macros/s/AKfycbyGglsy-_DOdaCn7DFhNyD8JH89jGapkUXUHdWp-JmdpuupiMPPEp6gm8e23x-yOVbsYQ/exec (`?key=…&source=…`)
+- Chores: `Chores.gs` + `ChoresPage.html`. The partner has their own key (`PARTNER_KEY` Script Property) that `who_()` maps to "partner". It only reaches the chores calls. Live timers are the `CHORE_me` / `CHORE_partner` Script Properties.
 - Food: `Food.gs` holds the page's server calls (all key-checked), `FoodPage.html` the page, and `Claude.gs` the Claude API call. The API key is the `ANTHROPIC_API_KEY` Script Property.
 - `prepareSheet_()` runs every morning, so new tabs, columns, settings and triggers arrive without re-running setup.
 - To extend it: new morning jobs go in `dailyJobs_()` (Main.gs), new phone data in `POST_ROUTES` (WebApp.gs), and new one-tap tasks in `taskHandlers_()` (Tasks.gs).

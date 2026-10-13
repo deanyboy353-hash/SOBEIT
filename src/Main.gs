@@ -47,16 +47,22 @@ function prepareSheet_() {
   ensureSettings_();
   seedSessions_();
   seedPresets_();
+  seedChores_();
   Object.keys(HEADERS).forEach(ensureTab_);
   var blank = ss.getSheetByName('Sheet1');
   if (blank && blank.getLastRow() === 0 && ss.getSheets().length > 1) ss.deleteSheet(blank);
 
   var props = PropertiesService.getScriptProperties();
   if (!props.getProperty('WEBAPP_KEY')) props.setProperty('WEBAPP_KEY', Utilities.getUuid().replace(/-/g, ''));
+  if (!props.getProperty('PARTNER_KEY')) props.setProperty('PARTNER_KEY', Utilities.getUuid().replace(/-/g, ''));
   var settings = readConfig_().settings;
   if (settings['Web app key'] !== props.getProperty('WEBAPP_KEY')) setSetting_('Web app key', props.getProperty('WEBAPP_KEY'));
   if (settings['Web app URL'] !== WEBAPP_URL) setSetting_('Web app URL', WEBAPP_URL);
   if (settings['Food page'] !== foodPageUrl_()) setSetting_('Food page', foodPageUrl_());
+  var mine = WEBAPP_URL + '?page=chores&key=' + props.getProperty('WEBAPP_KEY');
+  var theirs = WEBAPP_URL + '?key=' + props.getProperty('PARTNER_KEY');
+  if (settings['Chores page (you)'] !== mine) setSetting_('Chores page (you)', mine);
+  if (settings['Chores page (partner)'] !== theirs) setSetting_('Chores page (partner)', theirs);
 }
 
 var RECURRING_TRIGGERS = ['dailyRun', 'pollTasks', 'weeklySummary'];
