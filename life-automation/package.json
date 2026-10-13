@@ -1,0 +1,9 @@
+{
+  "name": "sobeit-life-automation",
+  "private": true,
+  "description": "Google Apps Script automation for training and organisation",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "push": "clasp push --force"
+  }
+}

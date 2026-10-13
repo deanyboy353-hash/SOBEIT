@@ -1,0 +1,211 @@
+// In-memory stand-ins for the Google services the script uses, so whole
+// days can be simulated in Node. Only the methods the script calls exist.
+const fs = require('fs');
+const path = require('path');
+const vm = require('vm');
+
+const RealDate = Date;
+
+function tzParts(date, tz) {
+  const f = new Intl.DateTimeFormat('en-GB', {
+    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit',
+    minute: '2-digit', second: '2-digit', weekday: 'short', hourCycle: 'h23'
+  });
+  const p = {};
+  f.formatToParts(date).forEach(x => { p[x.type] = x.value; });
+  return p;
+}
+
+const Utilities = {
+  formatDate(date, tz, pattern) {
+    const p = tzParts(date, tz);
+    const iso = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 }[p.weekday];
+    return pattern.replace(/yyyy|MM|dd|HH|mm|ss|u/g, t =>
+      ({ yyyy: p.year, MM: p.month, dd: p.day, HH: p.hour, mm: p.minute, ss: p.second, u: String(iso) }[t]));
+  },
+  parseDate(str, tz, pattern) {
+    if (pattern !== 'yyyy-MM-dd HH:mm') throw new Error('fake parseDate pattern ' + pattern);
+    const [d, t] = str.split(' ');
+    const [y, mo, da] = d.split('-').map(Number);
+    const [h, mi] = t.split(':').map(Number);
+    const target = RealDate.UTC(y, mo - 1, da, h, mi);
+    let guess = target;
+    for (let i = 0; i < 3; i++) {
+      const p = tzParts(new RealDate(guess), tz);
+      const shown = RealDate.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute);
+      guess += target - shown;
+    }
+    return new RealDate(guess);
+  },
+  getUuid: () => 'aaaa-bbbb-cccc-dddd'
+};
+
+class FakeRange {
+  constructor(sheet, r, c, nr, nc) { Object.assign(this, { sheet, r, c, nr, nc }); }
+  getValues() {
+    const out = [];
+    for (let i = 0; i < this.nr; i++) {
+      const row = [];
+      for (let j = 0; j < this.nc; j++) {
+        const v = (this.sheet.data[this.r - 1 + i] || [])[this.c - 1 + j];
+        row.push(v === undefined ? '' : v);
+      }
+      out.push(row);
+    }
+    return out;
+  }
+  getValue() { return this.getValues()[0][0]; }
+  setValues(vals) {
+    vals.forEach((row, i) => row.forEach((v, j) => {
+      const ri = this.r - 1 + i;
+      this.sheet.data[ri] = this.sheet.data[ri] || [];
+      this.sheet.data[ri][this.c - 1 + j] = v;
+    }));
+    return this;
+  }
+  setValue(v) { return this.setValues([[v]]); }
+  setNumberFormat() { return this; }
+  setFontWeight() { return this; }
+  insertCheckboxes() { return this; }
+}
+
+class FakeSheet {
+  constructor(name) { this.name = name; this.data = []; }
+  getName() { return this.name; }
+  getLastRow() {
+    for (let i = this.data.length - 1; i >= 0; i--) if ((this.data[i] || []).some(v => v !== '' && v !== undefined)) return i + 1;
+    return 0;
+  }
+  getLastColumn() {
+    let m = 0;
+    this.data.forEach(r => (r || []).forEach((v, j) => { if (v !== '' && v !== undefined) m = Math.max(m, j + 1); }));
+    return m;
+  }
+  getMaxRows() { return 1000; }
+  getRange(r, c, nr = 1, nc = 1) { return new FakeRange(this, r, c, nr, nc); }
+  getDataRange() { return this.getRange(1, 1, Math.max(this.getLastRow(), 1), Math.max(this.getLastColumn(), 1)); }
+  setFrozenRows() {}
+  setColumnWidth() {}
+  rows() { return this.getDataRange().getValues(); }
+}
+
+class FakeSpreadsheet {
+  constructor() { this.sheets = [new FakeSheet('Sheet1')]; }
+  getId() { return 'sheet-id'; }
+  getSheetByName(n) { return this.sheets.find(s => s.name === n) || null; }
+  insertSheet(n) { const s = new FakeSheet(n); this.sheets.push(s); return s; }
+  getSheets() { return this.sheets; }
+  deleteSheet(s) { this.sheets = this.sheets.filter(x => x !== s); }
+  setSpreadsheetTimeZone() {}
+}
+
+function makeCalendar() {
+  const events = [];
+  const cal = {
+    events,
+    createEvent(title, start, end, opts) {
+      const ev = {
+        title, start, end, opts, tags: {}, reminders: [], color: null, deleted: false,
+        setTag(k, v) { this.tags[k] = v; }, getTag(k) { return this.tags[k] || null; },
+        removeAllReminders() { this.reminders = []; }, addPopupReminder(m) { this.reminders.push(m); },
+        setColor(c) { this.color = c; }, deleteEvent() { this.deleted = true; }
+      };
+      events.push(ev);
+      return ev;
+    },
+    getEvents(s, e) { return events.filter(ev => !ev.deleted && ev.start < e && ev.end > s); },
+    live() { return events.filter(ev => !ev.deleted); }
+  };
+  return cal;
+}
+
+function makeTasks() {
+  const store = {};
+  let n = 0;
+  const api = {
+    store,
+    insert(res) { const id = 't' + (++n); store[id] = Object.assign({ id, status: 'needsAction' }, res); return store[id]; },
+    get(list, id) { if (!store[id]) throw new Error('API call to tasks.tasks.get failed with error: Not Found'); return Object.assign({}, store[id]); },
+    remove(list, id) { delete store[id]; },
+    patch(res, list, id) { Object.assign(store[id], res); return store[id]; },
+    tick(id, when) { store[id].status = 'completed'; store[id].completed = when; },
+    open() { return Object.values(store).filter(t => t.status !== 'completed'); }
+  };
+  return api;
+}
+
+function forecastJson(ymd, rainy) {
+  const time = [], t = [], pp = [], pr = [], ws = [], wg = [];
+  for (let h = 0; h < 24; h++) {
+    time.push(ymd + 'T' + String(h).padStart(2, '0') + ':00');
+    t.push(12); pp.push(rainy && h >= 16 ? 80 : 10); pr.push(rainy && h >= 16 ? 1.2 : 0); ws.push(12); wg.push(25);
+  }
+  return {
+    hourly: { time, temperature_2m: t, precipitation_probability: pp, precipitation: pr, wind_speed_10m: ws, wind_gusts_10m: wg },
+    daily: { sunset: [ymd + 'T18:10'] }
+  };
+}
+
+/** Load every .gs file into one sandbox, like Apps Script does. */
+function loadProject(opts = {}) {
+  const state = {
+    now: opts.now || new RealDate('2026-10-13T05:00:00Z'),
+    rainy: false, weatherDown: false,
+    props: {}, mails: [], triggers: [], fetches: []
+  };
+  const ss = new FakeSpreadsheet();
+  const calendar = makeCalendar();
+  const tasks = makeTasks();
+
+  class FakeDate extends RealDate {
+    constructor(...a) { if (a.length) super(...a); else super(state.now.getTime()); }
+    static now() { return state.now.getTime(); }
+  }
+
+  const ctx = {
+    Date: FakeDate, console, JSON, Math, Object, String, Number, Array, Error, RegExp, encodeURIComponent, isNaN,
+    Utilities,
+    SpreadsheetApp: { getActiveSpreadsheet: () => ss, openById: () => ss, getUi: () => null },
+    PropertiesService: {
+      getScriptProperties: () => ({
+        getProperty: k => (k in state.props ? state.props[k] : null),
+        setProperty: (k, v) => { state.props[k] = String(v); }
+      })
+    },
+    LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock() {} }) },
+    CalendarApp: { getDefaultCalendar: () => calendar, EventColor: { GREEN: '10', BLUE: '9', YELLOW: '5' } },
+    Tasks: { Tasks: tasks },
+    UrlFetchApp: {
+      fetch(url) {
+        state.fetches.push(url);
+        if (state.weatherDown) return { getResponseCode: () => 503, getContentText: () => 'down' };
+        const ymd = url.match(/start_date=([\d-]+)/)[1];
+        return { getResponseCode: () => 200, getContentText: () => JSON.stringify(forecastJson(ymd, state.rainy)) };
+      }
+    },
+    ScriptApp: {
+      getProjectTriggers: () => state.triggers,
+      deleteTrigger: t => { state.triggers = state.triggers.filter(x => x !== t); },
+      newTrigger(fn) {
+        const t = { fn, getHandlerFunction: () => fn };
+        const chain = { timeBased: () => chain, everyDays: () => chain, atHour: () => chain, inTimezone: () => chain, everyMinutes: () => chain, create: () => { state.triggers.push(t); return t; } };
+        return chain;
+      },
+      getService: () => ({ getUrl: () => 'https://script.google.com/macros/s/FAKE/exec' })
+    },
+    MailApp: { sendEmail: (to, subject, body) => state.mails.push({ to, subject, body }) },
+    Session: { getEffectiveUser: () => ({ getEmail: () => 'me@example.com' }) },
+    ContentService: {
+      MimeType: { JSON: 'json' },
+      createTextOutput: s => ({ text: s, setMimeType() { return this; } })
+    }
+  };
+  vm.createContext(ctx);
+  const src = path.join(__dirname, '..', 'src');
+  fs.readdirSync(src).filter(f => f.endsWith('.gs')).sort().forEach(f => {
+    vm.runInContext(fs.readFileSync(path.join(src, f), 'utf8'), ctx, { filename: f });
+  });
+  return { ctx, state, ss, calendar, tasks, tab: name => ss.getSheetByName(name) };
+}
+
+module.exports = { loadProject, Utilities };
