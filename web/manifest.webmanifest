@@ -1,0 +1,13 @@
+{
+  "name": "Life Quest",
+  "short_name": "Life Quest",
+  "description": "Chores, training, food and daily games for two.",
+  "display": "standalone",
+  "background_color": "#fbf8fb",
+  "theme_color": "#fbf8fb",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -76,7 +76,7 @@ function doGet(e) {
   var page = HtmlService.createTemplateFromFile('App');
   page.key = params.key;
   page.theme = String(prop_('THEME_' + who) || 'light');
-  page.tab = ({ chores: 'quests', food: 'food', train: 'train', quests: 'quests', more: 'more' })[String(params.page || '')] || '';
+  page.tab = ({ chores: 'chores', quests: 'chores', food: 'food', train: 'train', play: 'play', you: 'you', more: 'you' })[String(params.page || '')] || '';
   page.initialJson = JSON.stringify(appState_(who)).replace(/</g, '\\u003c');
   return page.evaluate()
     .setTitle('Life Quest')

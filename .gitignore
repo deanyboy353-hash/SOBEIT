@@ -1,2 +1,5 @@
 node_modules/
 .clasprc.json
+dist/
+src/Secrets.gs
+.firebase/

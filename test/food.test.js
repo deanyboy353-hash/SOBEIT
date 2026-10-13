@@ -44,7 +44,7 @@ test('page needs the key; with it, it renders today\'s state', () => {
   const noKey = g.ctx.doGet({ parameter: {} });
   assert.match(noKey.text, /"ok":true/);
   const page = g.ctx.doGet({ parameter: { key } });
-  assert.match(page.html, /var KEY = "\w+";/);
+  assert.match(page.html, /window.LQ_KEY = "\w+";/);
   assert.match(page.html, /"targets":\{"kcal":1800,"proteinMin":130,"proteinMax":160\}/);
   assert.doesNotMatch(page.html, /<\?/);
   assert.throws(() => g.ctx.foodState('wrong'), /out of date/);

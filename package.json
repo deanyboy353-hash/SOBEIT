@@ -1,10 +1,12 @@
 {
   "name": "sobeit-life-automation",
   "private": true,
-  "description": "Google Apps Script automation for training and organisation",
+  "description": "Life Quest: chores, training, food and daily games for two (Apps Script backend, installable app)",
   "scripts": {
-    "test": "node --test test/*.test.js",
-    "push": "clasp push --force",
-    "deploy": "clasp push --force && clasp update-deployment AKfycbyGglsy-_DOdaCn7DFhNyD8JH89jGapkUXUHdWp-JmdpuupiMPPEp6gm8e23x-yOVbsYQ --description update"
+    "build": "node scripts/build.js",
+    "test": "node scripts/build.js && node --test test/*.test.js",
+    "push": "node scripts/build.js && clasp push --force",
+    "deploy": "node scripts/build.js && clasp push --force && clasp update-deployment AKfycbyGglsy-_DOdaCn7DFhNyD8JH89jGapkUXUHdWp-JmdpuupiMPPEp6gm8e23x-yOVbsYQ --description update",
+    "publish": "node scripts/build.js && firebase deploy --only hosting"
   }
 }

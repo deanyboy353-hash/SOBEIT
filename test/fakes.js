@@ -37,7 +37,9 @@ const Utilities = {
     }
     return new RealDate(guess);
   },
-  getUuid: () => 'uuid-' + Math.random().toString(16).slice(2, 14)
+  getUuid: () => 'uuid-' + Math.random().toString(16).slice(2, 14),
+  base64EncodeWebSafe: x => Buffer.from(typeof x === 'string' ? x : Uint8Array.from(x)).toString('base64').replace(/\+/g, '-').replace(/\//g, '_'),
+  computeRsaSha256Signature: (text, key) => Array.from(Buffer.from('sig:' + text.length))
 };
 
 class FakeRange {
@@ -155,7 +157,7 @@ function loadProject(opts = {}) {
   const state = {
     now: opts.now || new RealDate('2026-10-13T05:00:00Z'),
     rainy: false, weatherDown: false,
-    props: {}, mails: [], triggers: [], fetches: [], claudeRequests: [],
+    props: {}, mails: [], triggers: [], fetches: [], claudeRequests: [], pushes: [],
     claudeReply: { body: { stop_reason: 'end_turn', content: [{ type: 'text', text: JSON.stringify({ items: [
       { name: '2 Weetabix Protein', kcal: 200, protein_g: 14 }, { name: '200ml semi-skimmed milk', kcal: 100, protein_g: 7 }] }) }] } }
   };
@@ -190,6 +192,13 @@ function loadProject(opts = {}) {
           state.claudeRequests.push({ headers: opts.headers, body: JSON.parse(opts.payload) });
           const r = state.claudeReply;
           return { getResponseCode: () => r.code || 200, getContentText: () => JSON.stringify(r.body) };
+        }
+        if (/oauth2\.googleapis/.test(url)) return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ access_token: 'fcm-token', expires_in: 3600 }) };
+        if (/fcm\.googleapis/.test(url)) {
+          const msg = JSON.parse(opts.payload).message;
+          state.pushes.push({ token: msg.token, title: msg.webpush.notification.title, body: msg.webpush.notification.body, tab: msg.data.tab });
+          return /dead/.test(msg.token) ? { getResponseCode: () => 404, getContentText: () => '{"error":{"status":"NOT_FOUND","details":[{"errorCode":"UNREGISTERED"}]}}' }
+            : { getResponseCode: () => 200, getContentText: () => '{"name":"ok"}' };
         }
         if (state.weatherDown) return { getResponseCode: () => 503, getContentText: () => 'down' };
         const ymd = url.match(/start_date=([\d-]+)/)[1];
