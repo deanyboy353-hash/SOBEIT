@@ -113,9 +113,10 @@ function setTheme(key, theme) {
   return theme;
 }
 
+/** Your link: the installable app once it's published, otherwise the Google page. */
 function appUrl_() {
   var key = PROPS.getProperty('WEBAPP_KEY');
-  return key ? WEBAPP_URL + '?key=' + key : '';
+  return key ? (appBaseUrl_() || WEBAPP_URL) + '?key=' + key : '';
 }
 
 function validKey_(key) {

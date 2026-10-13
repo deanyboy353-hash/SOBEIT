@@ -237,7 +237,7 @@ function loadProject(opts = {}) {
   };
   vm.createContext(ctx);
   const src = path.join(__dirname, '..', 'src');
-  fs.readdirSync(src).filter(f => f.endsWith('.gs')).sort().forEach(f => {
+  fs.readdirSync(src).filter(f => f.endsWith('.gs') && f !== 'Secrets.gs').sort().forEach(f => {
     vm.runInContext(fs.readFileSync(path.join(src, f), 'utf8'), ctx, { filename: f });
   });
   // Like Apps Script, each call from outside (a tap, a trigger, a test step) is a fresh run

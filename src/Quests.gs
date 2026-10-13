@@ -274,7 +274,7 @@ function onPrepTaskDone_(task, info) {
 
 function partnerUrl_() {
   var k = PROPS.getProperty('PARTNER_KEY');
-  return k ? WEBAPP_URL + '?key=' + k : '';
+  return k ? (appBaseUrl_() || WEBAPP_URL) + '?key=' + k : '';
 }
 
 function emailPartner_(subject, body) {
