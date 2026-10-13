@@ -86,7 +86,7 @@ function undoLast(key) {
   requireKey_(key);
   return withLock_(function () {
     var sh = sheet_('food');
-    var last = sh.getLastRow();
+    var last = vals_('food').length;
     if (last < 2) throw new Error('Nothing to undo.');
     var lastRow = readRow_('food', last);
     if (String(lastRow['Date']) !== todayYmd_()) throw new Error('Nothing logged today to undo.');
@@ -98,6 +98,7 @@ function undoLast(key) {
       removed.unshift(String(row['Item']));
       sh.deleteRow(r);
     }
+    forget_('food');
     return { state: foodState_(), removed: removed };
   });
 }
@@ -106,7 +107,7 @@ function saveClaudeKey(key, apiKey) {
   requireKey_(key);
   apiKey = String(apiKey || '').trim();
   if (!/^sk-ant-[A-Za-z0-9_\-]{20,}$/.test(apiKey)) throw new Error("That doesn't look like a Claude API key. It should start with sk-ant-");
-  PropertiesService.getScriptProperties().setProperty('ANTHROPIC_API_KEY', apiKey);
+  PROPS.setProperty('ANTHROPIC_API_KEY', apiKey);
   return foodState_();
 }
 

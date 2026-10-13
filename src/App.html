@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html data-theme="<?= theme ?>">
 <head>
 <base target="_top">
 <meta charset="utf-8">
@@ -13,8 +13,19 @@
     --good: #2a9466; --warn: #c23d67; --bar: #f4e8f2; --amber: #fff3d6; --amber-ink: #8a5a00;
     --shadow: 0 6px 20px rgba(168, 136, 240, .14);
   }
+  :root { color-scheme: light; }
+  /* Dark colours: when you pick Dark, or pick "Match phone" and the phone is dark. */
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #17121c; --card: #221b29; --text: #f6eff9; --muted: #ab9db8; --line: #342a3e;
+    --pink: #ff9fc7; --pink-soft: #3b2232; --pink-ink: #ffbad6;
+    --purple: #bca5ff; --purple-soft: #2c2443; --purple-ink: #d8ccff;
+    --good: #7fd8a6; --warn: #ff8fae; --bar: #33293d; --amber: #3a2b08; --amber-ink: #ffd877;
+    --shadow: none;
+  }
   @media (prefers-color-scheme: dark) {
-    :root {
+    :root[data-theme="auto"] {
+      color-scheme: dark;
       --bg: #17121c; --card: #221b29; --text: #f6eff9; --muted: #ab9db8; --line: #342a3e;
       --pink: #ff9fc7; --pink-soft: #3b2232; --pink-ink: #ffbad6;
       --purple: #bca5ff; --purple-soft: #2c2443; --purple-ink: #d8ccff;
@@ -308,6 +319,30 @@
     toastTimer = setTimeout(function () { t.className = isErr ? 'err' : ''; }, isErr ? 6000 : 2800);
   }
 
+  // Quick taps: update the screen straight away, save in the background, and
+  // put things back only if the save fails. Several can be in flight at once.
+  var inflight = 0;
+  function quick(change, fn, args, msg) {
+    var before = JSON.stringify(S);
+    change();
+    renderAll();
+    if (msg) toast(msg);
+    inflight++;
+    var r = google.script.run
+      .withSuccessHandler(function (res) { inflight--; if (!inflight && !busy) { S = res; offset = res.now - Date.now(); renderAll(); } })
+      .withFailureHandler(function (err) { inflight--; S = JSON.parse(before); renderAll(); toast(err.message || String(err), true); });
+    r[fn].apply(r, [KEY].concat(args || []));
+  }
+  function addXpLocal(xp) {
+    var prev = JSON.parse(JSON.stringify(S));
+    S.game.xpToday += xp; S.game.total += xp; S.game.balance += xp;
+    var need = S.game.level.need, into = S.game.level.into + xp;
+    if (into >= need) { S.game.level = { level: S.game.level.level + 1, into: into - need, need: need + 100 * (S.game.level.level + 1) }; }
+    else S.game.level.into = into;
+    if (prev.game.xpToday < prev.game.goal && S.game.xpToday >= S.game.goal) { S.game.streak.count += 1; S.game.streak.todayDone = true; }
+    celebrate(prev, S);
+  }
+
   function call(fn, args, ok, fail) {
     busy = true;
     var r = google.script.run
@@ -374,6 +409,13 @@
     celebrate(prev, S);
     renderAll();
     if (msg) toast(msg);
+  }
+
+  // ---------- light / dark ----------
+  function setTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    renderMore();
+    google.script.run.withFailureHandler(function () {}).setTheme(KEY, t);
   }
 
   // ---------- bottom sheet ----------
@@ -711,6 +753,9 @@
       return '<div class="badge' + (b.earned ? '' : ' locked') + '" title="' + esc(b.desc) + '"><span class="e">' + b.emoji + '</span>' + esc(b.name) + '</div>';
     }).join('') + '</div></section>';
     html += laterCardMore();
+    var th = document.documentElement.getAttribute('data-theme');
+    html += '<section class="card"><div class="label">🎨 Look</div><div class="seg" style="margin:0">' +
+      [['light', '☀️ Light'], ['dark', '🌙 Dark'], ['auto', '📱 Match phone']].map(function (o) { return '<button type="button" data-theme="' + o[0] + '" aria-pressed="' + (th === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div></section>';
     html += '<p class="note center">Everything else lives in your Google Sheet: quests, routines, rewards, lifts and settings.</p>';
     el('tab-more').innerHTML = html;
   }
@@ -798,12 +843,33 @@
       return startPlan(ds.wnstart === 'taster' ? { name: pk.name, minutes: 5, steps: pk.steps, taster: true } : { name: pk.name, minutes: pk.minutes, steps: pk.steps },
         ds.wnstart === 'taster' ? 'Just 5 minutes. Stop whenever, it still counts.' : null);
     }
-    if (ds.qdone) return call('questDone', [ds.qdone], function (res) { apply(res, '✨ ' + ds.qdone + ' done!'); });
+    if (ds.qdone) {
+      return quick(function () {
+        var qq = questByName(ds.qdone);
+        [S.quests.board, S.quests.more, S.quests.all].forEach(function (list) { list.forEach(function (x) { if (x.name === ds.qdone) { x.doneToday = true; x.doneBy = S.who; } }); });
+        if (qq) addXpLocal(qq.xp + (qq.who !== 'anyone' && qq.who !== S.who ? Math.round(qq.xp / 2) : 0));
+      }, 'questDone', [ds.qdone], '✨ ' + ds.qdone + ' done!');
+    }
     if (ds.qstart) { var q = questByName(ds.qstart); plan = { name: q.name, minutes: q.minutes, steps: q.steps.slice() }; renderAll(); return showTab('quests'); }
-    if (ds.claim) return call('claimQuest', [ds.claim], function (res) { apply(res); });
-    if (ds.hi5) return call('highFive', [ds.hi5], function (res) { apply(res, '🙌 High-five sent'); });
-    if (ds.routine !== undefined && ds.ri !== undefined) return call('routineStep', [ds.routine, +ds.ri], function (res) { apply(res); });
-    if (ds.water) return call('addWater', [+ds.water], function (res) { apply(res); });
+    if (ds.claim) return quick(function () {
+      S.quests.board.concat(S.quests.more).forEach(function (x) { if (x.name === ds.claim) x.claimedBy = x.claimedBy === S.who ? '' : S.who; });
+    }, 'claimQuest', [ds.claim]);
+    if (ds.hi5) return quick(function () { S.game.feed.forEach(function (f) { if (f.id === ds.hi5 && f.hi5.indexOf(S.who) === -1) f.hi5.push(S.who); }); }, 'highFive', [ds.hi5], '🙌 High-five sent');
+    if (ds.routine !== undefined && ds.ri !== undefined) return quick(function () {
+      S.routines.routines.forEach(function (rt) {
+        if (rt.name !== ds.routine) return;
+        var i = rt.done.indexOf(+ds.ri);
+        if (i === -1) rt.done.push(+ds.ri); else rt.done.splice(i, 1);
+        if (!rt.finished && rt.done.length >= rt.steps.length) { rt.finished = true; addXpLocal(10); }
+      });
+      buzz(15);
+    }, 'routineStep', [ds.routine, +ds.ri]);
+    if (ds.water) return quick(function () {
+      var before = S.routines.water;
+      S.routines.water = Math.max(0, before + +ds.water);
+      if (S.routines.waterGoal && before < S.routines.waterGoal && S.routines.water >= S.routines.waterGoal) addXpLocal(5);
+      buzz(15);
+    }, 'addWater', [+ds.water]);
     if (ds.job) { var c = S.chores.chores[+ds.job]; plan = { name: c.name, minutes: c.minutes, steps: c.steps.slice() }; return renderAll(); }
     if (ds.mins) { plan.minutes = Math.max(5, Math.min(180, plan.minutes + +ds.mins)); return renderAll(); }
     if (t.id === 'pback') { plan = null; return renderAll(); }
@@ -827,7 +893,8 @@
       return call('saveBrainDump', [items], function (res) { closeSheet(); el('dumpText') && (el('dumpText').value = ''); apply(res, '🧠 Sorted ' + items.length + ' things. Head\'s a bit lighter.'); });
     }
     if (ds.reward) return call('redeemReward', [ds.reward], function (res) { confetti(true); apply(res, '🎁 Enjoy: ' + ds.reward); });
-    if (ds.shop) return call('toggleShopping', [ds.shop], function (res) { apply(res); });
+    if (ds.shop) return quick(function () { S.shopping.forEach(function (it) { if (it.id === ds.shop) it.got = !it.got; }); }, 'toggleShopping', [ds.shop]);
+    if (ds.theme) return setTheme(ds.theme);
     if (ds.addshop) return call('addShopping', [ds.addshop], function (res) { apply(res, '🛒 Added ' + ds.addshop); });
     // train
     if (ds.tsel) { tsel = ds.tsel; store('tsel-' + S.today.date, tsel); return renderTrain(); }
@@ -945,7 +1012,7 @@
 
   // Refresh while open so you can see your partner; and whenever you come back to the app.
   function refresh() {
-    if (busy || parking || !el('sheetbg').hidden || document.visibilityState !== 'visible') return;
+    if (busy || inflight || parking || !el('sheetbg').hidden || document.visibilityState !== 'visible') return;
     if (document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
     if (current === 'train' || current === 'food') return;
     call('appState', [], function (res) { apply(res); });

@@ -15,7 +15,7 @@
 /** Today's board (picked once per day, then kept so ticked quests stay visible). */
 function board_() {
   var today = todayYmd_();
-  var props = PropertiesService.getScriptProperties();
+  var props = PROPS;
   var b = JSON.parse(props.getProperty('BOARD') || 'null');
   if (b && b.date === today) return b;
   var cap = num_(readConfig_().settings, 'Quests per day', 6);
@@ -26,12 +26,12 @@ function board_() {
 }
 
 function saveBoard_(b) {
-  PropertiesService.getScriptProperties().setProperty('BOARD', JSON.stringify(b));
+  PROPS.setProperty('BOARD', JSON.stringify(b));
 }
 
 /** Daily job: build the board, send your quests to Google Tasks, email your partner theirs. */
 function planQuests_(ymd, cfg) {
-  var props = PropertiesService.getScriptProperties();
+  var props = PROPS;
   props.deleteProperty('BOARD');
   var b = board_();
   var quests = readChores_();
@@ -66,10 +66,7 @@ function completeQuest_(who, name, opts) {
   var q = readChores_().filter(function (x) { return x.name === name; })[0];
   if (!q) return 0;
   if (opts.partial) return addXp_(who, 'Made a start: ' + name, Math.max(2, Math.round(q.xp / 3)), 'start');
-  var sh = sheet_('chores');
-  var map = headerMap_(sh);
-  if ('Last done' in map) sh.getRange(q.row, map['Last done'] + 1).setNumberFormat('@').setValue(today);
-  if ('Last done by' in map) sh.getRange(q.row, map['Last done by'] + 1).setValue(who);
+  updateRow_('chores', q.row, { 'Last done': today, 'Last done by': who });
   var xp = addXp_(who, name, q.xp, 'quest');
   var owner = q.who === 'me' || q.who === 'partner' ? q.who : null;
   if (owner && owner !== who) addXp_(who, 'Covered: ' + name, Math.round(q.xp / 2), 'cover');
@@ -207,15 +204,11 @@ function saveBrainDump(key, items) {
 }
 
 function addQuestRow_(name, minutes, every, whoCol) {
-  var sh = sheet_('chores');
-  var map = headerMap_(sh);
-  var row = [];
-  for (var c = 0; c < sh.getLastColumn(); c++) row.push('');
-  row[0] = name; row[1] = String(minutes);
-  if ('Every' in map) row[map['Every']] = every;
-  if ('Who' in map) row[map['Who']] = whoCol;
-  if ('Energy' in map) row[map['Energy']] = minutes <= 10 ? 'Low' : 'Medium';
-  sh.getRange(sh.getLastRow() + 1, 1, 1, row.length).setValues([row]);
+  var head = vals_('chores')[0];
+  var row = {};
+  row[head[0]] = name; row[head[1]] = String(minutes);
+  row['Every'] = every; row['Who'] = whoCol; row['Energy'] = minutes <= 10 ? 'Low' : 'Medium';
+  appendRow_('chores', row);
 }
 
 function addQuest(key, name, every, minutes) {
@@ -278,7 +271,7 @@ function onPrepTaskDone_(task, info) {
 // ---------- partner email ----------
 
 function partnerUrl_() {
-  var k = PropertiesService.getScriptProperties().getProperty('PARTNER_KEY');
+  var k = PROPS.getProperty('PARTNER_KEY');
   return k ? WEBAPP_URL + '?key=' + k : '';
 }
 
@@ -292,7 +285,7 @@ function emailPartner_(subject, body) {
 function askToJoin(key) {
   var who = who_(key);
   var names = { me: String(readConfig_().settings['Your name'] || 'Your partner'), partner: String(readConfig_().settings['Partner name'] || 'Your partner') };
-  var props = PropertiesService.getScriptProperties();
+  var props = PROPS;
   props.setProperty('INVITE', JSON.stringify({ from: who, at: new Date().getTime() }));
   var sent = false;
   if (who === 'me') {

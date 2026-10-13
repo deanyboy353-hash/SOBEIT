@@ -41,6 +41,7 @@ function doGet(e) {
   }
   var page = HtmlService.createTemplateFromFile('App');
   page.key = params.key;
+  page.theme = String(prop_('THEME_' + who) || 'light');
   page.tab = ({ chores: 'quests', food: 'food', train: 'train', quests: 'quests', more: 'more' })[String(params.page || '')] || '';
   page.initialJson = JSON.stringify(appState_(who)).replace(/</g, '\\u003c');
   return page.evaluate()
@@ -67,13 +68,21 @@ function appState(key) {
   return withLock_(function () { return appState_(who); });
 }
 
+/** Light, dark, or "auto" (match the phone). Remembered per person. */
+function setTheme(key, theme) {
+  var who = who_(key);
+  if (['light', 'dark', 'auto'].indexOf(theme) === -1) throw new Error('Unknown theme.');
+  setProp_('THEME_' + who, theme);
+  return theme;
+}
+
 function appUrl_() {
-  var key = PropertiesService.getScriptProperties().getProperty('WEBAPP_KEY');
+  var key = PROPS.getProperty('WEBAPP_KEY');
   return key ? WEBAPP_URL + '?key=' + key : '';
 }
 
 function validKey_(key) {
-  var expected = PropertiesService.getScriptProperties().getProperty('WEBAPP_KEY');
+  var expected = PROPS.getProperty('WEBAPP_KEY');
   return !!expected && key === expected;
 }
 

@@ -22,11 +22,11 @@ function taskHandlers_() {
 }
 
 function tracked_() {
-  return JSON.parse(PropertiesService.getScriptProperties().getProperty('TRACKED_TASKS') || '{}');
+  return JSON.parse(PROPS.getProperty('TRACKED_TASKS') || '{}');
 }
 
 function saveTracked_(t) {
-  PropertiesService.getScriptProperties().setProperty('TRACKED_TASKS', JSON.stringify(t));
+  PROPS.setProperty('TRACKED_TASKS', JSON.stringify(t));
 }
 
 /** Creates the task once per type (and ref, e.g. the quest name) per day. Re-running is safe. */

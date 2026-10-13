@@ -58,7 +58,7 @@ function dailyGoal_(settings) {
 // ---------- streaks ----------
 
 function streakState_(id) {
-  return JSON.parse(PropertiesService.getScriptProperties().getProperty('STREAK_' + id) || 'null') ||
+  return JSON.parse(PROPS.getProperty('STREAK_' + id) || 'null') ||
     { count: 0, freezes: 0, best: 0, through: addDays_(todayYmd_(), -1), frozeOn: '' };
 }
 
@@ -88,7 +88,7 @@ function updateStreaks_(todayYmd) {
       st.best = Math.max(st.best, st.count);
     }
     st.through = yesterday;
-    PropertiesService.getScriptProperties().setProperty('STREAK_' + id, JSON.stringify(st));
+    PROPS.setProperty('STREAK_' + id, JSON.stringify(st));
   });
 }
 
@@ -128,7 +128,7 @@ function badges_(who, streak) {
     quests: countKind_(who, 'quest'), gym: countKind_(who, 'gym'), prs: countKind_(who, 'pr'),
     weighs: countKind_(who, 'weigh'), routines: countKind_(who, 'routine'), protein: countKind_(who, 'protein'),
     covers: xpRows_().filter(function (r) { return r.who === who && r.kind === 'cover'; }).length,
-    hi5: Number(PropertiesService.getScriptProperties().getProperty('HI5_' + who) || 0),
+    hi5: Number(PROPS.getProperty('HI5_' + who) || 0),
     brain: countKind_(who, 'brain'), bestStreak: streak.best, level: levelFor(xpTotal_(who)).level
   };
   return BADGES.map(function (b) { return { id: b[0], emoji: b[1], name: b[2], desc: b[3], earned: b[4](stats) }; });
@@ -137,19 +137,19 @@ function badges_(who, streak) {
 // ---------- feed and high-fives ----------
 
 function feed_() {
-  return JSON.parse(PropertiesService.getScriptProperties().getProperty('FEED') || '[]');
+  return JSON.parse(PROPS.getProperty('FEED') || '[]');
 }
 
 function addFeed_(who, text, kind) {
   var f = feed_();
   f.unshift({ id: Utilities.getUuid().replace(/-/g, '').slice(0, 10), t: new Date().getTime(), date: todayYmd_(), who: who, text: String(text).slice(0, 140), kind: kind, hi5: [] });
-  PropertiesService.getScriptProperties().setProperty('FEED', JSON.stringify(f.slice(0, 30)));
+  PROPS.setProperty('FEED', JSON.stringify(f.slice(0, 30)));
 }
 
 // ---------- rewards ----------
 
 function rewards_(who) {
-  return sheet_('rewards').getDataRange().getValues().slice(1)
+  return vals_('rewards').slice(1)
     .filter(function (r) { return String(r[0]).trim(); })
     .map(function (r) { return { name: String(r[0]).trim(), cost: Math.max(1, Number(r[1]) || 100), who: String(r[2] || 'Anyone').trim().toLowerCase() }; })
     .filter(function (r) { return r.who === 'anyone' || r.who === who; });
@@ -203,7 +203,7 @@ function highFive(key, feedId) {
     var item = f.filter(function (x) { return x.id === feedId; })[0];
     if (item && item.who !== who && item.hi5.indexOf(who) === -1) {
       item.hi5.push(who);
-      var props = PropertiesService.getScriptProperties();
+      var props = PROPS;
       props.setProperty('FEED', JSON.stringify(f));
       props.setProperty('HI5_' + who, String(Number(props.getProperty('HI5_' + who) || 0) + 1));
     }

@@ -129,7 +129,7 @@ function seedPresets_() {
 }
 
 function readPresets_() {
-  var rows = sheet_('presets').getDataRange().getValues();
+  var rows = vals_('presets');
   var out = [];
   for (var i = 1; i < rows.length; i++) {
     var name = String(rows[i][0]).trim();
@@ -235,7 +235,7 @@ function ensureQuests_() {
       head[head.filter(String).length] = h;
     }
   });
-  var props = PropertiesService.getScriptProperties();
+  var props = PROPS;
   if (props.getProperty('QUESTS_V2')) return;
   var map = headerMap_(sh);
   var rows = sh.getDataRange().getValues();
@@ -350,7 +350,8 @@ function seedSessions_() {
 
 /** Read the Config and Sessions tabs into a plain object. */
 function readConfig_() {
-  var rows = sheet_('config').getDataRange().getValues();
+  if (configCache_) return configCache_;
+  var rows = vals_('config');
   var settings = {};
   var schedule = {};
   var mode = '';
@@ -373,7 +374,7 @@ function readConfig_() {
   });
 
   var sessions = {};
-  var srows = sheet_('sessions').getDataRange().getValues();
+  var srows = vals_('sessions');
   var h = srows[0].map(function (x) { return String(x).trim().toLowerCase(); });
   for (var i = 1; i < srows.length; i++) {
     var r = srows[i];
@@ -384,7 +385,7 @@ function readConfig_() {
       rpe: r[h.indexOf('rpe')], rest: r[h.indexOf('rest')], notes: h.indexOf('notes') >= 0 ? r[h.indexOf('notes')] : ''
     });
   }
-  return { settings: settings, schedule: schedule, sessions: sessions };
+  return (configCache_ = { settings: settings, schedule: schedule, sessions: sessions });
 }
 
 /** Times typed into Sheets can come back as Date objects. */
@@ -399,9 +400,13 @@ function num_(settings, key, fallback) {
 }
 
 function setSetting_(key, value) {
-  var sh = sheet_('config');
-  var rows = sh.getDataRange().getValues();
+  var rows = vals_('config');
   for (var i = 0; i < rows.length; i++) {
-    if (String(rows[i][0]).trim() === key) { sh.getRange(i + 1, 2).setValue(value); return; }
+    if (String(rows[i][0]).trim() === key) {
+      sheet_('config').getRange(i + 1, 2).setValue(value);
+      rows[i][1] = value;
+      derived_('config');
+      return;
+    }
   }
 }

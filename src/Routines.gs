@@ -5,7 +5,7 @@
  */
 
 function readRoutines_(who) {
-  return sheet_('routines').getDataRange().getValues().slice(1)
+  return vals_('routines').slice(1)
     .filter(function (r) { return String(r[0]).trim(); })
     .map(function (r) {
       return {
@@ -20,14 +20,14 @@ function readRoutines_(who) {
 
 /** Today's ticks: {date, done: {"me|Morning": [0, 2]}, water: {me: 3}, finished: {"me|Morning": true}} */
 function dayState_() {
-  var props = PropertiesService.getScriptProperties();
+  var props = PROPS;
   var d = JSON.parse(props.getProperty('DAY') || 'null');
   if (!d || d.date !== todayYmd_()) d = { date: todayYmd_(), done: {}, water: {}, finished: {} };
   return d;
 }
 
 function saveDay_(d) {
-  PropertiesService.getScriptProperties().setProperty('DAY', JSON.stringify(d));
+  PROPS.setProperty('DAY', JSON.stringify(d));
 }
 
 /** Daily job: calendar alerts for your routines and meds. */

@@ -18,6 +18,8 @@ A Duolingo for your whole life: quests that keep the house running, a workout lo
 
 Your partner's link opens the same app with Home, Quests and More (no Train or Food).
 
+**Light or dark:** More tab → 🎨 Look → ☀️ Light, 🌙 Dark or 📱 Match phone. Each of you picks your own.
+
 ## What arrives by itself
 
 | When | What you get |
@@ -65,7 +67,8 @@ Health Connect data (sleep and steps will join the Sunday summary), automatic gy
 - `npm run push` uploads code. Triggers use it straight away. `npm run deploy` also updates the web app.
 - Script: https://script.google.com/d/1kGCjIZ6uRZteKZ0n_SFiOh5xnZxdoZY1Y1lWlMDno1Fi7D83lMjvuaCX/edit
 - Web app: https://script.google.com/macros/s/AKfycbyGglsy-_DOdaCn7DFhNyD8JH89jGapkUXUHdWp-JmdpuupiMPPEp6gm8e23x-yOVbsYQ/exec (`?key=…&source=…`)
-- The app is one page, `App.html` (tabs: Today / Food / Chores), served by `doGet` with the state from `appState_()`. Server calls live in `Today.gs`, `Food.gs` and `Chores.gs`.
+- The app is one page, `App.html` (tabs: Home / Quests / Train / Food / More), served by `doGet` with the state from `appState_()`. Quick taps update the screen first and save in the background.
+- Speed: within one run every tab is read once (`vals_()` in Sheets.gs) and Script Properties once (`PROPS`); writes keep that memory current. Call `forget_(tab)` after writing to a tab directly.
 - Quests (`Quests.gs`), game (`Game.gs`: XP log, streaks, badges, rewards, feed), routines (`Routines.gs`), workouts (`Workout.gs`: nSuns T1/T2 from the Lifts and Programme tabs, progression in `tmIncrease`). Chores timers: `Chores.gs`. The partner has their own key (`PARTNER_KEY` Script Property) that `who_()` maps to "partner". It only reaches the chores calls. Live timers are the `CHORE_me` / `CHORE_partner` Script Properties.
 - Food: `Food.gs` holds the server calls (all key-checked), and `Claude.gs` the Claude API call. The API key is the `ANTHROPIC_API_KEY` Script Property.
 - `prepareSheet_()` runs every morning, so new tabs, columns, settings and triggers arrive without re-running setup.

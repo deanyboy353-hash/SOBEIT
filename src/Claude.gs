@@ -29,7 +29,7 @@ var FOOD_SCHEMA = {
 };
 
 function claudeKey_() {
-  return PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY');
+  return PROPS.getProperty('ANTHROPIC_API_KEY');
 }
 
 /**

@@ -33,7 +33,7 @@ var WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyGglsy-_DOdaCn7DFhNyD
 
 function setup() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  if (ss) PropertiesService.getScriptProperties().setProperty('SPREADSHEET_ID', ss.getId());
+  if (ss) PROPS.setProperty('SPREADSHEET_ID', ss.getId());
   prepareSheet_();
   installTriggers_();
   log_('INFO', 'Setup complete');
@@ -47,6 +47,7 @@ function setup() {
 function prepareSheet_() {
   var ss = db_();
   ss.setSpreadsheetTimeZone(TZ);
+  resetRun_();
   seedConfig_();
   ensureSettings_();
   seedSessions_();
@@ -62,7 +63,8 @@ function prepareSheet_() {
   var blank = ss.getSheetByName('Sheet1');
   if (blank && blank.getLastRow() === 0 && ss.getSheets().length > 1) ss.deleteSheet(blank);
 
-  var props = PropertiesService.getScriptProperties();
+  resetRun_(); // the seeding above wrote straight to the tabs
+  var props = PROPS;
   if (!props.getProperty('WEBAPP_KEY')) props.setProperty('WEBAPP_KEY', Utilities.getUuid().replace(/-/g, ''));
   if (!props.getProperty('PARTNER_KEY')) props.setProperty('PARTNER_KEY', Utilities.getUuid().replace(/-/g, ''));
   var settings = readConfig_().settings;
@@ -124,6 +126,7 @@ function notifyProblem_(text) {
 function withLock_(fn) {
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(60000)) throw new Error('Another run is still going; try again in a minute.');
+  resetRun_(); // someone else may have just changed things: read fresh
   try { return fn(); } finally { lock.releaseLock(); }
 }
 

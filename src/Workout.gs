@@ -15,7 +15,7 @@ var T2_REST = '90 sec';
 
 function readLifts_() {
   var out = {};
-  sheet_('lifts').getDataRange().getValues().slice(1).forEach(function (r, i) {
+  vals_('lifts').slice(1).forEach(function (r, i) {
     var name = String(r[0]).trim();
     if (name) out[name.toLowerCase()] = { name: name, tm: Number(r[1]) || null, body: String(r[2] || 'Upper').trim(), row: i + 2 };
   });
@@ -24,7 +24,7 @@ function readLifts_() {
 
 function readProgramme_() {
   var out = {};
-  sheet_('programme').getDataRange().getValues().slice(1).forEach(function (r) {
+  vals_('programme').slice(1).forEach(function (r) {
     var s = String(r[0]).trim();
     if (s) out[s] = { t1: String(r[1]).trim(), t1Sets: String(r[2]), t2: String(r[3]).trim(), t2Of: String(r[4] || r[3]).trim(), t2Sets: String(r[5]) };
   });
@@ -139,6 +139,7 @@ function setTrainingMax(key, lift, weight, reps) {
     var step = num_(readConfig_().settings, 'Plate step (kg)', 2.5);
     var tm = roundTo(e1rm(w, r) * 0.9, step);
     sheet_('lifts').getRange(l.row, 2).setValue(tm);
+    forget_('lifts');
     appendRow_('tmHistory', { 'Date': todayYmd_(), 'Lift': l.name, 'Old TM': l.tm || '', 'New TM': tm, 'Change': l.tm ? tm - l.tm : 0, '1+ reps': '' });
     return trainState_();
   });
@@ -177,7 +178,7 @@ function saveWorkout(key, session, sets) {
         var l = readLifts_()[t1.basedOn.toLowerCase()];
         var inc = tmIncrease(Number(heavy.reps), l.body);
         var newTm = roundTo(l.tm + inc, plan.step);
-        if (inc) sheet_('lifts').getRange(l.row, 2).setValue(newTm);
+        if (inc) { sheet_('lifts').getRange(l.row, 2).setValue(newTm); forget_('lifts'); }
         appendRow_('tmHistory', { 'Date': today, 'Lift': l.name, 'Old TM': l.tm, 'New TM': inc ? newTm : l.tm, 'Change': inc, '1+ reps': Number(heavy.reps) });
         changes.push({ lift: l.name, from: l.tm, to: inc ? newTm : l.tm, change: inc, reps: Number(heavy.reps) });
       }

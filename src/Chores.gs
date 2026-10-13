@@ -26,27 +26,27 @@ var CHORE_SCHEMA = {
 
 /** 'me' or 'partner' for a page key; anything else is refused. */
 function who_(key) {
-  var props = PropertiesService.getScriptProperties();
+  var props = PROPS;
   if (key && key === props.getProperty('WEBAPP_KEY')) return 'me';
   if (key && key === props.getProperty('PARTNER_KEY')) return 'partner';
   throw new Error('This link is out of date. Open the chores link from the Config tab again.');
 }
 
 function session_(p) {
-  return JSON.parse(PropertiesService.getScriptProperties().getProperty('CHORE_' + p) || 'null');
+  return JSON.parse(PROPS.getProperty('CHORE_' + p) || 'null');
 }
 
 function saveSession_(p, s) {
-  var props = PropertiesService.getScriptProperties();
+  var props = PROPS;
   if (s) props.setProperty('CHORE_' + p, JSON.stringify(s));
   else props.deleteProperty('CHORE_' + p);
 }
 
 /** Chores tab rows (the quest list), with due dates and how long each one has actually taken lately. */
 function readChores_() {
-  var sh = sheet_('chores');
-  var rows = sh.getDataRange().getValues();
-  var map = headerMap_(sh);
+  if (choresCache_) return choresCache_;
+  var rows = vals_('chores');
+  var map = headerMap_('chores');
   var col = function (r, h, fallback) { return h in map ? r[map[h]] : fallback; };
   var today = todayYmd_();
   var recent = {};
@@ -79,7 +79,7 @@ function readChores_() {
       due: due.due, overdue: due.overdue, next: due.next, score: due.score
     });
   }
-  return out;
+  return (choresCache_ = out);
 }
 
 function choresDoneToday_() {
@@ -107,7 +107,7 @@ function choresState_(p) {
   });
   var later = rowsBetween_('later', '0000', '9999').filter(function (r) { return !r['Done']; })
     .map(function (r) { return { id: String(r['ID']), thing: String(r['Thing']), who: String(r['Who']) }; });
-  var invite = JSON.parse(PropertiesService.getScriptProperties().getProperty('INVITE') || 'null');
+  var invite = JSON.parse(PROPS.getProperty('INVITE') || 'null');
   if (!invite || invite.from === p || now - invite.at > 30 * 60000) invite = null;
   return { you: p, now: now, people: people, chores: readChores_(), later: later, hasClaudeKey: !!claudeKey_(), invite: invite };
 }

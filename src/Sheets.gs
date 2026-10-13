@@ -46,20 +46,68 @@ var HEADERS = {
   log: ['Time', 'Level', 'Message']
 };
 
+// ---------- per-run memory ----------
+// Each tap in the app is a fresh run on Google's side. Within one run every
+// tab is read from Google once and then served from memory (writes keep the
+// memory up to date), which is what keeps the app quick.
+
+var ss_ = null, sheets_ = {}, vals = {}, props_ = null, configCache_ = null, choresCache_ = null;
+
+/** Forget everything read so far (start of a run, or after taking the lock). */
+function resetRun_() {
+  sheets_ = {}; vals = {}; props_ = null; configCache_ = null; choresCache_ = null; xpCache_ = null;
+}
+
+function prop_(k) {
+  if (!props_) props_ = PropertiesService.getScriptProperties().getProperties();
+  return k in props_ ? props_[k] : null;
+}
+function setProp_(k, v) {
+  prop_(k);
+  props_[k] = String(v);
+  PropertiesService.getScriptProperties().setProperty(k, String(v));
+}
+function delProp_(k) {
+  prop_(k);
+  delete props_[k];
+  PropertiesService.getScriptProperties().deleteProperty(k);
+}
+var PROPS = { getProperty: prop_, setProperty: setProp_, deleteProperty: delProp_ };
+
+/** Results worked out from a tab (config, quests, XP) go stale when it changes. */
+function derived_(key) {
+  if (key === 'config' || key === 'sessions') configCache_ = null;
+  if (key === 'chores') choresCache_ = null;
+  if (key === 'xp') xpCache_ = null;
+}
+/** Call after writing to a tab directly (not through appendRow_/updateRow_). */
+function forget_(key) {
+  delete vals[key];
+  derived_(key);
+}
+
 function db_() {
-  var id = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
-  if (id) return SpreadsheetApp.openById(id);
+  if (ss_) return ss_;
+  var id = prop_('SPREADSHEET_ID');
+  if (id) return (ss_ = SpreadsheetApp.openById(id));
   var active = SpreadsheetApp.getActiveSpreadsheet();
   if (!active) throw new Error('No spreadsheet linked. Run setup() from the script editor.');
-  PropertiesService.getScriptProperties().setProperty('SPREADSHEET_ID', active.getId());
-  return active;
+  setProp_('SPREADSHEET_ID', active.getId());
+  return (ss_ = active);
 }
 
 function sheet_(key) {
+  if (sheets_[key]) return sheets_[key];
   var ss = db_();
   var sh = ss.getSheetByName(TABS[key]);
   if (!sh) sh = ss.insertSheet(TABS[key]);
-  return sh;
+  return (sheets_[key] = sh);
+}
+
+/** Every value on a tab (row 1 = headers), read once per run. */
+function vals_(key) {
+  if (!vals[key]) vals[key] = sheet_(key).getDataRange().getValues();
+  return vals[key];
 }
 
 /** Create the tab if needed and make sure its header row is complete. */
@@ -81,67 +129,71 @@ function ensureTab_(key) {
   sh.setFrozenRows(1);
   // Dates/times stored as text so Sheets doesn't reformat them.
   sh.getRange(1, 1, sh.getMaxRows(), 2).setNumberFormat('@');
+  forget_(key);
   return sh;
 }
 
-function headerMap_(sh) {
-  var row = sh.getRange(1, 1, 1, Math.max(sh.getLastColumn(), 1)).getValues()[0];
+/** Column positions by header name. Takes a tab key (fast) or a sheet. */
+function headerMap_(keyOrSheet) {
+  var row = typeof keyOrSheet === 'string' ? vals_(keyOrSheet)[0]
+    : keyOrSheet.getRange(1, 1, 1, Math.max(keyOrSheet.getLastColumn(), 1)).getValues()[0];
   var map = {};
   row.forEach(function (h, i) { if (h) map[h] = i; });
   return map;
 }
 
 function appendRow_(key, obj) {
-  if (key === 'xp') xpCache_ = null;
-  var sh = sheet_(key);
-  var map = headerMap_(sh);
-  var width = Math.max(sh.getLastColumn(), 1);
+  var v = vals_(key);
+  var map = headerMap_(key);
+  var width = Math.max(v[0].length, 1);
   var row = [];
   for (var i = 0; i < width; i++) row.push('');
   Object.keys(obj).forEach(function (k) { if (k in map) row[map[k]] = obj[k]; });
-  var r = sh.getLastRow() + 1;
-  sh.getRange(r, 1, 1, width).setValues([row]);
+  var r = v.length + 1;
+  sheet_(key).getRange(r, 1, 1, width).setValues([row]);
+  v.push(row);
+  derived_(key);
   return r;
 }
 
 /** Row number (1-based) of the last row whose `column` equals `value`, or 0. */
 function findRow_(key, column, value) {
-  var sh = sheet_(key);
-  var map = headerMap_(sh);
-  var last = sh.getLastRow();
-  if (last < 2 || !(column in map)) return 0;
-  var values = sh.getRange(2, map[column] + 1, last - 1, 1).getValues();
-  for (var i = values.length - 1; i >= 0; i--) {
-    if (String(values[i][0]) === String(value)) return i + 2;
+  var v = vals_(key);
+  var map = headerMap_(key);
+  if (!(column in map)) return 0;
+  for (var i = v.length - 1; i >= 1; i--) {
+    if (String(v[i][map[column]]) === String(value)) return i + 1;
   }
   return 0;
 }
 
 function readRow_(key, rowNum) {
-  var sh = sheet_(key);
-  var map = headerMap_(sh);
-  var values = sh.getRange(rowNum, 1, 1, Math.max(sh.getLastColumn(), 1)).getValues()[0];
+  var map = headerMap_(key);
+  var values = vals_(key)[rowNum - 1] || [];
   var out = {};
-  Object.keys(map).forEach(function (h) { out[h] = values[map[h]]; });
+  Object.keys(map).forEach(function (h) { out[h] = values[map[h]] === undefined ? '' : values[map[h]]; });
   return out;
 }
 
+/** Change some cells in a row: one write to Google. */
 function updateRow_(key, rowNum, obj) {
-  var sh = sheet_(key);
-  var map = headerMap_(sh);
-  Object.keys(obj).forEach(function (k) {
-    if (k in map) sh.getRange(rowNum, map[k] + 1).setValue(obj[k]);
-  });
+  var v = vals_(key);
+  var map = headerMap_(key);
+  var row = v[rowNum - 1];
+  if (!row) return;
+  Object.keys(obj).forEach(function (k) { if (k in map) row[map[k]] = obj[k]; });
+  sheet_(key).getRange(rowNum, 1, 1, row.length).setValues([row]);
+  derived_(key);
 }
 
 /** Rows whose Date (yyyy-MM-dd) is between from and to, inclusive, as objects. */
 function rowsBetween_(key, fromYmd, toYmd) {
-  var sh = sheet_(key);
-  var values = sh.getDataRange().getValues();
+  var values = vals_(key);
   var headers = values[0];
+  var di = headers.indexOf('Date');
   var out = [];
   for (var i = 1; i < values.length; i++) {
-    var d = String(values[i][headers.indexOf('Date')]);
+    var d = String(values[i][di]);
     if (d < fromYmd || d > toYmd) continue;
     var obj = {};
     headers.forEach(function (h, j) { if (h) obj[h] = values[i][j]; });
@@ -151,8 +203,8 @@ function rowsBetween_(key, fromYmd, toYmd) {
 }
 
 function lastRowObject_(key) {
-  var sh = sheet_(key);
-  return sh.getLastRow() >= 2 ? readRow_(key, sh.getLastRow()) : null;
+  var n = vals_(key).length;
+  return n >= 2 ? readRow_(key, n) : null;
 }
 
 function now_(pattern) {
