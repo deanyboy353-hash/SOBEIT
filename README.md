@@ -4,39 +4,44 @@ Your training and weigh-ins, pushed to your phone and watch. You never need to o
 
 **Your Sheet:** https://docs.google.com/spreadsheets/d/1tX4vXf8AHlhegFQkdY3ndjgD6HFdvZ4eSLL3vmcE2yI/edit
 
-## What happens by itself
+## What it is
+
+A Duolingo for your whole life: quests that keep the house running, a workout logger that gets you stronger week by week, food tracking, and a game layer (XP, streaks, levels, badges, rewards) you share with your partner. Everything is pushed to you: calendar alerts on your phone and watch, Google Tasks you can tick, and the app on your home screen.
+
+## The app (one icon, five tabs)
+
+- **🏠 Home**: your XP ring for today, 🔥 streak (with 🧊 freezes that save it on a bad day), team streak, level, **✨ What now?** (tell it your energy and time, it picks *one* job), your morning or evening routine, today's gym, today's quests, weight, water and a feed of what you've both done (send 🙌 high-fives).
+- **✨ Quests**: today's board (6 at most, so never a wall), ✋ claim a job, ▶ start any job on a timer with steps, 🅿️ park distractions, **🧠 brain dump** (type everything in your head, it gets sorted into to-dos, repeating jobs, shopping and parked ideas), coming up this week, and adding new repeating quests.
+- **🏋️ Train**: nSuns-style upper/lower. Each session has a T1 main lift (9 sets from your training max), a T2 lift (8 sets), then accessories. Tick sets as you go (rest timer starts itself). The heavy **1+** set sets next week's training max automatically. Progress shows training-max history, best estimated 1RM, PRs and weekly volume.
+- **🍓 Food**: calories and protein versus targets, one-tap foods, Claude quick-add, undo.
+- **🎀 More**: level and XP, this week's scoreboard and fair share, 🎁 reward shop (spend XP on treats you choose), 🛒 shared shopping list (with protein ideas when you're short), 🏅 badges, parked list.
+
+Your partner's link opens the same app with Home, Quests and More (no Train or Food).
+
+## What arrives by itself
 
 | When | What you get |
 |---|---|
-| About 6am on training days (Tue, Wed, Fri, Sat) | A calendar event called something like **🏋️ Upper A · 🚲 Bike · leave 15:15**. Open it to see the session, the weather, and the latest you can leave and still make the last bus. |
-| 14:45 on training days | Your phone and watch buzz. They buzz again when it's time to leave. |
-| Training days | A **🏋️ Gym done** task in Google Tasks. Tick it when you finish and it's logged in the **Gym log** tab within 10 minutes. |
-| 08:30 Mon and Wed | A **⚖️ Weigh in** alert, plus a task. Tap the task title, type your weight (`82.4`, `13st 2` or `185 lb` all work), then tick it. |
-| Any time | Open the **app** from your home screen. Tabs along the bottom: **🏠 Today** shows today's gym session with a **Gym done** button and a weight box, **🍽️ Food** and **🧹 Chores**. |
-| Whenever you eat | In the app's **Food** tab: Tap a button to log a regular food, or type something like `2 protein weetabix 200ml milk` and Claude estimates it. **Undo last** fixes a wrong tap. |
-| Whenever there's a job to do | In the app's **Chores** tab: Pick one job (e.g. **Do the dishes, 15 min**) and you get a timer and the steps, one at a time. You and your partner see what each other is doing. Remembered something else that needs doing? **Park it**, don't do it. When time's up, your phone and watch buzz. Your partner's page chimes while it's open. Then tap **Done**, **+5 min** or **Stop and park the rest**. |
-| 11pm every day | A **🍽️** alert with calories and protein left. If you're over on calories but short on protein, it suggests a shake or yogurt instead. |
-| Sunday 7pm | A **📊 Your week** event: daily food averages, gym sessions done, weight change, chores each of you did, and the week ahead. |
+| About 6am | Today's quests in Google Tasks (tick there or in the app, it counts once). A prep task for anything in your calendar tomorrow. Your streak is settled for yesterday. |
+| Routine times (08:30 and 22:30 to start) | A 🌅/🌙 calendar alert with the checklist. Tick steps in the app. |
+| Training days (Tue, Wed, Fri, Sat) | A 🏋️ calendar event with your main lifts **with weights**, accessories, bike or bus, and leave-by time. Alerts at 14:45 and when it's time to go. |
+| Mon and Wed, 08:30 | ⚖️ Weigh-in alert (log it on Home or in the task). |
+| While a chores timer runs | Time's up: your phone and watch buzz. Your partner gets an email (if their email is in Config) and a chime on their page. |
+| 11pm | 🍽️ What's left on calories and protein. |
+| Sunday 7pm | 📊 Your week: food averages, gym, weight, chores, XP and streaks, strength changes and **3 suggested priorities** for next week. |
 
-You don't have to tidy up after yourself:
-- Tasks you didn't tick are cleared away the next morning, with no pile-up.
-- If you typed a weight but forgot to tick, it's still logged.
-- If you ticked the weigh-in without typing a number, it comes back and asks again.
+XP comes from quests, the gym (+50), PRs (+25), weigh-ins, routines, hitting protein, water and brain dumps. Hit the **Daily XP goal** (Config) to keep your streak. Every 7 days of streak earns a 🧊 freeze (max 2).
 
 ## Changing your settings
 
-Everything is in the Sheet. You can change it on your phone (Google Sheets app) or on your PC. Changes take effect at the next 6am run.
+Everything is in the Sheet. Edit on your phone (Google Sheets app) or PC. Only change values, never the names in column A of Config.
 
-- **Config tab, WEEKLY PLAN:** tick or untick **Train?** for any day. Change which **Session** that day does, what time you're **Free from**, and when the **Alert** goes off.
-- **Config tab, SETTINGS:** wake time, weigh-in days, last bus time, travel times, and how wet, cold or windy it can be before you get "bus" instead of "bike". Only change the **Value** column, never the names in column A.
-- **Presets tab:** your regular foods, one row per button: name, kcal, protein. Change, add or delete rows. The page shows them next time it opens.
-- **Chores tab:** your jobs, their usual minutes and the steps (separate steps with `;`). Each button also shows how long you *actually* take, once you've done a job a few times.
-- **Config tab, the app:** **Your app link** is your app. Open it in Chrome on your Pixel, then **⋮ → Add to home screen**. **Partner app link** is for your partner: it opens the same app with only the Chores tab. On an iPhone: open it in Safari, tap Share, then **Add to Home Screen**. Keep both links private.
-- **Config tab, chores:** `Your name` and `Partner name`.
-- **Config tab, food:** `Daily kcal target`, `Protein min (g)`, `Protein max (g)` and `Evening food check` time.
-- **Sessions tab:** your exercises, one row each. Change sets, reps, RPE or rest, or add rows. To make a new session, type a new name in the **Session** column and use that name in the weekly plan.
-
-**Want today's plan updated straight away?** On your PC, open the Sheet, then **Automation menu → Plan today again**. This menu only shows on a PC, not in the phone app.
+- **Chores tab (your quests)**: Job, Minutes, Steps (separate with `;`), **Every** (`daily`, `3 days`, `weekly`, `2 weeks`, `monthly`, `monthly 15` = the 15th, `3 months`, `yearly`, a weekday like `Wed`, or `as needed`), **Who** (Anyone / Me / Partner), **Energy** (Low / Medium / High, used by What now?), **XP** (blank = worked out from minutes). *Set your bin day*: "Take the bins out" is `Wed` for now.
+- **Routines tab**: name, who, time and steps.
+- **Rewards tab**: your treats and their XP cost.
+- **Lifts tab**: training maxes (the app fills these in; edit if you want). **Programme tab**: which lifts each session uses and their sets (`75x5, 85x3, 95x1+` means % of training max × reps; `+` = as many as you can). **Sessions tab**: accessories.
+- **Presets tab**: one-tap foods. **Config tab**: names, partner email, targets, daily XP goal, quests per day, water goal, meds reminder time, plate step, and the weekly gym plan.
+- **Your app link** / **Partner app link** (Config): open in Chrome → ⋮ → Add to home screen (iPhone: Safari → Share → Add to Home Screen). Keep them private.
 
 ## If something stops working
 
@@ -61,7 +66,7 @@ Health Connect data (sleep and steps will join the Sunday summary), automatic gy
 - Script: https://script.google.com/d/1kGCjIZ6uRZteKZ0n_SFiOh5xnZxdoZY1Y1lWlMDno1Fi7D83lMjvuaCX/edit
 - Web app: https://script.google.com/macros/s/AKfycbyGglsy-_DOdaCn7DFhNyD8JH89jGapkUXUHdWp-JmdpuupiMPPEp6gm8e23x-yOVbsYQ/exec (`?key=…&source=…`)
 - The app is one page, `App.html` (tabs: Today / Food / Chores), served by `doGet` with the state from `appState_()`. Server calls live in `Today.gs`, `Food.gs` and `Chores.gs`.
-- Chores: `Chores.gs`. The partner has their own key (`PARTNER_KEY` Script Property) that `who_()` maps to "partner". It only reaches the chores calls. Live timers are the `CHORE_me` / `CHORE_partner` Script Properties.
+- Quests (`Quests.gs`), game (`Game.gs`: XP log, streaks, badges, rewards, feed), routines (`Routines.gs`), workouts (`Workout.gs`: nSuns T1/T2 from the Lifts and Programme tabs, progression in `tmIncrease`). Chores timers: `Chores.gs`. The partner has their own key (`PARTNER_KEY` Script Property) that `who_()` maps to "partner". It only reaches the chores calls. Live timers are the `CHORE_me` / `CHORE_partner` Script Properties.
 - Food: `Food.gs` holds the server calls (all key-checked), and `Claude.gs` the Claude API call. The API key is the `ANTHROPIC_API_KEY` Script Property.
 - `prepareSheet_()` runs every morning, so new tabs, columns, settings and triggers arrive without re-running setup.
 - To extend it: new morning jobs go in `dailyJobs_()` (Main.gs), new phone data in `POST_ROUTES` (WebApp.gs), and new one-tap tasks in `taskHandlers_()` (Tasks.gs).

@@ -41,10 +41,10 @@ function doGet(e) {
   }
   var page = HtmlService.createTemplateFromFile('App');
   page.key = params.key;
-  page.tab = who === 'partner' ? 'chores' : String(params.page || '');
+  page.tab = ({ chores: 'quests', food: 'food', train: 'train', quests: 'quests', more: 'more' })[String(params.page || '')] || '';
   page.initialJson = JSON.stringify(appState_(who)).replace(/</g, '\\u003c');
   return page.evaluate()
-    .setTitle(who === 'partner' ? 'Chores' : 'Life')
+    .setTitle('Life Quest')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover');
 }
 

@@ -22,7 +22,7 @@ test('setup adds Chores, Chores log and Later tabs, and two chores links', () =>
 test('partner link opens chores only; it cannot reach food or post data', () => {
   const { g, me, partner } = ready();
   const page = g.ctx.doGet({ parameter: { key: partner } });
-  const boot = JSON.parse(page.html.match(/var BOOT = (.*);/)[1]);
+  const boot = JSON.parse(page.html.match(/var S = (.*);/)[1]);
   assert.deepStrictEqual(Object.keys(boot).filter(k => ['today', 'food', 'train'].includes(k)), []);
   assert.strictEqual(boot.who, 'partner');
   assert.throws(() => g.ctx.todayState(partner), /out of date/);
@@ -32,7 +32,7 @@ test('partner link opens chores only; it cannot reach food or post data', () => 
   assert.match(g.ctx.doPost({ parameter: { key: partner }, postData: { contents: '{}' } }).text, /bad key/);
   assert.throws(() => g.ctx.choresState('nope'), /out of date/);
   // your link opens everything in one app
-  const mine = JSON.parse(g.ctx.doGet({ parameter: { key: me } }).html.match(/var BOOT = (.*);/)[1]);
+  const mine = JSON.parse(g.ctx.doGet({ parameter: { key: me } }).html.match(/var S = (.*);/)[1]);
   assert.ok(['today', 'food', 'train', 'quests', 'game', 'chores'].every(k => k in mine));
   assert.doesNotMatch(page.html, /<\?/);
 });

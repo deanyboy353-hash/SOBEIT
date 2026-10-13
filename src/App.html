@@ -5,94 +5,136 @@
 <meta charset="utf-8">
 <style>
   :root {
-    --bg: #f6f7f9; --card: #ffffff; --text: #1b1d21; --muted: #626875; --line: #e3e6eb;
-    --accent: #1a73e8; --accent-text: #ffffff; --good: #188038; --warn: #b3261e; --bar: #e8eaed;
-    --btn: #eef3fd; --btn-text: #0b57d0; --protein: #9334e6; --amber: #fef7e0; --amber-text: #7a4f01; --ring: #1a73e8;
+    --bg: #fff6fa; --card: #ffffff; --text: #2b2233; --muted: #7a6d86; --line: #f2e3ee;
+    --pink: #f7a8c8; --pink-soft: #ffe6f0; --pink-ink: #b0336c;
+    --purple: #a888f0; --purple-soft: #efe8ff; --purple-ink: #5a3cb6;
+    --grad: linear-gradient(135deg, #f9b8d3, #c9b5ff);
+    --grad-ink: #2a1a3d;
+    --good: #2a9466; --warn: #c23d67; --bar: #f4e8f2; --amber: #fff3d6; --amber-ink: #8a5a00;
+    --shadow: 0 6px 20px rgba(168, 136, 240, .14);
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #111316; --card: #1c1f24; --text: #e8eaed; --muted: #9aa0a6; --line: #2d3138;
-      --accent: #8ab4f8; --accent-text: #0b1a33; --good: #81c995; --warn: #f28b82; --bar: #2d3138;
-      --btn: #233149; --btn-text: #d3e3fd; --protein: #c58af9; --amber: #3d2e05; --amber-text: #fdd663; --ring: #8ab4f8;
+      --bg: #17121c; --card: #221b29; --text: #f6eff9; --muted: #ab9db8; --line: #342a3e;
+      --pink: #ff9fc7; --pink-soft: #3b2232; --pink-ink: #ffbad6;
+      --purple: #bca5ff; --purple-soft: #2c2443; --purple-ink: #d8ccff;
+      --good: #7fd8a6; --warn: #ff8fae; --bar: #33293d; --amber: #3a2b08; --amber-ink: #ffd877;
+      --shadow: none;
     }
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
   body.timesup { background: var(--amber); }
-  main { max-width: 560px; margin: 0 auto; padding: 16px 16px 48px; }
-  .top { display: flex; justify-content: space-between; align-items: center; margin: 0 4px 12px; }
-  .top h1 { font-size: 20px; margin: 0; }
-  .top a { color: var(--accent); font-weight: 600; text-decoration: none; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 16px; margin-bottom: 14px; }
-  .label { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; font-weight: 600; margin-bottom: 8px; }
+  main { max-width: 560px; margin: 0 auto; padding: 16px 16px 112px; }
+  h1 { font-size: 24px; margin: 4px 4px 2px; letter-spacing: -.3px; }
+  h2 { font-size: 20px; margin: 0 0 4px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 16px; margin-bottom: 14px; box-shadow: var(--shadow); }
+  .card.pink { background: var(--pink-soft); border-color: transparent; }
+  .card.lilac { background: var(--purple-soft); border-color: transparent; }
+  .label { font-size: 12.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .7px; font-weight: 700; margin-bottom: 8px; }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .note { color: var(--muted); font-size: 14px; margin: 8px 0 0; }
+  .center { text-align: center; }
+  .muted { color: var(--muted); }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip { background: var(--purple-soft); color: var(--purple-ink); border-radius: 999px; padding: 5px 11px; font-size: 14px; font-weight: 700; white-space: nowrap; }
+  .chip.pink { background: var(--pink-soft); color: var(--pink-ink); }
+  button { font: inherit; border: 0; border-radius: 16px; cursor: pointer; color: inherit; }
+  button:disabled { opacity: .5; cursor: default; }
+  .primary { background: var(--grad); color: var(--grad-ink); font-weight: 700; padding: 13px 18px; white-space: nowrap; }
+  .soft { background: var(--purple-soft); color: var(--purple-ink); font-weight: 700; padding: 12px 12px; }
+  .softpink { background: var(--pink-soft); color: var(--pink-ink); font-weight: 700; padding: 12px 12px; }
+  .ghost { background: transparent; color: var(--purple-ink); font-weight: 700; padding: 10px 6px; }
+  .wide { width: 100%; }
+  .big-btn { width: 100%; padding: 18px; font-size: 19px; border-radius: 20px; }
+  form { display: flex; gap: 8px; }
+  input[type=text], input[type=password], input[type=number], textarea, select {
+    flex: 1; min-width: 0; font: inherit; padding: 13px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg); color: var(--text);
+  }
+  textarea { width: 100%; min-height: 110px; resize: vertical; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  /* Home */
+  .hello { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px; }
+  .hello .sub { color: var(--muted); margin: 0 4px; font-size: 15px; }
+  .ringcard { display: flex; gap: 16px; align-items: center; }
+  .ring { position: relative; width: 112px; height: 112px; flex: none; }
+  .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring .t { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; font-weight: 800; font-size: 24px; line-height: 1.1; }
+  .ring .t small { display: block; font-size: 12px; color: var(--muted); font-weight: 600; }
+  .stats { flex: 1; min-width: 0; }
+  .stats .s { display: flex; justify-content: space-between; padding: 4px 0; font-size: 15px; }
+  .stats b { font-variant-numeric: tabular-nums; }
+  .lvl { height: 8px; border-radius: 4px; background: var(--bar); overflow: hidden; margin: 6px 0 2px; }
+  .lvl i { display: block; height: 100%; background: var(--grad); }
+
+  /* quests */
+  .q { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-top: 1px solid var(--line); }
+  .q:first-child { border-top: 0; }
+  .tick { width: 30px; height: 30px; border-radius: 50%; border: 2.5px solid var(--purple); flex: none; display: grid; place-items: center; background: transparent; padding: 0; font-size: 15px; color: #fff; }
+  .q.done .tick { background: var(--grad); border-color: transparent; color: var(--grad-ink); }
+  .q .body { flex: 1; min-width: 0; }
+  .q .name { font-weight: 650; overflow-wrap: anywhere; }
+  .q.done .name { text-decoration: line-through; color: var(--muted); }
+  .q .meta { font-size: 13px; color: var(--muted); }
+  .q .acts { display: flex; gap: 6px; flex: none; }
+  .q .acts button { padding: 8px 10px; border-radius: 12px; font-size: 14px; }
+  .empty { color: var(--muted); padding: 6px 0; }
+
+  /* chores timer (from the body-doubling page) */
   .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .person { background: var(--bg); border-radius: 14px; padding: 12px; min-width: 0; }
+  .person { background: var(--bg); border-radius: 16px; padding: 12px; min-width: 0; }
   .person b { display: block; font-size: 15px; }
   .person .st { font-size: 14px; margin-top: 2px; overflow-wrap: anywhere; }
   .person .mini { height: 6px; border-radius: 3px; background: var(--bar); margin-top: 8px; overflow: hidden; }
-  .person .mini i { display: block; height: 100%; background: var(--accent); }
+  .person .mini i { display: block; height: 100%; background: var(--grad); }
   .person .dn { color: var(--muted); font-size: 13px; margin-top: 6px; overflow-wrap: anywhere; }
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  button { font: inherit; border: 0; border-radius: 14px; cursor: pointer; }
-  .job { background: var(--btn); color: var(--btn-text); text-align: left; padding: 14px; min-height: 72px; display: flex; flex-direction: column; justify-content: space-between; font-weight: 600; transition: transform .08s; }
-  .job:active { transform: scale(.97); }
-  .job small { font-weight: 400; opacity: .85; font-size: 13px; }
-  .primary { background: var(--accent); color: var(--accent-text); font-weight: 600; padding: 14px 18px; }
-  .ghost { background: transparent; color: var(--accent); font-weight: 600; padding: 10px 6px; }
-  .soft { background: var(--btn); color: var(--btn-text); font-weight: 600; padding: 14px 10px; }
-  .wide { width: 100%; }
-  form { display: flex; gap: 8px; }
-  input[type=text] { flex: 1; min-width: 0; font: inherit; padding: 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
-  .plan h2 { margin: 0 0 4px; font-size: 20px; }
-  .mins { display: flex; align-items: center; gap: 12px; margin: 10px 0; }
-  .mins span { font-size: 28px; font-weight: 700; min-width: 90px; text-align: center; font-variant-numeric: tabular-nums; }
-  .mins button { width: 52px; height: 44px; }
-  ol.steps { margin: 6px 0 12px; padding-left: 22px; }
-  ol.steps li { margin: 3px 0; }
   .focus { text-align: center; }
-  .focus .task { font-size: 22px; font-weight: 700; margin: 0 0 6px; }
-  .ringwrap { position: relative; width: 220px; height: 220px; margin: 6px auto 10px; }
+  .focus .task { font-size: 22px; font-weight: 800; margin: 0 0 6px; }
+  .ringwrap { position: relative; width: 210px; height: 210px; margin: 4px auto 10px; }
   .ringwrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
-  .ringwrap .t { position: absolute; inset: 0; display: grid; place-items: center; font-size: 44px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -1px; }
-  .ringwrap .t small { display: block; font-size: 14px; font-weight: 500; color: var(--muted); letter-spacing: 0; text-align: center; }
-  .now { background: var(--bg); border-radius: 16px; padding: 14px; margin: 6px 0 12px; text-align: left; }
-  .now .k { font-size: 13px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .6px; }
-  .now .s { font-size: 20px; font-weight: 600; margin: 2px 0 10px; }
+  .ringwrap .t { position: absolute; inset: 0; display: grid; place-items: center; font-size: 44px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -1px; }
+  .ringwrap .t small { display: block; font-size: 14px; font-weight: 600; color: var(--muted); letter-spacing: 0; text-align: center; }
+  .now { background: var(--bg); border-radius: 18px; padding: 14px; margin: 6px 0 12px; text-align: left; }
+  .now .k { font-size: 12.5px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .7px; }
+  .now .s { font-size: 20px; font-weight: 700; margin: 2px 0 10px; }
   .checks { list-style: none; padding: 0; margin: 0 0 12px; text-align: left; }
   .checks li { display: flex; gap: 10px; align-items: center; padding: 8px 2px; border-top: 1px solid var(--line); font-size: 15px; cursor: pointer; }
   .checks li:first-child { border-top: 0; }
-  .checks .box { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--muted); flex: none; display: grid; place-items: center; font-size: 13px; }
+  .checks .box { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--purple); flex: none; display: grid; place-items: center; font-size: 13px; }
   .checks li.done { color: var(--muted); text-decoration: line-through; }
-  .checks li.done .box { background: var(--good); border-color: var(--good); color: var(--card); }
-  .checks li.cur { font-weight: 600; }
-  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-  .up { background: var(--card); border: 2px solid var(--amber-text); color: var(--amber-text); border-radius: 18px; padding: 14px; margin-bottom: 12px; font-weight: 600; }
-  .later li { display: flex; gap: 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line); font-size: 15px; }
-  .later li:first-child { border-top: 0; }
-  .later ul { list-style: none; margin: 0; padding: 0; }
-  .later .who { color: var(--muted); font-size: 13px; }
-  .later .x { margin-left: auto; background: var(--btn); color: var(--btn-text); width: 40px; height: 36px; flex: none; }
-  .note { color: var(--muted); font-size: 14px; margin: 8px 0 0; }
-  .center { text-align: center; }
-  #toast { position: fixed; left: 16px; right: 16px; bottom: 20px; max-width: 528px; margin: 0 auto; background: var(--text); color: var(--bg); padding: 14px 16px; border-radius: 14px; font-size: 15px; transform: translateY(150%); transition: transform .2s; z-index: 5; }
-  #toast:not(.show) { visibility: hidden; }
-  #toast.show { transform: none; }
-  #toast.err { background: var(--warn); color: #fff; }
+  .checks li.done .box { background: var(--grad); border-color: transparent; color: var(--grad-ink); }
+  .checks li.cur { font-weight: 700; }
+  .up { background: var(--card); border: 2px solid var(--amber-ink); color: var(--amber-ink); border-radius: 18px; padding: 14px; margin-bottom: 12px; font-weight: 700; }
+  .banner { background: var(--grad); color: var(--grad-ink); border-radius: 18px; padding: 14px; margin-bottom: 14px; font-weight: 700; }
+  .job { background: var(--purple-soft); color: var(--purple-ink); text-align: left; padding: 14px; min-height: 70px; display: flex; flex-direction: column; justify-content: space-between; font-weight: 700; }
+  .job small { font-weight: 500; opacity: .85; font-size: 13px; }
+  .mins { display: flex; align-items: center; gap: 12px; margin: 10px 0; }
+  .mins span { font-size: 28px; font-weight: 800; min-width: 90px; text-align: center; font-variant-numeric: tabular-nums; }
+  .mins button { width: 52px; height: 44px; }
+  ol.steps { margin: 6px 0 12px; padding-left: 22px; }
+  .list { list-style: none; margin: 0; padding: 0; }
+  .list li { display: flex; gap: 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line); font-size: 15px; }
+  .list li:first-child { border-top: 0; }
+  .list .x { margin-left: auto; background: var(--purple-soft); color: var(--purple-ink); width: 40px; height: 36px; flex: none; padding: 0; }
+  .list li.got span { text-decoration: line-through; color: var(--muted); }
+
+  /* food (kept from before) */
   .stat { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-  .big { font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.5px; }
+  .big { font-size: 34px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.5px; }
   .of { color: var(--muted); font-size: 15px; }
-  .left { font-weight: 600; font-size: 15px; text-align: right; }
+  .left { font-weight: 700; font-size: 15px; text-align: right; }
   .left.good { color: var(--good); } .left.warn { color: var(--warn); }
   .bar { position: relative; height: 10px; border-radius: 5px; background: var(--bar); margin: 8px 0 14px; overflow: hidden; }
-  .bar > i { position: absolute; inset: 0 auto 0 0; border-radius: 5px; background: var(--accent); transition: width .25s; }
-  .bar.p > i { background: var(--protein); }
+  .bar > i { position: absolute; inset: 0 auto 0 0; border-radius: 5px; background: var(--purple); transition: width .25s; }
+  .bar.p > i { background: var(--pink); }
   .bar.over > i { background: var(--warn); }
   .bar .zone { position: absolute; top: 0; bottom: 0; border-left: 2px solid var(--text); border-right: 2px solid var(--text); opacity: .35; }
-  input[type=text], input[type=password] { flex: 1; min-width: 0; font: inherit; padding: 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
-  .primary:disabled { opacity: .5; }
-  .preset { background: var(--btn); color: var(--btn-text); text-align: left; padding: 14px; min-height: 76px; display: flex; flex-direction: column; justify-content: space-between; font-weight: 600; transition: transform .08s; }
-  .preset:active { transform: scale(.97); }
-  .preset small { font-weight: 400; opacity: .85; font-size: 13px; }
+  .preset { background: var(--pink-soft); color: var(--pink-ink); text-align: left; padding: 14px; min-height: 76px; display: flex; flex-direction: column; justify-content: space-between; font-weight: 700; }
+  .preset:active, .job:active, .tick:active { transform: scale(.96); }
+  .preset small { font-weight: 500; opacity: .85; font-size: 13px; }
   .entries { list-style: none; margin: 0; padding: 0; }
   .entries li { display: flex; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); font-size: 15px; }
   .entries li:first-child { border-top: 0; }
@@ -100,312 +142,436 @@
   .entries .n { flex: 1; }
   .entries .v { color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
   .entries li.pending { opacity: .5; }
-  .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-  .undo { background: transparent; color: var(--accent); font-weight: 600; padding: 8px 4px; }
-  .undo:disabled { color: var(--muted); opacity: .6; }
-  .empty { color: var(--muted); font-size: 15px; margin: 4px 0; }
-  details summary { color: var(--muted); font-size: 14px; cursor: pointer; padding: 4px 0; }
-  .setup { border-color: var(--accent); }
+  .undo { background: transparent; color: var(--purple-ink); font-weight: 700; padding: 8px 4px; }
+  .setup { border-color: var(--purple); }
   .setup ol { padding-left: 20px; margin: 8px 0 12px; font-size: 15px; }
-  .setup a { color: var(--accent); }
-  main { padding-bottom: 110px; }
-  .big2 { font-size: 24px; margin: 0 0 4px; }
-  .sub { color: var(--muted); margin: 0 0 12px; font-size: 15px; }
-  ol.ex { margin: 0 0 14px; padding-left: 22px; }
-  ol.ex li { padding: 6px 0; border-top: 1px solid var(--line); }
-  ol.ex li:first-child { border-top: 0; }
-  ol.ex b { display: block; font-size: 15px; }
-  ol.ex span { color: var(--muted); font-size: 14px; }
-  ol.ex small { display: block; color: var(--muted); font-size: 13px; }
-  .okmsg { color: var(--good); font-weight: 600; margin: 4px 0; }
-  nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; gap: 4px; padding: 8px 8px calc(8px + env(safe-area-inset-bottom)); background: var(--card); border-top: 1px solid var(--line); z-index: 4; }
-  nav.tabs[hidden] { display: none; }
-  nav.tabs button { flex: 1; max-width: 180px; background: transparent; color: var(--muted); padding: 6px 4px; font-size: 13px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 2px; position: relative; }
-  nav.tabs button .i { font-size: 22px; line-height: 1.2; padding: 2px 18px; border-radius: 16px; }
+  .setup a, a { color: var(--purple-ink); }
+  details summary { color: var(--muted); font-size: 14px; cursor: pointer; padding: 4px 0; }
+
+  /* train */
+  .sets { list-style: none; margin: 0; padding: 0; }
+  .set { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+  .set:first-child { border-top: 0; }
+  .set .n { width: 22px; color: var(--muted); font-size: 13px; text-align: center; flex: none; }
+  .set .w { flex: 1; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .set.done .w { color: var(--muted); }
+  .set.done .tick { background: var(--grad); border-color: transparent; color: var(--grad-ink); }
+  .set input[type=number] { width: 78px; flex: none; padding: 9px; text-align: center; }
+  .step { display: flex; align-items: center; gap: 4px; flex: none; }
+  .step button { width: 34px; height: 34px; padding: 0; background: var(--purple-soft); color: var(--purple-ink); font-weight: 800; border-radius: 10px; }
+  .step span { min-width: 26px; text-align: center; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .amrap { color: var(--pink-ink); font-weight: 800; }
+  .rest { position: sticky; top: 8px; z-index: 3; display: flex; justify-content: space-between; align-items: center; background: var(--grad); color: var(--grad-ink); border-radius: 18px; padding: 12px 16px; margin-bottom: 12px; font-weight: 800; box-shadow: var(--shadow); }
+  .rest b { font-size: 24px; font-variant-numeric: tabular-nums; }
+  .rest button { background: rgba(255, 255, 255, .55); color: var(--grad-ink); padding: 8px 12px; border-radius: 12px; }
+  .spark { width: 100%; height: 46px; display: block; }
+  .vol { display: flex; align-items: flex-end; gap: 6px; height: 80px; margin-top: 8px; }
+  .vol div { flex: 1; background: var(--grad); border-radius: 6px 6px 2px 2px; min-height: 3px; }
+  .lift { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 10px 0; border-top: 1px solid var(--line); }
+  .lift:first-child { border-top: 0; }
+  .lift .big2 { font-size: 22px; font-weight: 800; }
+
+  /* more */
+  .badges { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .badge { background: var(--purple-soft); border-radius: 16px; padding: 10px 4px; text-align: center; font-size: 12px; font-weight: 700; color: var(--purple-ink); }
+  .badge .e { display: block; font-size: 26px; line-height: 1.2; }
+  .badge.locked { background: var(--bar); color: var(--muted); }
+  .badge.locked .e { filter: grayscale(1); opacity: .45; }
+  .score { display: grid; grid-template-columns: 70px 1fr 50px; gap: 8px; align-items: center; margin: 6px 0; font-size: 15px; }
+  .score .b { height: 12px; border-radius: 6px; background: var(--bar); overflow: hidden; }
+  .score .b i { display: block; height: 100%; background: var(--grad); }
+  .feed li { align-items: flex-start; }
+  .feed .hi { margin-left: auto; flex: none; background: var(--pink-soft); color: var(--pink-ink); padding: 6px 10px; border-radius: 12px; font-size: 14px; }
+
+  /* sheet (bottom modal) */
+  .sheetbg { position: fixed; inset: 0; background: rgba(23, 18, 28, .45); z-index: 8; display: flex; align-items: flex-end; justify-content: center; }
+  .sheetbg[hidden] { display: none; }
+  .sheet { background: var(--card); width: 100%; max-width: 560px; border-radius: 26px 26px 0 0; padding: 20px 16px calc(24px + env(safe-area-inset-bottom)); max-height: 88vh; overflow-y: auto; }
+  .seg { display: flex; gap: 8px; margin: 6px 0 14px; }
+  .seg button { flex: 1; background: var(--purple-soft); color: var(--purple-ink); padding: 12px 4px; font-weight: 700; }
+  .seg button[aria-pressed="true"] { background: var(--grad); color: var(--grad-ink); }
+
+  /* tabs */
+  nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; gap: 2px; padding: 8px 6px calc(8px + env(safe-area-inset-bottom)); background: var(--card); border-top: 1px solid var(--line); z-index: 6; }
+  nav.tabs button { flex: 1; max-width: 120px; background: transparent; color: var(--muted); padding: 4px 2px; font-size: 12px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 2px; position: relative; }
+  nav.tabs .i { font-size: 21px; line-height: 1.25; padding: 2px 14px; border-radius: 16px; }
   nav.tabs button[aria-current="page"] { color: var(--text); }
-  nav.tabs button[aria-current="page"] .i { background: var(--btn); }
-  nav.tabs .badge { position: absolute; top: 0; right: 50%; transform: translateX(46px); background: var(--accent); color: var(--accent-text); font-size: 11px; border-radius: 8px; padding: 1px 6px; font-variant-numeric: tabular-nums; }
-  nav.tabs .badge:empty { display: none; }
-  #toast { bottom: calc(86px + env(safe-area-inset-bottom)); }
+  nav.tabs button[aria-current="page"] .i { background: var(--grad); }
+  nav.tabs .badgec { position: absolute; top: -2px; left: 50%; transform: translateX(8px); background: var(--pink); color: var(--grad-ink); font-size: 10.5px; border-radius: 8px; padding: 1px 5px; font-variant-numeric: tabular-nums; font-weight: 800; }
+  nav.tabs .badgec:empty { display: none; }
+  #toast { position: fixed; left: 16px; right: 16px; bottom: calc(84px + env(safe-area-inset-bottom)); max-width: 528px; margin: 0 auto; background: var(--text); color: var(--bg); padding: 14px 16px; border-radius: 16px; font-size: 15px; transform: translateY(160%); transition: transform .2s; z-index: 9; }
+  #toast:not(.show) { visibility: hidden; }
+  #toast.show { transform: none; }
+  #toast.err { background: var(--warn); color: #fff; }
+  body.sheetopen #toast { top: calc(12px + env(safe-area-inset-top)); bottom: auto; transform: translateY(-160%); }
+  body.sheetopen #toast.show { transform: none; }
+  #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+  section.tab[hidden] { display: none; }
 </style>
 </head>
 <body>
 <main>
-
-<section class="tab" id="tab-today" hidden>
-  <div id="todayGym"></div>
-  <section class="card" id="weighCard"></section>
-</section>
-
-<section class="tab" id="tab-food" hidden>
-
-  <section class="card" aria-live="polite">
-    <div class="label">Calories</div>
-    <div class="stat"><div><span class="big" id="kcal">0</span> <span class="of" id="kcalOf"></span></div><div class="left" id="kcalLeft"></div></div>
-    <div class="bar" id="kcalBar"><i></i></div>
-    <div class="label">Protein</div>
-    <div class="stat"><div><span class="big" id="prot">0</span> <span class="of" id="protOf"></span></div><div class="left" id="protLeft"></div></div>
-    <div class="bar p" id="protBar"><i></i><span class="zone" id="protZone"></span></div>
+  <section class="tab" id="tab-home" hidden></section>
+  <section class="tab" id="tab-quests" hidden></section>
+  <section class="tab" id="tab-train" hidden></section>
+  <section class="tab" id="tab-food" hidden>
+    <h1>Food</h1>
+    <section class="card" aria-live="polite">
+      <div class="label">Calories</div>
+      <div class="stat"><div><span class="big" id="kcal">0</span> <span class="of" id="kcalOf"></span></div><div class="left" id="kcalLeft"></div></div>
+      <div class="bar" id="kcalBar"><i></i></div>
+      <div class="label">Protein</div>
+      <div class="stat"><div><span class="big" id="prot">0</span> <span class="of" id="protOf"></span></div><div class="left" id="protLeft"></div></div>
+      <div class="bar p" id="protBar"><i></i><span class="zone" id="protZone"></span></div>
+    </section>
+    <section class="card">
+      <form id="quick" autocomplete="off">
+        <input type="text" id="quickText" placeholder="2 protein weetabix 200ml milk" enterkeyhint="send" aria-label="Describe what you ate">
+        <button class="primary" id="quickBtn" type="submit">Add</button>
+      </form>
+      <p class="note" id="quickNote">Claude estimates it and logs it.</p>
+    </section>
+    <section class="card setup" id="setupCard" hidden>
+      <div class="label">Turn on quick-add</div>
+      <ol>
+        <li>Get a key at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a></li>
+        <li>Paste it here. It's stored in your Google account's script settings, not in the code.</li>
+      </ol>
+      <form id="keyForm"><input type="password" id="keyText" placeholder="sk-ant-…" aria-label="Claude API key"><button class="primary" type="submit">Save</button></form>
+    </section>
+    <section class="grid" id="presets" style="margin-bottom:14px"></section>
+    <section class="card">
+      <div class="row"><div class="label">Today</div><button class="undo" id="undo" type="button">↶ Undo last</button></div>
+      <ul class="entries" id="entries"></ul>
+    </section>
+    <details id="keyDetails" hidden><summary>Replace Claude API key</summary>
+      <form id="keyForm2" style="margin-top:8px"><input type="password" id="keyText2" placeholder="sk-ant-…" aria-label="New Claude API key"><button class="primary" type="submit">Save</button></form>
+    </details>
+    <p class="note">Edit buttons and targets in the Sheet: Presets and Config tabs.</p>
   </section>
-
-  <section class="card">
-    <form id="quick" autocomplete="off">
-      <input type="text" id="quickText" placeholder="2 protein weetabix 200ml milk" enterkeyhint="send" aria-label="Describe what you ate">
-      <button class="primary" id="quickBtn" type="submit">Add</button>
-    </form>
-    <p class="note" id="quickNote">Claude estimates it and logs it.</p>
-  </section>
-
-  <section class="card setup" id="setupCard" hidden>
-    <div class="label">Turn on quick-add</div>
-    <ol>
-      <li>Get a key at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a></li>
-      <li>Paste it here. It's stored in your Google account's script settings, not in the code.</li>
-    </ol>
-    <form id="keyForm"><input type="password" id="keyText" placeholder="sk-ant-…" aria-label="Claude API key"><button class="primary" type="submit">Save</button></form>
-  </section>
-
-  <section class="grid" id="presets" style="margin-bottom:14px"></section>
-
-  <section class="card">
-    <div class="row"><div class="label">Today</div><button class="undo" id="undo" type="button">↶ Undo last</button></div>
-    <ul class="entries" id="entries"></ul>
-  </section>
-
-  <details id="keyDetails" hidden><summary>Replace Claude API key</summary>
-    <form id="keyForm2" style="margin-top:8px"><input type="password" id="keyText2" placeholder="sk-ant-…" aria-label="New Claude API key"><button class="primary" type="submit">Save</button></form>
-  </details>
-  <p class="note">Edit buttons and targets in the Sheet: Presets and Config tabs.</p>
-
-</section>
-
-<section class="tab" id="tab-chores" hidden>
-
-  <section class="card"><div class="label">Together</div><div class="duo" id="duo"></div></section>
-  <div id="view"></div>
-  <section class="card later" id="laterCard" hidden><div class="label">🅿️ Parked for later</div><ul id="later"></ul></section>
-  <p class="note center">Change jobs, times and steps in the Sheet: Chores tab.</p>
-
-</section>
+  <section class="tab" id="tab-more" hidden></section>
 </main>
-<nav class="tabs" id="nav" hidden>
-  <button type="button" data-tab="today"><span class="i">🏠</span>Today</button>
-  <button type="button" data-tab="food"><span class="i">🍽️</span>Food</button>
-  <button type="button" data-tab="chores"><span class="i">🧹</span>Chores<span class="badge" id="badgeChores"></span></button>
+
+<nav class="tabs" id="nav">
+  <button type="button" data-tab="home"><span class="i">🏠</span>Home</button>
+  <button type="button" data-tab="quests"><span class="i">✨</span>Quests<span class="badgec" id="badgeQuests"></span></button>
+  <button type="button" data-tab="train" data-me><span class="i">🏋️</span>Train<span class="badgec" id="badgeTrain"></span></button>
+  <button type="button" data-tab="food" data-me><span class="i">🍓</span>Food</button>
+  <button type="button" data-tab="more"><span class="i">🎀</span>More</button>
 </nav>
+<div class="sheetbg" id="sheetbg" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
 <div id="toast" role="status"></div>
+<canvas id="confetti"></canvas>
 
 <script>
   var KEY = <?!= JSON.stringify(key) ?>;
-  var BOOT = <?!= initialJson ?>;
+  var S = <?!= initialJson ?>;
   var START_TAB = <?!= JSON.stringify(tab) ?>;
-  var TABS = {};   // tab name -> refresh function, filled in by each tab below
+  var ME = S.who === 'me';
+  var offset = S.now - Date.now();
+  var busy = false;
+  var current = 'home';
+
+  // ---------- small helpers ----------
+  function el(id) { return document.getElementById(id); }
+  function esc(s) { return String(s === undefined || s === null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function fmt(n) { return Math.round(n).toLocaleString('en-GB'); }
+  function now() { return Date.now() + offset; }
+  function clock(ms) { var s = Math.max(0, Math.round(ms / 1000)); return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); }
+  // Remembered on this phone. Falls back to memory if the browser blocks storage.
+  var mem = {};
+  function store(k, v) {
+    if (v === undefined) {
+      try { var got = localStorage.getItem(k); if (got !== null) return JSON.parse(got); } catch (e) {}
+      return k in mem ? mem[k] : null;
+    }
+    mem[k] = v;
+    try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {}
+  }
+  function names() {
+    var me = S.chores.people[S.who].name, other = S.chores.people[S.who === 'me' ? 'partner' : 'me'].name;
+    return { me: me || 'there', other: other || 'Your partner' };
+  }
+  function restSecs(t) {
+    var s = String(t || '').toLowerCase(), m = s.match(/(\d+):(\d{2})/);
+    if (m) return +m[1] * 60 + +m[2];
+    var n = parseFloat(s) || 0;
+    return /m/.test(s) ? Math.round(n * 60) : /s/.test(s) ? Math.round(n) : (n > 10 ? n : n * 60);
+  }
 
   var toastTimer;
   function toast(msg, isErr) {
-    var t = document.getElementById('toast');
+    var t = el('toast');
     t.textContent = msg;
     t.className = 'show' + (isErr ? ' err' : '');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { t.className = isErr ? 'err' : ''; }, isErr ? 6000 : 2800);
   }
-</script>
-<script>
-if (BOOT.today) {
-
-(function () {
-  var state = BOOT.today;
-  function el(id) { return document.getElementById(id); }
-  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
-  function call(fn, args, ok) {
-    var r = google.script.run.withSuccessHandler(ok).withFailureHandler(function (err) { toast(err.message || String(err), true); render(); });
-    r[fn].apply(r, [KEY].concat(args));
-  }
-  function render() {
-    var g = state.gym;
-    el('todayGym').innerHTML = g ? '<section class="card"><div class="label">' + esc(state.day) + ' · Gym</div>' +
-      '<h2 class="big2">🏋️ ' + esc(g.session) + '</h2>' +
-      (g.travel ? '<p class="sub">' + (g.travel === 'Bike' ? '🚲 Bike' : '🚌 Bus') + (g.leaveAt ? ' · leave ' + esc(g.leaveAt) : '') + (g.weather ? '<br>' + esc(g.weather) : '') + '</p>' : '<p class="sub">Plan arrives at 6am.</p>') +
-      '<ol class="ex">' + g.exercises.map(function (x) {
-        return '<li><b>' + esc(x.exercise) + '</b><span>' + esc(x.sets) + ' × ' + esc(x.reps) + (x.rpe ? ' @ RPE ' + esc(x.rpe) : '') + (x.rest ? ' · rest ' + esc(x.rest) : '') + '</span>' + (x.notes ? '<small>' + esc(x.notes) + '</small>' : '') + '</li>';
-      }).join('') + '</ol>' +
-      (g.done ? '<p class="okmsg">✅ Logged. Nice work.</p>' : '<button class="primary wide" type="button" id="gymDone">✅ Gym done</button>') + '</section>'
-      : '<section class="card"><div class="label">' + esc(state.day) + '</div><h2 class="big2">Rest day 😌</h2><p class="sub">No gym today.</p></section>';
-    var lw = state.lastWeight;
-    el('weighCard').innerHTML = '<div class="label">⚖️ Weight' + (state.weighDay && !state.weighedToday ? ' · weigh-in day' : '') + '</div>' +
-      (state.weighedToday ? '<p class="okmsg">✅ ' + lw.kg + ' kg logged today' + (lw.change !== '' && lw.change !== undefined ? ' (' + (lw.change > 0 ? '+' : '') + lw.change + ')' : '') + '</p>'
-        : '<form id="weighForm" autocomplete="off"><input type="text" id="weighText" inputmode="decimal" placeholder="82.4 or 13st 2" aria-label="Your weight"><button class="primary" type="submit">Log</button></form>' +
-          (lw ? '<p class="note">Last: ' + lw.kg + ' kg on ' + esc(lw.date) + '</p>' : ''));
-  }
-  el('tab-today').addEventListener('click', function (ev) {
-    if (ev.target.id !== 'gymDone') return;
-    ev.target.disabled = true;
-    call('gymDone', [], function (s) { state = s; render(); toast('✅ Gym logged. Nice work.'); });
-  });
-  el('tab-today').addEventListener('submit', function (ev) {
-    ev.preventDefault();
-    var v = el('weighText').value.trim();
-    if (!v) return;
-    call('logWeightNow', [v], function (s) { state = s; render(); toast('⚖️ Logged ' + s.lastWeight.kg + ' kg'); });
-  });
-  render();
-  TABS.today = function () { call('todayState', [], function (s) { state = s; render(); }); };
-})();
-
-}
-</script>
-<script>
-if (BOOT.food) (function () {
-
-  var state = BOOT.food;
-  var pending = [];
-
-  function el(id) { return document.getElementById(id); }
-  function fmt(n) { return Math.round(n).toLocaleString('en-GB'); }
-  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
-
-  function render() {
-    var t = state.targets;
-    var kcal = state.totals.kcal, prot = state.totals.protein;
-    pending.forEach(function (p) { kcal += p.kcal; prot += p.protein; });
-
-    el('kcal').textContent = fmt(kcal);
-    el('kcalOf').textContent = '/ ' + fmt(t.kcal);
-    var kl = t.kcal - kcal;
-    el('kcalLeft').textContent = kl >= 0 ? fmt(kl) + ' left' : fmt(-kl) + ' over';
-    el('kcalLeft').className = 'left ' + (kl >= 0 ? 'good' : 'warn');
-    el('kcalBar').className = 'bar' + (kl < 0 ? ' over' : '');
-    el('kcalBar').firstChild.style.width = Math.min(100, kcal / t.kcal * 100) + '%';
-
-    var scale = t.proteinMax * 1.15;
-    el('prot').textContent = fmt(prot) + 'g';
-    el('protOf').textContent = '/ ' + t.proteinMin + '–' + t.proteinMax + 'g';
-    var pl = t.proteinMin - prot;
-    el('protLeft').textContent = pl > 0 ? fmt(pl) + 'g to go' : (prot > t.proteinMax ? 'above range' : 'in range ✓');
-    el('protLeft').className = 'left ' + (pl > 0 ? '' : 'good');
-    el('protBar').firstChild.style.width = Math.min(100, prot / scale * 100) + '%';
-    el('protZone').style.left = (t.proteinMin / scale * 100) + '%';
-    el('protZone').style.width = ((t.proteinMax - t.proteinMin) / scale * 100) + '%';
-
-    el('presets').innerHTML = state.presets.map(function (p, i) {
-      return '<button class="preset" type="button" data-i="' + i + '">' + esc(p.name) + '<small>' + fmt(p.kcal) + ' kcal · ' + fmt(p.protein) + 'g</small></button>';
-    }).join('');
-
-    var rows = pending.map(function (p) { return { time: '…', item: p.name, kcal: p.kcal, protein: p.protein, pending: true }; })
-      .concat(state.entries.slice().reverse());
-    el('entries').innerHTML = rows.length ? rows.map(function (e) {
-      return '<li' + (e.pending ? ' class="pending"' : '') + '><span class="t">' + esc(e.time) + '</span><span class="n">' + esc(e.item) +
-        '</span><span class="v">' + fmt(e.kcal) + ' · ' + fmt(e.protein) + 'g</span></li>';
-    }).join('') : '<li class="empty">Nothing yet today.</li>';
-    el('undo').disabled = !state.entries.length;
-
-    el('setupCard').hidden = state.hasClaudeKey;
-    el('keyDetails').hidden = !state.hasClaudeKey;
-    el('quickText').disabled = el('quickBtn').disabled = !state.hasClaudeKey;
-    if (!state.hasClaudeKey) el('quickNote').textContent = 'Quick-add needs a Claude API key (see below).';
-  }
-
 
   function call(fn, args, ok, fail) {
+    busy = true;
     var r = google.script.run
-      .withSuccessHandler(ok)
-      .withFailureHandler(function (err) { if (fail) fail(); toast(err.message || String(err), true); render(); });
-    r[fn].apply(r, [KEY].concat(args));
+      .withSuccessHandler(function (res) { busy = false; ok(res); })
+      .withFailureHandler(function (err) { busy = false; if (fail) fail(); toast(err.message || String(err), true); renderAll(); });
+    r[fn].apply(r, [KEY].concat(args || []));
   }
 
-  function itemsText(items) {
-    return items.map(function (i) { return i.name; }).join(', ') + ' (+' +
-      fmt(items.reduce(function (s, i) { return s + i.kcal; }, 0)) + ' kcal, ' +
-      fmt(items.reduce(function (s, i) { return s + i.protein; }, 0)) + 'g)';
-  }
-
-  // Preset tap: show it straight away, then confirm with the server.
-  el('presets').addEventListener('click', function (ev) {
-    var b = ev.target.closest('.preset');
-    if (!b) return;
-    var p = state.presets[Number(b.dataset.i)];
-    var mine = { name: p.name, kcal: p.kcal, protein: p.protein };
-    pending.push(mine);
-    render();
-  TABS.food = function () { if (!pending.length) call('foodState', [], function (s) { state = s; render(); }); };
-    if (navigator.vibrate) navigator.vibrate(15);
-    var drop = function () { pending.splice(pending.indexOf(mine), 1); };
-    call('logPreset', [p.name], function (res) { drop(); state = res.state; render(); toast('Logged ' + itemsText(res.added)); }, drop);
-  });
-
-  el('quick').addEventListener('submit', function (ev) {
-    ev.preventDefault();
-    var text = el('quickText').value.trim();
-    if (!text) return;
-    el('quickBtn').disabled = true;
-    el('quickBtn').textContent = '…';
-    el('quickNote').textContent = 'Asking Claude…';
-    var done = function () { el('quickBtn').disabled = false; el('quickBtn').textContent = 'Add'; el('quickNote').textContent = 'Claude estimates it and logs it.'; };
-    call('quickAdd', [text], function (res) {
-      done(); el('quickText').value = ''; state = res.state; render(); toast('Logged ' + itemsText(res.added));
-    }, done);
-  });
-
-  el('undo').addEventListener('click', function () {
-    el('undo').disabled = true;
-    call('undoLast', [], function (res) { state = res.state; render(); toast('Removed ' + res.removed.join(', ')); });
-  });
-
-  function saveKey(input) {
-    return function (ev) {
-      ev.preventDefault();
-      var v = el(input).value.trim();
-      if (!v) return;
-      call('saveClaudeKey', [v], function (s) { el(input).value = ''; state = s; render(); toast('Claude key saved. Quick-add is on.'); });
-    };
-  }
-  el('keyForm').addEventListener('submit', saveKey('keyText'));
-  el('keyForm2').addEventListener('submit', saveKey('keyText2'));
-
-  // Coming back to the page (e.g. from the home screen) refreshes the numbers, and rolls over at midnight.
-  document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState === 'visible' && !pending.length) call('foodState', [], function (s) { state = s; render(); });
-  });
-
-  render();
-  TABS.food = function () { if (!pending.length) call('foodState', [], function (s) { state = s; render(); }); };
-
-})();
-</script>
-<script>
-(function () {
-
-  var state = BOOT.chores;
-  var offset = state.now - Date.now();
-  var plan = null;      // job being set up, before Start
-  var parking = false;  // the "park a distraction" box is open
-  var busy = false;
-  var halfwayShown = '', upShown = '';
-
-  function el(id) { return document.getElementById(id); }
-  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
-  function now() { return Date.now() + offset; }
-  function me() { return state.people[state.you]; }
-  function them() { return state.people[state.you === 'me' ? 'partner' : 'me']; }
-  function clock(ms) { var s = Math.max(0, Math.round(ms / 1000)); return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); }
-  function minsLeft(sess) { return Math.max(0, Math.ceil((sess.endsAt - now()) / 60000)); }
-
-  // ---- sound (unlocked by the first tap, which iPhones require) ----
+  // ---------- sound, buzz, confetti ----------
   var audio;
-  function unlockAudio() {
+  document.addEventListener('pointerdown', function () {
     try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); if (audio.state === 'suspended') audio.resume(); } catch (e) {}
-  }
-  function chime(times) {
+  }, { capture: true });
+  function chime(notes) {
     if (!audio) return;
-    for (var i = 0; i < times; i++) {
-      var o = audio.createOscillator(), g = audio.createGain(), t = audio.currentTime + i * 0.45;
-      o.frequency.value = 880; o.connect(g); g.connect(audio.destination);
-      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.4, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
-      o.start(t); o.stop(t + 0.4);
-    }
-    if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
+    (notes || [880]).forEach(function (f, i) {
+      var o = audio.createOscillator(), g = audio.createGain(), t = audio.currentTime + i * 0.16;
+      o.frequency.value = f; o.type = 'sine'; o.connect(g); g.connect(audio.destination);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.3, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+      o.start(t); o.stop(t + 0.32);
+    });
   }
-  document.addEventListener('pointerdown', unlockAudio, { capture: true });
+  function buzz(p) { if (navigator.vibrate) navigator.vibrate(p || 30); }
+  function confetti(big) {
+    var c = el('confetti'), x = c.getContext('2d');
+    c.width = innerWidth; c.height = innerHeight;
+    var colors = ['#f9b8d3', '#c9b5ff', '#ffd6e7', '#a888f0', '#ffe9a8'];
+    var ps = [];
+    for (var i = 0; i < (big ? 160 : 70); i++) ps.push({ x: c.width / 2, y: c.height * 0.35, vx: (Math.random() - .5) * 14, vy: -Math.random() * 12 - 4, r: 4 + Math.random() * 5, c: colors[i % colors.length], a: Math.random() * 6 });
+    var t = 0;
+    (function frame() {
+      x.clearRect(0, 0, c.width, c.height);
+      ps.forEach(function (p) { p.vy += 0.35; p.x += p.vx; p.y += p.vy; p.a += 0.2; x.fillStyle = p.c; x.save(); x.translate(p.x, p.y); x.rotate(p.a); x.fillRect(-p.r / 2, -p.r / 2, p.r, p.r * 1.6); x.restore(); });
+      if (++t < 90) requestAnimationFrame(frame); else x.clearRect(0, 0, c.width, c.height);
+    })();
+  }
+
+  // Celebrate anything new: XP, the daily goal, a level, a badge.
+  function celebrate(prev, next) {
+    if (!prev || !next || !prev.game || !next.game) return;
+    var a = prev.game, b = next.game, gained = b.xpToday - a.xpToday;
+    if (b.level.level > a.level.level) {
+      confetti(true); chime([660, 880, 1100, 1320]); buzz([60, 40, 60, 40, 120]);
+      openSheet('<div class="center"><div style="font-size:64px">🌟</div><h2>Level ' + b.level.level + '!</h2><p class="muted">You\'ve earned ' + fmt(b.total) + ' XP in total. Keep going.</p><button class="primary wide" type="button" data-close>Yay</button></div>');
+    } else if (a.xpToday < a.goal && b.xpToday >= b.goal) {
+      confetti(true); chime([660, 880, 1100]); buzz([50, 40, 120]);
+      toast('🔥 Daily goal hit! Streak: ' + b.streak.count + ' day' + (b.streak.count === 1 ? '' : 's'));
+    } else if (gained > 0) {
+      confetti(false); chime([880, 1175]); buzz(30);
+    }
+    var seen = store('badges') || [];
+    b.badges.forEach(function (bd) {
+      if (bd.earned && seen.indexOf(bd.id) === -1) { seen.push(bd.id); if (store('badges')) toast('🏅 New badge: ' + bd.emoji + ' ' + bd.name); }
+    });
+    store('badges', seen);
+  }
+  // First load: remember badges already earned so they don't all pop up.
+  if (!store('badges')) store('badges', S.game.badges.filter(function (b) { return b.earned; }).map(function (b) { return b.id; }));
+
+  function apply(res, msg) {
+    var prev = S;
+    S = res;
+    offset = res.now - Date.now();
+    celebrate(prev, S);
+    renderAll();
+    if (msg) toast(msg);
+  }
+
+  // ---------- bottom sheet ----------
+  function openSheet(html) { el('sheet').innerHTML = html; el('sheetbg').hidden = false; document.body.classList.add('sheetopen'); }
+  function closeSheet() { el('sheetbg').hidden = true; el('sheet').innerHTML = ''; document.body.classList.remove('sheetopen'); }
+  el('sheetbg').addEventListener('click', function (ev) { if (ev.target === el('sheetbg') || ev.target.closest('[data-close]')) closeSheet(); });
+
+  // ---------- HOME ----------
+  function ringSvg(frac, size) {
+    var r = 46, c = 2 * Math.PI * r;
+    return '<svg viewBox="0 0 110 110"><defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f9a8cb"/><stop offset="1" stop-color="#b79cff"/></linearGradient></defs>' +
+      '<circle cx="55" cy="55" r="' + r + '" fill="none" stroke="var(--bar)" stroke-width="12"/>' +
+      '<circle cx="55" cy="55" r="' + r + '" fill="none" stroke="url(#g1)" stroke-width="12" stroke-linecap="round" stroke-dasharray="' + c.toFixed(1) + '" stroke-dashoffset="' + (c * (1 - Math.min(1, frac))).toFixed(1) + '"/></svg>';
+  }
+
+  function questRow(q, opts) {
+    opts = opts || {};
+    var meta = [q.minutes + ' min', q.xp + ' XP'];
+    if (q.every) meta.push(q.every);
+    if (q.overdue > 0) meta.push(q.overdue + 'd extra');
+    var theirs = q.who !== 'anyone' && q.who !== S.who;
+    if (theirs) meta.unshift(names().other + '\'s job: cover it for bonus XP');
+    if (q.doneToday) meta = ['done' + (q.doneBy ? ' by ' + (q.doneBy === S.who ? 'you' : names().other) : '')];
+    var claim = '';
+    if (!q.doneToday && opts.claim) {
+      if (q.claimedBy === S.who) claim = '<button class="softpink" type="button" data-claim="' + esc(q.name) + '">✋ Mine</button>';
+      else if (q.claimedBy) claim = '<span class="chip pink">' + esc(names().other) + '\'s</span>';
+      else claim = '<button class="soft" type="button" data-claim="' + esc(q.name) + '" aria-label="Claim">✋</button>';
+    }
+    return '<div class="q' + (q.doneToday ? ' done' : '') + '"><button class="tick" type="button" data-qdone="' + esc(q.name) + '"' + (q.doneToday ? ' disabled' : '') + ' aria-label="Done">' + (q.doneToday ? '✓' : '') + '</button>' +
+      '<div class="body"><div class="name">' + esc(q.name) + '</div><div class="meta">' + esc(meta.join(' · ')) + '</div></div>' +
+      '<div class="acts">' + claim + (!q.doneToday ? '<button class="soft" type="button" data-qstart="' + esc(q.name) + '" aria-label="Start timer">▶</button>' : '') + '</div></div>';
+  }
+
+  function renderHome() {
+    var g = S.game, n = names(), html = '';
+    var hour = new Date(now()).getHours();
+    var hi = hour < 12 ? 'Morning' : hour < 18 ? 'Afternoon' : 'Evening';
+    html += '<div class="hello"><div><h1>' + hi + ', ' + esc(n.me) + ' 🌸</h1><p class="sub">' + new Date(now()).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) + '</p></div>' +
+      '<div class="chips"><span class="chip pink">🔥 ' + g.streak.count + '</span><span class="chip">Lv ' + g.level.level + '</span></div></div>';
+
+    if (S.chores.invite) html += '<div class="banner">🧹 ' + esc(n.other) + ' wants company for chores. Pick a job in Quests!</div>';
+    if (g.streak.frozeYesterday) html += '<div class="banner">🧊 A streak freeze saved your streak yesterday. It\'s all good.</div>';
+
+    html += '<section class="card"><div class="ringcard"><div class="ring">' + ringSvg(g.xpToday / g.goal) +
+      '<div class="t"><div>' + g.xpToday + '<small>of ' + g.goal + ' XP</small></div></div></div><div class="stats">' +
+      '<div class="s"><span>🔥 Streak</span><b>' + g.streak.count + ' day' + (g.streak.count === 1 ? '' : 's') + (g.streak.freezes ? ' · 🧊' + g.streak.freezes : '') + '</b></div>' +
+      '<div class="s"><span>💞 Team streak</span><b>' + g.team.count + '</b></div>' +
+      '<div class="s"><span>' + esc(n.other) + ' today</span><b>' + g.otherXpToday + ' XP</b></div>' +
+      '<div class="lvl"><i style="width:' + Math.round(g.level.into / g.level.need * 100) + '%"></i></div><div class="muted" style="font-size:13px">Level ' + g.level.level + ' · ' + (g.level.need - g.level.into) + ' XP to level ' + (g.level.level + 1) + '</div>' +
+      '</div></div></section>';
+
+    html += '<button class="primary big-btn" type="button" id="whatNow" style="margin-bottom:14px">✨ What now?</button>';
+
+    // routines due around now
+    S.routines.routines.filter(function (r) { return r.showNow && !r.finished && r.steps.length; }).forEach(function (r) {
+      html += '<section class="card lilac"><div class="row"><div class="label">' + (r.name === 'Evening' ? '🌙 ' : '🌅 ') + esc(r.name) + ' routine</div><span class="muted" style="font-size:13px">' + r.done.length + '/' + r.steps.length + '</span></div><ul class="checks">' +
+        r.steps.map(function (s, i) { var d = r.done.indexOf(i) !== -1; return '<li class="' + (d ? 'done' : '') + '" data-routine="' + esc(r.name) + '" data-ri="' + i + '"><span class="box">' + (d ? '✓' : '') + '</span>' + esc(s) + '</li>'; }).join('') + '</ul></section>';
+    });
+
+    // gym
+    if (ME && S.today.gym) {
+      var gy = S.today.gym, leave = '';
+      if (gy.leaveAt && !gy.done) {
+        var parts = gy.leaveAt.split(':'), d = new Date(now()); d.setHours(+parts[0], +parts[1], 0, 0);
+        var mins = Math.round((d.getTime() - now()) / 60000);
+        leave = mins > 0 && mins < 240 ? ' · <b>leave in ' + (mins >= 60 ? Math.floor(mins / 60) + 'h ' : '') + (mins % 60) + ' min</b>' : '';
+      }
+      html += '<section class="card pink"><div class="label">Today · Gym</div><div class="row"><div><h2>🏋️ ' + esc(gy.session) + '</h2><div class="muted">' +
+        (gy.travel ? (gy.travel === 'Bike' ? '🚲 Bike' : '🚌 Bus') + ' · leave ' + esc(gy.leaveAt) : 'Plan arrives at 6am') + leave + '</div></div>' +
+        (gy.done ? '<span class="chip">✅ Done</span>' : '<button class="primary" type="button" data-goto="train">Log it</button>') + '</div></section>';
+    }
+
+    // quests
+    var mineQ = S.quests.board.filter(function (q) { return q.who === 'anyone' || q.who === S.who; });
+    var open = mineQ.filter(function (q) { return !q.doneToday; });
+    var doneN = mineQ.length - open.length;
+    html += '<section class="card"><div class="row"><div class="label">Today\'s quests · ' + doneN + '/' + mineQ.length + '</div><button class="ghost" type="button" data-goto="quests">All →</button></div>' +
+      (open.length ? open.slice(0, 4).map(function (q) { return questRow(q); }).join('') : '<p class="empty">All done for today 🎉 Anything extra is a bonus.</p>') + '</section>';
+
+    // weight + water
+    if (ME) {
+      var t = S.today, lw = t.lastWeight;
+      html += '<section class="card"><div class="label">⚖️ Weight' + (t.weighDay && !t.weighedToday ? ' · weigh-in day' : '') + '</div>' +
+        (t.weighedToday ? '<p style="margin:0;font-weight:700;color:var(--good)">✅ ' + lw.kg + ' kg logged today</p>' :
+          '<form id="weighForm" autocomplete="off"><input type="text" id="weighText" inputmode="decimal" placeholder="82.4 or 13st 2" aria-label="Your weight"><button class="primary" type="submit">Log</button></form>' + (lw ? '<p class="note">Last: ' + lw.kg + ' kg on ' + esc(lw.date) + '</p>' : '')) + '</section>';
+    }
+    if (S.routines.waterGoal) {
+      var w = S.routines.water, wg = S.routines.waterGoal;
+      html += '<section class="card"><div class="row"><div><div class="label">💧 Water</div><div style="font-size:22px">' + Array(Math.min(w, wg) + 1).join('💧') + '<span style="opacity:.25">' + Array(Math.max(0, wg - w) + 1).join('💧') + '</span></div><div class="muted" style="font-size:13px">' + w + ' of ' + wg + ' glasses</div></div>' +
+        '<div class="row"><button class="soft" type="button" data-water="-1" aria-label="One less">−</button><button class="primary" type="button" data-water="1">+1</button></div></div></section>';
+    }
+
+    // feed
+    var feed = S.game.feed.slice(0, 6);
+    if (feed.length) {
+      html += '<section class="card"><div class="label">Lately</div><ul class="list feed">' + feed.map(function (f) {
+        var mine = f.who === S.who, done = f.hi5.indexOf(S.who) !== -1;
+        return '<li><span><b>' + esc(mine ? 'You' : n.other) + '</b> ' + esc(f.text) + (f.hi5.length ? ' 🙌' : '') + '</span>' +
+          (!mine ? '<button class="hi" type="button" data-hi5="' + esc(f.id) + '"' + (done ? ' disabled' : '') + '>' + (done ? '🙌 Sent' : '🙌') + '</button>' : '') + '</li>';
+      }).join('') + '</ul></section>';
+    }
+    el('tab-home').innerHTML = html;
+  }
+
+  // ---------- QUESTS (+ the body-doubling timer) ----------
+  var plan = null, parking = false, halfwayShown = '', upShown = '';
+  function mySession() { return S.chores.people[S.who].session; }
+  function personCard(p, label) {
+    var s = p.session;
+    var st = s ? esc(s.task) + ' · ' + (s.endsAt > now() ? Math.max(0, Math.ceil((s.endsAt - now()) / 60000)) + ' min left' : "time's up") + (s.steps.length ? ' · step ' + Math.min(s.step + 1, s.steps.length) + '/' + s.steps.length : '') : 'Free';
+    var pct = s ? Math.min(100, (now() - s.startedAt) / (s.endsAt - s.startedAt) * 100) : 0;
+    return '<div class="person"><b>' + esc(label) + '</b><div class="st">' + st + '</div>' + (s ? '<div class="mini"><i style="width:' + pct + '%"></i></div>' : '') +
+      (p.doneToday.length ? '<div class="dn">✅ ' + esc(p.doneToday.join(', ')) + '</div>' : '') + '</div>';
+  }
+  function duo() {
+    var other = S.chores.people[S.who === 'me' ? 'partner' : 'me'];
+    return personCard(S.chores.people[S.who], 'You') + personCard(other, names().other);
+  }
+
+  function focusView(s) {
+    var up = now() >= s.endsAt, cur = s.steps[s.step];
+    return (up ? '<div class="up">⏰ Time\'s up for ' + esc(s.task) + '. ' + (s.taster ? 'You started, and that counts! Keep going?' : 'Done? Or take 5 more and finish.') + '</div>' : '') +
+      '<section class="card focus"><div class="label">Only this' + (s.taster ? ' · just 5 minutes' : '') + '</div><p class="task">' + esc(s.task) + '</p>' +
+      '<div class="ringwrap"><svg viewBox="0 0 120 120"><defs><linearGradient id="g2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f9a8cb"/><stop offset="1" stop-color="#b79cff"/></linearGradient></defs><circle cx="60" cy="60" r="52" fill="none" stroke="var(--bar)" stroke-width="10"/>' +
+      '<circle id="arc" cx="60" cy="60" r="52" fill="none" stroke="url(#g2)" stroke-width="10" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="0"/></svg>' +
+      '<div class="t"><div><span id="left">' + clock(Math.abs(s.endsAt - now())) + '</span><small>' + (up ? 'over' : 'left') + '</small></div></div></div>' +
+      (s.steps.length ? (cur ? '<div class="now"><div class="k">Now</div><div class="s">' + esc(cur) + '</div><button class="primary wide" type="button" data-step="' + s.step + '">✓ Step done</button></div>' : '<div class="now"><div class="s">All steps done 🎉</div></div>') +
+        '<ul class="checks">' + s.steps.map(function (st, i) {
+          return '<li class="' + (i < s.step ? 'done' : i === s.step ? 'cur' : '') + '" data-step="' + (i < s.step ? i - 1 : i) + '"><span class="box">' + (i < s.step ? '✓' : '') + '</span>' + esc(st) + '</li>';
+        }).join('') + '</ul>' : '') +
+      (parking ? '<form id="park" autocomplete="off" style="margin-bottom:10px"><input type="text" id="parkText" placeholder="What popped into your head?" aria-label="Thing to park"><button class="primary" type="submit">Park</button></form>' : '') +
+      '<div class="row3"><button class="soft" type="button" id="parkBtn">🅿️ Park it</button><button class="soft" type="button" data-more="' + (s.taster ? 10 : 5) + '">+' + (s.taster ? 10 : 5) + ' min</button><button class="primary" type="button" id="cdone">✅ Done</button></div>' +
+      '<div class="center"><button class="ghost" type="button" id="cstop">' + (s.taster ? 'Stop here (still counts)' : 'Stop and park the rest') + '</button>' +
+      (now() - s.startedAt < 2 * 60000 ? '<button class="ghost" type="button" id="ccancel">Wrong job</button>' : '') + '</div>' +
+      '<p class="note">Noticed something else that needs doing? Park it. Don\'t go and do it.</p></section>';
+  }
+
+  function planView() {
+    return '<section class="card"><div class="label">Ready?</div><h2>' + esc(plan.name) + '</h2>' +
+      '<div class="mins"><button class="soft" type="button" data-mins="-5" aria-label="5 minutes less">−5</button><span>' + plan.minutes + ' min</span><button class="soft" type="button" data-mins="5" aria-label="5 minutes more">+5</button></div>' +
+      (plan.steps && plan.steps.length ? '<ol class="steps">' + plan.steps.map(function (st) { return '<li>' + esc(st) + '</li>'; }).join('') + '</ol>' : '') +
+      '<button class="primary wide" type="button" id="go">Start ⏱ just this job</button>' +
+      '<div class="center"><button class="ghost" type="button" id="pback">Pick something else</button></div></section>';
+  }
+
+  function renderQuests() {
+    var s = mySession(), q = S.quests, n = names(), html = '<h1>Quests</h1><p class="sub muted" style="margin:0 4px 12px">One job at a time. Ticking one anywhere counts everywhere.</p>';
+    html += '<section class="card"><div class="row"><div class="label">Together</div><button class="ghost" type="button" id="askJoin">📣 Ask ' + esc(n.other) + '</button></div><div class="duo" id="duo">' + duo() + '</div></section>';
+    if (s) { el('tab-quests').innerHTML = html + focusView(s) + laterCard(); return; }
+    if (plan) { el('tab-quests').innerHTML = html + planView(); return; }
+    if (S.chores.invite) html += '<div class="banner">🧹 ' + esc(n.other) + ' wants company. Pick a job below and start it!</div>';
+    html += '<section class="card"><div class="label">Today\'s board</div>' + (q.board.length ? q.board.map(function (x) { return questRow(x, { claim: true }); }).join('') : '<p class="empty">Nothing due today. Enjoy it 🌸</p>') + '</section>';
+    if (q.more.length) html += '<section class="card"><details><summary>Also due (' + q.more.length + '): only if you\'re on a roll</summary>' + q.more.map(function (x) { return questRow(x, { claim: true }); }).join('') + '</details></section>';
+    if (q.doneExtra.length) html += '<section class="card"><div class="label">Bonus done today</div>' + q.doneExtra.map(function (x) { return questRow(x); }).join('') + '</section>';
+    if (q.upcoming.length) html += '<section class="card"><div class="label">Coming up this week</div><ul class="list">' + q.upcoming.map(function (x) {
+      return '<li><span>' + esc(x.name) + '</span><span class="muted" style="margin-left:auto">' + new Date(x.next + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' }) + '</span></li>';
+    }).join('') + '</ul></section>';
+    html += '<section class="card"><div class="label">🧠 Brain dump</div><textarea id="dumpText" placeholder="Everything in your head, any order: ring the dentist, we\'re out of bin bags, the shower needs a proper clean…"></textarea>' +
+      '<button class="primary wide" type="button" id="dumpBtn" style="margin-top:10px">Sort it for me</button></section>';
+    html += '<section class="card"><details><summary>⏱ Start any job with a timer</summary><div class="grid" style="margin-top:10px">' +
+      S.chores.chores.map(function (c, i) { return '<button class="job" type="button" data-job="' + i + '">' + esc(c.name) + '<small>' + c.minutes + ' min' + (c.usual ? ' · usually ' + c.usual : '') + '</small></button>'; }).join('') +
+      '</div><form id="custom" autocomplete="off" style="margin-top:10px"><input type="text" id="customText" placeholder="Something else, e.g. paint the fence" aria-label="Another job"><button class="primary" type="submit">Plan</button></form></details></section>';
+    html += '<section class="card"><details><summary>➕ Add a repeating quest</summary><form id="addQuest" autocomplete="off" style="flex-direction:column;margin-top:10px">' +
+      '<input type="text" id="aqName" placeholder="e.g. Water the plants" aria-label="Quest name">' +
+      '<div class="row2"><select id="aqEvery" aria-label="How often"><option>daily</option><option>2 days</option><option>3 days</option><option selected>weekly</option><option>2 weeks</option><option>monthly</option><option>3 months</option><option>6 months</option><option>yearly</option><option>Mon</option><option>Tue</option><option>Wed</option><option>Thu</option><option>Fri</option><option>Sat</option><option>Sun</option></select>' +
+      '<input type="number" id="aqMins" value="10" min="1" max="180" aria-label="Minutes"></div><button class="primary" type="submit">Add quest</button></form>' +
+      '<p class="note">Edit or delete quests in the Sheet: Chores tab.</p></details></section>';
+    el('tab-quests').innerHTML = html + laterCard();
+  }
+
+  function laterCard() {
+    if (!S.chores.later.length || mySession()) return '';
+    return '<section class="card"><div class="label">🅿️ Parked for later</div><ul class="list">' + S.chores.later.map(function (l) {
+      return '<li><span>' + esc(l.thing) + ' <span class="muted" style="font-size:13px">· ' + esc(l.who === S.who ? 'you' : names().other) + '</span></span><button class="x" type="button" data-clear="' + esc(l.id) + '" aria-label="Done">✓</button></li>';
+    }).join('') + '</ul></section>';
+  }
+
+  function tickTimer() {
+    var s = mySession();
+    var b = el('badgeQuests');
+    if (b) b.textContent = s ? (s.endsAt > now() ? clock(s.endsAt - now()) : '⏰') : '';
+    if (!s) return;
+    var left = s.endsAt - now();
+    var l = el('left');
+    if (l) {
+      l.textContent = clock(Math.abs(left));
+      el('arc').setAttribute('stroke-dashoffset', left <= 0 ? '0' : String(326.7 * Math.min(1, Math.max(0, 1 - left / (s.endsAt - s.startedAt)))));
+    }
+    var d = el('duo'); if (d) d.innerHTML = duo();
+    var id = s.startedAt + ':' + s.endsAt;
+    if (left <= (s.endsAt - s.startedAt) / 2 && left > 0 && halfwayShown !== id && s.endsAt - s.startedAt >= 6 * 60000) { halfwayShown = id; chime([880]); toast('Halfway. Still on ' + s.task + '? 👍'); }
+    if (left <= 0) {
+      if (upShown !== id) { upShown = id; renderAll(); }
+      if (Math.floor(-left / 1000) % 60 === 0) { chime([880, 880, 880]); buzz([200, 100, 200, 100, 200]); }
+    }
+    document.body.classList.toggle('timesup', left <= 0);
+  }
 
   var wake;
   function keepAwake(on) {
@@ -415,165 +581,380 @@ if (BOOT.food) (function () {
     } catch (e) {}
   }
 
-  // ---- drawing ----
-  function personCard(p, label) {
-    var s = p.session;
-    var st = s ? esc(s.task) + ' · ' + (s.endsAt > now() ? minsLeft(s) + ' min left' : "time's up") + (s.steps.length ? ' · step ' + Math.min(s.step + 1, s.steps.length) + '/' + s.steps.length : '') : 'Free';
-    var pct = s ? Math.min(100, (now() - s.startedAt) / (s.endsAt - s.startedAt) * 100) : 0;
-    return '<div class="person"><b>' + esc(label) + '</b><div class="st">' + st + '</div>' +
-      (s ? '<div class="mini"><i style="width:' + pct + '%"></i></div>' : '') +
-      (p.doneToday.length ? '<div class="dn">✅ ' + esc(p.doneToday.join(', ')) + '</div>' : '') + '</div>';
+  function questByName(nm) { return S.quests.all.filter(function (x) { return x.name === nm; })[0]; }
+  function startPlan(p, msg) { call('startChore', [p], function (res) { plan = null; closeSheet(); apply(res, msg || 'Go. Just ' + p.name + ' for ' + p.minutes + ' min.'); showTab('quests'); }); }
+
+  // ---------- WHAT NOW? ----------
+  var wn = { energy: store('wnEnergy') || 'medium', minutes: store('wnMinutes') || 15, skip: [] };
+  function whatNowSheet(pick) {
+    var seg = function (key, vals, labels) {
+      return '<div class="seg">' + vals.map(function (v, i) { return '<button type="button" data-wn="' + key + '" data-v="' + v + '" aria-pressed="' + (String(wn[key]) === String(v)) + '">' + labels[i] + '</button>'; }).join('') + '</div>';
+    };
+    var html = '<h2>✨ What now?</h2><div class="label" style="margin-top:12px">Energy</div>' + seg('energy', ['low', 'medium', 'high'], ['🪫 Low', '🙂 Some', '⚡ Lots']) +
+      '<div class="label">Time</div>' + seg('minutes', [5, 15, 30, 60], ['5 min', '15', '30', '60+']) +
+      '<button class="primary wide" type="button" id="wnFind">Pick one for me</button>';
+    if (pick === null) html += '<p class="note center">Nothing fits right now. Rest is allowed 🌸 Or try more time.</p>';
+    if (pick) {
+      html += '<section class="card lilac" style="margin:14px 0 0"><div class="label">Do this one</div><h2>' + esc(pick.name) + '</h2><p class="muted" style="margin:0 0 12px">~' + pick.fullMinutes + ' min · ' + pick.xp + ' XP' + (pick.due ? ' · due' : ' · early bird') + '</p>' +
+        '<button class="primary wide" type="button" data-wnstart="full">▶ Start (' + pick.minutes + ' min)</button>' +
+        '<div class="row2" style="margin-top:8px"><button class="soft" type="button" data-wnstart="taster">🐣 Just 5 min</button><button class="soft" type="button" data-wnskip="1">Something else</button></div></section>';
+    }
+    openSheet(html);
+    whatNowSheet.pick = pick;
+  }
+  function findWhatNow() {
+    call('whatNow', [wn.energy, wn.minutes === 60 ? 999 : wn.minutes, wn.skip], function (p) { whatNowSheet(p || null); });
   }
 
-  function render() {
-    el('duo').innerHTML = personCard(me(), 'You') + personCard(them(), them().name || 'Your partner');
-    var s = me().session;
-    document.body.className = s && now() >= s.endsAt ? 'timesup' : '';
-    keepAwake(!!s);
-    el('view').innerHTML = s ? focusView(s) : plan ? planView() : pickView();
-    el('laterCard').hidden = !!s || !state.later.length;
-    el('later').innerHTML = state.later.map(function (l) {
-      var who = l.who === state.you ? 'you' : (them().name || 'your partner');
-      return '<li><span>' + esc(l.thing) + ' <span class="who">· ' + esc(who) + '</span></span><button class="x" type="button" data-clear="' + esc(l.id) + '" aria-label="Done">✓</button></li>';
+  // ---------- TRAIN ----------
+  var tsel = null, rest = null;
+  function draftKey() { return 'wk-' + (S.today ? S.today.date : '') + '-' + tsel; }
+  function draft() { return store(draftKey()) || {}; }
+  function saveDraft(d) { store(draftKey(), d); }
+  function setRow(key, label, sub, d, opts) {
+    var done = d[key] && d[key].done;
+    var reps = d[key] && d[key].reps !== undefined ? d[key].reps : opts.reps;
+    var weight = d[key] && d[key].weight !== undefined ? d[key].weight : opts.weight;
+    return '<li class="set' + (done ? ' done' : '') + '"><span class="n">' + opts.n + '</span>' +
+      (opts.editWeight ? '<input type="number" inputmode="decimal" step="0.5" value="' + (weight === null || weight === undefined ? '' : weight) + '" placeholder="kg" data-w="' + key + '" aria-label="Weight">' : '<span class="w">' + label + (sub ? ' <span class="' + (opts.amrap ? 'amrap' : 'muted') + '">' + sub + '</span>' : '') + '</span>') +
+      '<div class="step"><button type="button" data-r="' + key + '" data-d="-1" aria-label="One rep fewer">−</button><span>' + reps + '</span><button type="button" data-r="' + key + '" data-d="1" aria-label="One rep more">+</button></div>' +
+      '<button class="tick" type="button" data-set="' + key + '" data-rest="' + esc(opts.rest) + '" aria-label="Set done">' + (done ? '✓' : '') + '</button></li>';
+  }
+  function renderTrain() {
+    if (!ME) return;
+    var t = S.train;
+    if (!tsel || !t.plans[tsel]) tsel = store('tsel-' + S.today.date) || t.today || t.sessions[0];
+    var p = t.plans[tsel], d = draft(), html = '<h1>Train</h1>';
+    if (rest) html += '<div class="rest"><span>Rest <b id="restLeft">' + clock(rest.until - now()) + '</b></span><button type="button" id="restSkip">Skip</button></div>';
+    html += '<div class="chips" style="margin:6px 0 14px">' + t.sessions.map(function (s) {
+      return '<button class="' + (s === tsel ? 'primary' : 'soft') + '" type="button" data-tsel="' + esc(s) + '" style="padding:9px 14px">' + esc(s) + (s === t.today ? ' · today' : '') + '</button>';
+    }).join('') + '</div>';
+    if (t.doneToday) html += '<div class="banner">✅ Today\'s workout is logged. Great work 💪</div>';
+    p.main.forEach(function (m) {
+      html += '<section class="card"><div class="row"><div><div class="label">' + m.tier + (m.tier === 'T1' ? ' · main lift' : ' · second lift') + '</div><h2>' + esc(m.exercise) + '</h2></div>' +
+        (m.tm ? '<span class="chip pink">TM ' + m.tm + ' kg</span>' : '') + '</div>';
+      if (!m.tm) {
+        html += '<p class="muted">Set your training max for <b>' + esc(m.basedOn) + '</b>: enter a recent set you did with good form.</p>' +
+          '<form data-tm="' + esc(m.basedOn) + '"><input type="number" inputmode="decimal" placeholder="kg" aria-label="Weight"><input type="number" inputmode="numeric" placeholder="reps" aria-label="Reps"><button class="primary" type="submit">Set</button></form>';
+      } else {
+        html += '<ul class="sets">' + m.sets.map(function (s, i) {
+          var key = m.tier + '|' + m.exercise + '|' + i;
+          return setRow(key, s.weight + ' kg', '× ' + s.reps + (s.amrap ? '+' : '') + ' · ' + s.pct + '%', d, { n: i + 1, reps: s.reps, rest: m.rest, amrap: s.amrap });
+        }).join('') + '</ul>' + (m.tier === 'T1' ? '<p class="note">The <span class="amrap">+</span> sets: as many good reps as you can. The heavy one sets next week\'s TM.</p>' : '');
+      }
+      html += '</section>';
+    });
+    p.accessories.forEach(function (a) {
+      var low = (String(a.reps).match(/\d+/) || [8])[0];
+      html += '<section class="card"><div class="label">Accessory · ' + esc(a.sets) + ' × ' + esc(a.reps) + (a.rpe ? ' @ RPE ' + esc(a.rpe) : '') + ' · rest ' + esc(a.rest) + '</div><h2>' + esc(a.exercise) + '</h2>' +
+        (a.bumped ? '<p class="note" style="margin:0 0 6px;color:var(--good)">↑ You hit the top of the range last time: try ' + a.suggest + ' kg</p>' : a.lastWeight ? '<p class="note" style="margin:0 0 6px">Last time: ' + a.lastWeight + ' kg × ' + a.lastReps.join(', ') + '</p>' : '') +
+        '<ul class="sets">' + Array.apply(null, Array(a.sets)).map(function (_, i) {
+          var key = 'Acc|' + a.exercise + '|' + i;
+          return setRow(key, '', '', d, { n: i + 1, reps: +low, rest: a.rest, editWeight: true, weight: a.suggest });
+        }).join('') + '</ul></section>';
+    });
+    var count = Object.keys(d).filter(function (k) { return d[k].done; }).length;
+    html += '<button class="primary big-btn" type="button" id="finishWk"' + (count ? '' : ' disabled') + '>🏁 Finish workout (' + count + ' sets)</button>';
+    html += progressHtml(t.progress);
+    el('tab-train').innerHTML = html;
+  }
+  function spark(vals) {
+    if (vals.length < 2) return '';
+    var mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals), w = 300, h = 46;
+    var pts = vals.map(function (v, i) { return (i / (vals.length - 1) * w).toFixed(1) + ',' + (h - 4 - (mx === mn ? .5 : (v - mn) / (mx - mn)) * (h - 8)).toFixed(1); }).join(' ');
+    return '<svg class="spark" viewBox="0 0 300 46" preserveAspectRatio="none"><polyline points="' + pts + '" fill="none" stroke="#c49cf0" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/></svg>';
+  }
+  function progressHtml(pr) {
+    var html = '<section class="card" style="margin-top:14px"><div class="label">📈 Progress · ' + pr.workouts + ' workout' + (pr.workouts === 1 ? '' : 's') + ' logged</div>';
+    html += pr.lifts.map(function (l) {
+      var h = l.tmHistory, lastReps = h.filter(function (x) { return x.reps; }).slice(-1)[0];
+      return '<div class="lift"><div><b>' + esc(l.lift) + '</b><div class="muted" style="font-size:13px">' + (l.best ? 'best est. 1RM ' + Math.round(l.best) + ' kg' : 'no sets logged yet') +
+        (lastReps ? ' · last heavy set ' + lastReps.reps + ' reps' : '') + '</div></div><div class="big2">' + (l.tm ? l.tm + '<span class="muted" style="font-size:13px"> kg TM</span>' : '–') + '</div>' +
+        '<div style="grid-column:1/-1">' + spark(h.map(function (x) { return x.tm; })) + '</div></div>';
     }).join('');
-    tick();
-  }
-
-  function pickView() {
-    return '<section class="card"><div class="label">Pick one job</div><div class="grid">' +
-      state.chores.map(function (c, i) {
-        return '<button class="job" type="button" data-job="' + i + '">' + esc(c.name) + '<small>' + c.minutes + ' min' + (c.usual ? ' · usually ' + c.usual : '') + '</small></button>';
-      }).join('') + '</div></section>' +
-      '<section class="card"><form id="custom" autocomplete="off"><input type="text" id="customText" placeholder="Something else, e.g. clean the oven" enterkeyhint="go" aria-label="Another job">' +
-      '<button class="primary" type="submit">Plan</button></form><p class="note">' +
-      (state.hasClaudeKey ? 'Claude times it and breaks it into steps.' : 'You set the time. (Add a Claude key on the food page and it will time it for you.)') + '</p></section>';
-  }
-
-  function planView() {
-    return '<section class="card plan"><div class="label">Ready?</div><h2>' + esc(plan.name) + '</h2>' +
-      '<div class="mins"><button class="soft" type="button" data-mins="-5" aria-label="5 minutes less">−5</button><span>' + plan.minutes + ' min</span><button class="soft" type="button" data-mins="5" aria-label="5 minutes more">+5</button></div>' +
-      (plan.steps.length ? '<ol class="steps">' + plan.steps.map(function (st) { return '<li>' + esc(st) + '</li>'; }).join('') + '</ol>' : '') +
-      '<button class="primary wide" type="button" id="go">Start ⏱ just this job</button>' +
-      '<div class="center"><button class="ghost" type="button" id="back">Pick something else</button></div></section>';
-  }
-
-  function focusView(s) {
-    var up = now() >= s.endsAt;
-    var cur = s.steps[s.step];
-    var started = now() - s.startedAt < 2 * 60000;
-    return (up ? '<div class="up">⏰ Time\'s up for ' + esc(s.task) + '. Done? Or take 5 more and finish.</div>' : '') +
-      '<section class="card focus"><div class="label">Only this</div><p class="task">' + esc(s.task) + '</p>' +
-      '<div class="ringwrap"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="none" stroke="var(--bar)" stroke-width="10"/>' +
-      '<circle id="arc" cx="60" cy="60" r="52" fill="none" stroke="var(--ring)" stroke-width="10" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="0"/></svg>' +
-      '<div class="t"><div><span id="left">' + clock(s.endsAt - now()) + '</span><small id="leftLabel">' + (up ? 'over' : 'left') + '</small></div></div></div>' +
-      (s.steps.length ? (cur ? '<div class="now"><div class="k">Now</div><div class="s">' + esc(cur) + '</div><button class="primary wide" type="button" data-step="' + s.step + '">✓ Step done</button></div>' : '<div class="now"><div class="s">All steps done 🎉</div></div>') +
-        '<ul class="checks">' + s.steps.map(function (st, i) {
-          return '<li class="' + (i < s.step ? 'done' : i === s.step ? 'cur' : '') + '" data-step="' + (i < s.step ? i - 1 : i) + '"><span class="box">' + (i < s.step ? '✓' : '') + '</span>' + esc(st) + '</li>';
-        }).join('') + '</ul>' : '') +
-      (parking ? '<form id="park" autocomplete="off" style="margin-bottom:10px"><input type="text" id="parkText" placeholder="What popped into your head?" aria-label="Thing to park"><button class="primary" type="submit">Park</button></form>' : '') +
-      '<div class="row3"><button class="soft" type="button" id="parkBtn">🅿️ Park it</button><button class="soft" type="button" id="more">+5 min</button><button class="primary" type="button" id="done">✅ Done</button></div>' +
-      '<div class="center"><button class="ghost" type="button" id="stop">Stop and park the rest</button>' +
-      (started ? '<button class="ghost" type="button" id="cancel">Wrong job</button>' : '') + '</div>' +
-      '<p class="note">Noticed something else that needs doing? Park it. Don\'t go and do it.</p></section>';
-  }
-
-  // Runs every second: countdown, ring, halfway and time's-up nudges.
-  function tick() {
-    var s = me().session;
-    if (!s) return;
-    var left = s.endsAt - now();
-    var l = el('left');
-    if (l) {
-      l.textContent = clock(Math.abs(left));
-      el('arc').setAttribute('stroke-dashoffset', left <= 0 ? '0' : String(326.7 * Math.min(1, Math.max(0, 1 - left / (s.endsAt - s.startedAt)))));
-      el('arc').setAttribute('stroke', left <= 0 ? 'var(--amber-text)' : 'var(--ring)');
+    if (pr.weeks.length) {
+      var mx = Math.max.apply(null, pr.weeks.map(function (w) { return w.volume; })) || 1;
+      html += '<div class="label" style="margin-top:12px">Weekly volume (kg × reps)</div><div class="vol">' + pr.weeks.map(function (w) {
+        return '<div title="' + esc(w.week) + ': ' + fmt(w.volume) + '" style="height:' + Math.max(4, w.volume / mx * 100) + '%"></div>';
+      }).join('') + '</div>';
     }
-    var id = s.startedAt + ':' + s.endsAt;
-    if (left <= (s.endsAt - s.startedAt) / 2 && left > 0 && halfwayShown !== id && s.endsAt - s.startedAt >= 6 * 60000) {
-      halfwayShown = id; chime(1); toast('Halfway. Still on ' + s.task + '? 👍');
-    }
-    if (left <= 0) {
-      if (upShown !== id) { upShown = id; render(); }
-      if (Math.floor(-left / 1000) % 60 === 0) chime(3);   // repeats each minute until you choose
-    }
+    return html + '<p class="note">Change training maxes in the Lifts tab, the plan in Programme, accessories in Sessions.</p></section>';
   }
-  // While a job runs, the Chores tab button shows the time left, so it follows you to other tabs.
-  function badge() { var s = me().session, b = el('badgeChores'); if (b) b.textContent = s ? (s.endsAt > now() ? clock(s.endsAt - now()) : '⏰') : ''; }
-  setInterval(function () { tick(); badge(); if (me().session) el('duo').innerHTML = personCard(me(), 'You') + personCard(them(), them().name || 'Your partner'); }, 1000);
 
-
-  function call(fn, args, ok) {
-    busy = true;
-    var r = google.script.run
-      .withSuccessHandler(function (res) { busy = false; ok(res); })
-      .withFailureHandler(function (err) { busy = false; toast(err.message || String(err), true); render(); });
-    r[fn].apply(r, [KEY].concat(args));
+  // ---------- MORE ----------
+  function renderMore() {
+    var g = S.game, n = names(), html = '<h1>More</h1>';
+    html += '<section class="card lilac"><div class="row"><div><div class="label">Level ' + g.level.level + '</div><div style="font-size:28px;font-weight:800">' + fmt(g.total) + ' XP</div></div><div class="center"><div class="label">To spend</div><div style="font-size:24px;font-weight:800">💎 ' + fmt(g.balance) + '</div></div></div>' +
+      '<div class="lvl"><i style="width:' + Math.round(g.level.into / g.level.need * 100) + '%"></i></div><div class="muted" style="font-size:13px">' + (g.level.need - g.level.into) + ' XP to level ' + (g.level.level + 1) + ' · best streak 🔥 ' + g.streak.best + '</div></section>';
+    // scoreboard
+    var wk = g.week, mo = g.month, mxw = Math.max(wk.me, wk.partner, 1), mxm = Math.max(mo.me, mo.partner, 1);
+    var meKey = S.who, otherKey = S.who === 'me' ? 'partner' : 'me';
+    html += '<section class="card"><div class="label">💞 This week</div>' +
+      '<div class="score"><span>You</span><span class="b"><i style="width:' + (wk[meKey] / mxw * 100) + '%"></i></span><b>' + wk[meKey] + '</b></div>' +
+      '<div class="score"><span>' + esc(n.other) + '</span><span class="b"><i style="width:' + (wk[otherKey] / mxw * 100) + '%"></i></span><b>' + wk[otherKey] + '</b></div>' +
+      '<div class="label" style="margin-top:10px">Fair share this month</div>' +
+      '<div class="score"><span>You</span><span class="b"><i style="width:' + (mo[meKey] / mxm * 100) + '%"></i></span><b>' + Math.round(mo[meKey] / Math.max(1, mo.me + mo.partner) * 100) + '%</b></div>' +
+      '<div class="score"><span>' + esc(n.other) + '</span><span class="b"><i style="width:' + (mo[otherKey] / mxm * 100) + '%"></i></span><b>' + Math.round(mo[otherKey] / Math.max(1, mo.me + mo.partner) * 100) + '%</b></div></section>';
+    // rewards
+    html += '<section class="card"><div class="label">🎁 Reward shop</div><ul class="list">' + g.rewards.map(function (r) {
+      return '<li><span>' + esc(r.name) + '</span><button class="' + (g.balance >= r.cost ? 'primary' : 'soft') + '" type="button" data-reward="' + esc(r.name) + '" style="margin-left:auto;padding:8px 12px"' + (g.balance >= r.cost ? '' : ' disabled') + '>💎 ' + r.cost + '</button></li>';
+    }).join('') + '</ul><p class="note">Add your own treats in the Sheet: Rewards tab. Spending doesn\'t lower your level.</p></section>';
+    // shopping
+    var short = ME && S.food && S.food.totals.protein < S.food.targets.proteinMin;
+    html += '<section class="card"><div class="label">🛒 Shopping list (shared)</div><form id="shopForm" autocomplete="off"><input type="text" id="shopText" placeholder="eggs, bin bags…" aria-label="Add to the list"><button class="primary" type="submit">Add</button></form>' +
+      (short ? '<div class="chips" style="margin-top:10px">' + ['Greek yogurt', 'Chicken breast', 'Eggs', 'Tinned tuna', 'Cottage cheese', 'Protein shake'].map(function (x) { return '<button class="chip pink" type="button" data-addshop="' + x + '">+ ' + x + '</button>'; }).join('') + '</div><p class="note">High-protein ideas, since you\'re short on protein today.</p>' : '') +
+      '<ul class="list" style="margin-top:8px">' + (S.shopping.length ? S.shopping.map(function (it) {
+        return '<li class="' + (it.got ? 'got' : '') + '"><span>' + esc(it.item) + '</span><button class="x" type="button" data-shop="' + esc(it.id) + '" aria-label="Got it">' + (it.got ? '↺' : '✓') + '</button></li>';
+      }).join('') : '<li class="empty">List is empty.</li>') + '</ul></section>';
+    // badges
+    html += '<section class="card"><div class="label">🏅 Badges · ' + g.badges.filter(function (b) { return b.earned; }).length + '/' + g.badges.length + '</div><div class="badges">' + g.badges.map(function (b) {
+      return '<div class="badge' + (b.earned ? '' : ' locked') + '" title="' + esc(b.desc) + '"><span class="e">' + b.emoji + '</span>' + esc(b.name) + '</div>';
+    }).join('') + '</div></section>';
+    html += laterCardMore();
+    html += '<p class="note center">Everything else lives in your Google Sheet: quests, routines, rewards, lifts and settings.</p>';
+    el('tab-more').innerHTML = html;
   }
-  function apply(s, msg) { state = s; offset = s.now - Date.now(); render(); if (msg) toast(msg); }
+  function laterCardMore() {
+    if (!S.chores.later.length) return '';
+    return '<section class="card"><div class="label">🅿️ Parked for later</div><ul class="list">' + S.chores.later.map(function (l) {
+      return '<li><span>' + esc(l.thing) + '</span><button class="x" type="button" data-clear="' + esc(l.id) + '" aria-label="Done">✓</button></li>';
+    }).join('') + '</ul></section>';
+  }
 
-  // ---- taps ----
-  el('tab-chores').addEventListener('click', function (ev) {
-    var t = ev.target.closest('button, li[data-step]');
+  // ---------- FOOD (unchanged behaviour) ----------
+  var pending = [];
+  function itemsText(items) {
+    return items.map(function (i) { return i.name; }).join(', ') + ' (+' + fmt(items.reduce(function (s, i) { return s + i.kcal; }, 0)) + ' kcal, ' + fmt(items.reduce(function (s, i) { return s + i.protein; }, 0)) + 'g)';
+  }
+  function renderFood() {
+    if (!ME) return;
+    var F = S.food, t = F.targets, kcal = F.totals.kcal, prot = F.totals.protein;
+    pending.forEach(function (p) { kcal += p.kcal; prot += p.protein; });
+    el('kcal').textContent = fmt(kcal);
+    el('kcalOf').textContent = '/ ' + fmt(t.kcal);
+    var kl = t.kcal - kcal;
+    el('kcalLeft').textContent = kl >= 0 ? fmt(kl) + ' left' : fmt(-kl) + ' over';
+    el('kcalLeft').className = 'left ' + (kl >= 0 ? 'good' : 'warn');
+    el('kcalBar').className = 'bar' + (kl < 0 ? ' over' : '');
+    el('kcalBar').firstChild.style.width = Math.min(100, kcal / t.kcal * 100) + '%';
+    var scale = t.proteinMax * 1.15;
+    el('prot').textContent = fmt(prot) + 'g';
+    el('protOf').textContent = '/ ' + t.proteinMin + '–' + t.proteinMax + 'g';
+    var pl = t.proteinMin - prot;
+    el('protLeft').textContent = pl > 0 ? fmt(pl) + 'g to go' : (prot > t.proteinMax ? 'above range' : 'in range ✓');
+    el('protLeft').className = 'left ' + (pl > 0 ? '' : 'good');
+    el('protBar').firstChild.style.width = Math.min(100, prot / scale * 100) + '%';
+    el('protZone').style.left = (t.proteinMin / scale * 100) + '%';
+    el('protZone').style.width = ((t.proteinMax - t.proteinMin) / scale * 100) + '%';
+    el('presets').innerHTML = F.presets.map(function (p, i) { return '<button class="preset" type="button" data-i="' + i + '">' + esc(p.name) + '<small>' + fmt(p.kcal) + ' kcal · ' + fmt(p.protein) + 'g</small></button>'; }).join('');
+    var rows = pending.map(function (p) { return { time: '…', item: p.name, kcal: p.kcal, protein: p.protein, pending: true }; }).concat(F.entries.slice().reverse());
+    el('entries').innerHTML = rows.length ? rows.map(function (e) {
+      return '<li' + (e.pending ? ' class="pending"' : '') + '><span class="t">' + esc(e.time) + '</span><span class="n">' + esc(e.item) + '</span><span class="v">' + fmt(e.kcal) + ' · ' + fmt(e.protein) + 'g</span></li>';
+    }).join('') : '<li class="empty">Nothing yet today.</li>';
+    el('undo').disabled = !F.entries.length;
+    el('setupCard').hidden = F.hasClaudeKey;
+    el('keyDetails').hidden = !F.hasClaudeKey;
+    el('quickText').disabled = el('quickBtn').disabled = !F.hasClaudeKey;
+    if (!F.hasClaudeKey) el('quickNote').textContent = 'Quick-add needs a Claude API key (see below).';
+  }
+
+  // ---------- rendering + tabs ----------
+  function renderAll() {
+    // Keep anything half-typed (and where the cursor was) across a redraw.
+    var keep = {}, focused = document.activeElement && document.activeElement.id;
+    document.querySelectorAll('main input[id], main textarea[id]').forEach(function (i) { if (i.type !== 'password') keep[i.id] = i.value; });
+    renderHome();
+    renderQuests();
+    if (ME) { renderTrain(); renderFood(); }
+    renderMore();
+    Object.keys(keep).forEach(function (id) { var i = el(id); if (i && keep[id]) i.value = keep[id]; });
+    if (focused && el(focused)) el(focused).focus();
+    keepAwake(!!mySession());
+    tickTimer();
+  }
+  function showTab(name) {
+    if (!ME && (name === 'train' || name === 'food')) name = 'home';
+    current = name;
+    document.querySelectorAll('section.tab').forEach(function (s) { s.hidden = s.id !== 'tab-' + name; });
+    el('nav').querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-current', b.dataset.tab === name ? 'page' : 'false'); });
+    store('tab', name);
+    window.scrollTo(0, 0);
+  }
+  el('nav').addEventListener('click', function (ev) { var b = ev.target.closest('button'); if (b) showTab(b.dataset.tab); });
+  if (!ME) el('nav').querySelectorAll('[data-me]').forEach(function (b) { b.remove(); });
+
+  // ---------- taps ----------
+  document.addEventListener('click', function (ev) {
+    var t = ev.target.closest('button, li[data-step], li[data-routine]');
     if (!t || busy) return;
-    if (t.dataset.job) { var c = state.chores[Number(t.dataset.job)]; plan = { name: c.name, minutes: c.minutes, steps: c.steps.slice() }; render(); }
-    else if (t.dataset.mins) { plan.minutes = Math.max(5, Math.min(180, plan.minutes + Number(t.dataset.mins))); render(); }
-    else if (t.id === 'back') { plan = null; render(); }
-    else if (t.id === 'go') { var p = plan; call('startChore', [p], function (s) { plan = null; apply(s, 'Go. Just ' + p.name + ' for ' + p.minutes + ' min.'); }); }
-    else if (t.dataset.step !== undefined) { call('stepDone', [Number(t.dataset.step)], function (s) { apply(s); }); }
-    else if (t.id === 'parkBtn') { parking = !parking; render(); if (parking) el('parkText').focus(); }
-    else if (t.id === 'more') { call('extendChore', [5], function (s) { upShown = ''; apply(s, '+5 min. Finish it off.'); }); }
-    else if (t.id === 'done') { var task = me().session.task; call('finishChore', ['Done'], function (s) { parking = false; apply(s, '✅ ' + task + ' done. Nice.'); }); }
-    else if (t.id === 'stop') { call('finishChore', ['Stopped'], function (s) { parking = false; apply(s, 'Stopped. The rest is parked for later.'); }); }
-    else if (t.id === 'cancel') { call('finishChore', ['Cancelled'], function (s) { parking = false; apply(s, 'Cancelled. Pick the right one.'); }); }
-    else if (t.dataset.clear) { call('clearLater', [t.dataset.clear], function (s) { apply(s); }); }
+    var ds = t.dataset;
+    if (ds.goto) return showTab(ds.goto);
+    if (t.id === 'whatNow') { wn.skip = []; return whatNowSheet(); }
+    if (ds.wn) { wn[ds.wn] = ds.wn === 'minutes' ? +ds.v : ds.v; store('wn' + ds.wn.charAt(0).toUpperCase() + ds.wn.slice(1), wn[ds.wn]); wn.skip = []; return whatNowSheet(whatNowSheet.pick); }
+    if (t.id === 'wnFind') return findWhatNow();
+    if (ds.wnskip) { if (whatNowSheet.pick) wn.skip.push(whatNowSheet.pick.name); return findWhatNow(); }
+    if (ds.wnstart) {
+      var pk = whatNowSheet.pick;
+      return startPlan(ds.wnstart === 'taster' ? { name: pk.name, minutes: 5, steps: pk.steps, taster: true } : { name: pk.name, minutes: pk.minutes, steps: pk.steps },
+        ds.wnstart === 'taster' ? 'Just 5 minutes. Stop whenever, it still counts.' : null);
+    }
+    if (ds.qdone) return call('questDone', [ds.qdone], function (res) { apply(res, '✨ ' + ds.qdone + ' done!'); });
+    if (ds.qstart) { var q = questByName(ds.qstart); plan = { name: q.name, minutes: q.minutes, steps: q.steps.slice() }; renderAll(); return showTab('quests'); }
+    if (ds.claim) return call('claimQuest', [ds.claim], function (res) { apply(res); });
+    if (ds.hi5) return call('highFive', [ds.hi5], function (res) { apply(res, '🙌 High-five sent'); });
+    if (ds.routine !== undefined && ds.ri !== undefined) return call('routineStep', [ds.routine, +ds.ri], function (res) { apply(res); });
+    if (ds.water) return call('addWater', [+ds.water], function (res) { apply(res); });
+    if (ds.job) { var c = S.chores.chores[+ds.job]; plan = { name: c.name, minutes: c.minutes, steps: c.steps.slice() }; return renderAll(); }
+    if (ds.mins) { plan.minutes = Math.max(5, Math.min(180, plan.minutes + +ds.mins)); return renderAll(); }
+    if (t.id === 'pback') { plan = null; return renderAll(); }
+    if (t.id === 'go') return startPlan(plan);
+    if (ds.step !== undefined) return call('stepDone', [+ds.step], function (res) { apply(res); });
+    if (t.id === 'parkBtn') { parking = !parking; renderAll(); if (parking) el('parkText').focus(); return; }
+    if (ds.more) return call('extendChore', [+ds.more], function (res) { upShown = ''; apply(res, '+' + ds.more + ' min. Finish it off.'); });
+    if (t.id === 'cdone') { var task = mySession().task; return call('finishChore', ['Done'], function (res) { parking = false; document.body.classList.remove('timesup'); apply(res, '✅ ' + task + ' done. Nice.'); }); }
+    if (t.id === 'cstop') return call('finishChore', ['Stopped'], function (res) { parking = false; document.body.classList.remove('timesup'); apply(res, 'Stopped. Starting was the hard part 💜'); });
+    if (t.id === 'ccancel') return call('finishChore', ['Cancelled'], function (res) { parking = false; document.body.classList.remove('timesup'); apply(res, 'Cancelled. Pick the right one.'); });
+    if (ds.clear) return call('clearLater', [ds.clear], function (res) { apply(res); });
+    if (t.id === 'askJoin') return call('askToJoin', [], function (r) { apply(r.state, r.sent ? '📣 Asked ' + names().other + ' to join' : '📣 Added to the feed (add their email in Config to send it)'); });
+    if (t.id === 'dumpBtn') {
+      var txt = el('dumpText').value.trim();
+      if (!txt) return;
+      toast(S.hasClaudeKey ? 'Sorting it out…' : 'Splitting it up…');
+      return call('brainDump', [txt], function (items) { dumpReview(items); });
+    }
+    if (t.id === 'dumpSave') {
+      var items = (whatNowSheet.dump || []).map(function (it, i) { var k = document.querySelector('[data-dk="' + i + '"]'); return { text: it.text, kind: k ? k.value : it.kind, every: it.every, minutes: it.minutes }; }).filter(function (it) { return it.kind !== 'skip'; });
+      return call('saveBrainDump', [items], function (res) { closeSheet(); el('dumpText') && (el('dumpText').value = ''); apply(res, '🧠 Sorted ' + items.length + ' things. Head\'s a bit lighter.'); });
+    }
+    if (ds.reward) return call('redeemReward', [ds.reward], function (res) { confetti(true); apply(res, '🎁 Enjoy: ' + ds.reward); });
+    if (ds.shop) return call('toggleShopping', [ds.shop], function (res) { apply(res); });
+    if (ds.addshop) return call('addShopping', [ds.addshop], function (res) { apply(res, '🛒 Added ' + ds.addshop); });
+    // train
+    if (ds.tsel) { tsel = ds.tsel; store('tsel-' + S.today.date, tsel); return renderTrain(); }
+    if (ds.r) { var d = draft(); d[ds.r] = d[ds.r] || {}; var cur = d[ds.r].reps; if (cur === undefined) cur = +t.parentNode.querySelector('span').textContent; d[ds.r].reps = Math.max(0, cur + +ds.d); saveDraft(d); return renderTrain(); }
+    if (ds.set) {
+      var dd = draft(), k = ds.set;
+      dd[k] = dd[k] || {};
+      dd[k].done = !dd[k].done;
+      if (dd[k].reps === undefined) dd[k].reps = +t.parentNode.querySelector('.step span').textContent;
+      var wi = t.parentNode.querySelector('input[data-w]');
+      if (wi) dd[k].weight = wi.value === '' ? null : +wi.value;
+      saveDraft(dd);
+      if (dd[k].done) { buzz(25); rest = { until: now() + restSecs(ds.rest) * 1000 }; }
+      return renderTrain();
+    }
+    if (t.id === 'restSkip') { rest = null; return renderTrain(); }
+    if (t.id === 'finishWk') return finishWorkout();
   });
 
-  el('tab-chores').addEventListener('submit', function (ev) {
+  document.addEventListener('change', function (ev) {
+    var w = ev.target.closest('input[data-w]');
+    if (w) { var d = draft(); d[w.dataset.w] = d[w.dataset.w] || {}; d[w.dataset.w].weight = w.value === '' ? null : +w.value; saveDraft(d); }
+  });
+
+  document.addEventListener('submit', function (ev) {
     ev.preventDefault();
+    var f = ev.target;
     if (busy) return;
-    if (ev.target.id === 'custom') {
-      var text = el('customText').value.trim();
-      if (!text) return;
-      toast(state.hasClaudeKey ? 'Asking Claude how long that takes…' : 'Set the time, then start.');
-      call('planChore', [text], function (p) { plan = p; render(); });
-    }
-    if (ev.target.id === 'park') {
-      var v = el('parkText').value.trim();
-      if (!v) return;
-      var task = me().session.task;
-      call('parkThing', [v], function (s) { parking = false; apply(s, 'Parked. Back to ' + task + '.'); });
+    if (f.id === 'custom') { var tx = el('customText').value.trim(); if (!tx) return; toast(S.hasClaudeKey ? 'Asking Claude how long that takes…' : 'Set the time, then start.'); return call('planChore', [tx], function (p) { plan = p; renderAll(); }); }
+    if (f.id === 'park') { var v = el('parkText').value.trim(); if (!v) return; var task = mySession().task; return call('parkThing', [v], function (res) { parking = false; apply(res, 'Parked. Back to ' + task + '.'); }); }
+    if (f.id === 'weighForm') { var wv = el('weighText').value.trim(); if (!wv) return; return call('logWeightNow', [wv], function (t) { S.today = t; call('appState', [], function (res) { apply(res, '⚖️ Logged ' + t.lastWeight.kg + ' kg'); }); }); }
+    if (f.id === 'addQuest') { var nm = el('aqName').value.trim(); if (!nm) return; return call('addQuest', [nm, el('aqEvery').value, +el('aqMins').value], function (res) { apply(res, '➕ Added ' + nm); }); }
+    if (f.id === 'shopForm') { var it = el('shopText').value.trim(); if (!it) return; return call('addShopping', [it], function (res) { apply(res, '🛒 Added'); }); }
+    if (f.dataset.tm) { var ins = f.querySelectorAll('input'); return call('setTrainingMax', [f.dataset.tm, +ins[0].value, +ins[1].value], function (t) { S.train = t; renderTrain(); toast('Training max set. Let\'s lift 💪'); }); }
+    // food
+    if (f.id === 'quick') return foodQuick();
+    if (f.id === 'keyForm' || f.id === 'keyForm2') {
+      var input = f.querySelector('input'), val = input.value.trim(); if (!val) return;
+      return call('saveClaudeKey', [val], function (s) { input.value = ''; S.food = s; S.hasClaudeKey = true; renderAll(); toast('Claude key saved. Quick-add is on.'); });
     }
   });
 
-  // See what your partner is up to: refresh every 20 s while the page is open.
-  function refresh() { if (!busy && !parking && document.visibilityState === 'visible') call('choresState', [], function (s) { apply(s); }); }
-  setInterval(refresh, 20000);
-  document.addEventListener('visibilitychange', refresh);
+  function dumpReview(items) {
+    whatNowSheet.dump = items;
+    var kinds = [['task', '📝 To do'], ['recurring', '🔁 Repeat'], ['shopping', '🛒 Shopping'], ['park', '🅿️ Park'], ['skip', '✖ Skip']];
+    openSheet('<h2>🧠 Here\'s what I heard</h2><p class="muted">Change anything, then save.</p><ul class="list">' + items.map(function (it, i) {
+      return '<li style="flex-wrap:wrap"><span style="flex:1;min-width:60%">' + esc(it.text) + (it.kind === 'recurring' && it.every ? ' <span class="muted">· ' + esc(it.every) + '</span>' : '') + '</span>' +
+        '<select data-dk="' + i + '" aria-label="What is it" style="flex:none;padding:8px">' + kinds.map(function (k) { return '<option value="' + k[0] + '"' + (k[0] === it.kind ? ' selected' : '') + '>' + k[1] + '</option>'; }).join('') + '</select></li>';
+    }).join('') + '</ul><button class="primary wide" type="button" id="dumpSave" style="margin-top:12px">Save</button>');
+  }
 
-  render();
-  TABS.chores = refresh;
+  function finishWorkout() {
+    var d = draft(), p = S.train.plans[tsel], sets = [];
+    p.main.forEach(function (m) {
+      m.sets.forEach(function (s, i) {
+        var k = m.tier + '|' + m.exercise + '|' + i;
+        if (d[k] && d[k].done) sets.push({ exercise: m.exercise, tier: m.tier, set: i + 1, weight: s.weight, reps: d[k].reps, target: s.reps + (s.amrap ? '+' : '') });
+      });
+    });
+    p.accessories.forEach(function (a) {
+      for (var i = 0; i < a.sets; i++) {
+        var k = 'Acc|' + a.exercise + '|' + i;
+        if (d[k] && d[k].done) sets.push({ exercise: a.exercise, tier: 'Acc', set: i + 1, weight: d[k].weight === null || d[k].weight === undefined ? (a.suggest || 0) : d[k].weight, reps: d[k].reps, target: a.reps });
+      }
+    });
+    call('saveWorkout', [tsel, sets], function (res) {
+      store(draftKey(), null);
+      rest = null;
+      apply(res.state);
+      confetti(true); chime([660, 880, 1100, 1320]); buzz([60, 40, 60, 40, 150]);
+      var html = '<div class="center"><div style="font-size:56px">💪</div><h2>Workout logged!</h2></div>';
+      res.changes.forEach(function (c) {
+        html += '<section class="card lilac" style="margin-top:12px"><b>' + esc(c.lift) + '</b>: ' + c.reps + ' reps on the heavy set<br>' +
+          (c.change ? 'Training max <b>' + c.from + ' → ' + c.to + ' kg</b> (+' + c.change + ') 📈' : 'Training max stays at ' + c.from + ' kg. Go again next week.') + '</section>';
+      });
+      res.prs.slice(0, 3).forEach(function (r) { html += '<section class="card pink" style="margin-top:10px">🏆 <b>PR!</b> ' + esc(r.exercise) + ' ' + r.weight + ' kg × ' + r.reps + ' (est. 1RM ' + Math.round(r.e1rm) + ' kg)</section>'; });
+      openSheet(html + '<button class="primary wide" type="button" data-close style="margin-top:12px">Done</button>');
+    });
+  }
 
-})();
-</script>
-<script>
-  // Tabs. Your partner only gets Chores, so they see no tab bar.
-  (function () {
-    var nav = document.getElementById('nav');
-    var only = BOOT.who === 'partner';
-    nav.hidden = only;
-    function show(name, refresh) {
-      if (!TABS[name]) name = 'chores';
-      document.querySelectorAll('section.tab').forEach(function (s) { s.hidden = s.id !== 'tab-' + name; });
-      nav.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-current', b.dataset.tab === name ? 'page' : 'false'); });
-      try { localStorage.setItem('tab', name); } catch (e) {}
-      if (refresh) TABS[name]();
-      window.scrollTo(0, 0);
+  // food taps
+  function foodQuick() {
+    var text = el('quickText').value.trim(); if (!text) return;
+    el('quickBtn').disabled = true; el('quickBtn').textContent = '…'; el('quickNote').textContent = 'Asking Claude…';
+    var done = function () { el('quickBtn').disabled = false; el('quickBtn').textContent = 'Add'; el('quickNote').textContent = 'Claude estimates it and logs it.'; };
+    call('quickAdd', [text], function (res) { done(); el('quickText').value = ''; S.food = res.state; renderFood(); toast('Logged ' + itemsText(res.added)); }, done);
+  }
+  if (ME) {
+    el('presets').addEventListener('click', function (ev) {
+      var b = ev.target.closest('.preset'); if (!b) return;
+      ev.stopPropagation();
+      var p = S.food.presets[+b.dataset.i], mine = { name: p.name, kcal: p.kcal, protein: p.protein };
+      pending.push(mine); renderFood(); buzz(15);
+      var drop = function () { pending.splice(pending.indexOf(mine), 1); };
+      google.script.run.withSuccessHandler(function (res) { drop(); S.food = res.state; renderFood(); toast('Logged ' + itemsText(res.added)); })
+        .withFailureHandler(function (err) { drop(); renderFood(); toast(err.message || String(err), true); }).logPreset(KEY, p.name);
+    }, true);
+    el('undo').addEventListener('click', function (ev) {
+      ev.stopPropagation();
+      el('undo').disabled = true;
+      call('undoLast', [], function (res) { S.food = res.state; renderFood(); toast('Removed ' + res.removed.join(', ')); });
+    }, true);
+  }
+
+  // ---------- timers and refresh ----------
+  setInterval(function () {
+    tickTimer();
+    if (rest && el('restLeft')) {
+      var left = rest.until - now();
+      el('restLeft').textContent = clock(left);
+      if (left <= 0) { rest = null; chime([880, 1175, 1568]); buzz([120, 60, 120]); toast('Rest over. Next set 💪'); renderTrain(); }
     }
-    nav.addEventListener('click', function (ev) { var b = ev.target.closest('button'); if (b) show(b.dataset.tab, true); });
-    var saved = null;
-    try { saved = localStorage.getItem('tab'); } catch (e) {}
-    show(only ? 'chores' : (START_TAB || saved || 'today'), false);
-  })();
+    var tb = el('badgeTrain'); if (tb) tb.textContent = rest ? clock(rest.until - now()) : '';
+  }, 1000);
+
+  // Refresh while open so you can see your partner; and whenever you come back to the app.
+  function refresh() {
+    if (busy || parking || !el('sheetbg').hidden || document.visibilityState !== 'visible') return;
+    if (document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
+    if (current === 'train' || current === 'food') return;
+    call('appState', [], function (res) { apply(res); });
+  }
+  setInterval(refresh, 30000);
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') refresh(); });
+
+  renderAll();
+  showTab(START_TAB || store('tab') || 'home');
 </script>
 </body>
 </html>
