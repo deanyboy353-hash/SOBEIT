@@ -1,4 +1,2 @@
-build/
-out/
-.vs/
-*.user
+node_modules/
+.clasprc.json
