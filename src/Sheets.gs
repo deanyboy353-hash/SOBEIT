@@ -17,6 +17,14 @@ var TABS = {
   chores: 'Chores',
   choresLog: 'Chores log',
   later: 'Later',
+  xp: 'XP log',
+  rewards: 'Rewards',
+  routines: 'Routines',
+  shopping: 'Shopping',
+  lifts: 'Lifts',
+  programme: 'Programme',
+  workoutLog: 'Workout log',
+  tmHistory: 'TM history',
   inbox: 'Inbox',
   log: 'Log'
 };
@@ -30,6 +38,10 @@ var HEADERS = {
   food: ['Date', 'Time', 'Item', 'kcal', 'Protein (g)', 'Source', 'Entry', 'Photo', 'Notes'],
   choresLog: ['Date', 'Who', 'Task', 'Planned (min)', 'Actual (min)', 'Result', 'Started', 'Finished', 'Steps done'],
   later: ['Date', 'Who', 'Thing', 'Done', 'ID'],
+  xp: ['Date', 'Time', 'Who', 'What', 'XP', 'Kind'],
+  shopping: ['Date', 'Item', 'Who', 'Got', 'ID'],
+  workoutLog: ['Date', 'Session', 'Exercise', 'Tier', 'Set', 'Weight (kg)', 'Reps', 'Target', 'e1RM'],
+  tmHistory: ['Date', 'Lift', 'Old TM', 'New TM', 'Change', '1+ reps'],
   inbox: ['Received at', 'Source', 'Body'],
   log: ['Time', 'Level', 'Message']
 };
@@ -80,6 +92,7 @@ function headerMap_(sh) {
 }
 
 function appendRow_(key, obj) {
+  if (key === 'xp') xpCache_ = null;
   var sh = sheet_(key);
   var map = headerMap_(sh);
   var width = Math.max(sh.getLastColumn(), 1);

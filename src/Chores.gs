@@ -42,11 +42,15 @@ function saveSession_(p, s) {
   else props.deleteProperty('CHORE_' + p);
 }
 
-/** Chores tab rows, plus how long each one has actually taken lately. */
+/** Chores tab rows (the quest list), with due dates and how long each one has actually taken lately. */
 function readChores_() {
-  var rows = sheet_('chores').getDataRange().getValues();
+  var sh = sheet_('chores');
+  var rows = sh.getDataRange().getValues();
+  var map = headerMap_(sh);
+  var col = function (r, h, fallback) { return h in map ? r[map[h]] : fallback; };
+  var today = todayYmd_();
   var recent = {};
-  rowsBetween_('choresLog', addDays_(todayYmd_(), -90), todayYmd_()).forEach(function (r) {
+  rowsBetween_('choresLog', addDays_(today, -90), today).forEach(function (r) {
     if (r['Result'] !== 'Done') return;
     (recent[r['Task']] = recent[r['Task']] || []).push(Number(r['Actual (min)']) || 0);
   });
@@ -55,11 +59,24 @@ function readChores_() {
     var name = String(rows[i][0]).trim();
     if (!name) continue;
     var times = (recent[name] || []).slice(-5).sort(function (a, b) { return a - b; });
+    var minutes = Math.min(MAX_CHORE_MINUTES, Math.max(1, Number(rows[i][1]) || 10));
+    var last = col(rows[i], 'Last done', '');
+    if (last instanceof Date) last = Utilities.formatDate(last, TZ, 'yyyy-MM-dd');
+    var every = String(col(rows[i], 'Every', '') || '');
+    var due = questDue(every, String(last || ''), today);
     out.push({
       name: name,
-      minutes: Math.min(MAX_CHORE_MINUTES, Math.max(1, Number(rows[i][1]) || 10)),
+      row: i + 1,
+      minutes: minutes,
       steps: String(rows[i][2] || '').split(/\s*;\s*|\n/).filter(String),
-      usual: times.length >= 2 ? times[Math.floor(times.length / 2)] : null
+      usual: times.length >= 2 ? times[Math.floor(times.length / 2)] : null,
+      every: every,
+      who: (String(col(rows[i], 'Who', '') || 'Anyone').trim().toLowerCase().replace(/^(you|mine)$/, 'me')) || 'anyone',
+      energy: String(col(rows[i], 'Energy', '') || 'Medium').trim().toLowerCase(),
+      xp: Number(col(rows[i], 'XP', '')) || Math.max(5, Math.round(minutes / 5) * 5),
+      lastDone: String(last || ''),
+      lastBy: String(col(rows[i], 'Last done by', '') || ''),
+      due: due.due, overdue: due.overdue, next: due.next, score: due.score
     });
   }
   return out;
@@ -90,7 +107,9 @@ function choresState_(p) {
   });
   var later = rowsBetween_('later', '0000', '9999').filter(function (r) { return !r['Done']; })
     .map(function (r) { return { id: String(r['ID']), thing: String(r['Thing']), who: String(r['Who']) }; });
-  return { you: p, now: now, people: people, chores: readChores_(), later: later, hasClaudeKey: !!claudeKey_() };
+  var invite = JSON.parse(PropertiesService.getScriptProperties().getProperty('INVITE') || 'null');
+  if (!invite || invite.from === p || now - invite.at > 30 * 60000) invite = null;
+  return { you: p, now: now, people: people, chores: readChores_(), later: later, hasClaudeKey: !!claudeKey_(), invite: invite };
 }
 
 /** Log a session and clear it; unfinished steps from a stopped job are parked automatically. */
@@ -102,10 +121,20 @@ function closeSession_(p, s, result) {
     'Result': result, 'Started': Utilities.formatDate(new Date(s.startedAt), TZ, 'HH:mm'),
     'Finished': Utilities.formatDate(now, TZ, 'HH:mm'), 'Steps done': s.steps.length ? s.step + '/' + s.steps.length : ''
   });
-  if (result === 'Stopped' && s.step < s.steps.length) {
+  if (result === 'Stopped' && s.step < s.steps.length && !s.taster) {
     park_(p, s.task + ': ' + s.steps.slice(s.step).join(', '));
   }
+  var isQuest = readChores_().filter(function (q) { return q.name === s.task; })[0];
+  var minutes = Math.max(1, Math.round((now.getTime() - s.startedAt) / 60000));
+  if (result === 'Done') {
+    if (isQuest && isQuest.lastDone !== todayYmd_()) completeQuest_(p, s.task, {});
+    else if (!isQuest) addXp_(p, s.task, Math.max(5, Math.round(minutes / 5) * 5), 'job');
+  } else if (result === 'Stopped') {
+    if (isQuest) completeQuest_(p, s.task, { partial: true });
+    else addXp_(p, 'Made a start: ' + s.task, Math.max(2, Math.round(minutes / 3)), 'start');
+  }
   if (p === 'me') removeChoreAlert_(s);
+  else clearPartnerAlarm_();
   saveSession_(p, null);
 }
 
@@ -128,6 +157,27 @@ function setChoreAlert_(s) {
 function removeChoreAlert_(s) {
   var ymd = Utilities.formatDate(new Date(s.endsAt), TZ, 'yyyy-MM-dd');
   removeTaggedEvents_(ymd, 'chore');
+}
+
+// Your partner's iPhone can't get app alerts, so their time's-up comes by email (if set).
+function setPartnerAlarm_(s) {
+  clearPartnerAlarm_();
+  if (!/@/.test(String(readConfig_().settings['Partner email'] || ''))) return;
+  ScriptApp.newTrigger('partnerTimeUp').timeBased().at(new Date(s.endsAt)).create();
+}
+
+function clearPartnerAlarm_() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'partnerTimeUp') ScriptApp.deleteTrigger(t);
+  });
+}
+
+function partnerTimeUp() {
+  clearPartnerAlarm_();
+  var s = session_('partner');
+  if (!s) return;
+  if (s.endsAt > new Date().getTime() + 30000) { setPartnerAlarm_(s); return; }
+  emailPartner_('⏰ Time\'s up: ' + s.task, 'Finished? Tap Done. Need longer? Tap +5 min.\n\n' + partnerUrl_());
 }
 
 // ---- called from the page ----
@@ -168,11 +218,12 @@ function startChore(key, plan) {
     var now = new Date().getTime();
     var s = {
       task: name, steps: (plan.steps || []).slice(0, 8).map(String), step: 0,
-      startedAt: now, endsAt: now + minutes * 60000, planned: minutes
+      startedAt: now, endsAt: now + minutes * 60000, planned: minutes, taster: !!plan.taster
     };
     saveSession_(p, s);
     if (p === 'me') setChoreAlert_(s);
-    return choresState_(p);
+    else setPartnerAlarm_(s);
+    return appState_(p);
   });
 }
 
@@ -180,10 +231,10 @@ function stepDone(key, index) {
   var p = who_(key);
   return withLock_(function () {
     var s = session_(p);
-    if (!s) return choresState_(p);
+    if (!s) return appState_(p);
     s.step = Math.max(0, Math.min(s.steps.length, Number(index) + 1));
     saveSession_(p, s);
-    return choresState_(p);
+    return appState_(p);
   });
 }
 
@@ -195,9 +246,11 @@ function extendChore(key, minutes) {
     var now = new Date().getTime();
     if (p === 'me') removeChoreAlert_(s);
     s.endsAt = Math.max(s.endsAt, now) + Math.max(1, Math.min(30, Number(minutes) || 5)) * 60000;
+    s.taster = false;
     saveSession_(p, s);
     if (p === 'me') setChoreAlert_(s);
-    return choresState_(p);
+    else setPartnerAlarm_(s);
+    return appState_(p);
   });
 }
 
@@ -211,11 +264,12 @@ function finishChore(key, result) {
     var s = session_(p);
     if (s && result === 'Cancelled') {
       if (p === 'me') removeChoreAlert_(s);
+      else clearPartnerAlarm_();
       saveSession_(p, null);
     } else if (s) {
       closeSession_(p, s, result === 'Stopped' ? 'Stopped' : 'Done');
     }
-    return choresState_(p);
+    return appState_(p);
   });
 }
 
@@ -226,7 +280,7 @@ function parkThing(key, text) {
   if (!text) throw new Error('Type the thing to park.');
   return withLock_(function () {
     park_(p, text);
-    return choresState_(p);
+    return appState_(p);
   });
 }
 
@@ -235,6 +289,6 @@ function clearLater(key, id) {
   return withLock_(function () {
     var r = findRow_('later', 'ID', id);
     if (r) updateRow_('later', r, { 'Done': now_() });
-    return choresState_(p);
+    return appState_(p);
   });
 }

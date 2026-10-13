@@ -109,6 +109,7 @@ function makeCalendar() {
     createEvent(title, start, end, opts) {
       const ev = {
         title, start, end, opts, tags: {}, reminders: [], color: null, deleted: false,
+        getTitle() { return this.title; }, getStartTime() { return this.start; },
         setTag(k, v) { this.tags[k] = v; }, getTag(k) { return this.tags[k] || null; },
         removeAllReminders() { this.reminders = []; }, addPopupReminder(m) { this.reminders.push(m); },
         setColor(c) { this.color = c; }, deleteEvent() { this.deleted = true; }
@@ -179,7 +180,7 @@ function loadProject(opts = {}) {
       })
     },
     LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock() {} }) },
-    CalendarApp: { getDefaultCalendar: () => calendar, EventColor: { GREEN: '10', BLUE: '9', YELLOW: '5', ORANGE: '6', PALE_BLUE: '1', GRAY: '8' } },
+    CalendarApp: { getDefaultCalendar: () => calendar, EventColor: { GREEN: '10', BLUE: '9', YELLOW: '5', ORANGE: '6', PALE_BLUE: '1', GRAY: '8', MAUVE: '3' } },
     Tasks: { Tasks: tasks },
     UrlFetchApp: {
       fetch(url, opts) {

@@ -36,11 +36,11 @@ function todayState_() {
   };
 }
 
-/** Marks today's tracked task of this type as done (ticks it in Google Tasks too). */
-function completeTracked_(type, ymd) {
+/** Marks today's tracked task of this type (and ref) as done, ticking it in Google Tasks too. */
+function completeTracked_(type, ymd, ref) {
   var t = tracked_();
   Object.keys(t).forEach(function (id) {
-    if (t[id].type !== type || t[id].date !== ymd || t[id].done) return;
+    if (t[id].type !== type || t[id].date !== ymd || t[id].done || (ref && t[id].ref !== ref)) return;
     t[id].done = true;
     try { Tasks.Tasks.patch({ status: 'completed' }, TASK_LIST, id); } catch (e) { /* deleted already */ }
   });

@@ -18,6 +18,10 @@
 // order, and these functions live in files that load after this one.
 function dailyJobs_() {
   return [
+    { name: 'Streaks', run: function (ymd) { updateStreaks_(ymd); return 'settled'; } },
+    { name: 'Quests', run: planQuests_ },
+    { name: 'Routines', run: planRoutines_ },
+    { name: 'Appointments', run: planPrep_ },
     { name: 'Gym plan', run: planGymDay_ },
     { name: 'Weigh-in', run: planWeighIn_ },
     { name: 'Food check', run: scheduleFoodCheck_ }
@@ -48,6 +52,12 @@ function prepareSheet_() {
   seedSessions_();
   seedPresets_();
   seedChores_();
+  ensureQuests_();
+  upgradeSessions_();
+  seedSimple_('rewards', ['Reward', 'Cost (XP)', 'Who'], DEFAULT_REWARDS, [320]);
+  seedSimple_('routines', ['Routine', 'Who', 'Time', 'Steps (separate with ;)'], DEFAULT_ROUTINES, [120, 0, 0, 600]);
+  seedSimple_('lifts', ['Lift', 'Training max (kg)', 'Body'], DEFAULT_LIFTS, [180, 150]);
+  seedSimple_('programme', ['Session', 'T1 lift', 'T1 sets', 'T2 lift', 'T2 % of', 'T2 sets'], DEFAULT_PROGRAMME, [0, 140, 380, 160, 140, 380]);
   Object.keys(HEADERS).forEach(ensureTab_);
   var blank = ss.getSheetByName('Sheet1');
   if (blank && blank.getLastRow() === 0 && ss.getSheets().length > 1) ss.deleteSheet(blank);

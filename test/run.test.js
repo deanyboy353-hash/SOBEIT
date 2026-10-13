@@ -64,6 +64,9 @@ test('bike only when every hour of the trip is fine', () => {
 
 // --- whole days, with fake Google services ---
 
+const gymEvents = g => g.calendar.live().filter(e => /🏋️/.test(e.title));
+const gymTasks = g => g.tasks.open().filter(t => /Gym done/.test(t.title));
+
 function at(state, iso) { state.now = new Date(iso); }
 
 test('Tuesday: setup builds the sheet and plans a dry-day bike session', () => {
@@ -74,15 +77,16 @@ test('Tuesday: setup builds the sheet and plans a dry-day bike session', () => {
   assert.deepStrictEqual(g.state.triggers.map(t => t.fn).sort(), ['dailyRun', 'foodCheck', 'pollTasks', 'weeklySummary']);
   assert.ok(g.state.props.WEBAPP_KEY);
 
-  const ev = g.calendar.live();
+  const ev = gymEvents(g);
   assert.strictEqual(ev.length, 1, 'one event (gym, no weigh-in on Tue)');
   assert.match(ev[0].title, /Upper A · 🚲 Bike · leave 15:15/);
-  assert.match(ev[0].opts.description, /Barbell bench press: 4 × 5-6 @ RPE 8 · rest 3 min/);
+  assert.match(ev[0].opts.description, /1\. Bench press \(T1\): set a training max/);
+  assert.match(ev[0].opts.description, /3\. Barbell row: 4 × 6-8 @ RPE 8 · rest 2 min/);
   assert.strictEqual(ev[0].opts.location, 'JD Gym Coatbridge');
   assert.deepStrictEqual(ev[0].reminders, [30, 0]); // 14:45 alert, then "time to go"
   assert.strictEqual(g.ctx.Utilities.formatDate(ev[0].start, 'Europe/London', 'HH:mm'), '15:15');
 
-  const open = g.tasks.open();
+  const open = gymTasks(g);
   assert.strictEqual(open.length, 1);
   assert.match(open[0].title, /Gym done: Upper A/);
   const log = g.tab('Gym log').rows();
@@ -94,7 +98,7 @@ test('rain means bus, with a latest-leave time from the last bus', () => {
   const g = loadProject({ now: new Date('2026-10-13T05:05:00Z') });
   g.state.rainy = true;
   g.ctx.setup();
-  const ev = g.calendar.live()[0];
+  const ev = gymEvents(g)[0];
   assert.match(ev.title, /🚌 Bus · leave 15:15/);
   assert.match(ev.opts.description, /Latest you can leave: \d\d:\d\d \(and still make the last bus at 18:15\)/);
   assert.match(ev.opts.description, /80% chance of rain/);
@@ -104,7 +108,7 @@ test('weather service down → bus, no crash', () => {
   const g = loadProject({ now: new Date('2026-10-13T05:05:00Z') });
   g.state.weatherDown = true;
   g.ctx.setup();
-  assert.match(g.calendar.live()[0].title, /Bus/);
+  assert.match(gymEvents(g)[0].title, /Bus/);
   assert.strictEqual(g.state.mails.length, 0);
 });
 
@@ -113,15 +117,15 @@ test('running again the same day replaces, never duplicates', () => {
   g.ctx.setup();
   g.ctx.dailyRun();
   g.ctx.dailyRun();
-  assert.strictEqual(g.calendar.live().length, 1);
-  assert.strictEqual(Object.keys(g.tasks.store).length, 1);
+  assert.strictEqual(gymEvents(g).length, 1);
+  assert.strictEqual(Object.values(g.tasks.store).filter(t => /Gym done/.test(t.title)).length, 1);
   assert.strictEqual(g.tab('Gym log').getLastRow(), 2);
 });
 
 test('ticking Gym done logs it; re-planning afterwards does not bring the task back', () => {
   const g = loadProject({ now: new Date('2026-10-13T05:05:00Z') });
   g.ctx.setup();
-  const id = Object.keys(g.tasks.store)[0];
+  const id = Object.values(g.tasks.store).find(t => /Gym done/.test(t.title)).id;
   g.tasks.tick(id, '2026-10-13T16:40:00.000Z');
   at(g.state, '2026-10-13T16:45:00Z');
   g.ctx.pollTasks();
@@ -129,7 +133,7 @@ test('ticking Gym done logs it; re-planning afterwards does not bring the task b
   assert.strictEqual(row[6], 'Done ✅');
   assert.strictEqual(row[7], '2026-10-13 17:40');
   g.ctx.dailyRun();
-  assert.strictEqual(g.tasks.open().length, 0);
+  assert.strictEqual(gymTasks(g).length, 0);
   assert.strictEqual(g.tab('Gym log').rows()[1][6], 'Done ✅');
 });
 
@@ -185,8 +189,8 @@ test('weight typed but never ticked is still logged next morning', () => {
 test('rest days: nothing created (Thursday)', () => {
   const g = loadProject({ now: new Date('2026-10-15T05:05:00Z') });
   g.ctx.setup();
-  assert.strictEqual(g.calendar.live().length, 0);
-  assert.strictEqual(g.tasks.open().length, 0);
+  assert.strictEqual(gymEvents(g).length, 0);
+  assert.strictEqual(gymTasks(g).length, 0);
 });
 
 test('editing the Config tab changes the plan', () => {
@@ -199,7 +203,7 @@ test('editing the Config tab changes the plan', () => {
   set('Tue', 3, 'Lower B');
   set('Session length (min)', 2, '60');
   g.ctx.dailyRun();
-  const ev = g.calendar.live();
+  const ev = gymEvents(g);
   assert.strictEqual(ev.length, 1);
   assert.match(ev[0].title, /Lower B · .* · leave 16:15/);
   assert.match(ev[0].opts.description, /about 60 min/);

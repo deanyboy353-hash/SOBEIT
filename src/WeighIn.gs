@@ -53,6 +53,7 @@ function onWeighTaskExpired_(task, info) {
 
 function logWeight_(ymd, time, w) {
   var prev = lastRowObject_('weight');
+  if (!prev || String(prev['Date']) !== ymd) addXp_('me', '⚖️ Weigh-in', 10, 'weigh');
   var change = prev && prev['Weight (kg)'] !== '' ? Math.round((w.kg - Number(prev['Weight (kg)'])) * 10) / 10 : '';
   appendRow_('weight', { 'Date': ymd, 'Time': time, 'Weight (kg)': w.kg, 'You typed': w.typed, 'Change (kg)': change });
 }

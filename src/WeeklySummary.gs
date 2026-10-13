@@ -80,6 +80,37 @@ function buildWeeklySummary_(endYmd, cfg) {
   }
   lines.push('');
 
+  // XP and streaks
+  var goal = dailyGoal_(cfg.settings);
+  var nm = { me: String(cfg.settings['Your name'] || 'You'), partner: String(cfg.settings['Partner name'] || 'Partner') };
+  lines.push('✨ XP & STREAKS');
+  ['me', 'partner'].forEach(function (p) {
+    var st = streakNow_(p, endYmd, goal);
+    lines.push(nm[p] + ': ' + xpBetween_(p, startYmd, endYmd) + ' XP · 🔥 ' + st.count + '-day streak · level ' + levelFor(xpTotal_(p)).level);
+  });
+  var team = streakNow_('team', endYmd, goal);
+  if (team.count) lines.push('Team streak: 🔥 ' + team.count + ' days together');
+  lines.push('');
+
+  // Training progress
+  var tmRows = rowsBetween_('tmHistory', startYmd, endYmd).filter(function (r) { return r['1+ reps'] !== ''; });
+  if (tmRows.length) {
+    lines.push('🏋️ STRENGTH');
+    tmRows.forEach(function (r) {
+      lines.push(r['Lift'] + ': ' + r['1+ reps'] + ' reps on the heavy set → TM ' + r['New TM'] + ' kg' + (Number(r['Change']) ? ' (+' + r['Change'] + ')' : ' (same)'));
+    });
+    lines.push('');
+  }
+
+  // Next week's top 3: the jobs most worth doing early
+  var soon = readChores_().filter(function (q) { return q.due || (q.next && q.next <= addDays_(endYmd, 7)); })
+    .sort(function (a, b) { return (b.due ? 1000 + b.score : 0) - (a.due ? 1000 + a.score : 0) || (a.next < b.next ? -1 : 1); }).slice(0, 3);
+  if (soon.length) {
+    lines.push('🎯 TOP 3 FOR NEXT WEEK');
+    soon.forEach(function (q) { lines.push('• ' + q.name + (q.due ? ' (due now)' : ' (due ' + q.next.slice(5) + ')')); });
+    lines.push('');
+  }
+
   // Week ahead
   lines.push('📅 WEEK AHEAD');
   var weighDays = parseDays(cfg.settings['Weigh-in days']);

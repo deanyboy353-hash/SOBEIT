@@ -49,8 +49,22 @@ function doGet(e) {
 }
 
 function appState_(who) {
-  if (who === 'partner') return { who: who, chores: choresState_('partner') };
-  return { who: who, today: todayState_(), food: foodState_(), chores: choresState_('me') };
+  var s = {
+    who: who, now: new Date().getTime(), game: gameState_(who), quests: questsState_(who), chores: choresState_(who),
+    routines: routinesState_(who), shopping: shoppingState_(), hasClaudeKey: !!claudeKey_()
+  };
+  if (who === 'me') {
+    s.today = todayState_();
+    s.food = foodState_();
+    s.train = trainState_();
+  }
+  return s;
+}
+
+/** Everything for the app at once (used to refresh after coming back to it). */
+function appState(key) {
+  var who = who_(key);
+  return withLock_(function () { return appState_(who); });
 }
 
 function appUrl_() {

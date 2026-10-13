@@ -14,12 +14,12 @@ test('Today on a training day: session, leave time, exercises; Gym done logs it 
   assert.strictEqual(s.gym.session, 'Upper A');
   assert.strictEqual(s.gym.travel, 'Bike');
   assert.strictEqual(s.gym.leaveAt, '15:15');
-  assert.strictEqual(s.gym.exercises[0].exercise, 'Barbell bench press');
+  assert.strictEqual(s.gym.exercises[0].exercise, 'Barbell row');
   assert.strictEqual(s.gym.done, false);
   s = g.ctx.gymDone(key);
   assert.strictEqual(s.gym.done, true);
   assert.strictEqual(g.tab('Gym log').rows()[1][6], 'Done ✅');
-  assert.strictEqual(g.tasks.open().length, 0, 'Gym done task ticked too');
+  assert.strictEqual(g.tasks.open().filter(t => /Gym done/.test(t.title)).length, 0, 'Gym done task ticked too');
   g.ctx.pollTasks();
   assert.strictEqual(g.tab('Gym log').getLastRow(), 2, 'not logged twice');
 });

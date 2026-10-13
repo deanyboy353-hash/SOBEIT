@@ -15,7 +15,9 @@ var TASK_LIST = '@default';
 function taskHandlers_() {
   return {
     gym: { onDone: onGymTaskDone_, onExpired: onGymTaskExpired_ },
-    weigh: { onDone: onWeighTaskDone_, onExpired: onWeighTaskExpired_ }
+    weigh: { onDone: onWeighTaskDone_, onExpired: onWeighTaskExpired_ },
+    quest: { onDone: onQuestTaskDone_, onExpired: function () {} },
+    prep: { onDone: onPrepTaskDone_, onExpired: function () {} }
   };
 }
 
@@ -27,11 +29,11 @@ function saveTracked_(t) {
   PropertiesService.getScriptProperties().setProperty('TRACKED_TASKS', JSON.stringify(t));
 }
 
-/** Creates the task once per type per day. Re-running is safe. */
-function createTrackedTask_(type, ymd, title, notes) {
+/** Creates the task once per type (and ref, e.g. the quest name) per day. Re-running is safe. */
+function createTrackedTask_(type, ymd, title, notes, ref) {
   var t = tracked_();
   for (var id in t) {
-    if (t[id].type === type && t[id].date === ymd) {
+    if (t[id].type === type && t[id].date === ymd && (t[id].ref || '') === (ref || '')) {
       if (t[id].done) return null;
       var existing = getTask_(id);
       if (existing) return existing;
@@ -39,7 +41,7 @@ function createTrackedTask_(type, ymd, title, notes) {
     }
   }
   var task = Tasks.Tasks.insert({ title: title, notes: notes || '', due: ymd + 'T00:00:00.000Z' }, TASK_LIST);
-  t[task.id] = { type: type, date: ymd };
+  t[task.id] = ref ? { type: type, date: ymd, ref: ref } : { type: type, date: ymd };
   saveTracked_(t);
   return task;
 }

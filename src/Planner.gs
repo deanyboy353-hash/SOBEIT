@@ -161,6 +161,7 @@ function parseWeight(text, defaultUnit) {
 }
 
 function formatExercise(ex, i) {
+  if (ex.line) return (i + 1) + '. ' + ex.line + (ex.rest ? ' · rest ' + ex.rest : '');
   var line = (i + 1) + '. ' + ex.exercise + ': ' + (ex.sets || '?') + ' × ' + (ex.reps || '?');
   if (ex.rpe !== '' && ex.rpe !== undefined && ex.rpe !== null) line += ' @ RPE ' + ex.rpe;
   if (ex.rest) line += ' · rest ' + ex.rest;
@@ -199,7 +200,7 @@ function buildGymEventText(plan) {
   lines.push(plan.sessionName.toUpperCase());
   plan.exercises.forEach(function (ex, i) { lines.push(formatExercise(ex, i)); });
   lines.push('');
-  lines.push('✅ Tick "Gym done" in Google Tasks when you finish. That is your whole log.');
+  lines.push('✅ Log it in the app\'s Train tab (or tick "Gym done" in Google Tasks).');
   return { title: title, description: lines.join('\n') };
 }
 
@@ -241,6 +242,143 @@ function buildFoodCheckText(totals, targets, entryCount, pageUrl) {
 }
 
 var FOOD_SNACKS = 'A protein shake (~120 kcal, 24 g) or a 0% Greek yogurt (~95 kcal, 17 g)';
+
+// ---------- Dates as plain day numbers (no time zones involved) ----------
+
+function ymdToDays(ymd) {
+  var p = String(ymd).split('-');
+  return Math.round(Date.UTC(Number(p[0]), Number(p[1]) - 1, Number(p[2])) / 86400000);
+}
+
+function daysToYmd(n) {
+  var d = new Date(n * 86400000);
+  return d.getUTCFullYear() + '-' + ('0' + (d.getUTCMonth() + 1)).slice(-2) + '-' + ('0' + d.getUTCDate()).slice(-2);
+}
+
+/** 0 = Sunday ... 6 = Saturday */
+function weekdayOfDays(n) {
+  return ((n + 4) % 7 + 7) % 7;
+}
+
+// ---------- Recurring quests ----------
+
+/**
+ * How often a quest repeats, from the Chores tab's "Every" column:
+ * "daily", "3" / "3 days", "weekly", "2 weeks" / "fortnightly", "monthly",
+ * "3 months", "yearly", weekdays ("Wed" or "Mon, Thu"), "monthly 15"
+ * (the 15th of each month), or blank / "as needed" (never scheduled).
+ */
+function parseEvery(text) {
+  var s = String(text === undefined || text === null ? '' : text).trim().toLowerCase();
+  if (!s || /as needed|never|^-$/.test(s)) return { kind: 'none' };
+  var m = s.match(/^monthly\s+(?:on\s+)?(?:the\s+)?(\d{1,2})/);
+  if (m) return { kind: 'monthly', day: Math.min(31, Math.max(1, Number(m[1]))) };
+  if (/^(daily|every ?day)$/.test(s)) return { kind: 'days', days: 1 };
+  if (/^weekly$/.test(s)) return { kind: 'days', days: 7 };
+  if (/^fortnightly$/.test(s)) return { kind: 'days', days: 14 };
+  if (/^monthly$/.test(s)) return { kind: 'days', days: 30 };
+  if (/^(yearly|annually)$/.test(s)) return { kind: 'days', days: 365 };
+  m = s.match(/^(?:every\s+)?(\d+(?:\.\d+)?)\s*(d|days?|w|weeks?|m|months?|y|years?)?$/);
+  if (m) {
+    var n = Number(m[1]);
+    var unit = (m[2] || 'd').charAt(0);
+    var days = Math.round(n * ({ d: 1, w: 7, m: 30, y: 365 })[unit]);
+    return days > 0 ? { kind: 'days', days: days } : { kind: 'none' };
+  }
+  var wd = parseDays(s);
+  if (wd.length) return { kind: 'weekdays', days: wd };
+  return { kind: 'none' };
+}
+
+/**
+ * Is a quest due today? Repeats count from when it was last done, so a late
+ * job never piles up. Returns {due, overdue, next, score}: a higher score
+ * means more pressing (fixed-date jobs like bin day first).
+ */
+function questDue(every, lastDoneYmd, todayYmd) {
+  var e = typeof every === 'string' || !every ? parseEvery(every) : every;
+  var today = ymdToDays(todayYmd);
+  var last = lastDoneYmd ? ymdToDays(lastDoneYmd) : null;
+  var doneToday = last === today;
+  if (e.kind === 'none') return { due: false, overdue: 0, next: '', score: 0 };
+  if (e.kind === 'days') {
+    if (last === null) return { due: true, overdue: 0, next: todayYmd, score: 0.5 };
+    var next = last + e.days;
+    var over = today - next;
+    return { due: over >= 0, overdue: Math.max(0, over), next: daysToYmd(Math.max(next, today)), score: over >= 0 ? (over + 1) / e.days : 0 };
+  }
+  if (e.kind === 'weekdays') {
+    var isDay = e.days.indexOf(weekdayOfDays(today)) !== -1;
+    var due = isDay && !doneToday;
+    var n2 = today + (due ? 0 : 1);
+    while (e.days.indexOf(weekdayOfDays(n2)) === -1) n2++;
+    return { due: due, overdue: 0, next: daysToYmd(n2), score: due ? 10 : 0 };
+  }
+  // monthly on a set day (clamped to short months)
+  var t = new Date(today * 86400000);
+  function occurrence(y, mo) {
+    var len = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
+    return Math.round(Date.UTC(y, mo, Math.min(e.day, len)) / 86400000);
+  }
+  var y = t.getUTCFullYear(), mth = t.getUTCMonth();
+  var occ = occurrence(y, mth);
+  if (occ > today) occ = occurrence(mth === 0 ? y - 1 : y, (mth + 11) % 12);
+  var dueM = last === null || last < occ;
+  if (last === null) return { due: true, overdue: 0, next: todayYmd, score: 5 };
+  var nextOcc = occurrence(mth === 11 ? y + 1 : y, (mth + 1) % 12);
+  if (occurrence(y, mth) > today) nextOcc = occurrence(y, mth);
+  return { due: dueM, overdue: dueM ? today - occ : 0, next: dueM ? todayYmd : daysToYmd(nextOcc), score: dueM ? 5 + (today - occ) : 0 };
+}
+
+// ---------- XP and levels ----------
+
+/** Level n needs 50·n·(n−1) XP in total: 100 for level 2, 300 for 3, 600 for 4... */
+function levelFor(totalXp) {
+  var n = 1;
+  while (50 * (n + 1) * n <= totalXp) n++;
+  var base = 50 * n * (n - 1), next = 50 * (n + 1) * n;
+  return { level: n, into: totalXp - base, need: next - base };
+}
+
+// ---------- Strength training (nSuns-style) ----------
+
+/** "75x5, 85x3, 95x1+" -> [{pct: 75, reps: 5, amrap: false}, ...] */
+function parseScheme(text) {
+  return String(text || '').split(/[,;\n]+/).map(function (part) {
+    var m = part.trim().match(/^(\d+(?:\.\d+)?)\s*%?\s*[x×]\s*(\d+)\s*(\+)?$/i);
+    return m ? { pct: Number(m[1]), reps: Number(m[2]), amrap: !!m[3] } : null;
+  }).filter(Boolean);
+}
+
+function roundTo(weight, step) {
+  step = step || 2.5;
+  return Math.round(weight / step) * step;
+}
+
+/** Estimated one-rep max (Epley). */
+function e1rm(weight, reps) {
+  if (!(weight > 0) || !(reps > 0)) return 0;
+  return reps === 1 ? weight : Math.round(weight * (1 + reps / 30) * 10) / 10;
+}
+
+/**
+ * nSuns progression from the reps on the heavy 1+ set:
+ * 0–1 → stay, 2–3 → +2.5, 4–5 → +2.5 upper / +5 lower, 6+ → +5 upper / +7.5 lower (kg).
+ */
+function tmIncrease(reps, body) {
+  var lower = String(body || '').toLowerCase() === 'lower';
+  if (reps <= 1) return 0;
+  if (reps <= 3) return 2.5;
+  if (reps <= 5) return lower ? 5 : 2.5;
+  return lower ? 7.5 : 5;
+}
+
+/** Sets with real weights from a training max, rounded to the plates you have. */
+function schemeSets(schemeText, tm, step) {
+  return parseScheme(schemeText).map(function (s) {
+    return { pct: s.pct, reps: s.reps, amrap: s.amrap, weight: tm ? roundTo(tm * s.pct / 100, step) : null };
+  });
+}
 
 // Node test hook. Apps Script ignores this because `module` doesn't exist there.
 if (typeof module !== 'undefined') {

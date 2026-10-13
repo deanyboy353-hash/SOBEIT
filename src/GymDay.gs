@@ -19,6 +19,11 @@ function planGymDay_(ymd, cfg) {
     exercises = [];
   }
 
+  // The day's two main lifts (Programme + Lifts tabs) go first, with real weights.
+  var plan = workoutPlan_(day.session);
+  var lines = mainLiftLines_(plan);
+  var main = plan.main.map(function (m, i) { return { line: lines[i], sets: m.sets.length, rest: m.rest }; });
+  exercises = main.concat(exercises);
   var sessionMinutes = num_(s, 'Session length (min)', 0) ||
     estimateSessionMinutes(exercises, { secondsPerSet: num_(s, 'Seconds per working set', 60), warmup: num_(s, 'Warm-up (min)', 10) });
   var freeFrom = day.freeFrom !== null ? day.freeFrom : parseClock('15:00');
@@ -81,6 +86,8 @@ function planGymDay_(ymd, cfg) {
 
 function onGymTaskDone_(task, info) {
   var r = findRow_('gym', 'Date', info.date);
+  var before = r ? readRow_('gym', r) : {};
+  if (!/^Done/.test(String(before['Status'] || ''))) addXp_('me', '🏋️ Gym: ' + (before['Session'] || 'session done'), 50, 'gym');
   var update = { 'Status': 'Done ✅', 'Ticked at': completedAt_(task) };
   if (r) updateRow_('gym', r, update);
   else appendRow_('gym', Object.assign({ 'Date': info.date, 'Day': DAY_NAMES[dayOfWeek_(info.date)] }, update));
