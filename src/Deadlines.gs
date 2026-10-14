@@ -82,6 +82,7 @@ function charName_(id) {
 function nagRun() {
   withLock_(function () {
     try { nagDeadlines_(); } catch (e) { log_('WARN', 'Deadline nags: ' + e); }
+    try { flushTimers_(); } catch (e) { log_('WARN', 'Timers: ' + e); }
     try { workNags_(); } catch (e) { log_('WARN', 'Work nags: ' + e); }
     try { heartbeat_(); } catch (e) { log_('WARN', 'Reminders: ' + e); }
   });

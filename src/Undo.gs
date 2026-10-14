@@ -6,7 +6,7 @@
  */
 
 var UNDO_WINDOW_MS = 10 * 60000;
-var UNDO_TABS = ['xp', 'cash', 'food', 'later'];
+var UNDO_TABS = ['xp', 'cash', 'food', 'later', 'cardio'];
 
 /** Run fn as an undoable action. restore: {chore: {row, values}} or {block: {id, values}} or {deadline: {id, values}}. */
 function undoable_(who, label, fn, restore) {

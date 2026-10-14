@@ -64,6 +64,7 @@ function push_(who, title, body, tab, urgent, extra) {
       list.forEach(function (d) {
         var data = { tab: tab || 'home', title: title, body: body || '' };
         var note = { title: title, body: body || '', icon: link ? appBaseUrl_() + 'icon-192.png' : undefined, tag: tab || 'home' };
+        if (extra && extra.timer) { note.tag = extra.tag; note.renotify = true; note.vibrate = [300, 120, 300, 120, 600]; data.timer = '1'; }
         if (extra && extra.persist) {
           // Stays on the screen until you deal with it, and buzzes again each time.
           note.tag = extra.tag || tab || 'home';

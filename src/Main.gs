@@ -65,6 +65,7 @@ function prepareSheet_() {
   seedSimple_('lifts', ['Lift', 'Training max (kg)', 'Body'], DEFAULT_LIFTS, [180, 150]);
   seedSimple_('programme', ['Session', 'T1 lift', 'T1 sets', 'T2 lift', 'T2 % of', 'T2 sets'], DEFAULT_PROGRAMME, [0, 140, 380, 160, 140, 380]);
   ensureTransport_();
+  ensurePresets_();
   Object.keys(HEADERS).forEach(ensureTab_);
   var blank = ss.getSheetByName('Sheet1');
   if (blank && blank.getLastRow() === 0 && ss.getSheets().length > 1) ss.deleteSheet(blank);

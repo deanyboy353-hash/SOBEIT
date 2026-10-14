@@ -228,6 +228,7 @@ function startChore(key, plan) {
       creative: ['music', 'mix', 'art'].indexOf(plan.creative) !== -1 ? plan.creative : ''
     };
     saveSession_(p, s);
+    setTimer_(p, 'chore', s.endsAt, 'Time\'s up: ' + s.task, 'Tick it off, or give it 5 more minutes.', 'chores');
     if (p === 'me') setChoreAlert_(s);
     else setPartnerAlarm_(s);
     return appState_(p);
@@ -255,6 +256,7 @@ function extendChore(key, minutes) {
     s.endsAt = Math.max(s.endsAt, now) + Math.max(1, Math.min(30, Number(minutes) || 5)) * 60000;
     s.taster = false;
     saveSession_(p, s);
+    setTimer_(p, 'chore', s.endsAt, 'Time\'s up: ' + s.task, 'Tick it off, or give it 5 more minutes.', 'chores');
     if (p === 'me') setChoreAlert_(s);
     else setPartnerAlarm_(s);
     return appState_(p);
@@ -269,6 +271,7 @@ function finishChore(key, result) {
   var p = who_(key);
   return withLock_(function () {
     var s = session_(p);
+    clearTimer_(p, 'chore');
     if (s && result === 'Cancelled') {
       if (p === 'me') removeChoreAlert_(s);
       else clearPartnerAlarm_();

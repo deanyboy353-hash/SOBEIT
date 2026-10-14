@@ -30,7 +30,7 @@ function rpcTable_() {
     healthDay: healthDay, healthInsight: healthInsight, importHealth: importHealth, setPrefs: setPrefs,
     addDeadline: addDeadline, deadlineAction: deadlineAction, buyItem: buyItem, upgradeItem: upgradeItem, sellItem: sellItem, setFavourite: setFavourite, saveWeekPlan: saveWeekPlan, submitMix: submitMix, submitSet: submitSet,
     workState: workState, addBlock: addBlock, planDay: planDay, updateBlock: updateBlock, blockAction: blockAction, shiftBlocks: shiftBlocks, copyPlan: copyPlan,
-    buyWear: buyWear, setLook3d: setLook3d, testPush: testPush, countBlock: countBlock, undoAction: undoAction, removeFood: removeFood, editFood: editFood, removeShopping: removeShopping
+    buyWear: buyWear, setLook3d: setLook3d, testPush: testPush, countBlock: countBlock, undoAction: undoAction, removeFood: removeFood, editFood: editFood, removeShopping: removeShopping, setTimer: setTimer, clearTimer: clearTimer, saveTemplate: saveTemplate, deleteTemplate: deleteTemplate, logCardio: logCardio, deleteCardio: deleteCardio
   };
 }
 
@@ -137,7 +137,7 @@ function appState(key) {
     s.now = new Date().getTime();
     return s;
   }
-  var state = withLock_(function () { if (!prop_('TRANSPORT_V1')) { try { ensureTransport_(); } catch (e) { log_('WARN', 'Transport setup: ' + e); } } return appState_(who); });
+  var state = withLock_(function () { if (!prop_('TRANSPORT_V1')) { try { ensureTransport_(); } catch (e) { log_('WARN', 'Transport setup: ' + e); } } if (!prop_('PRESETS_V1')) { try { ensurePresets_(); } catch (e) { log_('WARN', 'Presets: ' + e); } } return appState_(who); });
   if (cache) { try { cache.put('STATE_' + who, JSON.stringify(state), 60); } catch (e) { /* too big to cache: fine */ } }
   return state;
 }

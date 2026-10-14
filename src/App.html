@@ -856,6 +856,16 @@ body.dress-open { overflow: hidden; }
 #foodEdit input { width: 100%; box-sizing: border-box; margin-top: 4px; }
 .gymplan summary { cursor: pointer; color: var(--pink); font-weight: 650; margin-top: 10px; } .gymplan ul { margin: 6px 0 0; padding-left: 18px; line-height: 1.5; } .gymplan li { margin: 2px 0; }
 
+/* Train: every set has weight and reps you can type */
+.set .setw { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.set .setw .tiny { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.set .wkg { display: flex; align-items: center; gap: 4px; }
+.set .wkg .u { font-size: 12px; color: var(--faint); }
+.set .wkg input[type=number] { width: 74px; }
+.set .stepper input[type=number] { width: 46px; padding: 8px 2px; }
+.set.done input { opacity: .6; }
+.rest button { background: rgba(255,255,255,.14); color: inherit; border-radius: 10px; padding: 6px 10px; font-weight: 600; }
+
 </style>
 </head>
 <body>
@@ -3255,18 +3265,69 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
   }
 
   // ---------- TRAIN ----------
-  var tsel = null, rest = null;
+  // Your plan, plus your own tweaks: swap an exercise, add or drop sets, add exercises.
+  // Tweaks are kept for every time you do that session (or just today, if you untick "Keep").
+  var EX_LIB = {
+    Chest: ['Barbell bench press', 'Incline barbell bench press', 'DB bench press', 'Incline DB press', 'Machine chest press', 'Cable fly', 'Pec deck', 'Dips', 'Push-up'],
+    Back: ['Deadlift', 'Trap-bar deadlift', 'Barbell row', 'DB row', 'Chest-supported row', 'Seated cable row', 'T-bar row', 'Lat pulldown', 'Pull-up (or assisted)', 'Chin-up', 'Straight-arm pulldown', 'Face pull', 'Back extension'],
+    Shoulders: ['Overhead press', 'Seated DB shoulder press', 'Machine shoulder press', 'Arnold press', 'Cable lateral raise', 'DB lateral raise', 'Rear delt fly', 'Upright row', 'Shrug'],
+    Arms: ['EZ-bar curl', 'Barbell curl', 'DB curl', 'Incline DB curl', 'Hammer curl', 'Preacher curl', 'Cable curl', 'Triceps pushdown', 'Overhead cable triceps extension', 'Skull crusher', 'Close-grip bench press', 'Dips (triceps)'],
+    Legs: ['Back squat', 'Front squat', 'Goblet squat', 'Hack squat', 'Leg press', 'Bulgarian split squat', 'Walking lunge', 'Romanian deadlift', 'Hip thrust', 'Leg extension', 'Lying leg curl', 'Seated leg curl', 'Standing calf raise', 'Seated calf raise'],
+    Core: ['Plank', 'Hanging knee raise', 'Cable crunch', 'Ab wheel', 'Russian twist', 'Pallof press']
+  };
+  var tsel = null, rest = load('rest'), exTarget = null, tmOpen = {};
   function draftKey() { return 'wk-' + (S.today ? S.today.date : '') + '-' + tsel; }
   function draft() { return load(draftKey()) || {}; }
   function saveDraft(d) { save(draftKey(), d); }
-  function setRow(key, label, sub, d, o) {
-    var done = d[key] && d[key].done;
-    var reps = d[key] && d[key].reps !== undefined ? d[key].reps : o.reps;
-    var weight = d[key] && d[key].weight !== undefined ? d[key].weight : o.weight;
-    return '<div class="set' + (done ? ' done' : '') + '"><span class="n">' + o.n + '</span>' +
-      (o.editWeight ? '<input type="number" inputmode="decimal" step="0.5" value="' + (weight === null || weight === undefined ? '' : weight) + '" placeholder="kg" data-w="' + key + '" aria-label="Weight">' : '<span class="w">' + label + (sub ? ' <span class="' + (o.amrap ? 'amrap' : 'muted') + '" style="font-weight:500">' + sub + '</span>' : '') + '</span>') +
-      '<div class="stepper"><button type="button" data-r="' + key + '" data-d="-1" aria-label="One rep fewer">−</button><span>' + reps + '</span><button type="button" data-r="' + key + '" data-d="1" aria-label="One rep more">+</button></div>' +
-      '<button class="check' + (done ? ' on' : '') + '" type="button" data-set="' + key + '" data-rest="' + esc(o.rest) + '" aria-label="Set done">' + icon('check') + '</button></div>';
+  function blankCust() { return { swap: {}, extra: {}, drop: [], add: [] }; }
+  function custKeys(s) { return ['tcust-' + s, 'tcust-' + (S.today ? S.today.date : '') + '-' + s]; }
+  function custOf(s) {
+    var c = blankCust();
+    custKeys(s).forEach(function (k) {
+      var x = load(k); if (!x) return;
+      Object.keys(x.swap || {}).forEach(function (n) { c.swap[n] = x.swap[n]; });
+      Object.keys(x.extra || {}).forEach(function (n) { c.extra[n] = (c.extra[n] || 0) + x.extra[n]; });
+      (x.drop || []).forEach(function (n) { if (c.drop.indexOf(n) === -1) c.drop.push(n); });
+      (x.add || []).forEach(function (a) { c.add.push(a); });
+    });
+    return c;
+  }
+  function editCust(keep, fn) { var k = custKeys(tsel)[keep ? 0 : 1], c = load(k) || blankCust(); fn(c); save(k, c); }
+  function prevOf(name) { return ((S.train.prev || {})[String(name).toLowerCase()] || []).filter(function (x) { return x.t !== 'W'; }); }
+  function prevText(name, i) { var p = prevOf(name), x = p[i] || p[p.length - 1]; return x ? 'Last ' + x.w + ' × ' + x.r : ''; }
+  // Everything on screen for the chosen session, after your tweaks. Keys stay on the planned name so a swap keeps your ticks.
+  function trainModel() {
+    var p = S.train.plans[tsel] || { main: [], accessories: [] }, c = custOf(tsel), out = [];
+    function count(base, id) { return Math.max(1, base + (c.extra[id] || 0)); }
+    p.main.forEach(function (m) {
+      var id = m.tier + '|' + m.exercise; if (c.drop.indexOf(id) !== -1) return;
+      var name = c.swap[id] || m.exercise, swapped = name !== m.exercise, base = m.tm ? m.sets.length : 3, rows = [];
+      for (var i = 0; i < count(base, id); i++) {
+        var s = m.tm ? m.sets[Math.min(i, m.sets.length - 1)] : null, extra = m.tm && i >= m.sets.length;
+        var amrap = s && s.amrap && !extra && !swapped;
+        rows.push({ key: id + '|' + i, weight: s && !swapped ? s.weight : '', reps: s ? s.reps : 5, target: s ? s.reps + (amrap ? '+' : '') : '',
+          sub: s && !swapped && !extra ? '× ' + s.reps + (amrap ? '+' : '') + ' · ' + s.pct + '%' : prevText(name, i), amrap: amrap });
+      }
+      out.push({ id: id, name: name, swapped: swapped, tier: swapped ? 'Acc' : m.tier, eyebrow: m.tier === 'T1' ? 'Main lift' : 'Second lift', rest: m.rest, m: m, rows: rows });
+    });
+    p.accessories.forEach(function (a) { out.push(accModel('Acc|' + a.exercise, a.exercise, a.sets, a.reps, a.rest, a.rpe, a.suggest, a, c)); });
+    c.add.forEach(function (a) { out.push(accModel('Add|' + a.exercise, a.exercise, a.sets, a.reps, a.rest, '', null, null, c)); });
+    return out.filter(function (x) { return x && c.drop.indexOf(x.id) === -1; });
+  }
+  function accModel(id, planned, sets, reps, rst, rpe, suggest, a, c) {
+    var name = c.swap[id] || planned, swapped = name !== planned, low = +((String(reps).match(/\d+/) || [8])[0]), n = Math.max(1, +sets + (c.extra[id] || 0)), rows = [];
+    for (var i = 0; i < n; i++) {
+      var pv = prevOf(name), x = pv[i] || pv[pv.length - 1];
+      rows.push({ key: id + '|' + i, weight: !swapped && suggest !== null && suggest !== undefined ? suggest : x ? x.w : '', reps: low, target: reps, sub: prevText(name, i) });
+    }
+    return { id: id, name: name, swapped: swapped, tier: 'Acc', eyebrow: n + ' × ' + reps + (rpe ? ' · RPE ' + rpe : '') + ' · rest ' + rst, rest: rst, a: swapped ? null : a, rows: rows };
+  }
+  function setRow(r, n, d, rst) {
+    var x = d[r.key] || {}, done = !!x.done, reps = x.reps !== undefined ? x.reps : r.reps, w = x.weight !== undefined && x.weight !== null ? x.weight : r.weight;
+    return '<div class="set' + (done ? ' done' : '') + '" data-key="' + esc(r.key) + '"><span class="n">' + n + '</span>' +
+      '<div class="setw"><span class="wkg"><input type="number" inputmode="decimal" step="0.5" min="0" value="' + esc(w) + '" placeholder="–" data-sw aria-label="Weight in kg"><span class="u">kg</span></span>' + (r.sub ? '<span class="tiny ' + (r.amrap ? 'amrap' : 'muted') + '">' + esc(r.sub) + '</span>' : '') + '</div>' +
+      '<div class="stepper"><button type="button" data-rd="-1" aria-label="One rep fewer">−</button><input type="number" inputmode="numeric" min="0" value="' + esc(reps) + '" data-sr aria-label="Reps"><button type="button" data-rd="1" aria-label="One rep more">+</button></div>' +
+      '<button class="check' + (done ? ' on' : '') + '" type="button" data-set="' + esc(r.key) + '" data-rest="' + esc(rst) + '" aria-label="Set done">' + icon('check') + '</button></div>';
   }
   function spark(vals) {
     if (vals.length < 2) return '';
@@ -3274,14 +3335,33 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     var pts = vals.map(function (v, i) { return (i / (vals.length - 1) * 300).toFixed(1) + ',' + (40 - (mx === mn ? .5 : (v - mn) / (mx - mn)) * 34).toFixed(1); }).join(' ');
     return '<svg class="spark" viewBox="0 0 300 44" preserveAspectRatio="none"><polyline points="' + pts + '" fill="none" stroke="var(--ring-b)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/></svg>';
   }
+  function doneCount() { var d = draft(); return Object.keys(d).filter(function (k) { return d[k].done; }).length; }
+  function drawFinish() { var b = el('finishWk'), n = doneCount(); if (b) { b.disabled = !n; b.textContent = 'Finish workout · ' + n + ' set' + (n === 1 ? '' : 's'); } }
+  function drawRest() {
+    var r = el('restSlot'); if (!r) return;
+    r.innerHTML = rest ? '<div class="rest"><span>Rest <b id="restLeft">' + clock(rest.until - now()) + '</b></span><span class="row" style="gap:6px"><button type="button" data-restadd="-15">−15s</button><button type="button" data-restadd="15">+15s</button><button type="button" id="restSkip">Skip</button></span></div>' : '';
+  }
+  function armRest() {
+    if (!rest) return rpc('clearTimer', ['rest']).catch(function () {});
+    var secs = Math.round((rest.until - now()) / 1000);
+    if (secs >= 5) rpc('setTimer', ['rest', secs, 'Rest over', 'Next set: you\'ve got this.', 'train']).catch(function () {});
+  }
+  function startRest(secs) { if (!(secs > 0)) return; rest = { until: now() + secs * 1000 }; save('rest', rest); drawRest(); armRest(); }
+  function endRest() { rest = null; save('rest', null); drawRest(); }
+  var trainLater = false;
   function renderTrain() {
     if (!ME) return;
+    // don't redraw under your thumb: a background refresh waits until you leave the box
+    var ae = document.activeElement;
+    if (ae && ae.tagName === 'INPUT' && ae.closest('#tab-train') && !ae.closest('form')) { trainLater = true; return; }
+    trainLater = false;
     var t = S.train;
     if (!tsel || !t.plans[tsel]) tsel = load('tsel-' + S.today.date) || t.today || t.sessions[0];
-    var p = t.plans[tsel], d = draft(), h = '<div class="top"><div><h1>Train</h1><div class="sub">' + (t.today ? 'Today: ' + esc(t.today) : 'Rest day. Train any session you like.') + '</div></div>' + meButton() + '</div>';
-    if (rest) h += '<div class="rest"><span>Rest <b id="restLeft">' + clock(rest.until - now()) + '</b></span><button type="button" id="restSkip">Skip</button></div>';
+    if (!t.plans[tsel]) tsel = t.sessions[0];
+    var d = draft(), h = '<div class="top"><div><h1>Train</h1><div class="sub">' + (t.today ? 'Today: ' + esc(t.today) : 'Rest day. Train any session you like.') + '</div></div>' + meButton() + '</div>';
+    h += '<div id="restSlot"></div>';
     h += '<div class="chips" style="margin-bottom:14px">' + t.sessions.map(function (s) { return '<button class="chip" type="button" data-tsel="' + esc(s) + '" aria-pressed="' + (s === tsel) + '" style="padding:8px 14px;font-size:14px">' + esc(s) + '</button>'; }).join('') + '</div>';
-    if (t.doneToday) h += '<div class="note">Today\'s workout is logged. Great work.</div>';
+    if (t.doneToday) h += '<div class="note">Today\'s workout is logged. Great work. You can log another below.</div>';
     else {
       if (tsel !== t.today) h += '<div class="swap"><div class="grow"><b>Doing ' + esc(tsel) + ' today?</b><div class="tiny muted">' + (t.today ? 'Planned: ' + esc(t.today) : 'Today is a rest day') + '. Switching moves your calendar and gym task too.</div></div><button class="btn primary sm" type="button" data-setsession="' + esc(tsel) + '">Switch</button></div>';
       else if (t.changed) h += '<div class="swap"><div class="grow small">Changed from ' + (t.planned ? esc(t.planned) : 'a rest day') + '.</div><button class="btn line sm" type="button" data-setsession="' + esc(t.planned) + '" data-undo="1">Undo</button></div>';
@@ -3291,24 +3371,21 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
       if (S.health && S.health.readiness) hints.unshift('<span class="chip ' + (S.health.readiness.score >= 80 ? 'good' : S.health.readiness.score >= 60 ? 'lilac' : 'pink') + '">' + icon('bolt', 's') + 'Readiness ' + S.health.readiness.score + '</span>');
       if (hints.length) h += '<div class="chips" style="margin:-4px 0 14px">' + hints.join('') + '</div>';
     }
-    p.main.forEach(function (m) {
-      h += '<section class="card"><div class="head"><div><div class="eyebrow">' + (m.tier === 'T1' ? 'Main lift' : 'Second lift') + '</div><h2 style="margin-top:2px">' + esc(m.exercise) + '</h2></div>' + (m.tm ? '<span class="chip pink">TM ' + m.tm + ' kg</span>' : '') + '</div>';
-      if (!m.tm) {
-        h += '<p class="small muted" style="margin:0 0 10px">Set a training max for ' + esc(m.basedOn) + ': enter a set you did recently with good form.</p><form class="inline" data-tm="' + esc(m.basedOn) + '"><input type="number" inputmode="decimal" placeholder="kg" aria-label="Weight"><input type="number" inputmode="numeric" placeholder="reps" aria-label="Reps"><button class="btn primary" type="submit">Set</button></form>';
-      } else {
-        h += m.sets.map(function (s, i) { return setRow(m.tier + '|' + m.exercise + '|' + i, s.weight + ' kg', '× ' + s.reps + (s.amrap ? '+' : '') + ' · ' + s.pct + '%', d, { n: i + 1, reps: s.reps, rest: m.rest, amrap: s.amrap }); }).join('') +
-          (m.tier === 'T1' ? '<p class="tiny muted" style="margin:8px 0 0">Sets marked <span class="amrap">+</span>: as many good reps as you can. The heavy one sets next week\'s training max.</p>' : '');
-      }
+    trainModel().forEach(function (x) {
+      var m = x.m, a = x.a;
+      h += '<section class="card"><div class="head"><div><div class="eyebrow">' + esc(x.eyebrow) + (x.swapped ? ' · swapped' : '') + '</div><h2 style="margin-top:2px;font-size:19px">' + esc(x.name) + '</h2></div><span class="row" style="gap:6px">' + (m && m.tm && !x.swapped ? '<button class="chip pink" type="button" data-tmedit="' + esc(m.basedOn) + '" aria-label="Change training max">TM ' + m.tm + ' kg ' + icon('edit', 's') + '</button>' : '') +
+        '<button class="iconbtn" style="width:34px;height:34px" type="button" data-exmenu="' + esc(x.id) + '" aria-label="Change ' + esc(x.name) + '">' + icon('more', 's') + '</button></span></div>';
+      if (m && !x.swapped && (!m.tm || tmOpen[m.basedOn])) h += '<p class="small muted" style="margin:0 0 10px">' + (m.tm ? 'Weights too light or heavy? Enter a recent hard set of ' + esc(m.basedOn) + ' (e.g. 80 kg × 10) and every set is recalculated.' : 'Set a training max for ' + esc(m.basedOn) + ' to get planned weights: enter a set you did recently with good form. Or just log below.') + '</p><form class="inline" data-tm="' + esc(m.basedOn) + '" style="margin-bottom:8px"><input type="number" inputmode="decimal" placeholder="kg" aria-label="Weight"><input type="number" inputmode="numeric" placeholder="reps" aria-label="Reps"><button class="btn primary" type="submit">Set</button></form>';
+      if (a && a.bumped) h += '<p class="small" style="margin:0 0 6px;color:var(--good)">Top of the range last time: try ' + a.suggest + ' kg</p>';
+      h += x.rows.map(function (r, i) { return setRow(r, i + 1, d, x.rest); }).join('');
+      h += '<div class="row" style="gap:8px;margin-top:8px"><button class="btn line sm" type="button" data-exset="1" data-ex="' + esc(x.id) + '">' + icon('plus', 's') + 'Add set</button>' + (x.rows.length > 1 ? '<button class="btn line sm" type="button" data-exset="-1" data-ex="' + esc(x.id) + '">Remove set</button>' : '') + '</div>';
+      if (m && m.tier === 'T1' && m.tm && !x.swapped) h += '<p class="tiny muted" style="margin:8px 0 0">Sets marked <span class="amrap">+</span>: as many good reps as you can. The heavy one sets next week\'s training max.</p>';
       h += '</section>';
     });
-    p.accessories.forEach(function (a) {
-      var low = (String(a.reps).match(/\d+/) || [8])[0];
-      h += '<section class="card"><div class="head"><div><div class="eyebrow">' + esc(a.sets) + ' × ' + esc(a.reps) + (a.rpe ? ' · RPE ' + esc(a.rpe) : '') + ' · rest ' + esc(a.rest) + '</div><h3 style="margin-top:2px">' + esc(a.exercise) + '</h3></div></div>' +
-        (a.bumped ? '<p class="small" style="margin:0 0 6px;color:var(--good)">Top of the range last time: try ' + a.suggest + ' kg</p>' : a.lastWeight ? '<p class="small muted" style="margin:0 0 6px">Last time ' + a.lastWeight + ' kg × ' + a.lastReps.join(', ') + '</p>' : '') +
-        Array.apply(null, Array(a.sets)).map(function (_, i) { return setRow('Acc|' + a.exercise + '|' + i, '', '', d, { n: i + 1, reps: +low, rest: a.rest, editWeight: true, weight: a.suggest }); }).join('') + '</section>';
-    });
-    var count = Object.keys(d).filter(function (k) { return d[k].done; }).length;
+    h += '<button class="btn line wide" type="button" id="addEx" style="margin-bottom:12px">' + icon('plus', 's') + 'Add an exercise</button>';
+    var count = doneCount();
     h += '<button class="btn primary big wide" type="button" id="finishWk"' + (count ? '' : ' disabled') + '>Finish workout · ' + count + ' set' + (count === 1 ? '' : 's') + '</button>';
+    if (load(custKeys(tsel)[0]) || load(custKeys(tsel)[1])) h += '<p class="center" style="margin:10px 0 0"><button class="linkbtn small muted" type="button" id="resetCust">Undo my changes to ' + esc(tsel) + '</button></p>';
     var pr = t.progress;
     h += '<section class="card" style="margin-top:14px"><div class="head"><h3>Progress</h3><span class="small muted">' + pr.workouts + ' workout' + (pr.workouts === 1 ? '' : 's') + '</span></div>' + pr.lifts.map(function (l) {
       var last = l.tmHistory.filter(function (x) { return x.reps; }).slice(-1)[0];
@@ -3316,22 +3393,77 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     }).join('');
     if (pr.weeks.length) { var mx = Math.max.apply(null, pr.weeks.map(function (w) { return w.volume; })) || 1; h += '<div class="eyebrow" style="margin-top:12px">Weekly volume</div><div class="vol">' + pr.weeks.map(function (w) { return '<div title="' + esc(w.week) + '" style="height:' + Math.max(4, w.volume / mx * 100) + '%"></div>'; }).join('') + '</div>'; }
     h += '</section>';
-    el('tab-train').innerHTML = h;
+    var tt = el('tab-train'), y = window.scrollY;
+    tt.innerHTML = h;
+    drawRest();
+    if (tt.offsetParent) window.scrollTo(0, y);
+  }
+  var exNames = [].concat.apply([], Object.keys(EX_LIB).map(function (g) { return EX_LIB[g]; }));
+  function exList() { return '<datalist id="exAll">' + exNames.map(function (n) { return '<option value="' + esc(n) + '">'; }).join('') + '</datalist>'; }
+  var keepBox = function () { return '<label class="row small" style="gap:8px;margin:12px 0"><input type="checkbox" id="exKeep" checked style="width:20px;height:20px"> Keep this for every ' + esc(tsel) + '</label>'; };
+  function exMenu(id) {
+    var x = trainModel().filter(function (e) { return e.id === id; })[0]; if (!x) return;
+    exTarget = id;
+    openSheet('<h2 style="margin:0 0 4px">' + esc(x.name) + '</h2><p class="small muted" style="margin:0 0 12px">Machine taken? Fancy something else? Swap it, or take it out.</p>' +
+      '<form id="exSwap" class="inline" autocomplete="off"><input type="text" list="exAll" id="exSwapName" placeholder="Swap for…" aria-label="Swap for"><button class="btn primary" type="submit">Swap</button></form>' + exList() +
+      keepBox() +
+      (x.swapped ? '<button class="btn line wide" type="button" data-exback="1" style="margin-bottom:8px">Back to ' + esc(id.split('|')[1]) + '</button>' : '') +
+      '<button class="btn line wide" type="button" data-exdrop="1" style="color:var(--bad, #c0392b)">Remove from this workout</button>');
+  }
+  function addExSheet() {
+    openSheet('<h2 style="margin:0 0 12px">Add an exercise</h2><form id="exAdd" autocomplete="off"><input type="text" list="exAll" id="exAddName" placeholder="Exercise, e.g. Cable lateral raise" aria-label="Exercise" required style="width:100%;margin-bottom:8px">' + exList() +
+      '<div class="grid2" style="gap:8px"><label class="small muted">Sets<input type="number" inputmode="numeric" id="exAddSets" value="3" min="1" max="10"></label><label class="small muted">Reps<input type="text" id="exAddReps" value="8-12"></label></div>' +
+      '<label class="small muted" style="display:block;margin-top:8px">Rest<input type="text" id="exAddRest" value="90s"></label>' + keepBox() +
+      '<button class="btn primary wide" type="submit">Add</button></form>');
   }
   function finishWorkout() {
-    var d = draft(), p = S.train.plans[tsel], sets = [];
-    p.main.forEach(function (m) { m.sets.forEach(function (s, i) { var k = m.tier + '|' + m.exercise + '|' + i; if (d[k] && d[k].done) sets.push({ exercise: m.exercise, tier: m.tier, set: i + 1, weight: s.weight, reps: d[k].reps, target: s.reps + (s.amrap ? '+' : '') }); }); });
-    p.accessories.forEach(function (a) { for (var i = 0; i < a.sets; i++) { var k = 'Acc|' + a.exercise + '|' + i; if (d[k] && d[k].done) sets.push({ exercise: a.exercise, tier: 'Acc', set: i + 1, weight: d[k].weight === null || d[k].weight === undefined ? (a.suggest || 0) : d[k].weight, reps: d[k].reps, target: a.reps }); } });
-    call('saveWorkout', [tsel, sets], function (res) {
-      save(draftKey(), null); rest = null;
+    var d = draft(), sets = [];
+    trainModel().forEach(function (x) {
+      x.rows.forEach(function (r, i) {
+        var s = d[r.key]; if (!s || !s.done) return;
+        var w = s.weight !== undefined && s.weight !== null ? s.weight : r.weight;
+        sets.push({ exercise: x.name, tier: x.tier, set: i + 1, weight: +w || 0, reps: +s.reps || 0, target: String(r.target) });
+      });
+    });
+    if (!sets.length) return toast('Tick at least one set first.', true);
+    var bad = sets.filter(function (s) { return !s.reps; }).length;
+    if (bad && !confirm(bad + ' ticked set' + (bad === 1 ? ' has' : 's have') + ' 0 reps and won\'t be saved. Finish anyway?')) return;
+    el('finishWk').disabled = true; el('finishWk').textContent = 'Saving…';
+    call('saveWorkout', [tsel, sets, { started: load('wkstart-' + draftKey()) || 0 }], function (res) {
+      save(draftKey(), null); save('wkstart-' + draftKey(), null); endRest(); armRest();
       apply(res.state);
       confetti(true); chime([660, 880, 1100, 1320]); buzz([60, 40, 60, 40, 150]);
-      var h = '<div class="center">' + icon('trophy', 'l') + '<h2 style="margin:8px 0">Workout logged</h2></div>';
-      res.changes.forEach(function (c) { h += '<section class="card tint">' + '<b>' + esc(c.lift) + '</b>: ' + c.reps + ' reps on the heavy set<br>' + (c.change ? 'Training max ' + c.from + ' → <b>' + c.to + ' kg</b>' : 'Training max stays at ' + c.from + ' kg. Go again next week.') + '</section>'; });
-      res.prs.slice(0, 3).forEach(function (r) { h += '<section class="card blush"><b>New record.</b> ' + esc(r.exercise) + ' ' + r.weight + ' kg × ' + r.reps + ' (est. 1RM ' + Math.round(r.e1rm) + ' kg)</section>'; });
+      var h = '<div class="center">' + icon('trophy', 'l') + '<h2 style="margin:8px 0">Workout logged</h2>' + (res.volume ? '<p class="muted" style="margin:0 0 10px">' + res.sets + ' sets · ' + fmt(res.volume) + ' kg lifted' + (res.minutes ? ' · ' + res.minutes + ' min' : '') + '</p>' : '') + '</div>';
+      (res.changes || []).forEach(function (c) { h += '<section class="card tint">' + '<b>' + esc(c.lift) + '</b>: ' + c.reps + ' reps on the heavy set<br>' + (c.change ? 'Training max ' + c.from + ' → <b>' + c.to + ' kg</b>' : 'Training max stays at ' + c.from + ' kg. Go again next week.') + '</section>'; });
+      (res.prs || []).slice(0, 3).forEach(function (r) { h += '<section class="card blush"><b>New record.</b> ' + esc(r.exercise) + ' ' + r.weight + ' kg × ' + r.reps + (r.e1rm ? ' (est. 1RM ' + Math.round(r.e1rm) + ' kg)' : '') + '</section>'; });
       openSheet(h + '<button class="btn primary wide" type="button" data-close>Done</button>');
-    });
+    }, function () { drawFinish(); });
   }
+  document.addEventListener('focusout', function (ev) { if (trainLater && ev.target.closest && ev.target.closest('#tab-train')) setTimeout(function () { var ae = document.activeElement; if (trainLater && !(ae && ae.tagName === 'INPUT' && ae.closest('#tab-train'))) renderTrain(); }, 0); });
+  // typing a weight or reps saves straight away, so nothing is lost when the page refreshes
+  document.addEventListener('input', function (ev) {
+    var row = ev.target.closest && ev.target.closest('.set[data-key]'); if (!row) return;
+    var d = draft(), k = row.getAttribute('data-key'); d[k] = d[k] || {};
+    if (ev.target.hasAttribute('data-sw')) d[k].weight = ev.target.value === '' ? null : +ev.target.value;
+    if (ev.target.hasAttribute('data-sr')) d[k].reps = ev.target.value === '' ? 0 : Math.max(0, Math.round(+ev.target.value));
+    saveDraft(d);
+  });
+  document.addEventListener('submit', function (ev) {
+    var f = ev.target;
+    if (f.id === 'exSwap') {
+      ev.preventDefault();
+      var nm = el('exSwapName').value.trim(), id = exTarget; if (!nm || !id) return;
+      editCust(el('exKeep').checked, function (c) { c.swap[id] = nm.slice(0, 60); });
+      closeSheet(); renderTrain(); toast('Swapped to ' + nm + '.');
+    }
+    if (f.id === 'exAdd') {
+      ev.preventDefault();
+      var an = el('exAddName').value.trim(); if (!an) return;
+      var item = { exercise: an.slice(0, 60), sets: Math.max(1, Math.min(10, +el('exAddSets').value || 3)), reps: el('exAddReps').value.trim() || '8-12', rest: el('exAddRest').value.trim() || '90s' };
+      editCust(el('exKeep').checked, function (c) { c.add = c.add.filter(function (a) { return a.exercise !== item.exercise; }); c.add.push(item); });
+      closeSheet(); renderTrain(); toast(an + ' added.');
+    }
+  });
 
   // ---------- FOOD ----------
   var pending = [], ideas = null;
@@ -5114,18 +5246,28 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
       if (ds.rest && !confirm('Make today a rest day? Your gym event and task are removed.')) return;
       return call('setTodaySession', [ns], function (res) { if (ns) { tsel = ns; save('tsel-' + S.today.date, tsel); } apply(res, ns ? 'Today is now ' + ns + '.' : 'Rest day. Recover well.'); });
     }
-    if (ds.r) { var d = draft(); d[ds.r] = d[ds.r] || {}; var cur = d[ds.r].reps; if (cur === undefined) cur = +t.parentNode.querySelector('span').textContent; d[ds.r].reps = Math.max(0, cur + +ds.d); saveDraft(d); return renderTrain(); }
+    if (ds.rd) { var ri = t.parentNode.querySelector('[data-sr]'); ri.value = Math.max(0, (+ri.value || 0) + +ds.rd); ri.dispatchEvent(new Event('input', { bubbles: true })); return; }
     if (ds.set) {
-      var dd = draft(), k = ds.set;
+      var row = t.closest('.set'), dd = draft(), k = ds.set;
       dd[k] = dd[k] || {}; dd[k].done = !dd[k].done;
-      if (dd[k].reps === undefined) dd[k].reps = +t.parentNode.querySelector('.stepper span').textContent;
-      var wi = t.parentNode.querySelector('input[data-w]'); if (wi) dd[k].weight = wi.value === '' ? null : +wi.value;
+      var wi = row.querySelector('[data-sw]'), rin = row.querySelector('[data-sr]');
+      dd[k].weight = wi.value === '' ? null : +wi.value; dd[k].reps = Math.max(0, Math.round(+rin.value || 0));
+      if (!load('wkstart-' + draftKey())) save('wkstart-' + draftKey(), now());
       saveDraft(dd);
-      if (dd[k].done) { buzz(20); rest = { until: now() + restSecs(ds.rest) * 1000 }; }
-      return renderTrain();
+      row.classList.toggle('done', dd[k].done); t.classList.toggle('on', dd[k].done);
+      if (dd[k].done) { buzz(20); startRest(restSecs(ds.rest)); }
+      return drawFinish();
     }
-    if (t.id === 'restSkip') { rest = null; return renderTrain(); }
+    if (ds.restadd) { if (rest) { rest.until = Math.max(now() + 5000, rest.until + +ds.restadd * 1000); save('rest', rest); drawRest(); armRest(); } return; }
+    if (t.id === 'restSkip') { endRest(); armRest(); return; }
     if (t.id === 'finishWk') return finishWorkout();
+    if (ds.exmenu) return exMenu(ds.exmenu);
+    if (ds.tmedit) { tmOpen[ds.tmedit] = !tmOpen[ds.tmedit]; renderTrain(); var tf = document.querySelector('form[data-tm="' + ds.tmedit + '"] input'); if (tf) tf.focus(); return; }
+    if (t.id === 'addEx') return addExSheet();
+    if (ds.exset) { var eid = ds.ex, dir = +ds.exset; editCust(true, function (c) { c.extra[eid] = (c.extra[eid] || 0) + dir; }); return renderTrain(); }
+    if (ds.exdrop && exTarget) { var did = exTarget, keep = el('exKeep') && el('exKeep').checked; editCust(keep, function (c) { if (did.indexOf('Add|') === 0) c.add = c.add.filter(function (x) { return 'Add|' + x.exercise !== did; }); else if (c.drop.indexOf(did) === -1) c.drop.push(did); }); if (did.indexOf('Add|') === 0) editCust(!keep, function (c) { c.add = c.add.filter(function (x) { return 'Add|' + x.exercise !== did; }); }); closeSheet(); return renderTrain(); }
+    if (ds.exback && exTarget) { var bid = exTarget; custKeys(tsel).forEach(function (ck) { var c = load(ck); if (c && c.swap) { delete c.swap[bid]; save(ck, c); } }); closeSheet(); return renderTrain(); }
+    if (t.id === 'resetCust') { if (!confirm('Put ' + tsel + ' back to the plan? Your logged sets today stay ticked.')) return; custKeys(tsel).forEach(function (ck) { save(ck, null); }); return renderTrain(); }
     // food
     if (ds.preset !== undefined) {
       var p = S.food.presets[+ds.preset], mine = { name: p.name, kcal: p.kcal, protein: p.protein };
@@ -5195,10 +5337,6 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     }).join('') + '<button class="btn primary big wide" type="button" id="dumpSave" style="margin-top:14px">Save</button>');
   }
 
-  document.addEventListener('change', function (ev) {
-    var w = ev.target.closest('input[data-w]');
-    if (w) { var d = draft(); d[w.dataset.w] = d[w.dataset.w] || {}; d[w.dataset.w].weight = w.value === '' ? null : +w.value; saveDraft(d); }
-  });
   document.addEventListener('submit', function (ev) {
     ev.preventDefault();
     var f = ev.target;
@@ -5207,7 +5345,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     if (f.id === 'park') { var v = el('parkText').value.trim(); if (!v) { toast('Type what popped into your head'); return; } var task = mySession().task; return call('parkThing', [v], function (res) { parking = false; apply(res, 'Saved for later. Back to ' + task + '.'); }); }
     if (f.id === 'weighForm') { var wv = el('weighText').value.trim(); if (!wv) { toast('Type your weight first, like 82.4'); el('weighText').focus(); return; } return call('logWeightNow', [wv], function (t) { S.today = t; addXpLocal(10); renderAll(); toast('Logged ' + t.lastWeight.kg + ' kg'); refreshQuiet(); }); }
     if (f.id === 'shopForm') { var it = el('shopText').value.trim(); if (!it) { toast('Type what you need first'); el('shopText').focus(); return; } el('shopText').value = ''; return call('addShopping', [it], function (res) { apply(res, 'Added'); }); }
-    if (f.dataset.tm) { var ins = f.querySelectorAll('input'); return call('setTrainingMax', [f.dataset.tm, +ins[0].value, +ins[1].value], function (t) { S.train = t; renderTrain(); toast('Training max set.'); }); }
+    if (f.dataset.tm) { var ins = f.querySelectorAll('input'); return call('setTrainingMax', [f.dataset.tm, +ins[0].value, +ins[1].value], function (t) { tmOpen = {}; S.train = t; renderTrain(); var l = (t.progress.lifts || []).filter(function (x) { return x.lift.toLowerCase() === String(f.dataset.tm).toLowerCase(); })[0]; toast('Training max set' + (l && l.tm ? ' to ' + l.tm + ' kg' : '') + '. Sets updated.'); }); }
     if (f.id === 'quick') {
       var text = el('quickText').value.trim(); if (!text) { toast('Type what you ate, like "2 eggs on toast"'); return; }
       el('quickBtn').disabled = true; el('quickNote').textContent = 'Working it out…';
@@ -5233,10 +5371,10 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
   setInterval(function () {
     if (!S) return;
     tickTimer();
-    if (rest && el('restLeft')) {
+    if (rest) {
       var left = rest.until - now();
-      el('restLeft').textContent = clock(left);
-      if (left <= 0) { rest = null; chime([880, 1175, 1568]); buzz([120, 60, 120]); toast('Rest over. Next set.'); renderTrain(); }
+      if (el('restLeft')) el('restLeft').textContent = clock(left);
+      if (left <= 0) { endRest(); chime([880, 1175, 1568]); buzz([120, 60, 120]); toast('Rest over. Next set.'); if (document.hidden && swReg && swReg.showNotification) swReg.showNotification('Rest over', { body: 'Next set: you\'ve got this.', tag: 'timer-rest', renotify: true, vibrate: [200, 100, 200] }).catch(function () {}); }
     }
     var tb = el('dotTrain'); if (tb) tb.textContent = rest ? clock(rest.until - now()) : '';
     document.querySelectorAll('[data-due]').forEach(function (x) { x.textContent = dueLabel(+x.getAttribute('data-due')); });
