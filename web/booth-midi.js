@@ -62,7 +62,7 @@
     this.map = map; this.access = null; this.input = null; this.output = null; this.listeners = []; this.status = { state: 'idle', message: '' }; this.seen = [];
   }
   Connection.prototype.on = function (fn) { this.listeners.push(fn); };
-  Connection.prototype.emit = function (type, data) { this.listeners.forEach(function (f) { try { f(type, data); } catch (e) { console.error(e); } }); };
+  Connection.prototype.emit = function (type, data, extra) { this.listeners.forEach(function (f) { try { f(type, data, extra); } catch (e) { console.error(e); } }); };
   Connection.prototype.setStatus = function (state, message) { this.status = { state: state, message: message || '' }; this.emit('status', this.status); };
   Connection.prototype.isInpulse = function (port) { var n = (port.name || '') + ' ' + (port.manufacturer || ''); return this.map.match.some(function (r) { return r.test(n); }); };
   Connection.prototype.connect = function () {
@@ -93,7 +93,7 @@
     if (this.input && this.input !== inp) this.input.onmidimessage = null;
     this.input = inp; this.output = out || null;
     return Promise.all([inp.open(), out ? out.open() : null]).then(function () {
-      inp.onmidimessage = function (e) { self.emit('midi', Array.prototype.slice.call(e.data)); };
+      inp.onmidimessage = function (e) { self.emit('midi', Array.prototype.slice.call(e.data), e.timeStamp || (window.performance && performance.now())); };   // when it really happened, for timing scores
       self.setStatus('ready', 'Connected: ' + inp.name + (out ? '' : ' (no light control found)'));
       self.requestDump();
       return true;

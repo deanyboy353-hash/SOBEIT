@@ -20,9 +20,9 @@
   function control(id) { return dec.control(id); }
   function required(c) { return c.kind !== 'analog' && !(c.bank && c.bank !== 'hotcue'); }
 
-  conn.on(function (type, data) {
+  conn.on(function (type, data, ts) {
     if (type === 'status') return drawConn();
-    if (type === 'midi') onMidi(data);
+    if (type === 'midi') onMidi(data, ts);
   });
   function drawConn() {
     var s = conn.status, c = el('conn');
@@ -33,9 +33,10 @@
     if (screen === 'test') drawTestAlert();
   }
 
-  function onMidi(bytes) {
+  function onMidi(bytes, ts) {
     if (learning) return learnFrom(bytes);
     var e = dec.decode(bytes);
+    e.ts = ts || performance.now();
     if (e.partial) return;
     if (e.id) {
       if (e.value !== undefined) values[e.id] = e.value;
@@ -96,7 +97,7 @@
     var action = keyFor[ev.key.toLowerCase()]; if (!action) return;
     ev.preventDefault();
     var id = action.replace(/[+-]$/, ''), dir = /\+$/.test(action) ? 1 : /-$/.test(action) ? -1 : 0, c = control(id) || {};
-    if (screen !== 'test' && window.BoothPlay) { if (!ev.repeat || dir) BoothPlay.key(id, dir, values[id]); return; }
+    if (screen !== 'test' && window.BoothPlay) { if (!ev.repeat || dir) BoothPlay.key(id, dir, values[id], ev.timeStamp); return; }
     if (dir && (c.kind === 'fader' || c.kind === 'knob' || c.kind === 'center')) values[id] = Math.max(0, Math.min(1, (values[id] === undefined ? (c.kind === 'center' ? .5 : 0) : values[id]) + dir * .05));
     if (/nudge/.test(id)) { id = id.replace('nudge', 'jogEdge'); spins[id] = (spins[id] || 0) + dir * 8; }
     addLog([0, 0, 0].slice(0, 0), { id: id });

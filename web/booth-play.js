@@ -22,6 +22,7 @@
   var settings = null, padMode = { A: 'hotcue', B: 'hotcue' }, lastLoop = { A: '', B: '' };
   var LOOP_SIZES = [1 / 4, 1 / 2, 1, 2, 4, 8, 16, 32], JUMPS = [-1, 1, -2, 2, -4, 4, -8, 8];
   var PAD_NAMES = { hotcue: 'Hot cue', loop: 'Loop', slicer: 'Slicer', slicerloop: 'Slicer loop', sampler: 'Sampler', beatjump: 'Beatjump', toneplay: 'Toneplay', fx: 'FX' };
+  var FX_PADS = [['echo', 0.5, 'Echo ½'], ['echo', 0.75, 'Echo ¾'], ['echo', 1, 'Echo 1'], ['echo', 2, 'Echo 2'], ['reverb', 0, 'Reverb']];
   var SAMPLES = ['Air horn', 'Siren', 'Riser', 'Laser', 'Clap', 'Kick', 'Crash', 'Sub drop'];
   function beatsText(b) { return b === 0.25 ? '¼ beat' : b === 0.5 ? '½ beat' : b === 0.125 ? '⅛ beat' : b + ' beat' + (b === 1 ? '' : 's'); }
   // what the current game mode wants: hidden BPMs, hidden waveforms, guide lights, a per-frame hook
@@ -106,21 +107,21 @@
     else if (n === 'loopPush') { if (d.loop) d.setLoop(null); else if (d.track && d.playing) { d.beatLoop(d.loopSize); S.toast('Deck ' + id + ' looping ' + beatsText(d.loopSize) + '.'); } }
     ui.dirty = true;
   }
-  function key(id, dir) {
+  function key(id, dir, _v, ts) {
     if (!E) { if (S.screen() === 'free') start(); return; }
     var c = S.dec.control(id) || {};
     if (/nudge/.test(id)) return E.decks[id[0]].jog(dir * 14);
     if (c.kind === 'fader' || c.kind === 'knob' || c.kind === 'center') {
       var step = /pitch/.test(id) ? 0.00625 : 0.05, cur = S.values[id] === undefined ? (c.kind === 'center' || /pitch|trim/.test(id) ? 0.5 : 0) : S.values[id];
       S.values[id] = Math.max(0, Math.min(1, cur + dir * step));
-      control({ id: id, kind: c.kind, value: S.values[id] }); return syncInputs();
+      control({ id: id, kind: c.kind, value: S.values[id], ts: ts }); return syncInputs();
     }
-    control({ id: id, kind: 'button', down: true });
+    control({ id: id, kind: 'button', down: true, ts: ts });
     if (/\.cue$/.test(id)) setTimeout(function () { control({ id: id, kind: 'button', down: false }); }, 250);
   }
   function setPadMode(id, bank) {
     padMode[id] = bank;
-    if (bank === 'toneplay' || bank === 'fx') S.toast(PAD_NAMES[bank] + ' isn\'t in Booth yet. Hot cue, Loop, Slicer, Sampler and Beatjump work.');
+    if (bank === 'toneplay') S.toast('Toneplay isn\'t in Booth yet. Hot cue, Loop, Slicer, Sampler, FX and Beatjump work.');
     var row = el('pm' + id); if (row) row.querySelectorAll('[data-pm]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-pm') === id + '.' + bank); });
     ui.dirty = true;
   }
@@ -137,7 +138,15 @@
     if (bank === 'slicer' || bank === 'slicerloop') return d.slice(k, down);
     if (bank === 'beatjump') { if (down) d.beatJump(JUMPS[k] * (sh ? 4 : 1)); return; }
     if (bank === 'sampler') { if (down) playSample(k); return; }
-    if (down) S.toast(PAD_NAMES[bank] + ' isn\'t in Booth yet. Pick Hot cue, Loop, Slicer, Sampler or Beatjump.');
+    if (bank === 'fx') {
+      var f = FX_PADS[k]; if (!f) { if (down) S.toast('FX pads 1 to 5: Echo ½, ¾, 1, 2 beats and Reverb.'); return; }
+      var same = d.fx && d.fx.kind === f[0] && d.fx.beats === f[1];
+      if (sh) { d.setFx(down ? f[0] : null, f[1]); return; }                      // SHIFT: on only while held
+      if (!down) return;
+      d.setFx(same ? null : f[0], f[1]); hint('Deck ' + id + (same ? ' FX off (the tail rings out)' : ' ' + f[2] + ' on'));
+      return;
+    }
+    if (down) S.toast(PAD_NAMES[bank] + ' isn\'t in Booth yet. Pick Hot cue, Loop, Slicer, Sampler, FX or Beatjump.');
   }
   // ---------- sampler: 8 one-shots made on the fly (in time with the master tempo) ----------
   function playSample(k) {
@@ -154,6 +163,12 @@
     else if (k === 6) noise(2.2, 0.35, 4000, t);
     else if (k === 7) osc('sine', 90, 28, 1.6, 0.9);
     hint('Sampler: ' + SAMPLES[k]);
+  }
+  /** Which moment of the music you were hearing when something happened (performance time in ms), in audio-clock seconds. */
+  function heardAt(ts) {
+    var c = E.ctx, now = performance.now(); ts = ts || now;
+    try { if (c.getOutputTimestamp) { var o = c.getOutputTimestamp(); if (o.performanceTime) return o.contextTime + (ts - o.performanceTime) / 1000; } } catch (e) {}
+    return c.currentTime - (c.outputLatency || 0) - (c.baseLatency || 0) - (now - ts) / 1000;
   }
   function saveHot(d) { var it = lib && lib.get(d.track.id); if (it) lib.update(it, { hot: d.hot.slice() }); }
   var hintT = 0, lastHint = '';
@@ -219,7 +234,7 @@
       '<div class="dstats"><div><span class="big mono" id="bpm' + id + '">' + (t ? d.bpm().toFixed(2) : '--') + '</span> <span class="muted small">BPM</span></div><div class="mono" id="pitch' + id + '">±0.00%</div><div class="mono" id="key' + id + '">' + (t && t.camelot ? esc(t.camelot) + ' · ' + esc(t.key) : '') + '</div><div class="mono" id="time' + id + '">' + (t ? '−' + fmtTime(d.left()) : '') + '</div></div>' +
       '<div class="dbtns"><button type="button" class="bbtn tbtn" data-b="' + id + '.play" id="play' + id + '">Play / pause</button><button type="button" class="bbtn tbtn" data-b="' + id + '.cue">Cue</button><button type="button" class="bbtn tbtn" data-b="' + id + '.sync" id="sync' + id + '">Sync</button></div>' +
       '<label class="slider">Pitch fader <span class="muted tiny">(top slower, bottom faster)</span><input type="range" min="0" max="1" step="0.0005" data-r="' + id + '.pitch" value="' + (S.values[id + '.pitch'] === undefined ? 0.5 : S.values[id + '.pitch']) + '"></label>' +
-      '<div class="pm row wrap" id="pm' + id + '">' + ['hotcue', 'loop', 'slicer', 'sampler', 'beatjump'].map(function (b) { return '<button type="button" class="bbtn sm ghost' + (padMode[id] === b ? ' on' : '') + '" data-pm="' + id + '.' + b + '">' + PAD_NAMES[b] + '</button>'; }).join('') + '</div>' +
+      '<div class="pm row wrap" id="pm' + id + '">' + ['hotcue', 'loop', 'slicer', 'sampler', 'fx', 'beatjump'].map(function (b) { return '<button type="button" class="bbtn sm ghost' + (padMode[id] === b ? ' on' : '') + '" data-pm="' + id + '.' + b + '">' + PAD_NAMES[b] + '</button>'; }).join('') + '</div>' +
       '<div class="hot" id="pads' + id + '">' + [0, 1, 2, 3, 4, 5, 6, 7].map(function (k) { return '<button type="button" class="hc" data-hot="' + id + '.' + k + '"></button>'; }).join('') + '</div>' +
       '<div class="row wrap loops"><button type="button" class="bbtn sm" data-b="' + id + '.loopIn" id="li' + id + '">Loop in</button><button type="button" class="bbtn sm" data-b="' + id + '.loopOut" id="lo' + id + '">Loop out</button>' +
       '<button type="button" class="bbtn sm ghost" data-lsz="' + id + '.-1" aria-label="Halve the loop">½×</button><span class="mono small" id="lsz' + id + '">4 beats</span><button type="button" class="bbtn sm ghost" data-lsz="' + id + '.1" aria-label="Double the loop">2×</button><button type="button" class="bbtn sm" data-b="' + id + '.loopPush" id="lp' + id + '">Loop on / off</button></div>' +
@@ -346,6 +361,7 @@
     if (m === 'slicer' || m === 'slicerloop') return { t: 'Slice ' + (k + 1), on: d.track && d.playing && d.sliceIndex() === k, tip: 'Plays slice ' + (k + 1) + ' of the 8 beats you\'re in, while held.' };
     if (m === 'beatjump') return { t: (JUMPS[k] > 0 ? '+' : '−') + Math.abs(JUMPS[k]), on: false, tip: 'Jump ' + Math.abs(JUMPS[k]) + ' beat' + (Math.abs(JUMPS[k]) === 1 ? '' : 's') + ' ' + (JUMPS[k] > 0 ? 'forward' : 'back') + '. With SHIFT: 4× as far.' };
     if (m === 'sampler') return { t: SAMPLES[k], on: false, tip: 'Plays the ' + SAMPLES[k] + ' sample.' };
+    if (m === 'fx') { var f = FX_PADS[k]; return f ? { t: f[2], on: !!(d.fx && d.fx.kind === f[0] && d.fx.beats === f[1]), tip: f[2] + ': press to turn on or off. SHIFT + pad: only while held.' } : { t: '–', on: false, tip: '' }; }
     return { t: '–', on: false, tip: '' };
   }
   function refreshHot() {
@@ -374,7 +390,7 @@
       send(id + 'lo', c('loopOut').led, d.loop ? 0x7F : 0);
       var pc = c('pad.' + bank + '.1');
       for (var k = 0; k < 8; k++) {
-        var L = padLabel(id, k), col = bank === 'hotcue' ? (L.on ? mine : 0) : bank === 'loop' ? (L.on ? mine : C.dimBlue) : bank === 'slicer' || bank === 'slicerloop' ? (L.on ? C.white : C.dimCyan) : bank === 'beatjump' ? (JUMPS[k] > 0 ? C.dimGreen : C.dimRed) : bank === 'sampler' ? C.dimGreen : 0;
+        var L = padLabel(id, k), col = bank === 'hotcue' ? (L.on ? mine : 0) : bank === 'loop' ? (L.on ? mine : C.dimBlue) : bank === 'slicer' || bank === 'slicerloop' ? (L.on ? C.white : C.dimCyan) : bank === 'beatjump' ? (JUMPS[k] > 0 ? C.dimGreen : C.dimRed) : bank === 'sampler' ? C.dimGreen : bank === 'fx' ? (k < 5 ? (L.on ? C.orange : C.dimRed) : 0) : 0;
         if (pc) send(id + 'pad' + bank + k, c('pad.' + bank + '.' + (k + 1)).led, col);
       }
       // Beatmatch Guide: only for a deck you're matching by hand (SYNC off), against the other playing deck.
@@ -488,20 +504,21 @@
     if (hp && S && E && ev.button === 0) {
       ev.preventDefault();
       var q = hp.getAttribute('data-hot').split('.'), dk = E.decks[q[0]], k = +q[1];
-      pad(dk, q[0], padMode[q[0]], ev.shiftKey, k, true);
-      var up2 = function () { pad(dk, q[0], padMode[q[0]], ev.shiftKey, k, false); document.removeEventListener('pointerup', up2); };
+      var bankNow = padMode[q[0]], padId = q[0] + '.pad.' + bankNow + (ev.shiftKey ? 'Shift' : '') + '.' + (k + 1);
+      control({ id: padId, kind: 'button', down: true, ts: ev.timeStamp });
+      var up2 = function (e2) { control({ id: padId, kind: 'button', down: false, ts: e2.timeStamp }); document.removeEventListener('pointerup', up2); };
       document.addEventListener('pointerup', up2); return;
     }
     var b = ev.target.closest('[data-b]'); if (!b || !S) return;
     ev.preventDefault();
     if (!E) return start();
     var id = b.getAttribute('data-b');
-    control({ id: id, kind: 'button', down: true });
-    var up = function () { control({ id: id, kind: 'button', down: false }); document.removeEventListener('pointerup', up); };
+    control({ id: id, kind: 'button', down: true, ts: ev.timeStamp });
+    var up = function (e2) { control({ id: id, kind: 'button', down: false, ts: e2.timeStamp }); document.removeEventListener('pointerup', up); };
     document.addEventListener('pointerup', up);
   });
   document.addEventListener('input', function (ev) {
-    var r = ev.target.closest && ev.target.closest('[data-r]'); if (r && S) { var id = r.getAttribute('data-r'); S.values[id] = +r.value; control({ id: id, value: +r.value }); return; }
+    var r = ev.target.closest && ev.target.closest('[data-r]'); if (r && S) { var id = r.getAttribute('data-r'), c0 = S.dec.control(id) || {}; S.values[id] = +r.value; control({ id: id, kind: c0.kind, value: +r.value, ts: ev.timeStamp }); return; }
     var f = ev.target.getAttribute && ev.target.getAttribute('data-f'); if (f === 'q') { libFilter.q = ev.target.value; sel = 0; var box = document.querySelector('.tracks'); if (box) box.outerHTML = S.screen() === 'free' ? trackRows(visible(), true) : box.outerHTML; if (S.screen() === 'library') drawLibraryKeepFocus(); }
   });
   function addResultHtml() {
@@ -585,7 +602,7 @@
     settings: function () { return settings; },
     deckPanel: deckPanel, mixerPanel: mixerPanel, sizeCanvases: sizeCanvases, trackRows: trackRows, visible: visible, fmtTime: fmtTime,
     dirty: function () { ui.dirty = true; },
-    shell: function () { return S; },
+    shell: function () { return S; }, heardAt: heardAt,
     padMode: padMode, setPadMode: setPadMode, beatsText: beatsText,
     leave: function (next) { if (next !== 'free' && gridDeck) gridDeck = ''; },
     engine: function () { return E; }

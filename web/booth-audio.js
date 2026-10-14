@@ -108,9 +108,33 @@
     this.hp.connect(this.fader); this.fader.connect(this.xg); this.xg.connect(engine.master);
     this.hp.connect(this.pflG); this.pflG.connect(engine.cueBus);
     this.meter = c.createAnalyser(); this.meter.fftSize = 512; this.fader.connect(this.meter); this.mbuf = new Float32Array(512);
+    // Beat FX, post-fader like a DJM: the send comes after the channel fader, the return goes straight to the master,
+    // so an echo keeps ringing out after you pull the fader down (that's how an echo out works).
+    this.fxSend = c.createGain(); this.fxSend.gain.value = 0;
+    this.delay = c.createDelay(4); this.fb = c.createGain(); this.fb.gain.value = 0; this.echoOut = c.createGain(); this.echoOut.gain.value = 0.7;
+    this.fader.connect(this.fxSend); this.fxSend.connect(this.delay); this.delay.connect(this.fb); this.fb.connect(this.delay); this.delay.connect(this.echoOut); this.echoOut.connect(engine.master);
+    this.revSend = c.createGain(); this.revSend.gain.value = 0; this.rev = c.createConvolver(); this.rev.buffer = reverbIR(c); this.revOut = c.createGain(); this.revOut.gain.value = 0.8;
+    this.fader.connect(this.revSend); this.revSend.connect(this.rev); this.rev.connect(this.revOut); this.revOut.connect(engine.master);
+    this.fx = null;
     this.fader.gain.value = 0; this.pflG.gain.value = 0;
   }
+  function reverbIR(c) {
+    var len = Math.floor(c.sampleRate * 2.6), b = c.createBuffer(2, len, c.sampleRate);
+    for (var ch = 0; ch < 2; ch++) { var d = b.getChannelData(ch), seed = ch ? 7 : 3; for (var i = 0; i < len; i++) { seed = (seed * 16807) % 2147483647; d[i] = ((seed / 2147483647) * 2 - 1) * Math.pow(1 - i / len, 3.2); } }
+    return b;
+  }
   var D = Deck.prototype;
+  /** FX on or off. kind: 'echo' (beats: 0.5, 0.75, 1, 2) or 'reverb'. Turning off stops new sound going in; the tail rings out. */
+  D.setFx = function (kind, beats) {
+    var t = this.c.currentTime;
+    if (!kind) { this.fx = null; this.fxSend.gain.setTargetAtTime(0, t, 0.01); this.revSend.gain.setTargetAtTime(0, t, 0.01); return; }
+    if (kind === 'echo') {
+      var bpm = this.track ? this.bpm() : 128, dt = Math.min(3.9, beats * 60 / bpm);
+      this.delay.delayTime.setValueAtTime(dt, t); this.fb.gain.setTargetAtTime(0.55, t, 0.01); this.fxSend.gain.setTargetAtTime(1, t, 0.005); this.revSend.gain.setTargetAtTime(0, t, 0.01);
+    } else { this.revSend.gain.setTargetAtTime(0.9, t, 0.01); this.fxSend.gain.setTargetAtTime(0, t, 0.01); }
+    this.fx = { kind: kind, beats: beats || 0 };
+  };
+  D.fxLabel = function () { return !this.fx ? '' : this.fx.kind === 'echo' ? 'echo ' + this.fx.beats : 'reverb'; };
   D.set = function (name, v) {
     this.vals[name] = v;
     var t = this.c.currentTime, g;
