@@ -363,6 +363,7 @@ function funState_(who, g) {
     appBase: appBaseUrl_(),
     prefs: prefs_(who),
     chars: { me: prefs_('me').char, partner: prefs_('partner').char },
+    looks: { me: prefs_('me').look, partner: prefs_('partner').look },
     titles: String(readConfig_().settings[who === 'me' ? 'Your level titles' : 'Partner level titles'] || 'None')
   };
 }
@@ -374,7 +375,8 @@ function daysBetween_(a, b) {
 // ---------- customisation ----------
 
 var HOME_BLOCKS = ['deadlines', 'brief', 'ask', 'ring', 'challenges', 'next', 'whatnow', 'routine', 'gym', 'chores', 'tiles', 'make', 'us', 'feed'];
-var PREF_DEFAULTS = { char: '', accent: '', text: 'normal', sound: true, haptics: true, confetti: true, motion: true, home: [], nag: '' };
+var PREF_DEFAULTS = { char: '', accent: '', text: 'normal', sound: true, haptics: true, confetti: true, motion: true, home: [], nag: '', look: {} };
+var LOOK_KEYS = { hair: 1, hc: 1, top: 1, tc: 1, head: 1, eyes: 1, face: 1, skin: 1, ear: 1 };
 
 function prefs_(who) {
   return Object.assign({}, PREF_DEFAULTS, JSON.parse(prop_('PREFS_' + who) || '{}'));
@@ -387,9 +389,14 @@ function setPrefs(key, p) {
   return withLock_(function () {
     var cur = prefs_(who);
     if (p.char !== undefined) cur.char = /^(sa|vc)-[a-z]+$/.test(String(p.char)) ? String(p.char) : '';
+    if (p.char !== undefined && p.look === undefined) cur.look = {};
     if (p.accent !== undefined) cur.accent = ['', 'pink', 'green', 'teal', 'orange', 'blue'].indexOf(p.accent) !== -1 ? p.accent : '';
     if (p.text !== undefined) cur.text = p.text === 'large' ? 'large' : 'normal';
     if (p.nag !== undefined) cur.nag = NAG_LEVELS[p.nag] ? p.nag : '';
+    if (p.look && typeof p.look === 'object') {
+      cur.look = {};
+      Object.keys(p.look).forEach(function (k) { var v = String(p.look[k]); if (LOOK_KEYS[k] && (/^[a-z]{1,12}$/.test(v) || /^#[0-9a-f]{6}$/i.test(v))) cur.look[k] = v; });
+    }
     ['sound', 'haptics', 'confetti', 'motion'].forEach(function (k) { if (p[k] !== undefined) cur[k] = !!p[k]; });
     if (Array.isArray(p.home)) {
       cur.home = p.home.filter(function (x) { return x && HOME_BLOCKS.indexOf(x.id) !== -1; }).map(function (x) { return { id: x.id, hide: !!x.hide }; });

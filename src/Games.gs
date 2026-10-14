@@ -71,17 +71,17 @@ function gamesState_(who) {
     },
     recall: { mine: g.recall[who], other: g.recall[other] },
     tempo: tempoState_(today, g.tempo[who], g.tempo[other]),
-    mix: { puzzle: mixPuzzle(today), mine: g.mix[who], other: g.mix[other] ? { points: g.mix[other].points, final: g.mix[other].final, tries: g.mix[other].tries } : null },
+    mix: { puzzle: mixPuzzle(today), mine: g.mix[who], other: g.mix[other] ? { points: g.mix[other].points, scored: g.mix[other].scored, tries: g.mix[other].tries } : null },
     stake: g.stake ? { text: g.stake.text, by: g.stake.by === who ? 'you' : 'them', result: stakeResult_(w[who], w[other]) } : null,
     stats: gameStats_(who)
   };
 }
 
 function tempoState_(ymd, mine, theirs) {
-  var pz = tempoPuzzle(ymd), done = mine && mine.final;
+  var pz = tempoPuzzle(ymd), done = mine && mine.scored;
   return {
     bpm: pz.bpm, style: done ? pz.style : '', mine: mine,
-    other: theirs ? { points: theirs.points, final: theirs.final, bpm: done && theirs.final ? theirs.bpm : null, tries: theirs.tries } : null
+    other: theirs ? { points: theirs.points, scored: theirs.scored, bpm: done && theirs.scored ? theirs.bpm : null, tries: theirs.tries } : null
   };
 }
 
@@ -223,51 +223,61 @@ function submitRecall(key, level) {
   });
 }
 
-/** A Tempo attempt: the BPM you tapped. Three tries a day; your best counts. */
+/**
+ * Tempo and Mix: play as often as you like. Your best score of the day is what
+ * counts against your partner; XP comes once a day, the first time you score.
+ */
+function replayable_(who, game, pts, keep, better, detail, label, brag) {
+  var today = todayYmd_(), g = gamesDay_(today);
+  var me = g[game][who] || { points: 0, tries: 0, scored: false, xp: 0 };
+  me.tries++;
+  if (me.tries === 1 || me.points === undefined || pts > me.points || (pts === me.points && better(me))) { me.points = pts; Object.keys(keep).forEach(function (k) { me[k] = keep[k]; }); }
+  var first = pts > 0 && !me.scored;
+  if (pts > 0) me.scored = true;
+  g[game][who] = me;
+  saveGamesDay_(today, g);
+  if (me.scored) {
+    var rows = rowsBetween_('games', today, today).filter(function (r) { return r['Who'] === who && r['Game'] === game; });
+    if (rows.length) updateRow_('games', findRow_('games', 'Detail', rows[0]['Detail']), { 'Score': me.points, 'Detail': game + '-' + who + '-' + today + ': ' + detail(me) });
+    else logGame_(who, game, me.points, game + '-' + who + '-' + today + ': ' + detail(me));
+  }
+  if (first) {
+    me.xp = 5 + pts;
+    addXp_(who, label + ': ' + pts + ' points', me.xp, 'game');
+    push_(who === 'me' ? 'partner' : 'me', nicks_()[who] + ' ' + brag, pts + ' points. Your turn.', 'play');
+    g[game][who] = me;
+    saveGamesDay_(today, g);
+  }
+  return { first: first, points: pts };
+}
+
+/** A Tempo attempt: the BPM you tapped. */
 function submitTempo(key, bpm) {
   var who = who_(key);
   bpm = Math.round(Number(bpm) * 10) / 10;
   if (!(bpm > 30 && bpm < 300)) throw new Error('That tap didn\'t register. Try again.');
   return withLock_(function () {
-    var today = todayYmd_(), g = gamesDay_(today), pz = tempoPuzzle(today);
-    var me = g.tempo[who] || { best: null, bpm: null, points: 0, tries: 0, final: false };
-    if (me.final) throw new Error('Done for today. New beat tomorrow.');
-    me.tries++;
-    var pts = tempoPoints(bpm, pz.bpm);
-    if (me.best === null || pts > me.points || (pts === me.points && Math.abs(bpm - pz.bpm) < Math.abs(me.bpm - pz.bpm))) { me.points = pts; me.bpm = bpm; me.best = pts; }
-    if (me.tries >= 3 || pts === 10) {
-      me.final = true;
-      logGame_(who, 'tempo', me.points, me.bpm + ' BPM (' + pz.bpm + ')');
-      addXp_(who, 'Tempo: ' + me.points + ' points', 5 + me.points, 'game');
-      push_(who === 'me' ? 'partner' : 'me', nicks_()[who] + ' locked in Tempo', me.points + ' points. Can you keep better time?', 'play');
-    }
-    g.tempo[who] = me;
-    saveGamesDay_(today, g);
-    return gamesState_(who);
+    var pz = tempoPuzzle(todayYmd_()), pts = tempoPoints(bpm, pz.bpm);
+    var res = replayable_(who, 'tempo', pts, { bpm: bpm, best: pts }, function (me) { return Math.abs(bpm - pz.bpm) < Math.abs(me.bpm - pz.bpm); },
+      function (me) { return me.bpm + ' BPM (' + pz.bpm + ')'; }, 'Tempo', 'kept time in Tempo');
+    var st = gamesState_(who);
+    st.last = { points: pts, bpm: bpm, firstXp: res.first ? 5 + pts : 0 };
+    return st;
   });
 }
 
-/** A Mix attempt: how far off the tempos were and how far apart the beats landed. Three tries; best counts. */
+/** A Mix attempt: how far off the tempos were (BPM) and how far apart the beats landed (ms). */
 function submitMix(key, bpmDiff, phaseMs) {
   var who = who_(key);
   bpmDiff = Math.round(Math.abs(Number(bpmDiff)) * 100) / 100;
   phaseMs = Math.round(Math.abs(Number(phaseMs)));
   if (!isFinite(bpmDiff) || !isFinite(phaseMs) || bpmDiff > 60 || phaseMs > 2000) throw new Error('That mix didn\'t register. Try again.');
   return withLock_(function () {
-    var today = todayYmd_(), g = gamesDay_(today);
-    var me = g.mix[who] || { points: 0, bpm: null, phase: null, tries: 0, final: false };
-    if (me.final) throw new Error('Done for today. New records tomorrow.');
-    me.tries++;
     var pts = mixPoints(bpmDiff, phaseMs);
-    if (me.bpm === null || pts > me.points || (pts === me.points && bpmDiff + phaseMs / 100 < me.bpm + me.phase / 100)) { me.points = pts; me.bpm = bpmDiff; me.phase = phaseMs; }
-    if (me.tries >= 3 || pts === 10) {
-      me.final = true;
-      logGame_(who, 'mix', me.points, me.bpm + ' BPM off, ' + me.phase + ' ms');
-      addXp_(who, 'Mix: ' + me.points + ' points', 5 + me.points, 'game');
-      push_(who === 'me' ? 'partner' : 'me', nicks_()[who] + ' dropped a mix', me.points + ' points. Think you can beatmatch better?', 'play');
-    }
-    g.mix[who] = me;
-    saveGamesDay_(today, g);
-    return gamesState_(who);
+    var res = replayable_(who, 'mix', pts, { bpm: bpmDiff, phase: phaseMs }, function (me) { return bpmDiff + phaseMs / 100 < me.bpm + me.phase / 100; },
+      function (me) { return me.bpm + ' BPM off, ' + me.phase + ' ms'; }, 'Mix', 'dropped a mix');
+    var st = gamesState_(who);
+    st.last = { points: pts, bpm: bpmDiff, phase: phaseMs, firstXp: res.first ? 5 + pts : 0 };
+    return st;
   });
 }

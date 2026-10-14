@@ -592,6 +592,9 @@ nav.tabs button { max-width: 92px; font-size: 11px; }
 .led.on { background: var(--good); box-shadow: 0 0 12px var(--good); }
 .mixlab { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); font-weight: 600; margin: 8px 0; }
 .mixlab input { width: 100%; accent-color: var(--lilac); }
+.lookprev { display: flex; align-items: center; gap: 14px; margin-bottom: 4px; }
+.swatches.small button { width: 30px; height: 30px; border-width: 2px; }
+.chips .chip[aria-pressed="true"] { background: var(--lilac); color: #fff; }
 
 </style>
 </head>
@@ -633,21 +636,24 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
 (function () {
   'use strict';
 
-  // [id, name, style, bpm, mood, colour A, colour B, pattern]
-  // pattern: k = kick, s = snare/clap, h = hats (16 steps each, x = hit), bass rhythm, swing, half time
+  // [id, name, style, bpm, mood, colour A, colour B, sound]
+  // Each sound picks its own kit and instruments, so every station sounds like its genre.
+  //   k/s/h: kick, snare and hat steps (16 per bar);  kick, snare, hat: drum sounds;  bass, chords, lead: synths;
+  //   crh: chord rhythm (bar, off = offbeat stabs, eighths, gate);  b: bass steps;  swing;  half: half-time;  crackle; perc: congas; lp: overall tone
   var STATIONS = [
-    ['grove-lofi', 'Grove Street Lo-fi', 'Lo-fi hip hop', 84, 'Slow and cosy', '#2e9e4f', '#c9862b', { k: 'x.....x...x.....', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', b: 'x.....x...x.....', swing: 0.18, keys: 'minor', pad: 1, arp: 0, lead: 1 }],
-    ['vice-house', 'Vice Beach House', 'House', 122, 'Sunny and bouncy', '#ff5fae', '#2fe0d6', { k: 'x...x...x...x...', s: '....x.......x...', h: '..x...x...x...x.', b: '..x...x.x.x...x.', swing: 0, keys: 'major', pad: 1, arp: 1, lead: 0 }],
-    ['sunset-disco', 'Sunset Disco', 'Disco', 116, 'Feel-good', '#ffb703', '#e76f51', { k: 'x...x...x...x...', s: '....x.......x...', h: 'x.xxx.xxx.xxx.xx', b: 'x.x.x.x.x.x.x.x.', swing: 0.05, keys: 'major', pad: 1, arp: 1, lead: 0 }],
-    ['garage-run', 'Garage Run', 'UK garage', 132, 'Skippy and quick', '#7c3aed', '#2563eb', { k: 'x.....x...x..x..', s: '....x.......x...', h: '..x...x...x...xx', b: 'x..x..x.x..x..x.', swing: 0.22, keys: 'minor', pad: 1, arp: 0, lead: 1 }],
-    ['warehouse', 'Warehouse Techno', 'Techno', 130, 'Driving', '#334155', '#94a3b8', { k: 'x...x...x...x...', s: '........x.......', h: '..x...x...x...x.', b: 'xxxxxxxxxxxxxxxx', swing: 0, keys: 'minor', pad: 0, arp: 1, lead: 0 }],
-    ['liquid-dnb', 'Liquid Drum and Bass', 'Drum and bass', 172, 'Fast, smooth focus', '#0f7e8a', '#9db8ff', { k: 'x.........x.....', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', b: 'x.......x.x.....', swing: 0, keys: 'minor', pad: 1, arp: 1, lead: 0 }],
-    ['synthwave', 'Ocean Drive Synthwave', 'Synthwave', 100, 'Neon night drive', '#ff4f9a', '#7c3aed', { k: 'x.......x.......', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', b: 'xxxxxxxxxxxxxxxx', swing: 0, keys: 'minor', pad: 1, arp: 1, lead: 1 }],
-    ['boom-bap', 'Ganton Boom Bap', 'Hip hop', 90, 'Head-nod', '#c9a227', '#3b2f0b', { k: 'x......xx.......', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', b: 'x......x.x......', swing: 0.2, keys: 'minor', pad: 0, arp: 0, lead: 1 }],
-    ['afro-house', 'Afro House Sunrise', 'Afro house', 120, 'Warm and rolling', '#e9c46a', '#2a9d8f', { k: 'x...x...x...x...', s: '......x.....x.x.', h: 'x.xx.xx.x.xx.xx.', b: 'x..x..x...x..x..', swing: 0.08, keys: 'minor', pad: 1, arp: 1, lead: 0 }],
-    ['trance', 'Starfish Trance', 'Trance', 138, 'Big lifts', '#6a4fc4', '#ff9cc8', { k: 'x...x...x...x...', s: '....x.......x...', h: '..x...x...x...x.', b: '.xxx.xxx.xxx.xxx', swing: 0, keys: 'minor', pad: 1, arp: 1, lead: 1 }],
-    ['dub-plates', 'Dub Plates', 'Dubstep', 140, 'Heavy, half-time', '#3a3047', '#5fd79a', { k: 'x.........x.....', s: '........x.......', h: 'x.x.x.x.x.x.x.x.', b: 'x.......x..x....', swing: 0, keys: 'minor', pad: 1, arp: 0, lead: 0, half: 1 }],
-    ['clean-ambient', 'Clean Air Ambient', 'Ambient', 70, 'Calm, no drums', '#a7d3e8', '#e0c3fc', { k: '................', s: '................', h: '................', b: 'x...............', swing: 0, keys: 'major', pad: 1, arp: 1, lead: 0 }]
+    ['grove-lofi', 'Grove Street Lo-fi', 'Lo-fi hip hop', 82, 'Slow and cosy', '#2e9e4f', '#c9862b', { k: 'x.....x...x.....', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', b: 'x.....x...x.....', kick: 'soft', snare: 'rim', hat: 'closed', bass: 'sub', chords: 'rhodes', crh: 'bar', lead: 'bell', swing: 0.2, keys: 'minor', crackle: 1, lp: 3200 }],
+    ['vice-house', 'Vice Beach House', 'House', 122, 'Sunny and bouncy', '#ff5fae', '#2fe0d6', { k: 'x...x...x...x...', s: '....x.......x...', h: '..x...x...x...x.', b: '..x...x.x.x...x.', kick: 'punch', snare: 'clap', hat: 'open', bass: 'pluck', chords: 'organ', crh: 'off', lead: 'none', swing: 0, keys: 'major' }],
+    ['sunset-disco', 'Sunset Disco', 'Disco', 116, 'Feel-good', '#ffb703', '#e76f51', { k: 'x...x...x...x...', s: '....x.......x...', h: 'xxxxxxxxxxxxxxxx', b: 'x.x.x.x.x.x.x.x.', kick: 'punch', snare: 'snare', hat: 'closed', bass: 'octave', chords: 'strings', crh: 'bar', lead: 'flute', swing: 0.04, keys: 'major' }],
+    ['garage-run', 'Garage Run', 'UK garage', 132, 'Skippy and quick', '#7c3aed', '#2563eb', { k: 'x.....x...x..x..', s: '....x.......x...', h: '..x.x.x...x.x.xx', b: 'x..x..x.x..x..x.', kick: 'punch', snare: 'rim', hat: 'shaker', bass: 'reese', chords: 'stab', crh: 'off', lead: 'pluck', swing: 0.22, keys: 'minor' }],
+    ['warehouse', 'Warehouse Techno', 'Techno', 130, 'Driving', '#334155', '#94a3b8', { k: 'x...x...x...x...', s: '........x.......', h: '..x...x...x...x.', b: 'xxxxxxxxxxxxxxxx', kick: 'rumble', snare: 'clap', hat: 'closed', bass: 'acid', chords: 'none', crh: 'bar', lead: 'none', swing: 0, keys: 'minor', perc: 1 }],
+    ['liquid-dnb', 'Liquid Drum and Bass', 'Drum and bass', 172, 'Fast, smooth focus', '#0f7e8a', '#9db8ff', { k: 'x.........x.....', s: '....x.......x...', h: 'x.xxx.x.x.xxx.x.', b: 'x.......x.x.....', kick: 'punch', snare: 'big', hat: 'closed', bass: 'reese', chords: 'strings', crh: 'bar', lead: 'bell', swing: 0, keys: 'minor' }],
+    ['synthwave', 'Ocean Drive Synthwave', 'Synthwave', 100, 'Neon night drive', '#ff4f9a', '#7c3aed', { k: 'x.......x.......', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', b: 'xxxxxxxxxxxxxxxx', kick: 'boom', snare: 'gated', hat: 'closed', bass: 'octave', chords: 'supersaw', crh: 'bar', lead: 'saw', swing: 0, keys: 'minor', lp: 5000 }],
+    ['boom-bap', 'Ganton Boom Bap', 'Hip hop', 90, 'Head-nod', '#c9a227', '#3b2f0b', { k: 'x......xx.......', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', b: 'x......x.x......', kick: 'boom', snare: 'crunch', hat: 'closed', bass: 'sub', chords: 'piano', crh: 'chop', lead: 'none', swing: 0.18, keys: 'minor', crackle: 1 }],
+    ['afro-house', 'Afro House Sunrise', 'Afro house', 120, 'Warm and rolling', '#e9c46a', '#2a9d8f', { k: 'x...x...x...x...', s: '......x.....x.x.', h: 'x.xx.xx.x.xx.xx.', b: 'x..x..x...x..x..', kick: 'soft', snare: 'rim', hat: 'shaker', bass: 'pluck', chords: 'pad', crh: 'bar', lead: 'marimba', swing: 0.08, keys: 'minor', perc: 1 }],
+    ['trance', 'Starfish Trance', 'Trance', 138, 'Big lifts', '#6a4fc4', '#ff9cc8', { k: 'x...x...x...x...', s: '....x.......x...', h: '..x...x...x...x.', b: '.xxx.xxx.xxx.xxx', kick: 'punch', snare: 'clap', hat: 'open', bass: 'saw', chords: 'supersaw', crh: 'gate', lead: 'pluck', swing: 0, keys: 'minor' }],
+    ['dub-plates', 'Dub Plates', 'Dubstep', 140, 'Heavy, half-time', '#3a3047', '#5fd79a', { k: 'x.........x.....', s: '........x.......', h: 'x.x.x.x.x.x.x.x.', b: 'x.......x..x....', kick: 'boom', snare: 'big', hat: 'closed', bass: 'wobble', chords: 'pad', crh: 'bar', lead: 'none', swing: 0, keys: 'minor', half: 1 }],
+    ['twisted', 'Dark Twisted Nights', 'Cinematic hip hop', 84, 'Dark, huge, dramatic', '#141414', '#b3121f', { k: 'x.....x...x..x..', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.', b: 'x.....x...x.....', kick: 'boom', snare: 'big', hat: 'closed', bass: '808', chords: 'choir', crh: 'bar', lead: 'piano', swing: 0.1, keys: 'minor' }],
+    ['clean-ambient', 'Clean Air Ambient', 'Ambient', 70, 'Calm, no drums', '#a7d3e8', '#e0c3fc', { k: '................', s: '................', h: '................', b: '................', kick: 'none', snare: 'none', hat: 'none', bass: 'none', chords: 'strings', crh: 'bar', lead: 'bell', swing: 0, keys: 'major', lp: 4000 }]
   ].map(function (s) { return { id: s[0], name: s[1], style: s[2], bpm: s[3], mood: s[4], c1: s[5], c2: s[6], p: s[7] }; });
 
   function seeded(seed) { var x = 0; for (var i = 0; i < seed.length; i++) x = (x * 31 + seed.charCodeAt(i)) >>> 0; return function () { x = (x * 1664525 + 1013904223) >>> 0; return x / 4294967296; }; }
@@ -667,38 +673,119 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
   function renderPhrase(st, song, section, gainFrom, gainTo) {
     var bars = 8, beat = 60 / st.bpm, bar = beat * 4, len = bars * bar + 1.5;
     var ctx = new OfflineAudioContext(1, Math.ceil(len * RATE), RATE);
-    var master = ctx.createGain(); master.connect(ctx.destination);
+    var p = st.p, step = bar / 16, scale = SCALES[p.keys], prog = song.prog, root = song.root, rnd = song.rand;
+    // tone control, then a limiter so loud stations never distort
+    var lim = ctx.createDynamicsCompressor(); lim.threshold.value = -8; lim.knee.value = 4; lim.ratio.value = 12; lim.attack.value = 0.003; lim.release.value = 0.15;
+    var trim = ctx.createGain(); trim.gain.value = 0.8; lim.connect(trim); trim.connect(ctx.destination);
+    var tone = ctx.createBiquadFilter(); tone.type = 'lowpass'; tone.frequency.value = p.lp || 9000; tone.connect(lim);
+    var master = ctx.createGain(); master.connect(tone);
     master.gain.setValueAtTime(0.0001 + gainFrom, 0); master.gain.linearRampToValueAtTime(Math.max(0.0001, gainTo), bars * bar);
-    var nb = noiseBuf(ctx), p = st.p, step = bar / 16, scale = SCALES[p.keys], prog = song.prog, root = song.root;
-    var drums = section !== 'break' && section !== 'intro0', bass = section !== 'intro0' && section !== 'intro1';
+    var nb = noiseBuf(ctx);
+    var drums = section !== 'break' && section !== 'intro0', hasBass = section !== 'intro0' && section !== 'intro1' && section !== 'break';
+    var full = section === 'main' || section === 'build';
+
     function env(g, t, a, peak, d) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + d); }
-    function kick(t) { var o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.12); env(g, t, 0.004, 0.9, 0.28); o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.35); }
-    function hit(t, f, q, peak, d, type) { var s = ctx.createBufferSource(), fl = ctx.createBiquadFilter(), g = ctx.createGain(); s.buffer = nb; fl.type = type; fl.frequency.value = f; fl.Q.value = q; env(g, t, 0.002, peak, d); s.connect(fl); fl.connect(g); g.connect(master); s.start(t, Math.random() * 0.5); s.stop(t + d + 0.05); }
-    function tone(t, hz, dur, type, peak, cutoff, a) {
-      var o = ctx.createOscillator(), fl = ctx.createBiquadFilter(), g = ctx.createGain();
-      o.type = type; o.frequency.value = hz; fl.type = 'lowpass'; fl.frequency.value = cutoff;
-      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + (a || 0.01)); g.gain.setValueAtTime(peak, t + Math.max(a || 0.01, dur - 0.05)); g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.08);
-      o.connect(fl); fl.connect(g); g.connect(master); o.start(t); o.stop(t + dur + 0.1);
+    function osc(type, f, t, d, peak, a, dest) { var o = ctx.createOscillator(), g = ctx.createGain(); o.type = type; o.frequency.setValueAtTime(f, t); env(g, t, a || 0.005, peak, d); o.connect(g); g.connect(dest || master); o.start(t); o.stop(t + (a || 0.005) + d + 0.05); return o; }
+    function burst(t, type, f, q, peak, d, dest) { var s = ctx.createBufferSource(), fl = ctx.createBiquadFilter(), g = ctx.createGain(); s.buffer = nb; fl.type = type; fl.frequency.value = f; fl.Q.value = q; env(g, t, 0.002, peak, d); s.connect(fl); fl.connect(g); g.connect(dest || master); s.start(t, rnd() * 0.5); s.stop(t + d + 0.05); }
+    var shaper = ctx.createWaveShaper(), curve = new Float32Array(256);
+    for (var c = 0; c < 256; c++) { var x = c / 128 - 1; curve[c] = Math.tanh(x * 3); }
+    shaper.curve = curve; shaper.connect(master);
+
+    // drums
+    function kick(t) {
+      if (p.kick === 'soft') { var o = osc('sine', 110, t, 0.32, 0.7); o.frequency.exponentialRampToValueAtTime(48, t + 0.1); }
+      else if (p.kick === 'boom') { var o2 = osc('sine', 120, t, 0.55, 0.95, 0.004, shaper); o2.frequency.exponentialRampToValueAtTime(40, t + 0.2); }
+      else if (p.kick === 'rumble') { var o3 = osc('sine', 150, t, 0.3, 0.9); o3.frequency.exponentialRampToValueAtTime(44, t + 0.1); burst(t + 0.03, 'lowpass', 160, 0.8, 0.35, 0.45); }
+      else { var o4 = osc('sine', 165, t, 0.26, 0.95); o4.frequency.exponentialRampToValueAtTime(46, t + 0.09); burst(t, 'highpass', 3000, 0.7, 0.18, 0.012); }
     }
-    function chord(deg) { return [0, 2, 4].map(function (k) { var i = deg + k, oct = Math.floor(i / 7); return root + scale[i % 7] + 12 * oct; }); }
+    function snare(t) {
+      if (p.snare === 'rim') { burst(t, 'bandpass', 3200, 2, 0.3, 0.04); osc('triangle', 820, t, 0.03, 0.18); }
+      else if (p.snare === 'clap') { [0, 0.012, 0.024].forEach(function (o) { burst(t + o, 'bandpass', 1200, 1.2, 0.35, 0.05); }); burst(t + 0.03, 'bandpass', 1200, 1, 0.25, 0.18); }
+      else if (p.snare === 'gated') { burst(t, 'highpass', 900, 0.6, 0.45, 0.24); osc('triangle', 190, t, 0.12, 0.3); }
+      else if (p.snare === 'crunch') { burst(t, 'bandpass', 2400, 0.9, 0.6, 0.16, shaper); osc('sine', 210, t, 0.08, 0.25); }
+      else if (p.snare === 'big') { burst(t, 'bandpass', 1700, 0.7, 0.55, 0.32); osc('sine', 180, t, 0.14, 0.4); }
+      else { burst(t, 'bandpass', 1900, 0.8, 0.45, 0.17); osc('sine', 200, t, 0.09, 0.3); }
+    }
+    function hat(t, i) {
+      if (p.hat === 'open') burst(t, 'highpass', 7000, 0.6, i % 4 === 2 ? 0.16 : 0.08, i % 4 === 2 ? 0.22 : 0.035);
+      else if (p.hat === 'shaker') burst(t, 'bandpass', 6500, 1.5, 0.12 * (0.6 + rnd() * 0.5), 0.07);
+      else burst(t, 'highpass', 8500, 0.6, 0.1 * (i % 2 ? 0.7 : 1), 0.035);
+    }
+    function conga(t, hi) { var o = osc('sine', hi ? 330 : 220, t, 0.18, 0.35); o.frequency.exponentialRampToValueAtTime(hi ? 260 : 170, t + 0.08); }
+    function crackle(t0, dur) { for (var n = 0; n < dur * 5; n++) burst(t0 + rnd() * dur, 'highpass', 3000, 0.5, 0.05 + rnd() * 0.06, 0.004); }
+
+    // tuned instruments
+    function hz(semi) { return 440 * Math.pow(2, (semi - 9) / 12); }
+    function synth(t, f, dur, kind, peak, dest) {
+      var g = ctx.createGain(), fl = ctx.createBiquadFilter(); fl.type = 'lowpass'; g.connect(dest || master); fl.connect(g);
+      var end = t + dur, oscs = [];
+      function add(type, freq, det, lvl) { var o = ctx.createOscillator(), og = ctx.createGain(); o.type = type; o.frequency.value = freq; o.detune.value = det || 0; og.gain.value = lvl || 1; o.connect(og); og.connect(fl); o.start(t); o.stop(end + 1.2); oscs.push(o); return o; }
+      var a = 0.01, rel = 0.12;
+      if (kind === 'rhodes') { add('sine', f); add('sine', f * 2, 0, 0.35); add('sine', f * 3, 0, 0.08); fl.frequency.value = 2500; a = 0.008; rel = 0.6; var lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 5; lg.gain.value = 0.25 * peak; lfo.connect(lg); lg.connect(g.gain); lfo.start(t); lfo.stop(end + 1); }
+      else if (kind === 'organ') { add('square', f, 0, 0.4); add('sine', f * 2, 0, 0.6); add('sine', f * 4, 0, 0.2); fl.frequency.value = 3200; rel = 0.05; }
+      else if (kind === 'strings') { [-12, -5, 5, 12].forEach(function (d) { add('sawtooth', f, d, 0.35); }); fl.frequency.value = 1900; a = Math.min(0.5, dur * 0.4); rel = 0.5; }
+      else if (kind === 'supersaw') { [-24, -14, -6, 0, 6, 14, 24].forEach(function (d) { add('sawtooth', f, d, 0.22); }); fl.frequency.value = 4200; a = 0.02; rel = 0.2; }
+      else if (kind === 'stab') { add('sawtooth', f, -7, 0.5); add('sawtooth', f, 7, 0.5); fl.frequency.setValueAtTime(3500, t); fl.frequency.exponentialRampToValueAtTime(600, t + 0.15); rel = 0.05; }
+      else if (kind === 'piano') { add('triangle', f); add('sine', f * 2, 0, 0.3); fl.frequency.value = 3000; a = 0.004; rel = 0.5; }
+      else if (kind === 'pad') { [-8, 0, 8].forEach(function (d) { add('sawtooth', f, d, 0.35); }); fl.frequency.value = section === 'break' ? 2200 : 1200; a = Math.min(0.6, dur * 0.4); rel = 0.8; }
+      else if (kind === 'choir') { [-7, 0, 7].forEach(function (d) { var v = add('sawtooth', f, d, 0.3), vib = ctx.createOscillator(), vg = ctx.createGain(); vib.frequency.value = 4.5 + d / 10; vg.gain.value = f * 0.006; vib.connect(vg); vg.connect(v.frequency); vib.start(t); vib.stop(end + 1.2); }); fl.type = 'bandpass'; fl.frequency.value = 850; fl.Q.value = 1.4; a = Math.min(0.45, dur * 0.4); rel = 0.7; }
+      else if (kind === 'bell') { add('sine', f); add('sine', f * 2.76, 0, 0.25); fl.frequency.value = 6000; a = 0.004; rel = 1.1; }
+      else if (kind === 'marimba') { add('sine', f); add('sine', f * 4, 0, 0.15); fl.frequency.value = 5000; a = 0.003; rel = 0.25; }
+      else if (kind === 'flute') { var fo = add('sine', f); add('triangle', f * 2, 0, 0.1); var vib = ctx.createOscillator(), vg = ctx.createGain(); vib.frequency.value = 5.5; vg.gain.value = f * 0.01; vib.connect(vg); vg.connect(fo.frequency); vib.start(t); vib.stop(end + 1); fl.frequency.value = 4000; a = 0.06; rel = 0.15; }
+      else if (kind === 'saw') { add('sawtooth', f, -5, 0.5); add('sawtooth', f, 5, 0.5); fl.frequency.value = 2600; rel = 0.15; }
+      else { add('square', f, 0, 0.6); fl.frequency.setValueAtTime(4000, t); fl.frequency.exponentialRampToValueAtTime(900, t + 0.12); a = 0.003; rel = 0.08; }   // pluck
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.setValueAtTime(peak, Math.max(t + a, end - 0.02)); g.gain.exponentialRampToValueAtTime(0.0001, end + rel);
+    }
+    function bassNote(t, f, dur, i) {
+      var g = ctx.createGain(), fl = ctx.createBiquadFilter(); fl.type = 'lowpass'; g.connect(master); fl.connect(g);
+      function o(type, freq, det) { var x = ctx.createOscillator(); x.type = type; x.frequency.value = freq; x.detune.value = det || 0; x.connect(fl); x.start(t); x.stop(t + dur + 0.3); return x; }
+      var peak = 0.3, rel = 0.06;
+      if (p.bass === 'sub') { o('sine', f); fl.frequency.value = 400; peak = 0.45; rel = 0.12; }
+      else if (p.bass === 'pluck') { o('square', f); fl.frequency.setValueAtTime(1600, t); fl.frequency.exponentialRampToValueAtTime(250, t + 0.12); peak = 0.28; }
+      else if (p.bass === 'octave') { o('sawtooth', i % 2 ? f * 2 : f); fl.frequency.value = 900; peak = 0.25; }
+      else if (p.bass === 'reese') { o('sawtooth', f, -18); o('sawtooth', f, 18); o('sine', f / 2); fl.frequency.value = 480; peak = 0.22; rel = 0.1; }
+      else if (p.bass === 'acid') { o('sawtooth', f); fl.Q.value = 14; var top = 400 + 2600 * (0.5 + 0.5 * Math.sin(t * 0.7)) * (rnd() < 0.3 ? 1.3 : 1); fl.frequency.setValueAtTime(top, t); fl.frequency.exponentialRampToValueAtTime(180, t + dur * 0.9); peak = 0.18; }
+      else if (p.bass === 'wobble') { o('sawtooth', f, -10); o('sawtooth', f, 10); o('sine', f / 2); fl.Q.value = 6; var lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = (st.bpm / 60) * (rnd() < 0.5 ? 2 : 3); lg.gain.value = 700; fl.frequency.value = 800; lfo.connect(lg); lg.connect(fl.frequency); lfo.start(t); lfo.stop(t + dur + 0.3); peak = 0.26; }
+      else if (p.bass === '808') { var x8 = o('sine', f * 1.5); x8.frequency.exponentialRampToValueAtTime(f, t + 0.08); o('triangle', f, 0); fl.frequency.value = 600; peak = 0.5; rel = 0.35; }
+      else { o('sawtooth', f); fl.frequency.value = 700; peak = 0.22; }
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + 0.006); g.gain.setValueAtTime(peak, Math.max(t + 0.01, t + dur - 0.02)); g.gain.exponentialRampToValueAtTime(0.0001, t + dur + rel);
+    }
+    function chordOf(deg) { return [0, 2, 4, 6].map(function (k) { var i = deg + k; return root + scale[i % 7] + 12 * Math.floor(i / 7); }); }
+
     for (var b = 0; b < bars; b++) {
-      var t0 = b * bar, deg = prog[b % 4], ch = chord(deg);
+      var t0 = b * bar, deg = prog[b % 4], ch = chordOf(deg), tri = ch.slice(0, 3), fill = section === 'build' && b === bars - 1;
       for (var i = 0; i < 16; i++) {
         var t = t0 + i * step + (i % 2 ? p.swing * step : 0);
-        if (drums && p.k[i] === 'x' && !(section === 'outro' && b >= 6)) kick(t);
-        if (drums && p.s[i] === 'x' && section !== 'intro1') hit(t, 1800, 0.8, 0.45, 0.16, 'bandpass');
-        if (p.h[i] === 'x' && section !== 'intro0') hit(t, 8000, 0.5, section === 'break' ? 0.07 : 0.14, 0.04, 'highpass');
-        if (bass && p.b[i] === 'x' && section !== 'break') tone(t, noteHz(ch[0] - 24), step * (p.half ? 3 : 0.9), p.keys === 'minor' ? 'sawtooth' : 'square', 0.22, 420, 0.005);
-        if (p.arp && (i % 2 === 0) && section !== 'intro0' && section !== 'outro') tone(t, noteHz(ch[(i / 2) % 3] + 12), step * 0.8, 'triangle', 0.07, 3000, 0.005);
+        if (drums && p.kick !== 'none' && p.k[i] === 'x' && !(section === 'outro' && b >= 6)) kick(t);
+        if (drums && p.snare !== 'none' && (p.s[i] === 'x' || (fill && i >= 8 && i % 2 === 0)) && section !== 'intro1') snare(t);
+        if (p.hat !== 'none' && p.h[i] === 'x' && section !== 'intro0') hat(t, i);
+        if (p.perc && drums && (i === 3 || i === 7 || i === 10 || i === 14)) conga(t, i % 7 === 3);
+        if (hasBass && p.bass !== 'none' && p.b[i] === 'x') bassNote(t, hz(ch[0] - 24 + (p.bass === 'octave' ? 0 : 0)), step * (p.half ? 3.6 : p.bass === 'sub' ? 3 : 0.85), i);
+        if (p.chords !== 'none' && full && p.crh === 'off' && (i === 2 || i === 6 || i === 10 || i === 14)) tri.forEach(function (n) { synth(t, hz(n), step * 0.8, p.chords, 0.07); });
+        if (p.lead !== 'none' && (full || section === 'break') && song.motif[(b % 2) * 16 + i] && !(p.lead === 'pluck' && section === 'break')) synth(t, hz(tri[song.motif[(b % 2) * 16 + i] - 1] + 12), step * (p.lead === 'bell' ? 2 : p.lead === 'flute' ? 1.8 : 0.8), p.lead, p.lead === 'saw' ? 0.06 : 0.09);
       }
-      if (p.pad) ch.forEach(function (n, k) { [-6, 0, 6].forEach(function (cents) { tone(t0, noteHz(n) * Math.pow(2, cents / 1200), bar, 'sawtooth', 0.025, section === 'break' ? 2400 : 1300, 0.25); }); });
-      if (p.lead && section === 'main' && b % 2 === 1) {
-        var r = song.rand;
-        for (var m = 0; m < 4; m++) tone(t0 + m * beat, noteHz(ch[Math.floor(r() * 3)] + 12 + (r() < 0.3 ? 12 : 0)), beat * 0.7, 'triangle', 0.08, 2600, 0.01);
+      if (p.chords !== 'none' && (p.crh === 'bar' || p.crh === 'chop' || !full || section === 'break')) {
+        var vel = p.chords === 'rhodes' || p.chords === 'piano' ? 0.07 : p.chords === 'supersaw' ? 0.03 : 0.045;
+        if (p.crh === 'chop' && full) [0, 6, 10].forEach(function (s) { ch.forEach(function (n) { synth(t0 + s * step, hz(n), step * 1.5, p.chords, vel); }); });
+        else ch.forEach(function (n) { synth(t0, hz(n), bar * 0.98, p.chords, vel); });
       }
+      if (p.chords !== 'none' && full && p.crh === 'gate') {
+        // one held chord per bar, chopped into eighths by a gate (much lighter than a new chord every eighth)
+        var gate = ctx.createGain(); gate.connect(master); gate.gain.setValueAtTime(0, t0);
+        for (var e = 0; e < 8; e++) { gate.gain.setValueAtTime(1, t0 + e * 2 * step); gate.gain.setValueAtTime(0, t0 + e * 2 * step + step * 1.4); }
+        tri.forEach(function (n) { synth(t0, hz(n), bar, p.chords, 0.05, gate); });
+      }
+      if (p.crackle) crackle(t0, bar);
     }
-    if (section === 'outro') ch.forEach(function (n) { tone(bars * bar - bar, noteHz(n), bar + 1.2, 'triangle', 0.06, 2000, 0.3); });
+    if (section === 'outro' && p.chords !== 'none') chordOf(prog[3]).forEach(function (n) { synth(bars * bar - bar, hz(n), bar + 0.8, p.chords === 'organ' || p.chords === 'stab' ? 'pad' : p.chords, 0.05); });
     return ctx.startRendering();
+  }
+
+  // A song: key, chord progression and a two-bar melody (1-3 = chord notes, 0 = rest), new every time you press play.
+  function makeSong(st, rand) {
+    var motif = [], density = st.p.lead === 'bell' || st.p.lead === 'flute' ? 0.18 : st.p.lead === 'pluck' ? 0.55 : 0.35;
+    for (var i = 0; i < 32; i++) motif.push(rand() < density && (i % 2 === 0 || rand() < 0.4) ? 1 + Math.floor(rand() * 3) : 0);
+    return { root: [0, 2, 3, 5, 7, 9][Math.floor(rand() * 6)] - 12, prog: PROGS[st.p.keys][Math.floor(rand() * 4)], rand: rand, motif: motif };
   }
 
   // ---- the player ----
@@ -719,14 +806,14 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     var st = STATIONS.filter(function (s) { return s.id === id; })[0];
     if (!st) return;
     var c = audio(), rand = seeded(id + Date.now()), keys = SCALES[st.p.keys];
-    var song = { root: [0, 2, 3, 5, 7, 9][Math.floor(rand() * 6)] - 12, prog: PROGS[st.p.keys][Math.floor(rand() * 4)], rand: rand };
+    var song = makeSong(st, rand);
     out.gain.cancelScheduledValues(c.currentTime); out.gain.setValueAtTime(1, c.currentTime);
     var me = P = { st: st, song: song, next: c.currentTime + 0.15, idx: 0, ended: false, sources: [], endAt: endAt, on: on || function () {}, startedAt: Date.now(), timer: null, busy: false, finishAt: 0 };
     function sectionFor(i, last) {
       if (last) return 'outro';
       if (i === 0) return 'intro0';
       if (i === 1) return 'intro1';
-      return (i % 6 === 5) ? 'break' : 'main';
+      return (i % 6 === 5) ? 'break' : (i % 6 === 4) ? 'build' : 'main';
     }
     function fill() {
       if (P !== me || me.ended || me.busy) return;
@@ -783,7 +870,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     var st = STATIONS.filter(function (s) { return s.id === id; })[0];
     st = Object.assign({}, st, { bpm: bpm });
     var rand = seeded(seed || id);
-    var song = { root: [0, 2, 3, 5, 7, 9][Math.floor(rand() * 6)] - 12, prog: PROGS[st.p.keys][Math.floor(rand() * 4)], rand: rand };
+    var song = makeSong(st, rand);
     return renderPhrase(st, song, 'main', 0.8, 0.8).then(function (buf) {
       var c = audio(), n = Math.round((bars || 8) * 4 * 60 / bpm * buf.sampleRate), b = c.createBuffer(1, n, buf.sampleRate);
       b.getChannelData(0).set(buf.getChannelData(0).subarray(0, n));
@@ -792,6 +879,152 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
   }
 
   window.LQMusic = { STATIONS: STATIONS, play: play, stop: stop, now: now, loop: loop, audio: audio, phraseSec: phraseSec };
+})();
+
+</script>
+<script>
+/* Life Quest portraits: original illustrated busts in each character's style
+ * (their colours, hair, headwear, glasses and clothes), drawn as SVG.
+ * Not game artwork; just a nod to the look. */
+(function () {
+  'use strict';
+  var SKIN = { dark: '#6b4430', brown: '#8d5a3b', tan: '#c08a5e', light: '#e2b48f', pale: '#f0cdb0' };
+  // hair, hairColour, facial, head(wear), eyes(wear), top, topColour, accent, build
+  var LOOKS = {
+    'sa-cj': { skin: 'dark', hair: 'buzz', hc: '#1a1a1a', face: 'stubble', top: 'vest', tc: '#f5f5f0', accent: '#2e9e4f' },
+    'sa-smoke': { skin: 'dark', hair: 'buzz', hc: '#1a1a1a', face: 'goatee', eyes: 'glasses', top: 'jersey', tc: '#2e8b3d', accent: '#f5f5f0', build: 'big' },
+    'sa-sweet': { skin: 'dark', hair: 'buzz', hc: '#1a1a1a', face: 'beard', top: 'shirt', tc: '#3f8f3f', accent: '#1c3d1c' },
+    'sa-ryder': { skin: 'dark', hair: 'none', face: 'moustache', head: 'flatcap', hdc: '#b8a27a', eyes: 'shades', top: 'shirt', tc: '#3c7a3a', accent: '#d9c9a0', build: 'small' },
+    'sa-kendl': { skin: 'dark', hair: 'bun', hc: '#1a1a1a', top: 'crop', tc: '#2e9e4f', accent: '#e0a33d', lips: 1 },
+    'sa-cesar': { skin: 'tan', hair: 'none', face: 'moustache', top: 'vest', tc: '#f5f5f0', accent: '#c46a2b', tattoo: 1 },
+    'sa-catalina': { skin: 'tan', hair: 'long', hc: '#2a1a12', top: 'crop', tc: '#b3402a', accent: '#2a0f0a', lips: 1 },
+    'sa-woozie': { skin: 'light', hair: 'slick', hc: '#151515', top: 'suit', tc: '#1f1f1f', accent: '#b0202f' },
+    'sa-truth': { skin: 'pale', hair: 'longgrey', hc: '#cfcac0', face: 'longbeard', fc: '#cfcac0', top: 'tiedye', tc: '#7a9a2a', accent: '#c9a35a' },
+    'sa-toreno': { skin: 'tan', hair: 'slick', hc: '#8a8a8a', eyes: 'shades', top: 'suit', tc: '#2b2f36', accent: '#d9d9d9' },
+    'sa-maddogg': { skin: 'dark', hair: 'none', face: 'goatee', head: 'beanie', hdc: '#6a2ba8', top: 'track', tc: '#7c3aed', accent: '#f5f5f0' },
+    'sa-ogloc': { skin: 'dark', hair: 'none', face: 'goatee', head: 'cap', hdc: '#e0b228', top: 'tee', tc: '#e0b228', accent: '#c0392b' },
+    'sa-zero': { skin: 'pale', hair: 'messy', hc: '#c25a2a', eyes: 'glasses', top: 'tee', tc: '#2563eb', accent: '#f5f5f0', build: 'small' },
+    'sa-tenpenny': { skin: 'dark', hair: 'buzz', hc: '#1a1a1a', face: 'moustache', head: 'police', hdc: '#1f2a44', top: 'police', tc: '#2b3a5c', accent: '#d4af37', build: 'big' },
+    'vc-tommy': { skin: 'light', hair: 'short', hc: '#2a1d14', top: 'hawaii', tc: '#14b8a6', accent: '#f472b6' },
+    'vc-lance': { skin: 'brown', hair: 'slick', hc: '#151515', top: 'suit', tc: '#f2f2ee', accent: '#f9a8d4' },
+    'vc-ken': { skin: 'light', hair: 'curly', hc: '#5a3a22', top: 'suit', tc: '#6b5a44', accent: '#e9c46a' },
+    'vc-mercedes': { skin: 'tan', hair: 'long', hc: '#1d120c', top: 'crop', tc: '#ff4f9a', accent: '#7c3aed', lips: 1 },
+    'vc-umberto': { skin: 'tan', hair: 'slick', hc: '#151515', face: 'moustache', top: 'hawaii', tc: '#e76f51', accent: '#2a9d8f' },
+    'vc-phil': { skin: 'light', hair: 'none', face: 'stubble', head: 'cap', hdc: '#55603f', top: 'vest', tc: '#6b705c', accent: '#ddbe8a', build: 'big' },
+    'vc-kent': { skin: 'pale', hair: 'longblond', hc: '#e8cf7a', eyes: 'shades', top: 'suit', tc: '#f2f2ee', accent: '#ffb703', build: 'small' },
+    'vc-diaz': { skin: 'tan', hair: 'curly', hc: '#1a120c', face: 'moustache', top: 'shirt', tc: '#c1121f', accent: '#fdf0d5' },
+    'vc-avery': { skin: 'pale', hair: 'none', face: 'moustache', fc: '#e8e4dc', head: 'stetson', hdc: '#e9e4d6', top: 'suit', tc: '#7a4e5b', accent: '#e8e4dc' },
+    'vc-sonny': { skin: 'pale', hair: 'slick', hc: '#151515', top: 'suit', tc: '#2b2b2b', accent: '#a3a3a3' },
+    // women of San Andreas and Vice City (named ones, and some inspired by the games)
+    'sa-denise': { skin: 'dark', hair: 'long', hc: '#141414', head: 'bandana', hdc: '#2e9e4f', top: 'crop', tc: '#1f1f1f', accent: '#2e9e4f', lips: 1, ear: 'hoops' },
+    'sa-millie': { skin: 'pale', hair: 'bob', hc: '#f0d27a', top: 'shirt', tc: '#f472b6', accent: '#ffffff', lips: 1 },
+    'sa-helena': { skin: 'light', hair: 'long', hc: '#e8c873', eyes: 'glasses', top: 'tiedye', tc: '#8fbf5a', accent: '#e9c46a', lips: 1 },
+    'sa-michelle': { skin: 'light', hair: 'ponytail', hc: '#7a4a22', top: 'overalls', tc: '#2563eb', accent: '#f5f5f0', lips: 1 },
+    'sa-katie': { skin: 'light', hair: 'bob', hc: '#141414', top: 'scrubs', tc: '#2a9d8f', accent: '#dff4f5', lips: 1 },
+    'sa-barbara': { skin: 'tan', hair: 'ponytail', hc: '#4a2e1c', head: 'police', hdc: '#1f2a44', top: 'police', tc: '#2b3a5c', accent: '#d4af37', lips: 1 },
+    'sa-lowrider': { skin: 'tan', hair: 'long', hc: '#1d120c', head: 'bandana', hdc: '#1f1f1f', eyes: 'shades', top: 'vest', tc: '#f5f5f0', accent: '#c46a2b', lips: 1, ear: 'hoops' },
+    'sa-vinewood': { skin: 'pale', hair: 'bighair', hc: '#f3dc8e', eyes: 'shades', top: 'sequin', tc: '#e11d48', accent: '#fde68a', lips: 1, ear: 'pearls' },
+    'vc-skater': { skin: 'brown', hair: 'afro', hc: '#1a1a1a', head: 'visor', hdc: '#ff5fae', top: 'crop', tc: '#2fe0d6', accent: '#ff5fae', lips: 1, ear: 'hoops' },
+    'vc-singer': { skin: 'dark', hair: 'bighair', hc: '#1a1a1a', top: 'sequin', tc: '#a855f7', accent: '#fde68a', lips: 1, ear: 'pearls' },
+    'vc-lifeguard': { skin: 'tan', hair: 'ponytail', hc: '#e8cf7a', eyes: 'shades', top: 'swim', tc: '#e11d48', accent: '#fff', lips: 1 },
+    'vc-heiress': { skin: 'pale', hair: 'bob', hc: '#2a1a12', eyes: 'shades', top: 'suit', tc: '#f2f2ee', accent: '#f9a8d4', lips: 1, ear: 'pearls' },
+    'vc-aerobics': { skin: 'light', hair: 'bighair', hc: '#b5562a', head: 'headband', hdc: '#ff4f9a', top: 'leotard', tc: '#2fe0d6', accent: '#ff4f9a', lips: 1 }
+  };
+
+  function draw(id, c1, c2, gid, over) {
+    if (!LOOKS[id]) return '';
+    var L = Object.assign({}, LOOKS[id], over || {});
+    if (over && over.hc && !over.fc && LOOKS[id].fc) L.fc = over.hc;
+    var sk = SKIN[L.skin], dk = shade(sk, -0.18), w = L.build === 'big' ? 1.12 : L.build === 'small' ? 0.92 : 1;
+    var o = '<defs><linearGradient id="' + gid + '" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="' + c1 + '"/><stop offset="1" stop-color="' + c2 + '"/></linearGradient></defs>';
+    o += '<rect width="100" height="100" rx="26" fill="url(#' + gid + ')"/>';
+    // long hair behind the head
+    if (L.hair === 'long' || L.hair === 'longgrey' || L.hair === 'longblond') o += '<path d="M28 44 Q26 78 34 92 L66 92 Q74 78 72 44 Q50 30 28 44z" fill="' + L.hc + '"/>';
+    if (L.hair === 'bighair') o += '<ellipse cx="50" cy="44" rx="31" ry="30" fill="' + L.hc + '"/>';
+    if (L.hair === 'afro') o += '<circle cx="50" cy="36" r="27" fill="' + L.hc + '"/>';
+    if (L.hair === 'ponytail') o += '<path d="M66 34 Q82 44 74 72 Q70 56 64 44z" fill="' + L.hc + '"/>';
+    // shoulders and top
+    var sw = 34 * w;
+    o += '<path d="M' + (50 - sw) + ' 100 Q' + (50 - sw) + ' 78 ' + (50 - sw * 0.55) + ' 75 L' + (50 + sw * 0.55) + ' 75 Q' + (50 + sw) + ' 78 ' + (50 + sw) + ' 100z" fill="' + L.tc + '"/>';
+    if (L.top === 'vest') o += '<path d="M' + (50 - sw) + ' 100 Q' + (50 - sw) + ' 80 ' + (50 - sw * 0.6) + ' 76 L40 76 Q50 90 60 76 L' + (50 + sw * 0.6) + ' 76 Q' + (50 + sw) + ' 80 ' + (50 + sw) + ' 100z" fill="' + sk + '"/><path d="M38 76 Q50 96 62 76 L66 100 L34 100z" fill="' + L.tc + '"/>';
+    if (L.top === 'suit') o += '<path d="M44 75 L50 92 L56 75z" fill="#f5f5f0"/><path d="M48.5 78 L51.5 78 L52.5 96 L50 99 L47.5 96z" fill="' + L.accent + '"/><path d="M44 75 L50 92 L40 100 L36 100 Q38 84 44 75z M56 75 L50 92 L60 100 L64 100 Q62 84 56 75z" fill="' + shade(L.tc, -0.25) + '" opacity=".6"/>';
+    if (L.top === 'shirt' || L.top === 'hawaii' || L.top === 'police') o += '<path d="M43 75 L50 84 L57 75 L54 74 L50 79 L46 74z" fill="' + shade(L.tc, 0.25) + '"/>';
+    if (L.top === 'hawaii') o += [[30, 88], [42, 95], [62, 90], [72, 96], [56, 98]].map(function (p) { return '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="3.2" fill="' + L.accent + '"/><circle cx="' + p[0] + '" cy="' + p[1] + '" r="1.2" fill="#fff"/>'; }).join('');
+    if (L.top === 'jersey') o += '<text x="50" y="97" text-anchor="middle" font-size="13" font-weight="800" fill="' + L.accent + '" font-family="system-ui, sans-serif">7</text>';
+    if (L.top === 'track') o += '<path d="M50 76 L50 100" stroke="' + L.accent + '" stroke-width="2"/><path d="M' + (50 - sw) + ' 92 L' + (50 - sw * 0.6) + ' 80 M' + (50 + sw) + ' 92 L' + (50 + sw * 0.6) + ' 80" stroke="' + L.accent + '" stroke-width="3"/>';
+    if (L.top === 'tiedye') o += '<circle cx="50" cy="92" r="9" fill="' + L.accent + '" opacity=".8"/><circle cx="50" cy="92" r="4.5" fill="#e76f51" opacity=".85"/>';
+    if (L.top === 'police') o += '<rect x="58" y="82" width="6" height="7" rx="1" fill="' + L.accent + '"/>';
+    if (L.top === 'crop') o += '<path d="M40 76 Q50 84 60 76" stroke="' + shade(L.tc, -0.2) + '" stroke-width="2" fill="none"/>';
+    if (L.top === 'overalls') o += '<rect x="38" y="80" width="24" height="20" rx="2" fill="' + shade(L.tc, -0.15) + '"/><path d="M40 80 L36 75 M60 80 L64 75" stroke="' + shade(L.tc, -0.15) + '" stroke-width="3"/><circle cx="41" cy="84" r="1.5" fill="#d4af37"/><circle cx="59" cy="84" r="1.5" fill="#d4af37"/>';
+    if (L.top === 'scrubs') o += '<path d="M43 75 L50 86 L57 75" stroke="' + shade(L.tc, -0.25) + '" stroke-width="2" fill="none"/><rect x="58" y="86" width="7" height="6" rx="1" fill="' + shade(L.tc, -0.2) + '"/>';
+    if (L.top === 'swim') o += '<path d="M36 100 Q38 82 44 78 L46 76 Q50 90 54 76 L56 78 Q62 82 64 100z" fill="' + L.tc + '"/><path d="M' + (50 - sw) + ' 100 Q' + (50 - sw) + ' 78 ' + (50 - sw * 0.55) + ' 75 L44 77 Q38 84 36 100z M' + (50 + sw) + ' 100 Q' + (50 + sw) + ' 78 ' + (50 + sw * 0.55) + ' 75 L56 77 Q62 84 64 100z" fill="' + SKIN[L.skin] + '"/>';
+    if (L.top === 'sequin') for (var q = 0; q < 14; q++) o += '<circle cx="' + (30 + (q * 37) % 42) + '" cy="' + (82 + (q * 13) % 17) + '" r="1.3" fill="' + L.accent + '" opacity=".9"/>';
+    if (L.top === 'leotard') o += '<path d="M' + (50 - sw) + ' 92 L' + (50 + sw) + ' 86" stroke="' + L.accent + '" stroke-width="5"/>';
+    if (L.tattoo) o += '<path d="M24 92 q4 -6 8 0 q-4 4 -8 0z" fill="#3a5a8a" opacity=".7"/>';
+    // neck and head
+    o += '<rect x="44" y="60" width="12" height="17" rx="5" fill="' + dk + '"/>';
+    var hw = 17 * (L.build === 'big' ? 1.1 : 1);
+    o += '<ellipse cx="' + (50 - hw - 1) + '" cy="46" rx="3.5" ry="5" fill="' + dk + '"/><ellipse cx="' + (50 + hw + 1) + '" cy="46" rx="3.5" ry="5" fill="' + dk + '"/>';
+    o += '<ellipse cx="50" cy="44" rx="' + hw + '" ry="21" fill="' + sk + '"/>';
+    // hair on top
+    var hc = L.hc || '#1a1a1a';
+    if (L.hair === 'buzz') o += '<path d="M' + (50 - hw) + ' 40 Q' + (50 - hw) + ' 22 50 22 Q' + (50 + hw) + ' 22 ' + (50 + hw) + ' 40 Q50 30 ' + (50 - hw) + ' 40z" fill="' + hc + '" opacity=".85"/>';
+    if (L.hair === 'short' || L.hair === 'slick') o += '<path d="M' + (50 - hw - 1) + ' 42 Q' + (50 - hw - 2) + ' 20 50 20 Q' + (50 + hw + 2) + ' 20 ' + (50 + hw + 1) + ' 42 Q' + (L.hair === 'slick' ? '52 26 ' : '60 30 ') + (50 - hw - 1) + ' 42z" fill="' + hc + '"/>' + (L.hair === 'slick' ? '<path d="M38 27 Q52 22 64 29" stroke="' + shade(hc, 0.35) + '" stroke-width="1.2" fill="none"/>' : '');
+    if (L.hair === 'curly' || L.hair === 'messy') for (var i = 0; i < 9; i++) o += '<circle cx="' + (34 + i * 4) + '" cy="' + (26 + (i % 2) * 3) + '" r="' + (L.hair === 'curly' ? 5 : 4.5) + '" fill="' + hc + '"/>';
+    if (L.hair === 'long' || L.hair === 'longgrey' || L.hair === 'longblond') o += '<path d="M' + (50 - hw - 2) + ' 50 Q' + (50 - hw - 3) + ' 20 50 20 Q' + (50 + hw + 3) + ' 20 ' + (50 + hw + 2) + ' 50 Q' + (50 + hw - 4) + ' 30 50 28 Q' + (50 - hw + 4) + ' 30 ' + (50 - hw - 2) + ' 50z" fill="' + hc + '"/>';
+    if (L.hair === 'bob') o += '<path d="M' + (50 - hw - 3) + ' 58 Q' + (50 - hw - 4) + ' 20 50 20 Q' + (50 + hw + 4) + ' 20 ' + (50 + hw + 3) + ' 58 L' + (50 + hw - 2) + ' 58 Q' + (50 + hw - 3) + ' 32 50 31 Q' + (50 - hw + 3) + ' 32 ' + (50 - hw + 2) + ' 58z" fill="' + hc + '"/>';
+    if (L.hair === 'ponytail') o += '<path d="M' + (50 - hw) + ' 40 Q' + (50 - hw) + ' 21 50 21 Q' + (50 + hw) + ' 21 ' + (50 + hw) + ' 40 Q50 27 ' + (50 - hw) + ' 40z" fill="' + hc + '"/>';
+    if (L.hair === 'bighair' || L.hair === 'afro') o += '<path d="M' + (50 - hw) + ' 38 Q50 26 ' + (50 + hw) + ' 38 Q' + (50 + hw) + ' 22 50 22 Q' + (50 - hw) + ' 22 ' + (50 - hw) + ' 38z" fill="' + hc + '"/>';
+    if (L.hair === 'bun') o += '<circle cx="50" cy="18" r="7" fill="' + hc + '"/><path d="M' + (50 - hw) + ' 42 Q' + (50 - hw) + ' 22 50 22 Q' + (50 + hw) + ' 22 ' + (50 + hw) + ' 42 Q50 28 ' + (50 - hw) + ' 42z" fill="' + hc + '"/>';
+    // face
+    var ey = 45;
+    o += '<path d="M40 ' + (ey - 5) + ' L46 ' + (ey - 6) + ' M54 ' + (ey - 6) + ' L60 ' + (ey - 5) + '" stroke="' + shade(hc, 0.1) + '" stroke-width="1.8" stroke-linecap="round"/>';
+    o += '<circle cx="43" cy="' + ey + '" r="1.9" fill="#1b1b1b"/><circle cx="57" cy="' + ey + '" r="1.9" fill="#1b1b1b"/>';
+    o += '<path d="M50 ' + (ey + 2) + ' Q48 ' + (ey + 8) + ' 51 ' + (ey + 9) + '" stroke="' + dk + '" stroke-width="1.4" fill="none" stroke-linecap="round"/>';
+    o += '<path d="M44 ' + (ey + 14) + ' Q50 ' + (ey + 17) + ' 56 ' + (ey + 14) + '" stroke="' + (L.lips ? '#b5485d' : shade(sk, -0.4)) + '" stroke-width="' + (L.lips ? 2.4 : 1.6) + '" fill="none" stroke-linecap="round"/>';
+    var fc = L.fc || hc;
+    if (L.face === 'moustache') o += '<path d="M42 ' + (ey + 12) + ' Q50 ' + (ey + 8) + ' 58 ' + (ey + 12) + ' Q50 ' + (ey + 12) + ' 42 ' + (ey + 12) + 'z" fill="' + fc + '"/>';
+    if (L.face === 'goatee') o += '<path d="M46 ' + (ey + 18) + ' Q50 ' + (ey + 25) + ' 54 ' + (ey + 18) + 'z" fill="' + fc + '"/><path d="M44 ' + (ey + 12) + ' Q50 ' + (ey + 9) + ' 56 ' + (ey + 12) + '" stroke="' + fc + '" stroke-width="1.6" fill="none"/>';
+    if (L.face === 'beard' || L.face === 'longbeard') o += '<path d="M' + (50 - hw + 1) + ' 48 Q' + (50 - hw + 2) + ' ' + (L.face === 'longbeard' ? 80 : 66) + ' 50 ' + (L.face === 'longbeard' ? 82 : 67) + ' Q' + (50 + hw - 2) + ' ' + (L.face === 'longbeard' ? 80 : 66) + ' ' + (50 + hw - 1) + ' 48 Q' + (50 + hw - 6) + ' 58 50 58 Q' + (50 - hw + 6) + ' 58 ' + (50 - hw + 1) + ' 48z" fill="' + fc + '" opacity=".95"/>';
+    if (L.face === 'stubble') o += '<path d="M' + (50 - hw + 3) + ' 52 Q50 70 ' + (50 + hw - 3) + ' 52" stroke="' + shade(sk, -0.35) + '" stroke-width="5" fill="none" opacity=".35"/>';
+    // eyewear
+    if (L.eyes === 'glasses') o += '<circle cx="43" cy="' + ey + '" r="5" fill="none" stroke="#1b1b1b" stroke-width="1.6"/><circle cx="57" cy="' + ey + '" r="5" fill="none" stroke="#1b1b1b" stroke-width="1.6"/><path d="M48 ' + ey + ' L52 ' + ey + '" stroke="#1b1b1b" stroke-width="1.6"/>';
+    if (L.eyes === 'shades') o += '<path d="M36 ' + (ey - 4) + ' L64 ' + (ey - 4) + ' L62 ' + (ey + 3) + ' Q57 ' + (ey + 6) + ' 52 ' + (ey + 2) + ' L48 ' + (ey + 2) + ' Q43 ' + (ey + 6) + ' 38 ' + (ey + 3) + 'z" fill="#141414"/><path d="M40 ' + (ey - 2) + ' L44 ' + (ey - 2) + '" stroke="#fff" stroke-width="1" opacity=".5"/>';
+    if (L.ear === 'hoops') o += '<circle cx="' + (50 - hw - 1) + '" cy="54" r="3.4" fill="none" stroke="#e0b228" stroke-width="1.4"/><circle cx="' + (50 + hw + 1) + '" cy="54" r="3.4" fill="none" stroke="#e0b228" stroke-width="1.4"/>';
+    if (L.ear === 'pearls') { o += '<circle cx="' + (50 - hw - 1) + '" cy="52" r="1.8" fill="#f8f4ea"/><circle cx="' + (50 + hw + 1) + '" cy="52" r="1.8" fill="#f8f4ea"/>'; for (var pr = 0; pr < 7; pr++) o += '<circle cx="' + (42 + pr * 2.7) + '" cy="' + (76 + Math.sin(pr / 6 * Math.PI) * 3) + '" r="1.4" fill="#f8f4ea"/>'; }
+    // headwear
+    var hd = L.hdc || '#222';
+    if (L.head === 'cap') o += '<path d="M' + (50 - hw - 1) + ' 34 Q' + (50 - hw) + ' 18 50 18 Q' + (50 + hw) + ' 18 ' + (50 + hw + 1) + ' 34z" fill="' + hd + '"/><path d="M' + (50 - hw - 1) + ' 34 L' + (50 + hw + 12) + ' 34 Q' + (50 + hw + 10) + ' 38 ' + (50 + hw - 2) + ' 37z" fill="' + shade(hd, -0.2) + '"/>';
+    if (L.head === 'flatcap') o += '<path d="M' + (50 - hw - 2) + ' 34 Q50 14 ' + (50 + hw + 2) + ' 32 L' + (50 + hw + 6) + ' 36 L' + (50 - hw - 2) + ' 36z" fill="' + hd + '"/>';
+    if (L.head === 'beanie') o += '<path d="M' + (50 - hw - 1) + ' 37 Q' + (50 - hw) + ' 14 50 14 Q' + (50 + hw) + ' 14 ' + (50 + hw + 1) + ' 37z" fill="' + hd + '"/><rect x="' + (50 - hw - 1.5) + '" y="32" width="' + (2 * hw + 3) + '" height="6" rx="2" fill="' + shade(hd, -0.2) + '"/>';
+    if (L.head === 'police') o += '<path d="M' + (50 - hw - 1) + ' 32 L' + (50 - hw + 2) + ' 18 L' + (50 + hw - 2) + ' 18 L' + (50 + hw + 1) + ' 32z" fill="' + hd + '"/><rect x="' + (50 - hw - 3) + '" y="31" width="' + (2 * hw + 6) + '" height="4" rx="2" fill="#111"/><circle cx="50" cy="25" r="3" fill="#d4af37"/>';
+    if (L.head === 'bandana') o += '<path d="M' + (50 - hw - 1) + ' 33 Q50 14 ' + (50 + hw + 1) + ' 33 Q50 28 ' + (50 - hw - 1) + ' 33z" fill="' + hd + '"/><path d="M' + (50 + hw - 2) + ' 30 L' + (50 + hw + 7) + ' 36 L' + (50 + hw + 2) + ' 38z" fill="' + hd + '"/><circle cx="44" cy="25" r=".9" fill="#fff"/><circle cx="54" cy="24" r=".9" fill="#fff"/>';
+    if (L.head === 'visor') o += '<path d="M' + (50 - hw - 1) + ' 30 L' + (50 + hw + 1) + ' 30 L' + (50 + hw + 1) + ' 34 L' + (50 - hw - 1) + ' 34z" fill="' + hd + '"/><path d="M' + (50 - hw + 2) + ' 34 Q50 46 ' + (50 + hw - 2) + ' 34z" fill="' + hd + '" opacity=".7"/>';
+    if (L.head === 'headband') o += '<rect x="' + (50 - hw - 1) + '" y="27" width="' + (2 * hw + 2) + '" height="5" rx="2.5" fill="' + hd + '"/>';
+    if (L.head === 'stetson') o += '<ellipse cx="50" cy="31" rx="' + (hw + 12) + '" ry="5" fill="' + hd + '"/><path d="M' + (50 - hw + 2) + ' 31 Q' + (50 - hw + 2) + ' 12 50 14 Q' + (50 + hw - 2) + ' 12 ' + (50 + hw - 2) + ' 31z" fill="' + hd + '"/><rect x="' + (50 - hw + 2) + '" y="26" width="' + (2 * hw - 4) + '" height="3" fill="#6b4a2b"/>';
+    return o;
+  }
+
+  function shade(hex, amt) {
+    var n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+    var f = function (c) { return Math.max(0, Math.min(255, Math.round(amt < 0 ? c * (1 + amt) : c + (255 - c) * amt))); };
+    return '#' + [f(r), f(g), f(b)].map(function (c) { return ('0' + c.toString(16)).slice(-2); }).join('');
+  }
+
+  // What the style editor offers.
+  var OPTIONS = {
+    hair: [['', 'Theirs'], ['none', 'Shaved'], ['buzz', 'Buzz cut'], ['short', 'Short'], ['slick', 'Slicked back'], ['curly', 'Curly'], ['messy', 'Messy'], ['afro', 'Afro'], ['bob', 'Bob'], ['ponytail', 'Ponytail'], ['bun', 'Bun'], ['long', 'Long'], ['bighair', 'Big 80s hair']],
+    hc: ['#141414', '#2a1d14', '#5a3a22', '#7a4a22', '#b5562a', '#c25a2a', '#e8cf7a', '#cfcac0', '#ff5fae', '#7c3aed', '#2fe0d6'],
+    top: [['', 'Theirs'], ['vest', 'Vest'], ['tee', 'T-shirt'], ['shirt', 'Shirt'], ['hawaii', 'Hawaiian shirt'], ['jersey', 'Jersey'], ['track', 'Tracksuit'], ['suit', 'Suit'], ['crop', 'Crop top'], ['sequin', 'Sequins'], ['overalls', 'Overalls'], ['leotard', 'Leotard'], ['tiedye', 'Tie-dye']],
+    tc: ['#f5f5f0', '#1f1f1f', '#2e9e4f', '#14b8a6', '#2563eb', '#7c3aed', '#ff4f9a', '#e11d48', '#e76f51', '#e0b228', '#6b705c'],
+    head: [['', 'Theirs'], ['none', 'Nothing'], ['cap', 'Cap'], ['flatcap', 'Flat cap'], ['beanie', 'Beanie'], ['bandana', 'Bandana'], ['visor', 'Visor'], ['headband', 'Headband'], ['stetson', 'Cowboy hat']],
+    eyes: [['', 'Theirs'], ['none', 'None'], ['glasses', 'Glasses'], ['shades', 'Shades']],
+    face: [['', 'Theirs'], ['none', 'Clean'], ['stubble', 'Stubble'], ['moustache', 'Moustache'], ['goatee', 'Goatee'], ['beard', 'Beard']],
+    skin: [['', 'Theirs'], ['dark', ''], ['brown', ''], ['tan', ''], ['light', ''], ['pale', '']],
+    ear: [['', 'Theirs'], ['none', 'None'], ['hoops', 'Hoops'], ['pearls', 'Pearls']]
+  };
+
+  window.LQPortrait = { draw: draw, has: function (id) { return !!LOOKS[id]; }, look: function (id) { return LOOKS[id]; }, OPTIONS: OPTIONS, SKIN: SKIN };
 })();
 
 </script>
@@ -1092,7 +1325,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     var feed = S.game.feed.slice(0, 6);
     h += feed.length ? feed.map(function (f) {
       var own = f.who === S.who, sent = f.hi5.indexOf(S.who) !== -1;
-      return '<div class="item">' + avatar(charOf(f.who), 30) + '<div class="grow small"><b>' + esc(own ? 'You' : n.other) + '</b> ' + esc(f.text) + (f.hi5.length ? ' <span class="muted">· high-fived</span>' : '') + '</div>' +
+      return '<div class="item">' + avatarOf(f.who, 30) + '<div class="grow small"><b>' + esc(own ? 'You' : n.other) + '</b> ' + esc(f.text) + (f.hi5.length ? ' <span class="muted">· high-fived</span>' : '') + '</div>' +
         (!own ? '<button class="btn ' + (sent ? 'line' : 'blush') + ' sm" type="button" data-hi5="' + esc(f.id) + '"' + (sent ? ' disabled' : '') + '>' + icon('heart', 's') + (sent ? 'Sent' : 'High-five') + '</button>' : '') + '</div>';
     }).join('') : '<p class="empty">Nothing yet today.</p>';
     h += '</section>';
@@ -1299,7 +1532,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
   }
   function renderPlay() {
     var G = S.games, n = names(), h = '<div class="top"><div><h1>Play</h1><div class="sub">Same puzzles for you both. Live scores.</div></div>' + meButton() + '</div>';
-    h += '<section class="card"><div class="vs"><div>' + avatar(charOf(S.who), 40) + '<div class="small muted">You</div><div class="num" style="font-size:28px;font-weight:700">' + G.stats.you + '</div></div><div class="center small muted">head to head<br><span class="tiny">' + G.stats.draws + ' draws</span></div><div class="right">' + avatar(charOf(S.who === 'me' ? 'partner' : 'me'), 40, true) + '<div class="small muted">' + esc(n.other) + '</div><div class="num" style="font-size:28px;font-weight:700">' + G.stats.them + '</div></div></div></section>';
+    h += '<section class="card"><div class="vs"><div>' + avatarOf(S.who, 40) + '<div class="small muted">You</div><div class="num" style="font-size:28px;font-weight:700">' + G.stats.you + '</div></div><div class="center small muted">head to head<br><span class="tiny">' + G.stats.draws + ' draws</span></div><div class="right">' + avatarOf(S.who === 'me' ? 'partner' : 'me', 40, true) + '<div class="small muted">' + esc(n.other) + '</div><div class="num" style="font-size:28px;font-weight:700">' + G.stats.them + '</div></div></div></section>';
     h += '<div class="seg six">' + [['word', 'Word'], ['target', 'Numbers'], ['recall', 'Recall'], ['tempo', 'Tempo'], ['mix', 'Mix'], ['stats', 'Stats']].map(function (o) { return '<button type="button" data-pview="' + o[0] + '" aria-pressed="' + (playView === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
     if (playView === 'word') h += wordView(G.word, n);
     else if (playView === 'target') h += targetView(G.target, n);
@@ -1608,17 +1841,16 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
   var tempo = null;
   function tempoView(t, n) {
     var m = t.mine || { points: 0, tries: 0, final: false, bpm: null }, o = t.other, h = '';
-    h += '<section class="card"><div class="between"><div><div class="eyebrow">Best today</div><div class="num" style="font-size:28px;font-weight:700">' + (m.tries ? m.points : 0) + '<span class="small muted"> pts</span></div></div><div class="right"><div class="small muted">' + esc(n.other) + '</div><div class="num" style="font-size:28px;font-weight:700">' + (o && o.tries ? o.points : 0) + '<span class="small muted"> pts</span></div><div class="tiny muted">' + (!o ? 'not yet' : o.final ? 'locked in' : 'playing') + '</div></div></div>';
-    if (m.final) {
+    h += '<section class="card"><div class="between"><div><div class="eyebrow">Best today</div><div class="num" style="font-size:28px;font-weight:700">' + (m.tries ? m.points : 0) + '<span class="small muted"> pts</span></div></div><div class="right"><div class="small muted">' + esc(n.other) + '</div><div class="num" style="font-size:28px;font-weight:700">' + (o && o.tries ? o.points : 0) + '<span class="small muted"> pts</span></div><div class="tiny muted">' + (!o ? 'not yet' : o.scored ? o.tries + ' plays' : 'playing') + '</div></div></div>';
+    if (m.scored && !tempo) {
       h += '<div class="divider"></div><div class="center"><div class="eyebrow">Today\'s beat</div><div class="num" style="font-size:44px;font-weight:700;letter-spacing:-.02em">' + t.bpm + '<span class="small muted"> BPM</span></div><div class="small" style="font-weight:600">' + esc(t.style) + '</div>' +
-        '<p class="small muted" style="margin:8px 0 0">You tapped ' + m.bpm + '.' + (o && o.final && o.bpm ? ' ' + esc(n.other) + ' tapped ' + o.bpm + '.' : '') + '</p></div></section>';
-      return h;
+        '<p class="small muted" style="margin:8px 0 0">Your best: ' + m.bpm + ' BPM.' + (o && o.scored && o.bpm ? ' ' + esc(n.other) + '\'s best: ' + o.bpm + '.' : '') + '</p></div><div class="divider"></div>';
     }
     var phase = tempo ? tempo.phase : '';
     h += '<button class="tpad' + (phase === 'tap' ? ' live' : '') + '" type="button" data-fun="tap" id="tpad"><span id="tpadTxt">' + (phase === 'listen' ? 'Listen' : phase === 'tap' ? 'Tap' : phase === 'send' ? '…' : 'Tempo') + '</span></button>' +
       '<p class="center small muted" id="tmsg">' + (tempo ? tempo.msg : 'Hear eight beats, then keep the beat going on your own: tap eight times. Closest BPM wins.') + '</p>' +
-      (tempo ? '' : '<button class="btn primary wide" type="button" data-fun="tempoGo">' + icon('play', 's') + (m.tries ? 'Try ' + (m.tries + 1) + ' of 3' : 'Play the beat') + '</button>') +
-      '<p class="tiny muted center" style="margin:8px 0 0">Within 1 BPM scores 10. Three tries, best one counts. Sound on.</p></section>';
+      (tempo ? '' : '<button class="btn primary wide" type="button" data-fun="tempoGo">' + icon('play', 's') + (m.tries ? 'Play again' : 'Play the beat') + '</button>') +
+      '<p class="tiny muted center" style="margin:8px 0 0">Within 1 BPM scores 10. Play as often as you like: your best counts, and XP comes the first time you score each day. Sound on.</p></section>';
     return h;
   }
   function kick(at) {
@@ -1655,9 +1887,10 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     tempo.phase = 'send'; tempoMsg('You tapped ' + bpm + ' BPM');
     rpc('submitTempo', [bpm]).then(function (g) {
       tempo = null; S.games = g; renderPlay();
-      var m = g.tempo.mine;
-      if (m.final) { confetti(m.points >= 8); toast(m.points === 10 ? 'Perfect timing. ' + g.tempo.bpm + ' BPM.' : 'Locked in: ' + m.points + ' points'); refreshQuiet(); }
-      else toast(bpm + ' BPM: ' + (m.points >= 8 ? 'so close' : 'try again') + '. ' + (3 - m.tries) + ' left.');
+      var l = g.last || { points: 0 }, m = g.tempo.mine;
+      if (l.points >= 8) { confetti(l.points === 10); chime([659, 880, 1100]); }
+      toast(bpm + ' BPM: ' + (l.points === 10 ? 'perfect timing' : l.points ? l.points + ' points' : 'too far off for points') + (l.firstXp ? '. +' + l.firstXp + ' XP' : '') + (m.points > l.points ? '. Best today: ' + m.points : ''));
+      if (l.firstXp) refreshQuiet();
     }, function (err) { tempo = null; renderPlay(); toast(err.message, true); });
   }
 
@@ -2049,6 +2282,14 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     ['sa-ogloc', 'OG', 'OG Loc', 'Rhymes in progress', '#c9a227', '#3b2f0b'],
     ['sa-zero', 'ZR', 'Zero', 'Small shop, big ideas', '#2563eb', '#0b1d4a'],
     ['sa-tenpenny', 'FT', 'Tenpenny', 'Badge, attitude, no rules', '#334155', '#0f172a'],
+    ['sa-denise', 'DR', 'Denise Robinson', 'Ganton through and through', '#2e9e4f', '#141414'],
+    ['sa-millie', 'MP', 'Millie Perkins', 'Sweet smile, big secrets', '#f472b6', '#7c3aed'],
+    ['sa-helena', 'HW', 'Helena Wankstein', 'Country girl with a plan', '#8fbf5a', '#c9862b'],
+    ['sa-michelle', 'MC', 'Michelle Cannes', 'Fixes cars, drives faster', '#2563eb', '#1e1b4b'],
+    ['sa-katie', 'KZ', 'Katie Zhan', 'Calm hands, quick thinking', '#2a9d8f', '#0f3d3a'],
+    ['sa-barbara', 'BS', 'Barbara Schternvart', 'Off duty, on point', '#334155', '#d4af37'],
+    ['sa-lowrider', 'LR', 'Grove lowrider girl', 'Inspired by San Andreas', '#c46a2b', '#1f1f1f'],
+    ['sa-vinewood', 'VS', 'Vinewood starlet', 'Inspired by San Andreas', '#e11d48', '#f3dc8e'],
     ['vc-tommy', 'TV', 'Tommy Vercetti', 'Building an empire in the sun', '#14b8a6', '#f472b6'],
     ['vc-lance', 'LV', 'Lance Vance', 'Style first, plans later', '#f9a8d4', '#1e3a8a'],
     ['vc-ken', 'KR', 'Ken Rosenberg', 'Nervous lawyer, big heart', '#e9c46a', '#264653'],
@@ -2058,12 +2299,20 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     ['vc-kent', 'KP', 'Kent Paul', 'Knows everyone, does nothing', '#ffb703', '#023047'],
     ['vc-diaz', 'RD', 'Ricardo Diaz', 'Loud, rich, paranoid', '#c1121f', '#fdf0d5'],
     ['vc-avery', 'AC', 'Avery Carrington', 'Buys the skyline', '#b5838d', '#3d1f2b'],
-    ['vc-sonny', 'SF', 'Sonny Forelli', 'Wants his money back', '#3d3d3d', '#a3a3a3']
+    ['vc-sonny', 'SF', 'Sonny Forelli', 'Wants his money back', '#3d3d3d', '#a3a3a3'],
+    ['vc-skater', 'OS', 'Ocean Beach skater', 'Inspired by Vice City', '#2fe0d6', '#ff5fae'],
+    ['vc-singer', 'MS', 'Malibu Club singer', 'Inspired by Vice City', '#a855f7', '#1e1b4b'],
+    ['vc-lifeguard', 'WL', 'Washington Beach lifeguard', 'Inspired by Vice City', '#e11d48', '#ffb703'],
+    ['vc-heiress', 'SH', 'Starfish Island heiress', 'Inspired by Vice City', '#f9a8d4', '#7c3aed'],
+    ['vc-aerobics', 'VA', 'Vice aerobics queen', 'Inspired by Vice City', '#ff4f9a', '#2fe0d6']
   ];
   function charById(id) { for (var i = 0; i < CHARS.length; i++) if (CHARS[i][0] === id) return CHARS[i]; return null; }
   function charOf(who) { return S && S.fun && S.fun.chars ? S.fun.chars[who] : ''; }
-  function avatar(id, size, right) {
+  function lookOf(who) { return (S && S.fun && S.fun.looks && S.fun.looks[who]) || null; }
+  function avatarOf(who, size, right) { return avatar(charOf(who), size, right, lookOf(who)); }
+  function avatar(id, size, right, look) {
     var c = charById(id), s = size || 36;
+    if (c && window.LQPortrait && LQPortrait.has(id)) return '<span class="av" style="width:' + s + 'px;height:' + s + 'px' + (right ? ';margin-left:auto' : '') + '" title="' + esc(c[2]) + '"><svg viewBox="0 0 100 100" aria-hidden="true">' + LQPortrait.draw(id, c[4], c[5], 'p' + id.replace(/\W/g, '') + s + Math.random().toString(36).slice(2, 6), look) + '</svg></span>';
     if (!c) return '<span class="av none" style="width:' + s + 'px;height:' + s + 'px">' + icon('user', 's') + '</span>';
     var vc = id.slice(0, 2) === 'vc', g = 'a' + id.replace(/\W/g, '') + s;
     var pattern = vc
@@ -2077,7 +2326,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
   }
   function meButton() {
     var c = charOf(S.who);
-    return c ? '<button class="avbtn" type="button" data-goto="you" aria-label="You and settings">' + avatar(c, 40) + '</button>'
+    return c ? '<button class="avbtn" type="button" data-goto="you" aria-label="You and settings">' + avatarOf(S.who, 40) + '</button>'
       : '<button class="iconbtn" type="button" data-goto="you" aria-label="You and settings">' + icon('user') + '</button>';
   }
   function wanted(streak) {
@@ -2088,7 +2337,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
   function charCard() {
     var id = charOf(S.who), c = charById(id), g = S.game;
     if (!c) return '<button class="charcard empty" type="button" data-goto="custom">' + avatar('', 56) + '<span class="grow"><b>Pick your character</b><br><span class="small muted">San Andreas or Vice City</span></span>' + icon('chevron', 's') + '</button>';
-    return '<button class="charcard" type="button" data-goto="custom" style="--c1:' + c[4] + ';--c2:' + c[5] + '">' + avatar(id, 64) + '<span class="grow"><span class="tiny">' + (id.slice(0, 2) === 'vc' ? 'Vice City' : 'San Andreas') + '</span><b>' + esc(c[2]) + '</b>' +
+    return '<button class="charcard" type="button" data-goto="custom" style="--c1:' + c[4] + ';--c2:' + c[5] + '">' + avatarOf(S.who, 64) + '<span class="grow"><span class="tiny">' + (id.slice(0, 2) === 'vc' ? 'Vice City' : 'San Andreas') + '</span><b>' + esc(c[2]) + '</b>' +
       '<span class="small">Respect: level ' + g.level.level + (S.empire ? ' · worth ' + money(S.empire.worth + S.empire.cash) : '') + '</span>' +
       (S.empire && (S.empire.rideName || S.empire.homeName) ? '<span class="tiny" style="opacity:.9">' + [S.empire.rideName ? 'Rides a ' + esc(S.empire.rideName) : '', S.empire.homeName ? 'Lives at ' + esc(S.empire.homeName) : ''].filter(Boolean).join(' · ') + '</span>' : '') +
       wanted(g.streak.count) + '</span></button>';
@@ -2126,8 +2375,9 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
       '<p class="small muted" style="margin:0 0 10px">Shows on your Home screen, in Play and in ' + esc(n.other) + '\'s feed.</p>' +
       '<div class="seg">' + [['sa', 'San Andreas'], ['vc', 'Vice City']].map(function (o) { return '<button type="button" data-cgame="' + o[0] + '" aria-pressed="' + (charGame === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>' +
       '<div class="chars">' + CHARS.filter(function (c) { return c[0].slice(0, 2) === charGame; }).map(function (c) {
-        return '<button class="ch' + (c[0] === cur ? ' on' : '') + '" type="button" data-char="' + c[0] + '">' + avatar(c[0], 58) + '<b>' + esc(c[2]) + '</b><span>' + esc(c[3]) + '</span></button>';
+        return '<button class="ch' + (c[0] === cur ? ' on' : '') + '" type="button" data-char="' + c[0] + '">' + avatar(c[0], 58, false, c[0] === cur ? lookOf(S.who) : null) + '<b>' + esc(c[2]) + '</b><span>' + esc(c[3]) + '</span></button>';
       }).join('') + '</div></section>';
+    if (cur && window.LQPortrait) h += lookEditor(cur);
     // look
     h += '<section class="card"><div class="head"><h3>Look</h3></div><div class="eyebrow" style="margin-bottom:6px">Theme</div>' +
       '<div class="themes">' + [['light', 'Light'], ['dark', 'Dark'], ['rave', 'Rave'], ['grove', 'Grove'], ['vice', 'Vice'], ['auto', 'Auto']].map(function (o) {
@@ -2164,6 +2414,36 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     el('tab-custom').innerHTML = h;
   }
 
+  function lookEditor(id) {
+    var O = LQPortrait.OPTIONS, L = lookOf(S.who) || {}, base = LQPortrait.look(id), h = '<section class="card"><div class="head"><h3>Your look</h3>' + (Object.keys(L).length ? '<button class="btn ghost sm" type="button" data-lookreset="1">Reset</button>' : '') + '</div>';
+    h += '<div class="lookprev">' + avatarOf(S.who, 112) + '<p class="small muted" style="margin:0">Change anything. "Theirs" keeps ' + esc(charById(id)[2]) + '\'s own style.</p></div>';
+    function chips(key, label) {
+      return '<div class="eyebrow" style="margin:12px 0 6px">' + label + '</div><div class="chips">' + O[key].map(function (o) {
+        var on = (L[key] || '') === o[0];
+        return '<button class="chip" type="button" data-look="' + key + '" data-v="' + o[0] + '" aria-pressed="' + on + '">' + o[1] + '</button>';
+      }).join('') + '</div>';
+    }
+    function swatches(key, label) {
+      return '<div class="eyebrow" style="margin:12px 0 6px">' + label + '</div><div class="swatches small">' + O[key].map(function (c) {
+        return '<button type="button" data-look="' + key + '" data-v="' + c + '" aria-pressed="' + (L[key] === c) + '" aria-label="' + c + '" style="background:' + c + '"></button>';
+      }).join('') + '</div>';
+    }
+    h += chips('hair', 'Hair') + swatches('hc', 'Hair colour') + chips('top', 'Clothes') + swatches('tc', 'Clothes colour') + chips('head', 'On your head') + chips('eyes', 'Glasses') + chips('face', 'Facial hair') + chips('ear', 'Earrings');
+    h += '<div class="eyebrow" style="margin:12px 0 6px">Skin</div><div class="swatches small">' + O.skin.map(function (o) {
+      return o[0] ? '<button type="button" data-look="skin" data-v="' + o[0] + '" aria-pressed="' + (L.skin === o[0]) + '" aria-label="Skin tone" style="background:' + LQPortrait.SKIN[o[0]] + '"></button>' : '<button type="button" data-look="skin" data-v="" aria-pressed="' + !L.skin + '" aria-label="Theirs" style="background:' + LQPortrait.SKIN[base.skin] + ';outline:2px dashed var(--line)"></button>';
+    }).join('') + '</div></section>';
+    return h;
+  }
+  document.addEventListener('click', function (ev) {
+    var t = ev.target.closest('[data-look], [data-lookreset]');
+    if (!t || !S || !ev.target.closest('#tab-custom')) return;
+    var L = Object.assign({}, lookOf(S.who) || {});
+    if (t.dataset.lookreset) L = {};
+    else if (t.dataset.v) L[t.dataset.look] = t.dataset.v; else delete L[t.dataset.look];
+    S.fun.looks = S.fun.looks || {}; S.fun.looks[S.who] = L;
+    buzz(10);
+    savePrefs({ look: L });
+  });
   document.addEventListener('click', function (ev) {
     var t = ev.target.closest('[data-char], [data-cgame], [data-accent], [data-textsize], [data-titles], [data-homehide], [data-homemove], [data-homereset], [data-pref], [data-nag]');
     if (!t || !S || !ev.target.closest('#tab-custom')) return;
@@ -2305,7 +2585,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
         '<em>' + (w === 'together' ? '2× XP together' : w === 'anyone' ? 'Either of you' : esc(whos.filter(function (x) { return x[0] === w; })[0][1])) + '</em></button>';
     }).join('') + '</div>';
     h += '<div class="pwho">' + whos.map(function (x) {
-      return '<button type="button" class="ppl w-' + x[0] + (planPick ? ' ready' : '') + '" data-pwho="' + x[0] + '">' + (x[0] === 'together' ? icon('heart', 's') : x[0] === 'anyone' ? icon('shuffle', 's') : avatar(charOf(x[0]), 26)) + '<b>' + esc(x[1]) + '</b><span>' + count[x[0]] + ' job' + (count[x[0]] === 1 ? '' : 's') + (x[0] === 'together' ? ' · 2× XP' : '') + '</span></button>';
+      return '<button type="button" class="ppl w-' + x[0] + (planPick ? ' ready' : '') + '" data-pwho="' + x[0] + '">' + (x[0] === 'together' ? icon('heart', 's') : x[0] === 'anyone' ? icon('shuffle', 's') : avatarOf(x[0], 26)) + '<b>' + esc(x[1]) + '</b><span>' + count[x[0]] + ' job' + (count[x[0]] === 1 ? '' : 's') + (x[0] === 'together' ? ' · 2× XP' : '') + '</span></button>';
     }).join('') + '</div></div>';
     var n = names();
     h += '<p class="small muted center">About ' + Math.round(mins[S.who] / 60 * 10) / 10 + 'h of solo jobs for you this week, ' + Math.round(mins[S.who === 'me' ? 'partner' : 'me'] / 60 * 10) / 10 + 'h for ' + esc(n.other) + '.</p>';
@@ -2359,7 +2639,26 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
   // ---------- MUSIC (mixes that last as long as the job) ----------
   var musicMins = 20, musicNow = null;
   function M() { return window.LQMusic; }
+  // Your own songs (files on this phone): played in order until the timer, then faded out. Nothing is uploaded.
+  var own = null;
+  function ownEndAt() { var cur = mySession(); return cur ? cur.endsAt - offset : own.fixedEnd; }
+  function playOwn(files) {
+    stopOwn(); if (M() && M().now()) M().stop(true);
+    own = { files: files, idx: 0, audio: new Audio(), fixedEnd: Date.now() + musicMins * 60000, timer: 0, fading: false };
+    own.audio.onended = function () { if (!own) return; own.idx++; if (own.idx >= own.files.length || Date.now() >= ownEndAt()) return stopOwn(); loadOwn(); };
+    own.timer = setInterval(function () {
+      if (!own) return;
+      var left = ownEndAt() - Date.now();
+      if (left <= 6000 && !own.fading) { own.fading = true; var v = 1, f = setInterval(function () { if (!own) return clearInterval(f); v -= 0.05; own.audio.volume = Math.max(0, v); if (v <= 0) { clearInterval(f); stopOwn(); chime([523, 659]); } }, 300); }
+    }, 1000);
+    loadOwn(); closeSheet(); renderChores();
+    toast('Playing your ' + files.length + ' song' + (files.length === 1 ? '' : 's') + '. It fades out when the timer ends.');
+  }
+  function loadOwn() { var f = own.files[own.idx]; own.name = f.name.replace(/\.[^.]+$/, ''); own.audio.src = URL.createObjectURL(f); own.audio.play().catch(function () {}); renderChores();
+    if ('mediaSession' in navigator) try { navigator.mediaSession.metadata = new MediaMetadata({ title: own.name, artist: 'Your music' }); } catch (e) {} }
+  function stopOwn() { if (!own) return; clearInterval(own.timer); try { own.audio.pause(); } catch (e) {} own = null; renderChores(); }
   function musicBar() {
+    if (own) return '<div class="musicbtn playing" style="--c1:#141414;--c2:#b3121f"><span class="eqi"><i></i><i></i><i></i></span><span class="grow"><b>' + esc(own.name || 'Your music') + '</b><br><span class="tiny">Song ' + (own.idx + 1) + ' of ' + own.files.length + ' · fades out with your timer</span></span><button class="btn ghost sm" type="button" data-fun="ownStop">Stop</button></div>';
     var m = M() && M().now();
     if (!m) return '<button class="musicbtn" type="button" data-fun="music">' + icon('music', 's') + '<span class="grow"><b>' + (mySession() ? 'Music for this job' : 'Music library') + '</b><br><span class="tiny muted">' + (mySession() ? 'A mix that lasts your timer and ends on time' : '12 stations. Pick how long and it ends right on time.') + '</span></span>' + icon('chevron', 's') + '</button>';
     return '<div class="musicbtn playing" style="--c1:' + m.station.c1 + ';--c2:' + m.station.c2 + '"><span class="eqi"><i></i><i></i><i></i></span><span class="grow"><b>' + esc(m.station.name) + '</b><br><span class="tiny">' + (m.ending ? 'Last phrase: fading out' : 'Lasts your timer, then fades out') + '</span></span><button class="btn ghost sm" type="button" data-fun="musicStop">Stop</button></div>';
@@ -2370,7 +2669,12 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     if (!s) h += '<div class="seg">' + [10, 20, 30, 45, 60].map(function (x) { return '<button type="button" data-mmins="' + x + '" aria-pressed="' + (musicMins === x) + '">' + x + 'm</button>'; }).join('') + '</div>';
     h += '<div class="stations">' + M().STATIONS.map(function (st) {
       return '<button type="button" class="station" data-station="' + st.id + '" style="--c1:' + st.c1 + ';--c2:' + st.c2 + '"><span class="sart">' + icon(st.p.k.indexOf('x') === -1 ? 'sparkles' : 'disc') + '</span><b>' + esc(st.name) + '</b><span>' + esc(st.style) + ' · ' + st.bpm + ' BPM</span><em>' + esc(st.mood) + '</em></button>';
-    }).join('') + '</div><p class="tiny muted" style="margin:10px 0 0">Original music made by the app as it plays, so it\'s never the same twice. If your timer moves, the mix follows.</p>';
+    }).join('') + '</div><p class="tiny muted" style="margin:10px 0 0">Original music made by the app as it plays, so it\'s never the same twice. If your timer moves, the mix follows.</p>' +
+      '<div class="divider"></div><b>Your own music</b><p class="small muted" style="margin:4px 0 8px">Pick songs saved on this phone. They play in order and fade out when the timer ends. Nothing is uploaded.</p>' +
+      '<label class="btn soft wide" style="cursor:pointer">' + icon('music', 's') + 'Choose songs<input type="file" id="ownFiles" accept="audio/*" multiple hidden></label>' +
+      '<div class="divider"></div><b>Open in Spotify</b><p class="small muted" style="margin:4px 0 8px">Spotify can\'t follow the timer, but it\'s one tap away.</p>' +
+      '<div class="chips" style="margin-bottom:8px">' + ['My Beautiful Dark Twisted Fantasy', 'Kanye West', 'Lo-fi beats', 'House music'].map(function (q) { return '<button class="chip" type="button" data-spotify="' + esc(q) + '">' + esc(q) + '</button>'; }).join('') + '</div>' +
+      '<form class="inline" id="spotForm" autocomplete="off"><input type="text" id="spotText" placeholder="Album, artist or playlist" aria-label="Search Spotify"><button class="btn primary" type="submit">Open</button></form>';
     openSheet(h);
   }
   function startMusic(id) {
@@ -2385,30 +2689,33 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     toast('Playing ' + M().STATIONS.filter(function (x) { return x.id === id; })[0].name);
   }
   document.addEventListener('click', function (ev) {
-    var t = ev.target.closest('[data-fun="music"], [data-fun="musicStop"], [data-station], [data-mmins]');
+    var t = ev.target.closest('[data-fun="music"], [data-fun="musicStop"], [data-fun="ownStop"], [data-station], [data-mmins], [data-spotify]');
     if (!t || !S || !M()) return;
+    if (t.dataset.fun === 'ownStop') return stopOwn();
+    if (t.dataset.spotify) return openSpotify(t.dataset.spotify);
     if (t.dataset.fun === 'music') return musicSheet();
     if (t.dataset.fun === 'musicStop') { M().stop(); return; }
     if (t.dataset.mmins) { musicMins = +t.dataset.mmins; return musicSheet(); }
-    if (t.dataset.station) return startMusic(t.dataset.station);
+    if (t.dataset.station) { stopOwn(); return startMusic(t.dataset.station); }
   });
+  function openSpotify(q) { window.open('https://open.spotify.com/search/' + encodeURIComponent(q), '_blank'); }
+  document.addEventListener('change', function (ev) { if (ev.target.id === 'ownFiles' && ev.target.files.length) playOwn([].slice.call(ev.target.files)); });
+  document.addEventListener('submit', function (ev) { if (ev.target.id !== 'spotForm') return; ev.preventDefault(); var q = el('spotText').value.trim(); if (q) openSpotify(q); else toast('Type an album, artist or playlist'); });
 
   // ---------- MIX (the DJ game: beatmatch deck B to deck A) ----------
   var mix = null;
   function stationOf(id) { return M() ? M().STATIONS.filter(function (s) { return s.id === id; })[0] : null; }
   function mixView(mx, n) {
     var m = mx.mine || { points: 0, tries: 0, final: false }, o = mx.other, pz = mx.puzzle, A = stationOf(pz.a) || {}, B = stationOf(pz.b) || {};
-    var h = '<section class="card"><div class="between"><div><div class="eyebrow">Best today</div><div class="num" style="font-size:28px;font-weight:700">' + (m.tries ? m.points : 0) + '<span class="small muted"> pts</span></div></div><div class="right"><div class="small muted">' + esc(n.other) + '</div><div class="num" style="font-size:28px;font-weight:700">' + (o && o.tries ? o.points : 0) + '<span class="small muted"> pts</span></div><div class="tiny muted">' + (!o ? 'not yet' : o.final ? 'locked in' : 'mixing') + '</div></div></div>';
-    if (m.final) {
-      return h + '<div class="divider"></div><p class="small" style="margin:0">Locked in: tempos ' + m.bpm + ' BPM apart, beats ' + m.phase + ' ms apart. New records tomorrow.</p></section>';
-    }
+    var h = '<section class="card"><div class="between"><div><div class="eyebrow">Best today</div><div class="num" style="font-size:28px;font-weight:700">' + (m.tries ? m.points : 0) + '<span class="small muted"> pts</span></div></div><div class="right"><div class="small muted">' + esc(n.other) + '</div><div class="num" style="font-size:28px;font-weight:700">' + (o && o.tries ? o.points : 0) + '<span class="small muted"> pts</span></div><div class="tiny muted">' + (!o ? 'not yet' : o.scored ? o.tries + ' plays' : 'mixing') + '</div></div></div>';
+    if (m.scored && !(mix && mix.on)) h += '<p class="small muted" style="margin:8px 0 0">Your best: tempos ' + m.bpm + ' BPM apart, beats ' + m.phase + ' ms apart. Go again to beat it.</p>';
     var on = mix && mix.on;
     h += '<div class="decks">' + [['A', A, pz.bpmA + ' BPM', 'Playing'], ['B', B, on ? pitchText() : 'Off', 'Your deck']].map(function (d) {
       return '<div class="deck"><div class="platter' + (on ? ' spin' : '') + '" id="plat' + d[0] + '" style="--c1:' + (d[1].c1 || '#888') + ';--c2:' + (d[1].c2 || '#444') + '"><span>' + d[0] + '</span></div><div class="led" id="led' + d[0] + '"></div><b>' + esc(d[1].name || '') + '</b><span class="tiny muted">' + esc(d[1].style || '') + ' · ' + d[3] + '</span><span class="small num" id="read' + d[0] + '">' + d[2] + '</span></div>';
     }).join('') + '</div>';
     if (!on) {
-      h += '<p class="small muted center" style="margin:10px 0">Deck A plays at ' + pz.bpmA + ' BPM. Deck B starts off-tempo and out of time. Match its pitch until the beats stop drifting, nudge it until they hit together, then lock it in.</p>' +
-        '<button class="btn primary wide" type="button" data-mix="start">' + icon('play', 's') + (m.tries ? 'Try ' + (m.tries + 1) + ' of 3' : 'Load the decks') + '</button>';
+      h += '<p class="small muted center" style="margin:10px 0">Deck A plays at ' + pz.bpmA + ' BPM. Deck B starts off-tempo and out of time. Match its pitch until the beats stop drifting, nudge it until they hit together, then lock it in. Play as often as you like.</p>' +
+        '<button class="btn primary wide" type="button" data-mix="start">' + icon('play', 's') + (m.tries ? 'Play again' : 'Load the decks') + '</button>';
     } else {
       h += '<label class="mixlab">Pitch (deck B)<input type="range" id="mixPitch" min="-10" max="10" step="0.1" value="' + mix.pitch + '"></label>' +
         '<div class="grid3" style="margin:6px 0"><button class="btn soft" type="button" data-nudge-hold="-1">Slow down</button><button class="btn soft" type="button" data-mix="cue">Cue to beat</button><button class="btn soft" type="button" data-nudge-hold="1">Speed up</button></div>' +
@@ -2457,10 +2764,10 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     mixStop();
     call('submitMix', [bpmDiff, phaseMs], function (g) {
       S.games = g; renderPlay();
-      var m = g.mix.mine;
-      toast((bpmDiff < 0.5 ? 'Tempo spot on' : bpmDiff.toFixed(1) + ' BPM out') + ', beats ' + Math.round(phaseMs) + ' ms apart: ' + m.points + ' points' + (m.final ? '. Locked in.' : '. ' + (3 - m.tries) + ' tries left.'));
-      if (m.points >= 8) { confetti(true); chime([523, 659, 784, 1047]); }
-      if (m.final) refreshQuiet();
+      var l = g.last || { points: 0 }, m = g.mix.mine;
+      toast((bpmDiff < 0.5 ? 'Tempo spot on' : bpmDiff.toFixed(1) + ' BPM out') + ', beats ' + Math.round(phaseMs) + ' ms apart: ' + (l.points ? l.points + ' points' : 'not matched yet, no points') + (l.firstXp ? '. +' + l.firstXp + ' XP' : '') + (m.points > l.points ? '. Best today: ' + m.points : ''));
+      if (l.points >= 8) { confetti(true); chime([523, 659, 784, 1047]); }
+      if (l.firstXp) refreshQuiet();
     });
   }
   document.addEventListener('click', function (ev) {
@@ -2556,9 +2863,9 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     if (ds.step !== undefined) return call('stepDone', [+ds.step], function (res) { apply(res); });
     if (t.id === 'parkBtn') { parking = !parking; renderChores(); if (parking) el('parkText').focus(); return; }
     if (ds.more) return call('extendChore', [+ds.more], function (res) { upShown = ''; apply(res, '+' + ds.more + ' minutes. Finish it off.'); });
-    if (t.id === 'cdone') { var task = mySession().task; return call('finishChore', ['Done'], function (res) { parking = false; if (M() && M().now()) M().stop(); apply(res, task + ': done. Nice.'); }); }
-    if (t.id === 'cstop') return call('finishChore', ['Stopped'], function (res) { parking = false; if (M() && M().now()) M().stop(); apply(res, 'Stopped. Starting was the hard part.'); });
-    if (t.id === 'ccancel') return call('finishChore', ['Cancelled'], function (res) { parking = false; if (M() && M().now()) M().stop(); apply(res, 'Cancelled.'); });
+    if (t.id === 'cdone') { var task = mySession().task; return call('finishChore', ['Done'], function (res) { parking = false; if (M() && M().now()) M().stop(); stopOwn(); apply(res, task + ': done. Nice.'); }); }
+    if (t.id === 'cstop') return call('finishChore', ['Stopped'], function (res) { parking = false; if (M() && M().now()) M().stop(); stopOwn(); apply(res, 'Stopped. Starting was the hard part.'); });
+    if (t.id === 'ccancel') return call('finishChore', ['Cancelled'], function (res) { parking = false; if (M() && M().now()) M().stop(); stopOwn(); apply(res, 'Cancelled.'); });
     if (t.id === 'askJoin') return call('askToJoin', [], function (r) { apply(r.state, r.sent ? 'Asked ' + names().other + ' to join' : 'Added to the feed'); });
     if (t.id === 'dumpBtn') { var txt = el('dumpText').value.trim(); if (!txt) return; toast(S.hasClaudeKey ? 'Sorting it out…' : 'Splitting it up…'); return call('brainDump', [txt], dumpReview); }
     if (t.id === 'dumpSave') {

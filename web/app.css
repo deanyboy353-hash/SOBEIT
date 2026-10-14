@@ -585,3 +585,6 @@ nav.tabs button { max-width: 92px; font-size: 11px; }
 .led.on { background: var(--good); box-shadow: 0 0 12px var(--good); }
 .mixlab { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); font-weight: 600; margin: 8px 0; }
 .mixlab input { width: 100%; accent-color: var(--lilac); }
+.lookprev { display: flex; align-items: center; gap: 14px; margin-bottom: 4px; }
+.swatches.small button { width: 30px; height: 30px; border-width: 2px; }
+.chips .chip[aria-pressed="true"] { background: var(--lilac); color: #fff; }

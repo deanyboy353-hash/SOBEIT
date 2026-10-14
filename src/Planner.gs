@@ -570,11 +570,11 @@ function tempoPuzzle(ymd) {
   return { style: s[0], bpm: s[1] + Math.floor(r() * (s[2] - s[1] + 1)) };
 }
 
-/** Points for a tapped tempo. Half time counts for fast tracks (nobody taps 174). */
+/** Points for a tapped tempo (0 if you're more than 7 BPM out). Half time counts for fast tracks (nobody taps 174). */
 function tempoPoints(tapped, bpm) {
   var d = Math.abs(tapped - bpm);
   if (bpm > 150) d = Math.min(d, Math.abs(tapped * 2 - bpm));
-  return d <= 1 ? 10 : d <= 2 ? 8 : d <= 4 ? 6 : d <= 7 ? 4 : 2;
+  return d <= 1 ? 10 : d <= 2 ? 8 : d <= 4 ? 6 : d <= 7 ? 3 : 0;
 }
 
 // ---- Mix (the DJ game) ----
@@ -596,9 +596,9 @@ function mixPoints(bpmDiff, phaseMs) {
   if (!isFinite(d) || !isFinite(ph)) return 0;
   if (d <= 0.5 && ph <= 30) return 10;
   if (d <= 1 && ph <= 60) return 8;
-  if (d <= 2 && ph <= 100) return 6;
-  if (d <= 4 && ph <= 160) return 4;
-  return 2;
+  if (d <= 1.5 && ph <= 90) return 6;
+  if (d <= 2 && ph <= 120) return 3;
+  return 0;                                   // not matched yet: no points, no XP
 }
 
 // ---- Deadlines ("Send the invoice by 3pm") ----

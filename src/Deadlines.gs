@@ -72,7 +72,9 @@ function charName_(id) {
   var names = { 'sa-cj': 'CJ', 'sa-smoke': 'Big Smoke', 'sa-sweet': 'Sweet', 'sa-ryder': 'Ryder', 'sa-kendl': 'Kendl', 'sa-cesar': 'Cesar', 'sa-catalina': 'Catalina',
     'sa-woozie': 'Woozie', 'sa-truth': 'The Truth', 'sa-toreno': 'Toreno', 'sa-maddogg': 'Madd Dogg', 'sa-ogloc': 'OG Loc', 'sa-zero': 'Zero', 'sa-tenpenny': 'Tenpenny',
     'vc-tommy': 'Tommy', 'vc-lance': 'Lance', 'vc-ken': 'Ken', 'vc-mercedes': 'Mercedes', 'vc-umberto': 'Umberto', 'vc-phil': 'Phil', 'vc-kent': 'Kent Paul',
-    'vc-diaz': 'Diaz', 'vc-avery': 'Avery', 'vc-sonny': 'Sonny' };
+    'vc-diaz': 'Diaz', 'vc-avery': 'Avery', 'vc-sonny': 'Sonny', 'sa-denise': 'Denise', 'sa-millie': 'Millie', 'sa-helena': 'Helena', 'sa-michelle': 'Michelle',
+    'sa-katie': 'Katie', 'sa-barbara': 'Barbara', 'sa-lowrider': 'Your lowrider crew', 'sa-vinewood': 'Vinewood', 'vc-skater': 'Ocean Beach', 'vc-singer': 'The Malibu crowd',
+    'vc-lifeguard': 'The lifeguard', 'vc-heiress': 'Starfish Island', 'vc-aerobics': 'Your aerobics class' };
   return names[id] || '';
 }
 

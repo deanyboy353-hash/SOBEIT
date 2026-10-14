@@ -294,7 +294,7 @@
     var feed = S.game.feed.slice(0, 6);
     h += feed.length ? feed.map(function (f) {
       var own = f.who === S.who, sent = f.hi5.indexOf(S.who) !== -1;
-      return '<div class="item">' + avatar(charOf(f.who), 30) + '<div class="grow small"><b>' + esc(own ? 'You' : n.other) + '</b> ' + esc(f.text) + (f.hi5.length ? ' <span class="muted">· high-fived</span>' : '') + '</div>' +
+      return '<div class="item">' + avatarOf(f.who, 30) + '<div class="grow small"><b>' + esc(own ? 'You' : n.other) + '</b> ' + esc(f.text) + (f.hi5.length ? ' <span class="muted">· high-fived</span>' : '') + '</div>' +
         (!own ? '<button class="btn ' + (sent ? 'line' : 'blush') + ' sm" type="button" data-hi5="' + esc(f.id) + '"' + (sent ? ' disabled' : '') + '>' + icon('heart', 's') + (sent ? 'Sent' : 'High-five') + '</button>' : '') + '</div>';
     }).join('') : '<p class="empty">Nothing yet today.</p>';
     h += '</section>';
@@ -501,7 +501,7 @@
   }
   function renderPlay() {
     var G = S.games, n = names(), h = '<div class="top"><div><h1>Play</h1><div class="sub">Same puzzles for you both. Live scores.</div></div>' + meButton() + '</div>';
-    h += '<section class="card"><div class="vs"><div>' + avatar(charOf(S.who), 40) + '<div class="small muted">You</div><div class="num" style="font-size:28px;font-weight:700">' + G.stats.you + '</div></div><div class="center small muted">head to head<br><span class="tiny">' + G.stats.draws + ' draws</span></div><div class="right">' + avatar(charOf(S.who === 'me' ? 'partner' : 'me'), 40, true) + '<div class="small muted">' + esc(n.other) + '</div><div class="num" style="font-size:28px;font-weight:700">' + G.stats.them + '</div></div></div></section>';
+    h += '<section class="card"><div class="vs"><div>' + avatarOf(S.who, 40) + '<div class="small muted">You</div><div class="num" style="font-size:28px;font-weight:700">' + G.stats.you + '</div></div><div class="center small muted">head to head<br><span class="tiny">' + G.stats.draws + ' draws</span></div><div class="right">' + avatarOf(S.who === 'me' ? 'partner' : 'me', 40, true) + '<div class="small muted">' + esc(n.other) + '</div><div class="num" style="font-size:28px;font-weight:700">' + G.stats.them + '</div></div></div></section>';
     h += '<div class="seg six">' + [['word', 'Word'], ['target', 'Numbers'], ['recall', 'Recall'], ['tempo', 'Tempo'], ['mix', 'Mix'], ['stats', 'Stats']].map(function (o) { return '<button type="button" data-pview="' + o[0] + '" aria-pressed="' + (playView === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
     if (playView === 'word') h += wordView(G.word, n);
     else if (playView === 'target') h += targetView(G.target, n);
@@ -810,17 +810,16 @@
   var tempo = null;
   function tempoView(t, n) {
     var m = t.mine || { points: 0, tries: 0, final: false, bpm: null }, o = t.other, h = '';
-    h += '<section class="card"><div class="between"><div><div class="eyebrow">Best today</div><div class="num" style="font-size:28px;font-weight:700">' + (m.tries ? m.points : 0) + '<span class="small muted"> pts</span></div></div><div class="right"><div class="small muted">' + esc(n.other) + '</div><div class="num" style="font-size:28px;font-weight:700">' + (o && o.tries ? o.points : 0) + '<span class="small muted"> pts</span></div><div class="tiny muted">' + (!o ? 'not yet' : o.final ? 'locked in' : 'playing') + '</div></div></div>';
-    if (m.final) {
+    h += '<section class="card"><div class="between"><div><div class="eyebrow">Best today</div><div class="num" style="font-size:28px;font-weight:700">' + (m.tries ? m.points : 0) + '<span class="small muted"> pts</span></div></div><div class="right"><div class="small muted">' + esc(n.other) + '</div><div class="num" style="font-size:28px;font-weight:700">' + (o && o.tries ? o.points : 0) + '<span class="small muted"> pts</span></div><div class="tiny muted">' + (!o ? 'not yet' : o.scored ? o.tries + ' plays' : 'playing') + '</div></div></div>';
+    if (m.scored && !tempo) {
       h += '<div class="divider"></div><div class="center"><div class="eyebrow">Today\'s beat</div><div class="num" style="font-size:44px;font-weight:700;letter-spacing:-.02em">' + t.bpm + '<span class="small muted"> BPM</span></div><div class="small" style="font-weight:600">' + esc(t.style) + '</div>' +
-        '<p class="small muted" style="margin:8px 0 0">You tapped ' + m.bpm + '.' + (o && o.final && o.bpm ? ' ' + esc(n.other) + ' tapped ' + o.bpm + '.' : '') + '</p></div></section>';
-      return h;
+        '<p class="small muted" style="margin:8px 0 0">Your best: ' + m.bpm + ' BPM.' + (o && o.scored && o.bpm ? ' ' + esc(n.other) + '\'s best: ' + o.bpm + '.' : '') + '</p></div><div class="divider"></div>';
     }
     var phase = tempo ? tempo.phase : '';
     h += '<button class="tpad' + (phase === 'tap' ? ' live' : '') + '" type="button" data-fun="tap" id="tpad"><span id="tpadTxt">' + (phase === 'listen' ? 'Listen' : phase === 'tap' ? 'Tap' : phase === 'send' ? '…' : 'Tempo') + '</span></button>' +
       '<p class="center small muted" id="tmsg">' + (tempo ? tempo.msg : 'Hear eight beats, then keep the beat going on your own: tap eight times. Closest BPM wins.') + '</p>' +
-      (tempo ? '' : '<button class="btn primary wide" type="button" data-fun="tempoGo">' + icon('play', 's') + (m.tries ? 'Try ' + (m.tries + 1) + ' of 3' : 'Play the beat') + '</button>') +
-      '<p class="tiny muted center" style="margin:8px 0 0">Within 1 BPM scores 10. Three tries, best one counts. Sound on.</p></section>';
+      (tempo ? '' : '<button class="btn primary wide" type="button" data-fun="tempoGo">' + icon('play', 's') + (m.tries ? 'Play again' : 'Play the beat') + '</button>') +
+      '<p class="tiny muted center" style="margin:8px 0 0">Within 1 BPM scores 10. Play as often as you like: your best counts, and XP comes the first time you score each day. Sound on.</p></section>';
     return h;
   }
   function kick(at) {
@@ -857,9 +856,10 @@
     tempo.phase = 'send'; tempoMsg('You tapped ' + bpm + ' BPM');
     rpc('submitTempo', [bpm]).then(function (g) {
       tempo = null; S.games = g; renderPlay();
-      var m = g.tempo.mine;
-      if (m.final) { confetti(m.points >= 8); toast(m.points === 10 ? 'Perfect timing. ' + g.tempo.bpm + ' BPM.' : 'Locked in: ' + m.points + ' points'); refreshQuiet(); }
-      else toast(bpm + ' BPM: ' + (m.points >= 8 ? 'so close' : 'try again') + '. ' + (3 - m.tries) + ' left.');
+      var l = g.last || { points: 0 }, m = g.tempo.mine;
+      if (l.points >= 8) { confetti(l.points === 10); chime([659, 880, 1100]); }
+      toast(bpm + ' BPM: ' + (l.points === 10 ? 'perfect timing' : l.points ? l.points + ' points' : 'too far off for points') + (l.firstXp ? '. +' + l.firstXp + ' XP' : '') + (m.points > l.points ? '. Best today: ' + m.points : ''));
+      if (l.firstXp) refreshQuiet();
     }, function (err) { tempo = null; renderPlay(); toast(err.message, true); });
   }
 
@@ -1251,6 +1251,14 @@
     ['sa-ogloc', 'OG', 'OG Loc', 'Rhymes in progress', '#c9a227', '#3b2f0b'],
     ['sa-zero', 'ZR', 'Zero', 'Small shop, big ideas', '#2563eb', '#0b1d4a'],
     ['sa-tenpenny', 'FT', 'Tenpenny', 'Badge, attitude, no rules', '#334155', '#0f172a'],
+    ['sa-denise', 'DR', 'Denise Robinson', 'Ganton through and through', '#2e9e4f', '#141414'],
+    ['sa-millie', 'MP', 'Millie Perkins', 'Sweet smile, big secrets', '#f472b6', '#7c3aed'],
+    ['sa-helena', 'HW', 'Helena Wankstein', 'Country girl with a plan', '#8fbf5a', '#c9862b'],
+    ['sa-michelle', 'MC', 'Michelle Cannes', 'Fixes cars, drives faster', '#2563eb', '#1e1b4b'],
+    ['sa-katie', 'KZ', 'Katie Zhan', 'Calm hands, quick thinking', '#2a9d8f', '#0f3d3a'],
+    ['sa-barbara', 'BS', 'Barbara Schternvart', 'Off duty, on point', '#334155', '#d4af37'],
+    ['sa-lowrider', 'LR', 'Grove lowrider girl', 'Inspired by San Andreas', '#c46a2b', '#1f1f1f'],
+    ['sa-vinewood', 'VS', 'Vinewood starlet', 'Inspired by San Andreas', '#e11d48', '#f3dc8e'],
     ['vc-tommy', 'TV', 'Tommy Vercetti', 'Building an empire in the sun', '#14b8a6', '#f472b6'],
     ['vc-lance', 'LV', 'Lance Vance', 'Style first, plans later', '#f9a8d4', '#1e3a8a'],
     ['vc-ken', 'KR', 'Ken Rosenberg', 'Nervous lawyer, big heart', '#e9c46a', '#264653'],
@@ -1260,12 +1268,20 @@
     ['vc-kent', 'KP', 'Kent Paul', 'Knows everyone, does nothing', '#ffb703', '#023047'],
     ['vc-diaz', 'RD', 'Ricardo Diaz', 'Loud, rich, paranoid', '#c1121f', '#fdf0d5'],
     ['vc-avery', 'AC', 'Avery Carrington', 'Buys the skyline', '#b5838d', '#3d1f2b'],
-    ['vc-sonny', 'SF', 'Sonny Forelli', 'Wants his money back', '#3d3d3d', '#a3a3a3']
+    ['vc-sonny', 'SF', 'Sonny Forelli', 'Wants his money back', '#3d3d3d', '#a3a3a3'],
+    ['vc-skater', 'OS', 'Ocean Beach skater', 'Inspired by Vice City', '#2fe0d6', '#ff5fae'],
+    ['vc-singer', 'MS', 'Malibu Club singer', 'Inspired by Vice City', '#a855f7', '#1e1b4b'],
+    ['vc-lifeguard', 'WL', 'Washington Beach lifeguard', 'Inspired by Vice City', '#e11d48', '#ffb703'],
+    ['vc-heiress', 'SH', 'Starfish Island heiress', 'Inspired by Vice City', '#f9a8d4', '#7c3aed'],
+    ['vc-aerobics', 'VA', 'Vice aerobics queen', 'Inspired by Vice City', '#ff4f9a', '#2fe0d6']
   ];
   function charById(id) { for (var i = 0; i < CHARS.length; i++) if (CHARS[i][0] === id) return CHARS[i]; return null; }
   function charOf(who) { return S && S.fun && S.fun.chars ? S.fun.chars[who] : ''; }
-  function avatar(id, size, right) {
+  function lookOf(who) { return (S && S.fun && S.fun.looks && S.fun.looks[who]) || null; }
+  function avatarOf(who, size, right) { return avatar(charOf(who), size, right, lookOf(who)); }
+  function avatar(id, size, right, look) {
     var c = charById(id), s = size || 36;
+    if (c && window.LQPortrait && LQPortrait.has(id)) return '<span class="av" style="width:' + s + 'px;height:' + s + 'px' + (right ? ';margin-left:auto' : '') + '" title="' + esc(c[2]) + '"><svg viewBox="0 0 100 100" aria-hidden="true">' + LQPortrait.draw(id, c[4], c[5], 'p' + id.replace(/\W/g, '') + s + Math.random().toString(36).slice(2, 6), look) + '</svg></span>';
     if (!c) return '<span class="av none" style="width:' + s + 'px;height:' + s + 'px">' + icon('user', 's') + '</span>';
     var vc = id.slice(0, 2) === 'vc', g = 'a' + id.replace(/\W/g, '') + s;
     var pattern = vc
@@ -1279,7 +1295,7 @@
   }
   function meButton() {
     var c = charOf(S.who);
-    return c ? '<button class="avbtn" type="button" data-goto="you" aria-label="You and settings">' + avatar(c, 40) + '</button>'
+    return c ? '<button class="avbtn" type="button" data-goto="you" aria-label="You and settings">' + avatarOf(S.who, 40) + '</button>'
       : '<button class="iconbtn" type="button" data-goto="you" aria-label="You and settings">' + icon('user') + '</button>';
   }
   function wanted(streak) {
@@ -1290,7 +1306,7 @@
   function charCard() {
     var id = charOf(S.who), c = charById(id), g = S.game;
     if (!c) return '<button class="charcard empty" type="button" data-goto="custom">' + avatar('', 56) + '<span class="grow"><b>Pick your character</b><br><span class="small muted">San Andreas or Vice City</span></span>' + icon('chevron', 's') + '</button>';
-    return '<button class="charcard" type="button" data-goto="custom" style="--c1:' + c[4] + ';--c2:' + c[5] + '">' + avatar(id, 64) + '<span class="grow"><span class="tiny">' + (id.slice(0, 2) === 'vc' ? 'Vice City' : 'San Andreas') + '</span><b>' + esc(c[2]) + '</b>' +
+    return '<button class="charcard" type="button" data-goto="custom" style="--c1:' + c[4] + ';--c2:' + c[5] + '">' + avatarOf(S.who, 64) + '<span class="grow"><span class="tiny">' + (id.slice(0, 2) === 'vc' ? 'Vice City' : 'San Andreas') + '</span><b>' + esc(c[2]) + '</b>' +
       '<span class="small">Respect: level ' + g.level.level + (S.empire ? ' · worth ' + money(S.empire.worth + S.empire.cash) : '') + '</span>' +
       (S.empire && (S.empire.rideName || S.empire.homeName) ? '<span class="tiny" style="opacity:.9">' + [S.empire.rideName ? 'Rides a ' + esc(S.empire.rideName) : '', S.empire.homeName ? 'Lives at ' + esc(S.empire.homeName) : ''].filter(Boolean).join(' · ') + '</span>' : '') +
       wanted(g.streak.count) + '</span></button>';
@@ -1328,8 +1344,9 @@
       '<p class="small muted" style="margin:0 0 10px">Shows on your Home screen, in Play and in ' + esc(n.other) + '\'s feed.</p>' +
       '<div class="seg">' + [['sa', 'San Andreas'], ['vc', 'Vice City']].map(function (o) { return '<button type="button" data-cgame="' + o[0] + '" aria-pressed="' + (charGame === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>' +
       '<div class="chars">' + CHARS.filter(function (c) { return c[0].slice(0, 2) === charGame; }).map(function (c) {
-        return '<button class="ch' + (c[0] === cur ? ' on' : '') + '" type="button" data-char="' + c[0] + '">' + avatar(c[0], 58) + '<b>' + esc(c[2]) + '</b><span>' + esc(c[3]) + '</span></button>';
+        return '<button class="ch' + (c[0] === cur ? ' on' : '') + '" type="button" data-char="' + c[0] + '">' + avatar(c[0], 58, false, c[0] === cur ? lookOf(S.who) : null) + '<b>' + esc(c[2]) + '</b><span>' + esc(c[3]) + '</span></button>';
       }).join('') + '</div></section>';
+    if (cur && window.LQPortrait) h += lookEditor(cur);
     // look
     h += '<section class="card"><div class="head"><h3>Look</h3></div><div class="eyebrow" style="margin-bottom:6px">Theme</div>' +
       '<div class="themes">' + [['light', 'Light'], ['dark', 'Dark'], ['rave', 'Rave'], ['grove', 'Grove'], ['vice', 'Vice'], ['auto', 'Auto']].map(function (o) {
@@ -1366,6 +1383,36 @@
     el('tab-custom').innerHTML = h;
   }
 
+  function lookEditor(id) {
+    var O = LQPortrait.OPTIONS, L = lookOf(S.who) || {}, base = LQPortrait.look(id), h = '<section class="card"><div class="head"><h3>Your look</h3>' + (Object.keys(L).length ? '<button class="btn ghost sm" type="button" data-lookreset="1">Reset</button>' : '') + '</div>';
+    h += '<div class="lookprev">' + avatarOf(S.who, 112) + '<p class="small muted" style="margin:0">Change anything. "Theirs" keeps ' + esc(charById(id)[2]) + '\'s own style.</p></div>';
+    function chips(key, label) {
+      return '<div class="eyebrow" style="margin:12px 0 6px">' + label + '</div><div class="chips">' + O[key].map(function (o) {
+        var on = (L[key] || '') === o[0];
+        return '<button class="chip" type="button" data-look="' + key + '" data-v="' + o[0] + '" aria-pressed="' + on + '">' + o[1] + '</button>';
+      }).join('') + '</div>';
+    }
+    function swatches(key, label) {
+      return '<div class="eyebrow" style="margin:12px 0 6px">' + label + '</div><div class="swatches small">' + O[key].map(function (c) {
+        return '<button type="button" data-look="' + key + '" data-v="' + c + '" aria-pressed="' + (L[key] === c) + '" aria-label="' + c + '" style="background:' + c + '"></button>';
+      }).join('') + '</div>';
+    }
+    h += chips('hair', 'Hair') + swatches('hc', 'Hair colour') + chips('top', 'Clothes') + swatches('tc', 'Clothes colour') + chips('head', 'On your head') + chips('eyes', 'Glasses') + chips('face', 'Facial hair') + chips('ear', 'Earrings');
+    h += '<div class="eyebrow" style="margin:12px 0 6px">Skin</div><div class="swatches small">' + O.skin.map(function (o) {
+      return o[0] ? '<button type="button" data-look="skin" data-v="' + o[0] + '" aria-pressed="' + (L.skin === o[0]) + '" aria-label="Skin tone" style="background:' + LQPortrait.SKIN[o[0]] + '"></button>' : '<button type="button" data-look="skin" data-v="" aria-pressed="' + !L.skin + '" aria-label="Theirs" style="background:' + LQPortrait.SKIN[base.skin] + ';outline:2px dashed var(--line)"></button>';
+    }).join('') + '</div></section>';
+    return h;
+  }
+  document.addEventListener('click', function (ev) {
+    var t = ev.target.closest('[data-look], [data-lookreset]');
+    if (!t || !S || !ev.target.closest('#tab-custom')) return;
+    var L = Object.assign({}, lookOf(S.who) || {});
+    if (t.dataset.lookreset) L = {};
+    else if (t.dataset.v) L[t.dataset.look] = t.dataset.v; else delete L[t.dataset.look];
+    S.fun.looks = S.fun.looks || {}; S.fun.looks[S.who] = L;
+    buzz(10);
+    savePrefs({ look: L });
+  });
   document.addEventListener('click', function (ev) {
     var t = ev.target.closest('[data-char], [data-cgame], [data-accent], [data-textsize], [data-titles], [data-homehide], [data-homemove], [data-homereset], [data-pref], [data-nag]');
     if (!t || !S || !ev.target.closest('#tab-custom')) return;
@@ -1507,7 +1554,7 @@
         '<em>' + (w === 'together' ? '2× XP together' : w === 'anyone' ? 'Either of you' : esc(whos.filter(function (x) { return x[0] === w; })[0][1])) + '</em></button>';
     }).join('') + '</div>';
     h += '<div class="pwho">' + whos.map(function (x) {
-      return '<button type="button" class="ppl w-' + x[0] + (planPick ? ' ready' : '') + '" data-pwho="' + x[0] + '">' + (x[0] === 'together' ? icon('heart', 's') : x[0] === 'anyone' ? icon('shuffle', 's') : avatar(charOf(x[0]), 26)) + '<b>' + esc(x[1]) + '</b><span>' + count[x[0]] + ' job' + (count[x[0]] === 1 ? '' : 's') + (x[0] === 'together' ? ' · 2× XP' : '') + '</span></button>';
+      return '<button type="button" class="ppl w-' + x[0] + (planPick ? ' ready' : '') + '" data-pwho="' + x[0] + '">' + (x[0] === 'together' ? icon('heart', 's') : x[0] === 'anyone' ? icon('shuffle', 's') : avatarOf(x[0], 26)) + '<b>' + esc(x[1]) + '</b><span>' + count[x[0]] + ' job' + (count[x[0]] === 1 ? '' : 's') + (x[0] === 'together' ? ' · 2× XP' : '') + '</span></button>';
     }).join('') + '</div></div>';
     var n = names();
     h += '<p class="small muted center">About ' + Math.round(mins[S.who] / 60 * 10) / 10 + 'h of solo jobs for you this week, ' + Math.round(mins[S.who === 'me' ? 'partner' : 'me'] / 60 * 10) / 10 + 'h for ' + esc(n.other) + '.</p>';
@@ -1561,7 +1608,26 @@
   // ---------- MUSIC (mixes that last as long as the job) ----------
   var musicMins = 20, musicNow = null;
   function M() { return window.LQMusic; }
+  // Your own songs (files on this phone): played in order until the timer, then faded out. Nothing is uploaded.
+  var own = null;
+  function ownEndAt() { var cur = mySession(); return cur ? cur.endsAt - offset : own.fixedEnd; }
+  function playOwn(files) {
+    stopOwn(); if (M() && M().now()) M().stop(true);
+    own = { files: files, idx: 0, audio: new Audio(), fixedEnd: Date.now() + musicMins * 60000, timer: 0, fading: false };
+    own.audio.onended = function () { if (!own) return; own.idx++; if (own.idx >= own.files.length || Date.now() >= ownEndAt()) return stopOwn(); loadOwn(); };
+    own.timer = setInterval(function () {
+      if (!own) return;
+      var left = ownEndAt() - Date.now();
+      if (left <= 6000 && !own.fading) { own.fading = true; var v = 1, f = setInterval(function () { if (!own) return clearInterval(f); v -= 0.05; own.audio.volume = Math.max(0, v); if (v <= 0) { clearInterval(f); stopOwn(); chime([523, 659]); } }, 300); }
+    }, 1000);
+    loadOwn(); closeSheet(); renderChores();
+    toast('Playing your ' + files.length + ' song' + (files.length === 1 ? '' : 's') + '. It fades out when the timer ends.');
+  }
+  function loadOwn() { var f = own.files[own.idx]; own.name = f.name.replace(/\.[^.]+$/, ''); own.audio.src = URL.createObjectURL(f); own.audio.play().catch(function () {}); renderChores();
+    if ('mediaSession' in navigator) try { navigator.mediaSession.metadata = new MediaMetadata({ title: own.name, artist: 'Your music' }); } catch (e) {} }
+  function stopOwn() { if (!own) return; clearInterval(own.timer); try { own.audio.pause(); } catch (e) {} own = null; renderChores(); }
   function musicBar() {
+    if (own) return '<div class="musicbtn playing" style="--c1:#141414;--c2:#b3121f"><span class="eqi"><i></i><i></i><i></i></span><span class="grow"><b>' + esc(own.name || 'Your music') + '</b><br><span class="tiny">Song ' + (own.idx + 1) + ' of ' + own.files.length + ' · fades out with your timer</span></span><button class="btn ghost sm" type="button" data-fun="ownStop">Stop</button></div>';
     var m = M() && M().now();
     if (!m) return '<button class="musicbtn" type="button" data-fun="music">' + icon('music', 's') + '<span class="grow"><b>' + (mySession() ? 'Music for this job' : 'Music library') + '</b><br><span class="tiny muted">' + (mySession() ? 'A mix that lasts your timer and ends on time' : '12 stations. Pick how long and it ends right on time.') + '</span></span>' + icon('chevron', 's') + '</button>';
     return '<div class="musicbtn playing" style="--c1:' + m.station.c1 + ';--c2:' + m.station.c2 + '"><span class="eqi"><i></i><i></i><i></i></span><span class="grow"><b>' + esc(m.station.name) + '</b><br><span class="tiny">' + (m.ending ? 'Last phrase: fading out' : 'Lasts your timer, then fades out') + '</span></span><button class="btn ghost sm" type="button" data-fun="musicStop">Stop</button></div>';
@@ -1572,7 +1638,12 @@
     if (!s) h += '<div class="seg">' + [10, 20, 30, 45, 60].map(function (x) { return '<button type="button" data-mmins="' + x + '" aria-pressed="' + (musicMins === x) + '">' + x + 'm</button>'; }).join('') + '</div>';
     h += '<div class="stations">' + M().STATIONS.map(function (st) {
       return '<button type="button" class="station" data-station="' + st.id + '" style="--c1:' + st.c1 + ';--c2:' + st.c2 + '"><span class="sart">' + icon(st.p.k.indexOf('x') === -1 ? 'sparkles' : 'disc') + '</span><b>' + esc(st.name) + '</b><span>' + esc(st.style) + ' · ' + st.bpm + ' BPM</span><em>' + esc(st.mood) + '</em></button>';
-    }).join('') + '</div><p class="tiny muted" style="margin:10px 0 0">Original music made by the app as it plays, so it\'s never the same twice. If your timer moves, the mix follows.</p>';
+    }).join('') + '</div><p class="tiny muted" style="margin:10px 0 0">Original music made by the app as it plays, so it\'s never the same twice. If your timer moves, the mix follows.</p>' +
+      '<div class="divider"></div><b>Your own music</b><p class="small muted" style="margin:4px 0 8px">Pick songs saved on this phone. They play in order and fade out when the timer ends. Nothing is uploaded.</p>' +
+      '<label class="btn soft wide" style="cursor:pointer">' + icon('music', 's') + 'Choose songs<input type="file" id="ownFiles" accept="audio/*" multiple hidden></label>' +
+      '<div class="divider"></div><b>Open in Spotify</b><p class="small muted" style="margin:4px 0 8px">Spotify can\'t follow the timer, but it\'s one tap away.</p>' +
+      '<div class="chips" style="margin-bottom:8px">' + ['My Beautiful Dark Twisted Fantasy', 'Kanye West', 'Lo-fi beats', 'House music'].map(function (q) { return '<button class="chip" type="button" data-spotify="' + esc(q) + '">' + esc(q) + '</button>'; }).join('') + '</div>' +
+      '<form class="inline" id="spotForm" autocomplete="off"><input type="text" id="spotText" placeholder="Album, artist or playlist" aria-label="Search Spotify"><button class="btn primary" type="submit">Open</button></form>';
     openSheet(h);
   }
   function startMusic(id) {
@@ -1587,30 +1658,33 @@
     toast('Playing ' + M().STATIONS.filter(function (x) { return x.id === id; })[0].name);
   }
   document.addEventListener('click', function (ev) {
-    var t = ev.target.closest('[data-fun="music"], [data-fun="musicStop"], [data-station], [data-mmins]');
+    var t = ev.target.closest('[data-fun="music"], [data-fun="musicStop"], [data-fun="ownStop"], [data-station], [data-mmins], [data-spotify]');
     if (!t || !S || !M()) return;
+    if (t.dataset.fun === 'ownStop') return stopOwn();
+    if (t.dataset.spotify) return openSpotify(t.dataset.spotify);
     if (t.dataset.fun === 'music') return musicSheet();
     if (t.dataset.fun === 'musicStop') { M().stop(); return; }
     if (t.dataset.mmins) { musicMins = +t.dataset.mmins; return musicSheet(); }
-    if (t.dataset.station) return startMusic(t.dataset.station);
+    if (t.dataset.station) { stopOwn(); return startMusic(t.dataset.station); }
   });
+  function openSpotify(q) { window.open('https://open.spotify.com/search/' + encodeURIComponent(q), '_blank'); }
+  document.addEventListener('change', function (ev) { if (ev.target.id === 'ownFiles' && ev.target.files.length) playOwn([].slice.call(ev.target.files)); });
+  document.addEventListener('submit', function (ev) { if (ev.target.id !== 'spotForm') return; ev.preventDefault(); var q = el('spotText').value.trim(); if (q) openSpotify(q); else toast('Type an album, artist or playlist'); });
 
   // ---------- MIX (the DJ game: beatmatch deck B to deck A) ----------
   var mix = null;
   function stationOf(id) { return M() ? M().STATIONS.filter(function (s) { return s.id === id; })[0] : null; }
   function mixView(mx, n) {
     var m = mx.mine || { points: 0, tries: 0, final: false }, o = mx.other, pz = mx.puzzle, A = stationOf(pz.a) || {}, B = stationOf(pz.b) || {};
-    var h = '<section class="card"><div class="between"><div><div class="eyebrow">Best today</div><div class="num" style="font-size:28px;font-weight:700">' + (m.tries ? m.points : 0) + '<span class="small muted"> pts</span></div></div><div class="right"><div class="small muted">' + esc(n.other) + '</div><div class="num" style="font-size:28px;font-weight:700">' + (o && o.tries ? o.points : 0) + '<span class="small muted"> pts</span></div><div class="tiny muted">' + (!o ? 'not yet' : o.final ? 'locked in' : 'mixing') + '</div></div></div>';
-    if (m.final) {
-      return h + '<div class="divider"></div><p class="small" style="margin:0">Locked in: tempos ' + m.bpm + ' BPM apart, beats ' + m.phase + ' ms apart. New records tomorrow.</p></section>';
-    }
+    var h = '<section class="card"><div class="between"><div><div class="eyebrow">Best today</div><div class="num" style="font-size:28px;font-weight:700">' + (m.tries ? m.points : 0) + '<span class="small muted"> pts</span></div></div><div class="right"><div class="small muted">' + esc(n.other) + '</div><div class="num" style="font-size:28px;font-weight:700">' + (o && o.tries ? o.points : 0) + '<span class="small muted"> pts</span></div><div class="tiny muted">' + (!o ? 'not yet' : o.scored ? o.tries + ' plays' : 'mixing') + '</div></div></div>';
+    if (m.scored && !(mix && mix.on)) h += '<p class="small muted" style="margin:8px 0 0">Your best: tempos ' + m.bpm + ' BPM apart, beats ' + m.phase + ' ms apart. Go again to beat it.</p>';
     var on = mix && mix.on;
     h += '<div class="decks">' + [['A', A, pz.bpmA + ' BPM', 'Playing'], ['B', B, on ? pitchText() : 'Off', 'Your deck']].map(function (d) {
       return '<div class="deck"><div class="platter' + (on ? ' spin' : '') + '" id="plat' + d[0] + '" style="--c1:' + (d[1].c1 || '#888') + ';--c2:' + (d[1].c2 || '#444') + '"><span>' + d[0] + '</span></div><div class="led" id="led' + d[0] + '"></div><b>' + esc(d[1].name || '') + '</b><span class="tiny muted">' + esc(d[1].style || '') + ' · ' + d[3] + '</span><span class="small num" id="read' + d[0] + '">' + d[2] + '</span></div>';
     }).join('') + '</div>';
     if (!on) {
-      h += '<p class="small muted center" style="margin:10px 0">Deck A plays at ' + pz.bpmA + ' BPM. Deck B starts off-tempo and out of time. Match its pitch until the beats stop drifting, nudge it until they hit together, then lock it in.</p>' +
-        '<button class="btn primary wide" type="button" data-mix="start">' + icon('play', 's') + (m.tries ? 'Try ' + (m.tries + 1) + ' of 3' : 'Load the decks') + '</button>';
+      h += '<p class="small muted center" style="margin:10px 0">Deck A plays at ' + pz.bpmA + ' BPM. Deck B starts off-tempo and out of time. Match its pitch until the beats stop drifting, nudge it until they hit together, then lock it in. Play as often as you like.</p>' +
+        '<button class="btn primary wide" type="button" data-mix="start">' + icon('play', 's') + (m.tries ? 'Play again' : 'Load the decks') + '</button>';
     } else {
       h += '<label class="mixlab">Pitch (deck B)<input type="range" id="mixPitch" min="-10" max="10" step="0.1" value="' + mix.pitch + '"></label>' +
         '<div class="grid3" style="margin:6px 0"><button class="btn soft" type="button" data-nudge-hold="-1">Slow down</button><button class="btn soft" type="button" data-mix="cue">Cue to beat</button><button class="btn soft" type="button" data-nudge-hold="1">Speed up</button></div>' +
@@ -1659,10 +1733,10 @@
     mixStop();
     call('submitMix', [bpmDiff, phaseMs], function (g) {
       S.games = g; renderPlay();
-      var m = g.mix.mine;
-      toast((bpmDiff < 0.5 ? 'Tempo spot on' : bpmDiff.toFixed(1) + ' BPM out') + ', beats ' + Math.round(phaseMs) + ' ms apart: ' + m.points + ' points' + (m.final ? '. Locked in.' : '. ' + (3 - m.tries) + ' tries left.'));
-      if (m.points >= 8) { confetti(true); chime([523, 659, 784, 1047]); }
-      if (m.final) refreshQuiet();
+      var l = g.last || { points: 0 }, m = g.mix.mine;
+      toast((bpmDiff < 0.5 ? 'Tempo spot on' : bpmDiff.toFixed(1) + ' BPM out') + ', beats ' + Math.round(phaseMs) + ' ms apart: ' + (l.points ? l.points + ' points' : 'not matched yet, no points') + (l.firstXp ? '. +' + l.firstXp + ' XP' : '') + (m.points > l.points ? '. Best today: ' + m.points : ''));
+      if (l.points >= 8) { confetti(true); chime([523, 659, 784, 1047]); }
+      if (l.firstXp) refreshQuiet();
     });
   }
   document.addEventListener('click', function (ev) {
@@ -1758,9 +1832,9 @@
     if (ds.step !== undefined) return call('stepDone', [+ds.step], function (res) { apply(res); });
     if (t.id === 'parkBtn') { parking = !parking; renderChores(); if (parking) el('parkText').focus(); return; }
     if (ds.more) return call('extendChore', [+ds.more], function (res) { upShown = ''; apply(res, '+' + ds.more + ' minutes. Finish it off.'); });
-    if (t.id === 'cdone') { var task = mySession().task; return call('finishChore', ['Done'], function (res) { parking = false; if (M() && M().now()) M().stop(); apply(res, task + ': done. Nice.'); }); }
-    if (t.id === 'cstop') return call('finishChore', ['Stopped'], function (res) { parking = false; if (M() && M().now()) M().stop(); apply(res, 'Stopped. Starting was the hard part.'); });
-    if (t.id === 'ccancel') return call('finishChore', ['Cancelled'], function (res) { parking = false; if (M() && M().now()) M().stop(); apply(res, 'Cancelled.'); });
+    if (t.id === 'cdone') { var task = mySession().task; return call('finishChore', ['Done'], function (res) { parking = false; if (M() && M().now()) M().stop(); stopOwn(); apply(res, task + ': done. Nice.'); }); }
+    if (t.id === 'cstop') return call('finishChore', ['Stopped'], function (res) { parking = false; if (M() && M().now()) M().stop(); stopOwn(); apply(res, 'Stopped. Starting was the hard part.'); });
+    if (t.id === 'ccancel') return call('finishChore', ['Cancelled'], function (res) { parking = false; if (M() && M().now()) M().stop(); stopOwn(); apply(res, 'Cancelled.'); });
     if (t.id === 'askJoin') return call('askToJoin', [], function (r) { apply(r.state, r.sent ? 'Asked ' + names().other + ' to join' : 'Added to the feed'); });
     if (t.id === 'dumpBtn') { var txt = el('dumpText').value.trim(); if (!txt) return; toast(S.hasClaudeKey ? 'Sorting it out…' : 'Splitting it up…'); return call('brainDump', [txt], dumpReview); }
     if (t.id === 'dumpSave') {

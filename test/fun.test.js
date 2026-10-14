@@ -147,28 +147,38 @@ test('word stakes: set before anyone finishes, settled for both when you both ha
   assert.match(settled[0].body, /Yazzy wins\. Deany owes: loser makes the tea/);
 });
 
-test('Tempo: tap the beat, three tries, best counts, scores like a DJ', () => {
+test('Tempo: replay as often as you like; best counts; XP once, only when you score', () => {
   const { g, me, partner } = ready();
   const pz = g.ctx.tempoPuzzle('2026-10-13');
   assert.ok(pz.bpm >= 86 && pz.bpm <= 176 && pz.style);
   assert.strictEqual(g.ctx.tempoPoints(87, 174), 10, 'half time counts for drum and bass');
   assert.strictEqual(g.ctx.tempoPoints(124, 128), 6);
-  let s = g.ctx.submitTempo(me, pz.bpm + 5);
-  assert.strictEqual(s.tempo.mine.points, 4);
-  assert.strictEqual(s.tempo.style, '', 'style stays secret until you lock in');
+  assert.strictEqual(g.ctx.tempoPoints(pz.bpm + 20, pz.bpm), 0, 'way off scores nothing');
+  const xp = () => g.tab('XP log').rows().filter(r => r[2] === 'me' && r[5] === 'game').length;
+  let s = g.ctx.submitTempo(me, pz.bpm + 20);
+  assert.strictEqual(s.tempo.mine.points, 0);
+  assert.strictEqual(xp(), 0, 'no XP for a miss');
+  assert.strictEqual(s.tempo.style, '', 'style stays secret until you score');
+  s = g.ctx.submitTempo(me, pz.bpm + 5);
+  assert.strictEqual(s.tempo.mine.points, 3);
+  assert.strictEqual(s.last.firstXp, 8);
+  assert.strictEqual(s.tempo.style, pz.style);
   s = g.ctx.submitTempo(me, pz.bpm + 1.5);
   assert.strictEqual(s.tempo.mine.points, 8);
+  assert.strictEqual(s.last.firstXp, 0, 'XP only once a day');
   s = g.ctx.submitTempo(me, pz.bpm + 9);
-  assert.ok(s.tempo.mine.final);
-  assert.strictEqual(s.tempo.mine.points, 8);
-  assert.strictEqual(s.tempo.style, pz.style);
-  assert.throws(() => g.ctx.submitTempo(me, pz.bpm), /Done for today/);
+  assert.strictEqual(s.tempo.mine.points, 8, 'best counts');
+  for (let i = 0; i < 5; i++) s = g.ctx.submitTempo(me, pz.bpm);
+  assert.strictEqual(s.tempo.mine.points, 10);
+  assert.strictEqual(s.tempo.mine.tries, 9, 'no limit on tries');
+  assert.strictEqual(xp(), 1);
   assert.throws(() => g.ctx.submitTempo(partner, 'x'), /didn't register/);
-  s = g.ctx.submitTempo(partner, pz.bpm);
-  assert.ok(s.tempo.mine.final, 'a perfect tap locks in at once');
-  assert.strictEqual(s.tempo.other.bpm, pz.bpm + 1.5);
-  assert.strictEqual(s.stats.you, 1);
-  assert.strictEqual(g.tab('Games').rows().filter(r => r[3] === 'tempo').length, 2);
+  s = g.ctx.submitTempo(partner, pz.bpm + 1.5);
+  assert.strictEqual(s.tempo.other.bpm, pz.bpm);
+  assert.strictEqual(s.stats.them, 1);
+  const rows = g.tab('Games').rows().filter(r => r[3] === 'tempo');
+  assert.strictEqual(rows.length, 2, 'one row each, kept at your best');
+  assert.strictEqual(Number(rows.find(r => r[2] === 'me')[4]), 10);
 });
 
 test('make something: a studio session on the timer earns creative XP and a badge', () => {
@@ -234,4 +244,15 @@ test('customise: characters, look, names, titles and home layout are saved per p
   assert.strictEqual(g.ctx.setPrefs(me, { char: '<script>' }).fun.chars.me, '');
   assert.throws(() => g.ctx.setTheme(me, 'hotdog'), /Unknown theme/);
   assert.strictEqual(g.ctx.setTheme(me, 'vice'), 'vice');
+});
+
+test('your look: hair, clothes and colours are saved, and only real options are kept', () => {
+  const { g, me, partner } = ready();
+  let s = g.ctx.setPrefs(me, { char: 'sa-cj', look: { hair: 'afro', hc: '#7c3aed', top: 'hawaii', head: '<b>', tc: 'red; drop', glow: 'x' } });
+  assert.deepStrictEqual(plain(s.fun.looks.me), { hair: 'afro', hc: '#7c3aed', top: 'hawaii' });
+  assert.deepStrictEqual(plain(g.ctx.appState(partner).fun.looks.me), { hair: 'afro', hc: '#7c3aed', top: 'hawaii' }, 'Yaz sees your look');
+  s = g.ctx.setPrefs(me, { char: 'vc-tommy' });
+  assert.deepStrictEqual(plain(s.fun.looks.me), {}, 'a new character starts from their own style');
+  s = g.ctx.setPrefs(partner, { char: 'sa-denise' });
+  assert.strictEqual(s.fun.chars.partner, 'sa-denise');
 });
