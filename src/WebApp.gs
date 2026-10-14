@@ -27,7 +27,7 @@ function rpcTable_() {
     registerDevice: registerDevice, sendNudge: sendNudge, ask: ask, clearAsk: clearAsk, getBrief: getBrief,
     mealIdeas: mealIdeas, logIdea: logIdea, logUs: logUs, sendWink: sendWink, answerTonight: answerTonight,
     setStake: setStake, submitTempo: submitTempo, getWrapped: getWrapped, setTodaySession: setTodaySession,
-    healthDay: healthDay, healthInsight: healthInsight, importHealth: importHealth
+    healthDay: healthDay, healthInsight: healthInsight, importHealth: importHealth, setPrefs: setPrefs
   };
 }
 
@@ -144,7 +144,7 @@ function clearStateCache_() {
 /** Light, dark, or "auto" (match the phone). Remembered per person. */
 function setTheme(key, theme) {
   var who = who_(key);
-  if (['light', 'dark', 'auto', 'rave'].indexOf(theme) === -1) throw new Error('Unknown theme.');
+  if (['light', 'dark', 'auto', 'rave', 'grove', 'vice'].indexOf(theme) === -1) throw new Error('Unknown theme.');
   setProp_('THEME_' + who, theme);
   clearStateCache_();
   return theme;

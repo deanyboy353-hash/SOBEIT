@@ -37,7 +37,7 @@ Your partner's link opens the same app without Train and Food.
 - **Stakes**: before either of you finishes the word, set what the loser owes the winner.
 - **Tempo** (Play): hear a beat, then keep it going on your own. Closest BPM wins.
 - **Wrapped** (You, and Home on Sundays and Mondays): your week as a story.
-- **Rave theme**: You, then Appearance, then Rave.
+- **Customise** (You, then Customise the app): pick a San Andreas or Vice City character (shows on your Home screen, in Play and in your partner's feed, with Respect and wanted-level streak stars), themes (Light, Dark, Rave, Grove, Vice, Auto), accent colour, text size, your nickname and team name, level titles (DJ, Ye, GTA or plain), the order of your Home screen (or hide parts), and sounds, vibration, confetti and animations.
 - Switch any of these off in the Config tab: **Daily challenges**, **Double XP**, **Reminders**.
 
 

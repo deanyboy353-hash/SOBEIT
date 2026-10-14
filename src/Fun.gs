@@ -16,6 +16,7 @@
 
 var ERA_TITLES = {
   dj: ['Bedroom DJ', 'Warm-up set', 'Back to back', 'Peak time', 'Main room', 'Headliner', 'Closing set', 'Festival main stage', 'Residency', 'Legend'],
+  gta: ['Fresh off the bus', 'Corner hustler', 'Homie', 'Crew regular', 'Shot caller', 'Made', 'Kingpin', 'Runs the city', 'Untouchable', 'Legend of the state'],
   ye: ['The College Dropout', 'Late Registration', 'Graduation', '808s & Heartbreak', 'My Beautiful Dark Twisted Fantasy',
     'Watch the Throne', 'Yeezus', 'The Life of Pablo', 'ye', 'Donda']
 };
@@ -39,7 +40,7 @@ function nicks_() {
 
 function eraTitle_(who, level) {
   var style = String(readConfig_().settings[who === 'me' ? 'Your level titles' : 'Partner level titles'] || '').trim().toLowerCase();
-  var list = ERA_TITLES[style === 'ye' || style === 'kanye' ? 'ye' : style === 'dj' ? 'dj' : ''];
+  var list = ERA_TITLES[style === 'ye' || style === 'kanye' ? 'ye' : style === 'dj' ? 'dj' : style === 'gta' ? 'gta' : ''];
   if (!list) return '';
   return level <= list.length ? list[level - 1] : list[list.length - 1] + ' ' + (level - list.length + 1);
 }
@@ -338,10 +339,44 @@ function funState_(who, g) {
     challenges: challengesState_(who),
     us: usState_(who),
     day: Math.max(1, daysBetween_(since, todayYmd_()) + 1),
-    appBase: appBaseUrl_()
+    appBase: appBaseUrl_(),
+    prefs: prefs_(who),
+    chars: { me: prefs_('me').char, partner: prefs_('partner').char },
+    titles: String(readConfig_().settings[who === 'me' ? 'Your level titles' : 'Partner level titles'] || 'None')
   };
 }
 
 function daysBetween_(a, b) {
   return ymdToDays(b) - ymdToDays(a);
+}
+
+// ---------- customisation ----------
+
+var HOME_BLOCKS = ['brief', 'ask', 'ring', 'challenges', 'whatnow', 'routine', 'gym', 'chores', 'tiles', 'make', 'us', 'feed'];
+var PREF_DEFAULTS = { char: '', accent: '', text: 'normal', sound: true, haptics: true, confetti: true, motion: true, home: [] };
+
+function prefs_(who) {
+  return Object.assign({}, PREF_DEFAULTS, JSON.parse(prop_('PREFS_' + who) || '{}'));
+}
+
+/** Save your look and feel. Names and level titles live in the Config tab, so they're written there. */
+function setPrefs(key, p) {
+  var who = who_(key);
+  p = p || {};
+  return withLock_(function () {
+    var cur = prefs_(who);
+    if (p.char !== undefined) cur.char = /^(sa|vc)-[a-z]+$/.test(String(p.char)) ? String(p.char) : '';
+    if (p.accent !== undefined) cur.accent = ['', 'pink', 'green', 'teal', 'orange', 'blue'].indexOf(p.accent) !== -1 ? p.accent : '';
+    if (p.text !== undefined) cur.text = p.text === 'large' ? 'large' : 'normal';
+    ['sound', 'haptics', 'confetti', 'motion'].forEach(function (k) { if (p[k] !== undefined) cur[k] = !!p[k]; });
+    if (Array.isArray(p.home)) {
+      cur.home = p.home.filter(function (x) { return x && HOME_BLOCKS.indexOf(x.id) !== -1; }).map(function (x) { return { id: x.id, hide: !!x.hide }; });
+    }
+    setProp_('PREFS_' + who, JSON.stringify(cur));
+    var mine = who === 'me';
+    if (p.nick !== undefined && String(p.nick).trim()) setSetting_(mine ? 'Your nickname' : 'Partner nickname', String(p.nick).trim().slice(0, 24));
+    if (p.team !== undefined && String(p.team).trim()) setSetting_('Team name', String(p.team).trim().slice(0, 40));
+    if (p.titles !== undefined) setSetting_(mine ? 'Your level titles' : 'Partner level titles', ({ dj: 'DJ', ye: 'Ye', gta: 'GTA' })[p.titles] || 'None');
+    return appState_(who);
+  });
 }

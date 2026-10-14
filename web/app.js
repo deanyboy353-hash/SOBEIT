@@ -104,7 +104,7 @@
     try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); if (audio.state === 'suspended') audio.resume(); } catch (e) {}
   }, { capture: true });
   function chime(notes) {
-    if (!audio) return;
+    if (!audio || (S && S.fun && S.fun.prefs && S.fun.prefs.sound === false)) return;
     (notes || [880]).forEach(function (f, i) {
       var o = audio.createOscillator(), g = audio.createGain(), t = audio.currentTime + i * 0.14;
       o.frequency.value = f; o.connect(g); g.connect(audio.destination);
@@ -112,8 +112,9 @@
       o.start(t); o.stop(t + 0.3);
     });
   }
-  function buzz(p) { if (navigator.vibrate) navigator.vibrate(p || 25); }
+  function buzz(p) { if (navigator.vibrate && !(S && S.fun && S.fun.prefs && S.fun.prefs.haptics === false)) navigator.vibrate(p || 25); }
   function confetti(big) {
+    if (S && S.fun && S.fun.prefs && (S.fun.prefs.confetti === false || S.fun.prefs.motion === false)) return;
     var c = el('confetti'), x = c.getContext('2d');
     c.width = innerWidth; c.height = innerHeight;
     var colors = ['#f3a9c8', '#a891ef', '#fde3ee', '#e5dcff', '#ffe7a8'], ps = [];
@@ -207,21 +208,25 @@
   }
 
   function renderHome() {
-    var g = S.game, n = names(), h = '';
+    var g = S.game, n = names(), h = '', parts = {};
+    function seg(id) { parts[id] = h; h = ''; }
     var d = new Date(now());
     h += '<div class="top"><div><h1>' + greeting() + (n.me ? ', ' + esc(n.me) : '') + '</h1><div class="sub">' +
-      d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) + (S.fun && S.fun.era ? ' · ' + esc(S.fun.era) : '') + '</div></div><button class="iconbtn" type="button" data-goto="you" aria-label="You and settings">' + icon('user') + '</button></div>';
+      d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) + (S.fun && S.fun.era ? ' · ' + esc(S.fun.era) : '') + '</div></div>' + meButton() + '</div>';
     if (MODE === 'gas' && S.fun && S.fun.appBase) h += '<a class="getapp" target="_top" href="' + esc(S.fun.appBase + '?key=' + KEY) + '">' + icon('download') + '<span class="grow"><b>Get the app</b><br><span class="small muted">Notifications, live games, faster</span></span>' + icon('chevron', 's') + '</a>';
     h += boostBanner() + wrappedCard();
     if (S.chores.invite) h += '<div class="note">' + esc(n.other) + ' wants company for chores. Pick a job in Chores.</div>';
     if (g.streak.frozeYesterday) h += '<div class="note">A streak freeze covered yesterday. Your streak is safe.</div>';
 
+    seg('header');
     // brief
-    if (S.brief) h += '<section class="card tint"><div class="eyebrow" style="color:var(--lilac);display:flex;gap:6px;align-items:center">' + icon('sparkles', 's') + 'Today</div><p class="brief" style="margin:8px 0 10px">' + esc(S.brief.brief) + '</p>' +
+    if (S.brief && S.brief.brief) h += '<section class="card tint"><div class="eyebrow" style="color:var(--lilac);display:flex;gap:6px;align-items:center">' + icon('sparkles', 's') + 'Today</div><p class="brief" style="margin:8px 0 10px">' + esc(S.brief.brief) + '</p>' +
       (S.brief.first ? '<div class="row small"><span class="chip lilac">First move</span><span>' + esc(S.brief.first) + '</span></div>' : '') + '</section>';
 
+    seg('brief');
     h += '<button class="askbar" type="button" id="openAsk">' + icon('sparkles') + '<span class="grow">Ask anything, or tell me what\'s on your mind</span>' + icon('chevron', 's') + '</button>';
 
+    seg('ask');
     h += '<section class="card"><div class="hero"><div class="ring" style="width:104px;height:104px">' + ring(g.xpToday / g.goal, 104, 10) +
       '<div class="t"><div><div class="num" style="font-size:24px;font-weight:700">' + g.xpToday + '</div><div class="tiny muted">of ' + g.goal + ' XP</div></div></div></div><div class="grow">' +
       '<div class="stat"><span class="row" style="gap:6px">' + icon('flame', 's') + 'Streak</span><b>' + g.streak.count + ' day' + (g.streak.count === 1 ? '' : 's') + (g.streak.freezes ? ' · ' + g.streak.freezes + ' freeze' + (g.streak.freezes > 1 ? 's' : '') : '') + '</b></div>' +
@@ -229,15 +234,19 @@
       '<div class="stat"><span>' + esc(n.other) + ' today</span><b>' + g.otherXpToday + ' XP</b></div>' +
       '<div class="bar" style="margin-top:8px"><i style="width:' + Math.round(g.level.into / g.level.need * 100) + '%"></i></div><div class="tiny muted" style="margin-top:4px">Level ' + g.level.level + ' · ' + (g.level.need - g.level.into) + ' XP to the next</div>' +
       '</div></div></section>';
+    seg('ring');
     h += challengesCard();
+    seg('challenges');
 
     h += '<button class="btn primary big wide" type="button" id="whatNow" style="margin-bottom:12px">' + icon('sparkles') + 'What should I do now?</button>';
 
+    seg('whatnow');
     S.routines.routines.filter(function (r) { return r.showNow && !r.finished && r.steps.length; }).forEach(function (r) {
       h += '<section class="card"><div class="head"><div class="row" style="gap:8px">' + icon(r.name === 'Evening' ? 'moon' : 'sun') + '<h3>' + esc(r.name) + ' routine</h3></div><span class="muted small num">' + r.done.length + '/' + r.steps.length + '</span></div>' +
         r.steps.map(function (s, i) { var dn = r.done.indexOf(i) !== -1; return '<div class="item' + (dn ? ' done' : '') + '"><button class="check" type="button" data-routine="' + esc(r.name) + '" data-ri="' + i + '" aria-label="Done">' + icon('check') + '</button><div class="t grow" style="font-weight:500">' + esc(s) + '</div></div>'; }).join('') + '</section>';
     });
 
+    seg('routine');
     if (ME && S.today.gym) {
       var gy = S.today.gym, leave = '';
       if (gy.leaveAt && !gy.done) {
@@ -250,11 +259,13 @@
         (gy.done ? '<span class="chip good">' + icon('check', 's') + 'Done</span>' : '<div class="stack right"><button class="btn primary sm" type="button" data-goto="train">Log it</button><button class="btn ghost sm" type="button" data-goto="train" style="padding:4px 8px">Change</button></div>') + '</div></section>';
     }
 
+    seg('gym');
     var mine = S.quests.board.filter(function (q) { return q.who === 'anyone' || q.who === S.who; });
     var open = mine.filter(function (q) { return !q.doneToday; });
     h += '<section class="card"><div class="head"><h3>Today\'s chores <span class="muted num" style="font-weight:500">' + (mine.length - open.length) + '/' + mine.length + '</span></h3><button class="btn ghost sm" type="button" data-goto="chores">All' + icon('chevron', 's') + '</button></div>' +
       (open.length ? open.slice(0, 4).map(function (q) { return questRow(q); }).join('') : '<p class="empty">All done. Anything more is a bonus.</p>') + '</section>';
 
+    seg('chores');
     h += '<div class="grid2" style="margin-bottom:12px">';
     if (ME) {
       var t = S.today, lw = t.lastWeight;
@@ -270,15 +281,19 @@
     }
     h += '</div>';
 
-    h += creativeCard() + usCard();
+    seg('tiles');
+    h += creativeCard(); seg('make');
+    h += usCard(); seg('us');
     h += '<section class="card"><div class="head"><h3>' + esc(n.other) + '</h3><button class="btn soft sm" type="button" id="nudge">' + icon('send', 's') + 'Nudge</button></div>';
     var feed = S.game.feed.slice(0, 6);
     h += feed.length ? feed.map(function (f) {
       var own = f.who === S.who, sent = f.hi5.indexOf(S.who) !== -1;
-      return '<div class="item"><div class="grow small"><b>' + esc(own ? 'You' : n.other) + '</b> ' + esc(f.text) + (f.hi5.length ? ' <span class="muted">· high-fived</span>' : '') + '</div>' +
+      return '<div class="item">' + avatar(charOf(f.who), 30) + '<div class="grow small"><b>' + esc(own ? 'You' : n.other) + '</b> ' + esc(f.text) + (f.hi5.length ? ' <span class="muted">· high-fived</span>' : '') + '</div>' +
         (!own ? '<button class="btn ' + (sent ? 'line' : 'blush') + ' sm" type="button" data-hi5="' + esc(f.id) + '"' + (sent ? ' disabled' : '') + '>' + icon('heart', 's') + (sent ? 'Sent' : 'High-five') + '</button>' : '') + '</div>';
     }).join('') : '<p class="empty">Nothing yet today.</p>';
     h += '</section>';
+    seg('feed');
+    h = parts.header + homeOrder().filter(function (x) { return !x.hide; }).map(function (x) { return parts[x.id] || ''; }).join('');
     el('tab-home').innerHTML = h;
   }
 
@@ -322,7 +337,7 @@
     }).join('') + '</section>';
   }
   function renderChores() {
-    var s = mySession(), q = S.quests, n = names(), h = '<div class="top"><div><h1>Chores</h1><div class="sub">One job at a time.</div></div><button class="iconbtn" type="button" data-goto="you" aria-label="You and settings">' + icon('user') + '</button></div>';
+    var s = mySession(), q = S.quests, n = names(), h = '<div class="top"><div><h1>Chores</h1><div class="sub">One job at a time.</div></div>' + meButton() + '</div>';
     h += '<section class="card"><div class="head"><h3>Together</h3><button class="btn ghost sm" type="button" id="askJoin">' + icon('send', 's') + 'Ask ' + esc(n.other) + ' to join</button></div><div class="duo" id="duo">' + duo() + '</div></section>';
     if (s) { el('tab-chores').innerHTML = h + focusView(s); return; }
     if (plan) { el('tab-chores').innerHTML = h + planView(); return; }
@@ -477,8 +492,8 @@
     return k;
   }
   function renderPlay() {
-    var G = S.games, n = names(), h = '<div class="top"><div><h1>Play</h1><div class="sub">Same puzzles for you both. Live scores.</div></div><button class="iconbtn" type="button" data-goto="you" aria-label="You and settings">' + icon('user') + '</button></div>';
-    h += '<section class="card"><div class="vs"><div><div class="small muted">You</div><div class="num" style="font-size:28px;font-weight:700">' + G.stats.you + '</div></div><div class="center small muted">head to head<br><span class="tiny">' + G.stats.draws + ' draws</span></div><div class="right"><div class="small muted">' + esc(n.other) + '</div><div class="num" style="font-size:28px;font-weight:700">' + G.stats.them + '</div></div></div></section>';
+    var G = S.games, n = names(), h = '<div class="top"><div><h1>Play</h1><div class="sub">Same puzzles for you both. Live scores.</div></div>' + meButton() + '</div>';
+    h += '<section class="card"><div class="vs"><div>' + avatar(charOf(S.who), 40) + '<div class="small muted">You</div><div class="num" style="font-size:28px;font-weight:700">' + G.stats.you + '</div></div><div class="center small muted">head to head<br><span class="tiny">' + G.stats.draws + ' draws</span></div><div class="right">' + avatar(charOf(S.who === 'me' ? 'partner' : 'me'), 40, true) + '<div class="small muted">' + esc(n.other) + '</div><div class="num" style="font-size:28px;font-weight:700">' + G.stats.them + '</div></div></div></section>';
     h += '<div class="seg">' + [['word', 'Word'], ['target', 'Numbers'], ['recall', 'Recall'], ['tempo', 'Tempo'], ['stats', 'Stats']].map(function (o) { return '<button type="button" data-pview="' + o[0] + '" aria-pressed="' + (playView === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
     if (playView === 'word') h += wordView(G.word, n);
     else if (playView === 'target') h += targetView(G.target, n);
@@ -578,7 +593,7 @@
     if (!ME) return;
     var t = S.train;
     if (!tsel || !t.plans[tsel]) tsel = load('tsel-' + S.today.date) || t.today || t.sessions[0];
-    var p = t.plans[tsel], d = draft(), h = '<div class="top"><div><h1>Train</h1><div class="sub">' + (t.today ? 'Today: ' + esc(t.today) : 'Rest day. Train any session you like.') + '</div></div><button class="iconbtn" type="button" data-goto="you" aria-label="You and settings">' + icon('user') + '</button></div>';
+    var p = t.plans[tsel], d = draft(), h = '<div class="top"><div><h1>Train</h1><div class="sub">' + (t.today ? 'Today: ' + esc(t.today) : 'Rest day. Train any session you like.') + '</div></div>' + meButton() + '</div>';
     if (rest) h += '<div class="rest"><span>Rest <b id="restLeft">' + clock(rest.until - now()) + '</b></span><button type="button" id="restSkip">Skip</button></div>';
     h += '<div class="chips" style="margin-bottom:14px">' + t.sessions.map(function (s) { return '<button class="chip" type="button" data-tsel="' + esc(s) + '" aria-pressed="' + (s === tsel) + '" style="padding:8px 14px;font-size:14px">' + esc(s) + '</button>'; }).join('') + '</div>';
     if (t.doneToday) h += '<div class="note">Today\'s workout is logged. Great work.</div>';
@@ -641,7 +656,7 @@
     var F = S.food, t = F.targets, kcal = F.totals.kcal, prot = F.totals.protein;
     pending.forEach(function (p) { kcal += p.kcal; prot += p.protein; });
     var kl = t.kcal - kcal, pl = t.proteinMin - prot, scale = t.proteinMax * 1.15;
-    var h = '<div class="top"><div><h1>Food</h1><div class="sub">' + fmt(kcal) + ' kcal · ' + fmt(prot) + 'g protein so far</div></div><button class="iconbtn" type="button" data-goto="you" aria-label="You and settings">' + icon('user') + '</button></div>';
+    var h = '<div class="top"><div><h1>Food</h1><div class="sub">' + fmt(kcal) + ' kcal · ' + fmt(prot) + 'g protein so far</div></div>' + meButton() + '</div>';
     h += '<section class="card"><div class="eyebrow">Calories</div><div class="between" style="align-items:baseline"><div><span class="big">' + fmt(kcal) + '</span> <span class="of">/ ' + fmt(t.kcal) + '</span></div><div class="left ' + (kl >= 0 ? 'good' : 'warn') + '">' + (kl >= 0 ? fmt(kl) + ' left' : fmt(-kl) + ' over') + '</div></div>' +
       '<div class="bar' + (kl < 0 ? ' over' : '') + '" style="margin:8px 0 16px"><i style="width:' + Math.min(100, kcal / t.kcal * 100) + '%"></i></div>' +
       '<div class="eyebrow">Protein</div><div class="between" style="align-items:baseline"><div><span class="big">' + fmt(prot) + 'g</span> <span class="of">/ ' + t.proteinMin + '–' + t.proteinMax + 'g</span></div><div class="left ' + (pl > 0 ? '' : 'good') + '">' + (pl > 0 ? fmt(pl) + 'g to go' : prot > t.proteinMax ? 'Above range' : 'In range') + '</div></div>' +
@@ -667,6 +682,8 @@
   function renderYou() {
     var g = S.game, n = names(), th = document.documentElement.getAttribute('data-theme'), h = '';
     h += '<div class="top"><div class="row"><button class="iconbtn" type="button" data-goto="home" aria-label="Back">' + icon('back') + '</button><h1>You</h1></div></div>';
+    h += charCard();
+    h += '<button class="btn soft wide" type="button" data-goto="custom" style="margin-bottom:12px">' + icon('sparkles', 's') + 'Customise the app</button>';
     h += '<section class="card tint"><div class="between"><div><div class="eyebrow" style="color:var(--lilac)">Level ' + g.level.level + (S.fun && S.fun.era ? ' · ' + esc(S.fun.era) : '') + '</div><div class="num" style="font-size:28px;font-weight:700">' + fmt(g.total) + ' XP</div></div><div class="right"><div class="eyebrow">To spend</div><div class="num" style="font-size:22px;font-weight:700">' + fmt(g.balance) + '</div></div></div>' +
       '<div class="bar" style="margin-top:10px;background:var(--surface)"><i style="width:' + Math.round(g.level.into / g.level.need * 100) + '%"></i></div><div class="tiny muted" style="margin-top:6px">' + (g.level.need - g.level.into) + ' XP to level ' + (g.level.level + 1) + ' · best streak ' + g.streak.best + (g.streak.best === 1 ? ' day' : ' days') + '</div>' + (S.fun && S.fun.nextEra && S.fun.nextEra !== S.fun.era ? '<div class="tiny muted" style="margin-top:2px">Next era: ' + esc(S.fun.nextEra) + '</div>' : '') + '</section>';
     h += '<button class="wrapped-btn" type="button" data-fun="wrapped">' + icon('wave') + '<span class="grow"><b>Your week, wrapped</b><br><span class="small">The last seven days of ' + esc(n.team) + '</span></span>' + icon('chevron', 's') + '</button>';
@@ -1046,7 +1063,7 @@
     var h = H();
     if (!h) return;
     var isToday = h.date === h.today, d = new Date(h.date + 'T12:00:00'), out = '';
-    out += '<div class="top"><div><h1>Health</h1><div class="sub">' + (h.synced ? (new Date(h.synced).toDateString() === new Date(now()).toDateString() ? 'Synced at ' + clockOf(h.synced) : 'Synced ' + new Date(h.synced).toLocaleDateString('en-GB', { weekday: 'short' }) + ' ' + clockOf(h.synced)) : 'Not connected yet') + '</div></div><button class="iconbtn" type="button" data-goto="you" aria-label="You and settings">' + icon('user') + '</button></div>';
+    out += '<div class="top"><div><h1>Health</h1><div class="sub">' + (h.synced ? (new Date(h.synced).toDateString() === new Date(now()).toDateString() ? 'Synced at ' + clockOf(h.synced) : 'Synced ' + new Date(h.synced).toLocaleDateString('en-GB', { weekday: 'short' }) + ' ' + clockOf(h.synced)) : 'Not connected yet') + '</div></div>' + meButton() + '</div>';
     out += '<div class="daynav"><button class="iconbtn" type="button" data-hday="-1" aria-label="Day before">' + icon('back', 's') + '</button><b>' + (isToday ? 'Today' : d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })) + '</b><button class="iconbtn" type="button" data-hday="1" aria-label="Next day"' + (isToday ? ' disabled' : '') + '>' + icon('chevron', 's') + '</button></div>';
     if (!h.connected) { el('tab-health').innerHTML = out + setupCard(h); return; }
     var sl = h.sleep, rd = h.readiness, hr = h.heart;
@@ -1207,12 +1224,165 @@
     call('healthDay', [ymd], function (h) { hview = h; renderHealth(); window.scrollTo(0, 0); });
   });
 
+  // ---------- CHARACTERS and CUSTOMISE ----------
+  // Original portraits (colours and initials), not game artwork.
+  var CHARS = [
+    ['sa-cj', 'CJ', 'Carl Johnson', 'Back home to put the family first', '#2e9e4f', '#0d3b1e'],
+    ['sa-smoke', 'BS', 'Big Smoke', 'Big appetite, bigger plans', '#3f8f3f', '#1b2a1b'],
+    ['sa-sweet', 'SW', 'Sweet', 'Holds the hood together', '#2f8a46', '#e9e2c8'],
+    ['sa-ryder', 'RY', 'Ryder', 'Short fuse, sharp hat', '#4a9b3a', '#2a2a2a'],
+    ['sa-kendl', 'KJ', 'Kendl', 'Smartest one in the family', '#2e9e4f', '#e0a33d'],
+    ['sa-cesar', 'CV', 'Cesar', 'Lowriders and loyalty', '#c46a2b', '#3a1f0f'],
+    ['sa-catalina', 'CA', 'Catalina', 'Chaos with a plan', '#b3402a', '#2a0f0a'],
+    ['sa-woozie', 'WZ', 'Woozie', 'Calm, lucky, unstoppable', '#b0202f', '#d9a441'],
+    ['sa-truth', 'TT', 'The Truth', 'Has all the answers, allegedly', '#7a9a2a', '#c9a35a'],
+    ['sa-toreno', 'MT', 'Mike Toreno', 'Every job is a secret', '#4b5563', '#111827'],
+    ['sa-maddogg', 'MD', 'Madd Dogg', 'Comeback king', '#7c3aed', '#1e1b4b'],
+    ['sa-ogloc', 'OG', 'OG Loc', 'Rhymes in progress', '#c9a227', '#3b2f0b'],
+    ['sa-zero', 'ZR', 'Zero', 'Small shop, big ideas', '#2563eb', '#0b1d4a'],
+    ['sa-tenpenny', 'FT', 'Tenpenny', 'Badge, attitude, no rules', '#334155', '#0f172a'],
+    ['vc-tommy', 'TV', 'Tommy Vercetti', 'Building an empire in the sun', '#14b8a6', '#f472b6'],
+    ['vc-lance', 'LV', 'Lance Vance', 'Style first, plans later', '#f9a8d4', '#1e3a8a'],
+    ['vc-ken', 'KR', 'Ken Rosenberg', 'Nervous lawyer, big heart', '#e9c46a', '#264653'],
+    ['vc-mercedes', 'MC', 'Mercedes', 'Owns every party', '#ff4f9a', '#7c3aed'],
+    ['vc-umberto', 'UR', 'Umberto', 'Pride and strong coffee', '#2a9d8f', '#e76f51'],
+    ['vc-phil', 'PC', 'Phil Cassidy', 'Fearless, even short-handed', '#6b705c', '#ddbe8a'],
+    ['vc-kent', 'KP', 'Kent Paul', 'Knows everyone, does nothing', '#ffb703', '#023047'],
+    ['vc-diaz', 'RD', 'Ricardo Diaz', 'Loud, rich, paranoid', '#c1121f', '#fdf0d5'],
+    ['vc-avery', 'AC', 'Avery Carrington', 'Buys the skyline', '#b5838d', '#3d1f2b'],
+    ['vc-sonny', 'SF', 'Sonny Forelli', 'Wants his money back', '#3d3d3d', '#a3a3a3']
+  ];
+  function charById(id) { for (var i = 0; i < CHARS.length; i++) if (CHARS[i][0] === id) return CHARS[i]; return null; }
+  function charOf(who) { return S && S.fun && S.fun.chars ? S.fun.chars[who] : ''; }
+  function avatar(id, size, right) {
+    var c = charById(id), s = size || 36;
+    if (!c) return '<span class="av none" style="width:' + s + 'px;height:' + s + 'px">' + icon('user', 's') + '</span>';
+    var vc = id.slice(0, 2) === 'vc', g = 'a' + id.replace(/\W/g, '') + s;
+    var pattern = vc
+      ? '<rect y="62" width="100" height="8" fill="#fff" opacity=".18"/><rect y="76" width="100" height="6" fill="#fff" opacity=".14"/><rect y="88" width="100" height="4" fill="#fff" opacity=".1"/>'
+      : '<path d="M-10 70 L40 20 L52 20 L2 70z M20 100 L90 30 L102 30 L32 100z" fill="#fff" opacity=".12"/>';
+    return '<span class="av" style="width:' + s + 'px;height:' + s + 'px' + (right ? ';margin-left:auto' : '') + '" title="' + esc(c[2]) + '"><svg viewBox="0 0 100 100" aria-hidden="true">' +
+      '<defs><linearGradient id="' + g + '" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="' + c[4] + '"/><stop offset="1" stop-color="' + c[5] + '"/></linearGradient></defs>' +
+      '<rect width="100" height="100" rx="26" fill="url(#' + g + ')"/>' + pattern +
+      '<text x="50" y="58" text-anchor="middle" font-size="' + (c[1].length > 2 ? 30 : 38) + '" font-weight="800" fill="#fff" font-family="Inter, system-ui, sans-serif" letter-spacing="-1">' + c[1] + '</text>' +
+      '<text x="50" y="86" text-anchor="middle" font-size="11" font-weight="700" fill="#fff" opacity=".75" font-family="Inter, system-ui, sans-serif" letter-spacing="2">' + (vc ? 'VICE' : 'S.A.') + '</text></svg></span>';
+  }
+  function meButton() {
+    var c = charOf(S.who);
+    return c ? '<button class="avbtn" type="button" data-goto="you" aria-label="You and settings">' + avatar(c, 40) + '</button>'
+      : '<button class="iconbtn" type="button" data-goto="you" aria-label="You and settings">' + icon('user') + '</button>';
+  }
+  function wanted(streak) {
+    var tiers = [1, 3, 7, 14, 30, 60], n = tiers.filter(function (t) { return streak >= t; }).length, out = '';
+    for (var i = 0; i < 6; i++) out += '<i class="' + (i < n ? 'on' : '') + '">' + icon('star', 's') + '</i>';
+    return '<span class="wanted" title="Streak stars: 1, 3, 7, 14, 30 and 60 days">' + out + '</span>';
+  }
+  function charCard() {
+    var id = charOf(S.who), c = charById(id), g = S.game;
+    if (!c) return '<button class="charcard empty" type="button" data-goto="custom">' + avatar('', 56) + '<span class="grow"><b>Pick your character</b><br><span class="small muted">San Andreas or Vice City</span></span>' + icon('chevron', 's') + '</button>';
+    return '<button class="charcard" type="button" data-goto="custom" style="--c1:' + c[4] + ';--c2:' + c[5] + '">' + avatar(id, 64) + '<span class="grow"><span class="tiny">' + (id.slice(0, 2) === 'vc' ? 'Vice City' : 'San Andreas') + '</span><b>' + esc(c[2]) + '</b>' +
+      '<span class="small">Respect: level ' + g.level.level + '</span>' + wanted(g.streak.count) + '</span></button>';
+  }
+
+  var HOME_NAMES = { brief: 'Morning brief', ask: 'Ask anything', ring: 'XP and streaks', challenges: 'Daily challenges', whatnow: 'What should I do now?', routine: 'Routines', gym: 'Gym today', chores: 'Today\'s chores', tiles: 'Weight and water', make: 'Make something', us: 'Us', feed: 'Partner feed' };
+  var HOME_DEFAULT = ['brief', 'ask', 'ring', 'challenges', 'whatnow', 'routine', 'gym', 'chores', 'tiles', 'make', 'us', 'feed'];
+  function homeOrder() {
+    var saved = (S.fun && S.fun.prefs && S.fun.prefs.home) || [], seen = {}, out = [];
+    saved.forEach(function (x) { if (HOME_NAMES[x.id] && !seen[x.id]) { seen[x.id] = 1; out.push({ id: x.id, hide: !!x.hide }); } });
+    HOME_DEFAULT.forEach(function (id) { if (!seen[id]) out.push({ id: id, hide: false }); });
+    return out;
+  }
+  function prefs() { return (S && S.fun && S.fun.prefs) || {}; }
+  function applyPrefs() {
+    var p = prefs(), root = document.documentElement;
+    if (p.accent) root.setAttribute('data-accent', p.accent); else root.removeAttribute('data-accent');
+    root.setAttribute('data-text', p.text === 'large' ? 'large' : 'normal');
+    root.classList.toggle('calm', p.motion === false);
+    save('accent', p.accent || '');
+  }
+  function savePrefs(change, msg) {
+    S.fun.prefs = Object.assign({}, prefs(), change);
+    if (change.char !== undefined) S.fun.chars[S.who] = change.char;
+    applyPrefs(); renderAll();
+    rpc('setPrefs', [change]).then(function (res) { if (!inflight && !busy) apply(res, msg); }, function (e) { toast(e.message, true); });
+  }
+
+  var charGame = 'sa';
+  function renderCustom() {
+    var p = prefs(), th = document.documentElement.getAttribute('data-theme'), cur = charOf(S.who), n = names(), h = '';
+    h += '<div class="top"><div class="row"><button class="iconbtn" type="button" data-goto="you" aria-label="Back">' + icon('back') + '</button><h1>Customise</h1></div></div>';
+    // character
+    h += '<section class="card"><div class="head"><h3>Your character</h3>' + (cur ? '<button class="btn ghost sm" type="button" data-char="">Remove</button>' : '') + '</div>' +
+      '<p class="small muted" style="margin:0 0 10px">Shows on your Home screen, in Play and in ' + esc(n.other) + '\'s feed.</p>' +
+      '<div class="seg">' + [['sa', 'San Andreas'], ['vc', 'Vice City']].map(function (o) { return '<button type="button" data-cgame="' + o[0] + '" aria-pressed="' + (charGame === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>' +
+      '<div class="chars">' + CHARS.filter(function (c) { return c[0].slice(0, 2) === charGame; }).map(function (c) {
+        return '<button class="ch' + (c[0] === cur ? ' on' : '') + '" type="button" data-char="' + c[0] + '">' + avatar(c[0], 58) + '<b>' + esc(c[2]) + '</b><span>' + esc(c[3]) + '</span></button>';
+      }).join('') + '</div></section>';
+    // look
+    h += '<section class="card"><div class="head"><h3>Look</h3></div><div class="eyebrow" style="margin-bottom:6px">Theme</div>' +
+      '<div class="themes">' + [['light', 'Light'], ['dark', 'Dark'], ['rave', 'Rave'], ['grove', 'Grove'], ['vice', 'Vice'], ['auto', 'Auto']].map(function (o) {
+        return '<button type="button" class="th th-' + o[0] + '" data-theme="' + o[0] + '" aria-pressed="' + (th === o[0]) + '"><i></i>' + o[1] + '</button>';
+      }).join('') + '</div>' +
+      '<div class="eyebrow" style="margin:14px 0 6px">Accent colour</div><div class="swatches">' + [['', 'Lilac'], ['pink', 'Pink'], ['green', 'Green'], ['teal', 'Teal'], ['orange', 'Orange'], ['blue', 'Blue']].map(function (o) {
+        return '<button type="button" class="sw-' + (o[0] || 'lilac') + '" data-accent="' + o[0] + '" aria-pressed="' + ((p.accent || '') === o[0]) + '" aria-label="' + o[1] + '"></button>';
+      }).join('') + '</div>' +
+      '<div class="eyebrow" style="margin:14px 0 6px">Text size</div><div class="seg">' + [['normal', 'Normal'], ['large', 'Larger']].map(function (o) { return '<button type="button" data-textsize="' + o[0] + '" aria-pressed="' + ((p.text || 'normal') === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div></section>';
+    // names and titles
+    h += '<section class="card"><div class="head"><h3>Names</h3></div><form class="stack" id="namesForm" autocomplete="off">' +
+      '<label class="small muted">What the app calls you<input type="text" id="nickText" value="' + esc(n.me) + '" maxlength="24"></label>' +
+      '<label class="small muted">The two of you<input type="text" id="teamText" value="' + esc(n.team) + '" maxlength="40"></label>' +
+      '<button class="btn primary" type="submit">Save names</button></form>' +
+      '<div class="eyebrow" style="margin:14px 0 6px">Level titles</div><div class="seg">' + [['dj', 'DJ'], ['ye', 'Ye'], ['gta', 'GTA'], ['none', 'Plain']].map(function (o) {
+        return '<button type="button" data-titles="' + o[0] + '" aria-pressed="' + (String(S.fun.titles || 'none').toLowerCase() === o[0] || (o[0] === 'none' && !/^(dj|ye|gta)$/i.test(S.fun.titles || ''))) + '">' + o[1] + '</button>';
+      }).join('') + '</div><p class="tiny muted" style="margin:0">' + (S.fun.era ? 'Now: ' + esc(S.fun.era) + (S.fun.nextEra ? ' · next: ' + esc(S.fun.nextEra) : '') : 'Just "Level ' + S.game.level.level + '"') + '</p></section>';
+    // home layout
+    h += '<section class="card"><div class="head"><h3>Home screen</h3><button class="btn ghost sm" type="button" data-homereset="1">Reset</button></div><p class="small muted" style="margin:0 0 6px">Move things up or down, or hide them.</p>' +
+      homeOrder().map(function (x, i, all) {
+        return '<div class="item' + (x.hide ? ' done' : '') + '"><button class="check' + (x.hide ? '' : ' on') + '" type="button" data-homehide="' + x.id + '" aria-label="Show or hide">' + icon('check') + '</button><div class="grow t" style="font-weight:550">' + HOME_NAMES[x.id] + '</div>' +
+          '<button class="iconbtn" type="button" data-homemove="' + x.id + '" data-dir="-1" aria-label="Move up"' + (i ? '' : ' disabled') + '><svg class="i s" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></button>' +
+          '<button class="iconbtn" type="button" data-homemove="' + x.id + '" data-dir="1" aria-label="Move down"' + (i < all.length - 1 ? '' : ' disabled') + '><svg class="i s" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button></div>';
+      }).join('') + '</section>';
+    // feel
+    h += '<section class="card"><div class="head"><h3>Feel</h3></div>' + [['sound', 'Sounds', 'Chimes for done, levels and timers'], ['haptics', 'Vibration', 'A little buzz when you tick things'], ['confetti', 'Confetti', 'Celebrations when you earn XP'], ['motion', 'Animations', 'Turn off for a calmer app']].map(function (o) {
+      var on = p[o[0]] !== false;
+      return '<div class="item"><div class="grow"><b>' + o[1] + '</b><div class="tiny muted">' + o[2] + '</div></div><button class="toggle' + (on ? ' on' : '') + '" type="button" data-pref="' + o[0] + '" aria-pressed="' + on + '" aria-label="' + o[1] + '"><i></i></button></div>';
+    }).join('') + '</section>';
+    h += '<p class="small muted center">Your choices follow you to any phone you open the app on. ' + esc(n.other) + ' has their own.</p>';
+    el('tab-custom').innerHTML = h;
+  }
+
+  document.addEventListener('click', function (ev) {
+    var t = ev.target.closest('[data-char], [data-cgame], [data-accent], [data-textsize], [data-titles], [data-homehide], [data-homemove], [data-homereset], [data-pref]');
+    if (!t || !S || !ev.target.closest('#tab-custom')) return;
+    var d = t.dataset;
+    if (d.cgame) { charGame = d.cgame; return renderCustom(); }
+    if (d.char !== undefined) { var c = charById(d.char); buzz(20); return savePrefs({ char: d.char }, c ? 'You\'re ' + c[2] + ' now.' : 'Character removed'); }
+    if (d.accent !== undefined) return savePrefs({ accent: d.accent });
+    if (d.textsize) return savePrefs({ text: d.textsize });
+    if (d.titles) return savePrefs({ titles: d.titles }, 'Level titles changed');
+    if (d.pref) { var ch = {}; ch[d.pref] = prefs()[d.pref] === false; return savePrefs(ch); }
+    if (d.homereset) return savePrefs({ home: [] }, 'Home screen reset');
+    var list = homeOrder();
+    if (d.homehide) { list.forEach(function (x) { if (x.id === d.homehide) x.hide = !x.hide; }); return savePrefs({ home: list }); }
+    if (d.homemove) {
+      var i = list.map(function (x) { return x.id; }).indexOf(d.homemove), j = i + Number(d.dir);
+      if (j < 0 || j >= list.length) return;
+      var tmp = list[i]; list[i] = list[j]; list[j] = tmp;
+      return savePrefs({ home: list });
+    }
+  });
+  document.addEventListener('submit', function (ev) {
+    if (ev.target.id !== 'namesForm') return;
+    ev.preventDefault();
+    savePrefs({ nick: el('nickText').value, team: el('teamText').value }, 'Names saved');
+  });
+
   // ---------- rendering + tabs ----------
   function renderAll() {
     if (!S) return;
     var keep = {}, focused = document.activeElement && document.activeElement.id;
     document.querySelectorAll('main input[id], main textarea[id]').forEach(function (i) { if (i.type !== 'password') keep[i.id] = i.value; });
-    renderHome(); renderChores(); renderPlay(); renderYou(); renderHealth();
+    renderHome(); renderChores(); renderPlay(); renderYou(); renderHealth(); renderCustom(); applyPrefs();
     if (ME) { renderTrain(); renderFood(); }
     Object.keys(keep).forEach(function (id) { var i = el(id); if (i && keep[id]) i.value = keep[id]; });
     if (focused && el(focused)) el(focused).focus();
@@ -1225,7 +1395,7 @@
     current = name;
     document.querySelectorAll('section.tab').forEach(function (s) { s.hidden = s.id !== 'tab-' + name; });
     el('nav').querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-current', b.dataset.tab === name ? 'page' : 'false'); });
-    if (name !== 'you') save('tab', name);
+    if (name !== 'you' && name !== 'custom') save('tab', name);
     window.scrollTo(0, 0);
     if (name === 'play') { loadWords(); pollGames(); }
   }
@@ -1252,7 +1422,7 @@
     if (ds.water) return quick(function () { var b = S.routines.water; S.routines.water = Math.max(0, b + +ds.water); if (S.routines.waterGoal && b < S.routines.waterGoal && S.routines.water >= S.routines.waterGoal) addXpLocal(5); buzz(15); }, 'addWater', [+ds.water]);
     if (ds.shop) return quick(function () { S.shopping.forEach(function (it) { if (it.id === ds.shop) it.got = !it.got; }); }, 'toggleShopping', [ds.shop]);
     if (ds.clear) return quick(function () { S.chores.later = S.chores.later.filter(function (l) { return l.id !== ds.clear; }); }, 'clearLater', [ds.clear]);
-    if (ds.theme) { S.theme = ds.theme; save('theme', ds.theme); document.documentElement.setAttribute('data-theme', ds.theme); renderYou(); rpc('setTheme', [ds.theme]).catch(function () {}); return; }
+    if (ds.theme) { S.theme = ds.theme; save('theme', ds.theme); document.documentElement.setAttribute('data-theme', ds.theme); renderYou(); renderCustom(); rpc('setTheme', [ds.theme]).catch(function () {}); return; }
     if (busy) return;
     // home
     if (t.id === 'whatNow') { wn.skip = []; wn.pick = undefined; return whatNowSheet(); }
@@ -1500,7 +1670,7 @@
     if (!load('badges-' + S.who)) save('badges-' + S.who, S.game.badges.filter(function (b) { return b.earned; }).map(function (b) { return b.id; }));
     renderAll();
     var hash = location.hash.replace('#', '');
-    showTab(['home', 'chores', 'play', 'train', 'food', 'health', 'you'].indexOf(hash) !== -1 ? hash : (window.LQ_TAB || load('tab') || 'home'));
+    showTab(['home', 'chores', 'play', 'train', 'food', 'health', 'you', 'custom'].indexOf(hash) !== -1 ? hash : (window.LQ_TAB || load('tab') || 'home'));
     lastBoost = !!boostLeft();
     setTimeout(intro, 250);
     if (!S.brief && S.hasClaudeKey) rpc('getBrief', []).then(function (b) { if (b) { S.brief = b; renderHome(); } }, function () {});

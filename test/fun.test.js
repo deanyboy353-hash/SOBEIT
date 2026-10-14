@@ -216,3 +216,21 @@ test('speed: the app\'s refresh is served from cache until something changes', (
   assert.ok(fresh.shopping.some(i => i.item === 'Milk'));
   assert.ok(first.now <= fresh.now);
 });
+
+test('customise: characters, look, names, titles and home layout are saved per person', () => {
+  const { g, me, partner } = ready();
+  let s = g.ctx.setPrefs(me, { char: 'sa-cj', accent: 'green', text: 'large', sound: false, home: [{ id: 'feed' }, { id: 'us', hide: true }, { id: 'nope' }] });
+  assert.strictEqual(s.fun.chars.me, 'sa-cj');
+  assert.strictEqual(s.fun.prefs.accent, 'green');
+  assert.strictEqual(s.fun.prefs.sound, false);
+  assert.deepStrictEqual(plain(s.fun.prefs.home), [{ id: 'feed', hide: false }, { id: 'us', hide: true }]);
+  s = g.ctx.setPrefs(partner, { char: 'vc-mercedes', nick: 'Yaz', team: 'Deany & Yaz', titles: 'gta' });
+  assert.strictEqual(s.fun.chars.me, 'sa-cj', 'Yaz sees your character');
+  assert.strictEqual(s.fun.nick, 'Yaz');
+  assert.strictEqual(s.fun.team, 'Deany & Yaz');
+  assert.strictEqual(s.fun.era, 'Fresh off the bus');
+  assert.strictEqual(g.ctx.appState(me).fun.chars.partner, 'vc-mercedes');
+  assert.strictEqual(g.ctx.setPrefs(me, { char: '<script>' }).fun.chars.me, '');
+  assert.throws(() => g.ctx.setTheme(me, 'hotdog'), /Unknown theme/);
+  assert.strictEqual(g.ctx.setTheme(me, 'vice'), 'vice');
+});

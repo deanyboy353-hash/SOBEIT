@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<script>try{var t=JSON.parse(localStorage.getItem('lq-theme')||'"light"');document.documentElement.dataset.theme=t;}catch(e){}</script>
+<script>try{var t=JSON.parse(localStorage.getItem('lq-theme')||'"light"');document.documentElement.dataset.theme=t;var a=JSON.parse(localStorage.getItem('lq-accent')||'""');if(a)document.documentElement.dataset.accent=a;}catch(e){}</script>
 <link rel="preconnect" href="https://script.google.com">
 <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
 <link rel="stylesheet" href="app.css">
@@ -27,6 +27,7 @@
   <section class="tab" id="tab-food" hidden></section>
   <section class="tab" id="tab-health" hidden></section>
   <section class="tab" id="tab-you" hidden></section>
+  <section class="tab" id="tab-custom" hidden></section>
 </main>
 <nav class="tabs" id="nav" aria-label="Sections">
   <button type="button" data-tab="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5M5 9.5V21h5v-6h4v6h5V9.5"/></svg>Home</button>
