@@ -8,18 +8,18 @@ function todayState_() {
   var ymd = todayYmd_();
   var cfg = readConfig_();
   var dow = dayOfWeek_(ymd);
-  var day = cfg.schedule[dow];
+  var session = todaySession_(ymd, cfg);
   var gym = null;
-  if (day && day.train) {
+  if (session) {
     var r = findRow_('gym', 'Date', ymd);
     var row = r ? readRow_('gym', r) : {};
     gym = {
-      session: day.session,
+      session: session,
       travel: String(row['Travel'] || ''),
       leaveAt: String(row['Leave at'] || ''),
       weather: String(row['Weather'] || ''),
       done: /^Done/.test(String(row['Status'] || '')),
-      exercises: (cfg.sessions[day.session] || []).map(function (ex) {
+      exercises: (cfg.sessions[session] || []).map(function (ex) {
         return { exercise: String(ex.exercise), sets: String(ex.sets), reps: String(ex.reps), rpe: String(ex.rpe), rest: String(ex.rest), notes: String(ex.notes || '') };
       })
     };

@@ -5,7 +5,7 @@
  *
  * Every request is saved to the Inbox tab first, then passed to the handler
  * for its `source`. Phase 1 only has `raw` (save and stop).
- * Later: add `health` (HC Webhook), `geofence` (MacroDroid) and so on to POST_ROUTES.
+ * source=health is your phone's health data (Health.gs). Later: `geofence` (MacroDroid) and so on.
  */
 
 var POST_ROUTES = {
@@ -26,7 +26,8 @@ function rpcTable_() {
     gamesState: gamesState, guessWord: guessWord, submitTarget: submitTarget, submitRecall: submitRecall,
     registerDevice: registerDevice, sendNudge: sendNudge, ask: ask, clearAsk: clearAsk, getBrief: getBrief,
     mealIdeas: mealIdeas, logIdea: logIdea, logUs: logUs, sendWink: sendWink, answerTonight: answerTonight,
-    setStake: setStake, submitTempo: submitTempo, getWrapped: getWrapped
+    setStake: setStake, submitTempo: submitTempo, getWrapped: getWrapped, setTodaySession: setTodaySession,
+    healthDay: healthDay, healthInsight: healthInsight
   };
 }
 
@@ -44,6 +45,17 @@ function rpc_(body) {
 function doPost(e) {
   var params = (e && e.parameter) || {};
   var raw = e && e.postData ? e.postData.contents : '';
+  if (params.source === 'health') {
+    // Your phone's health data (HC Webhook). Either of your keys; never stored in the Inbox (too big, too private).
+    var hwho;
+    try { hwho = who_(params.key); } catch (x) { return json_({ ok: false, error: 'bad key' }); }
+    try {
+      return json_({ ok: true, source: 'health', result: withLock_(function () { return ingestHealth_(raw, hwho); }) });
+    } catch (err) {
+      log_('ERROR', 'Health sync: ' + err);
+      return json_({ ok: false, error: String(err) });
+    }
+  }
   if (raw && raw.charAt(0) === '{' && !params.source) {
     var body;
     try { body = JSON.parse(raw); } catch (x) { body = null; }
@@ -93,6 +105,7 @@ function appState_(who) {
     theme: String(prop_('THEME_' + who) || 'light')
   };
   s.fun = funState_(who, s.game);
+  s.health = healthState_(who);
   if (who === 'me') {
     s.today = todayState_();
     s.food = foodState_();

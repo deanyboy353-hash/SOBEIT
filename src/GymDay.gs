@@ -4,10 +4,22 @@
 
 var EVENT_TAG = 'sobeit';
 
+/**
+ * Today's session: the one you picked in the app if you changed it, otherwise
+ * the weekly plan in the Config tab. '' means a rest day.
+ */
+function todaySession_(ymd, cfg) {
+  var o = JSON.parse(prop_('GYM_TODAY') || 'null');
+  if (o && o.date === ymd) return o.session;
+  var day = (cfg || readConfig_()).schedule[dayOfWeek_(ymd)];
+  return day && day.train ? day.session : '';
+}
+
 function planGymDay_(ymd, cfg) {
   var dow = dayOfWeek_(ymd);
-  var day = cfg.schedule[dow];
-  if (!day || !day.train) {
+  var session = todaySession_(ymd, cfg);
+  var day = Object.assign({ freeFrom: null, alertAt: null }, cfg.schedule[dow] || {}, { train: !!session, session: session });
+  if (!session) {
     removeTaggedEvents_(ymd, 'gym');
     return 'Rest day';
   }

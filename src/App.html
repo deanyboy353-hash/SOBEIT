@@ -366,6 +366,63 @@ span.check { cursor: default; }
 .intro .l5 { animation-delay: .32s; } .intro .l6 { animation-delay: .4s; } .intro .l7 { animation-delay: .48s; }
 @media (prefers-reduced-motion: reduce) { .intro .eq i, .boost, .intro :is(.l1, .l2, .l3, .l4, .l5, .l6, .l7), .story .slide { animation: none; } }
 
+/* Health. Sleep-stage colours validated for colour-blind separation on both surfaces. */
+:root { --st0: #d9577f; --st1: #c98a1a; --st2: #1f8fa8; --st3: #5a3fb5; }
+:root[data-theme="dark"], :root[data-theme="rave"] { --st0: #d65c86; --st1: #a87a1c; --st2: #2b9bb0; --st3: #8f63e8; }
+@media (prefers-color-scheme: dark) { :root[data-theme="auto"] { --st0: #d65c86; --st1: #a87a1c; --st2: #2b9bb0; --st3: #8f63e8; } }
+nav.tabs button { max-width: 92px; font-size: 11px; }
+.daynav { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: -2px 0 12px; }
+.daynav b { font-size: 15px; }
+.daynav .iconbtn[disabled] { opacity: .35; }
+.hhero { display: flex; gap: 16px; align-items: center; }
+.htile { display: grid; grid-template-columns: 1fr auto; align-items: baseline; padding: 9px 12px; border-radius: 14px; background: var(--raised); }
+.htile span { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+.htile b { font-size: 20px; grid-row: span 2; align-self: center; }
+.htile b small { font-size: 11px; color: var(--muted); font-weight: 600; }
+.htile em { font-style: normal; font-size: 12px; color: var(--muted); }
+.htile.ready { background: var(--good-soft); } .htile.ready span, .htile.ready em { color: var(--good); }
+.htile.sleep { background: var(--lilac-soft); } .htile.sleep span, .htile.sleep em { color: var(--lilac); }
+.htile.heart { background: var(--pink-soft); } .htile.heart span, .htile.heart em { color: var(--pink); }
+.hyp { display: flex; gap: 10px; }
+.hyp .hl { flex: none; width: 66px; padding-top: 6px; }
+.hyp .hl div { display: flex; flex-direction: column; justify-content: flex-start; }
+.hyp .hl b { font-size: 13px; line-height: 1.1; }
+.hyp .hl span { font-size: 12px; color: var(--muted); }
+.hyp .hc { flex: 1; min-width: 0; }
+.hypsvg { width: 100%; height: 182px; display: block; overflow: visible; }
+.hypsvg .track { fill: var(--raised); }
+.hypsvg .links line { stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.st0 { fill: var(--st0); background: var(--st0); } .st1 { fill: var(--st1); background: var(--st1); }
+.st2 { fill: var(--st2); background: var(--st2); } .st3 { fill: var(--st3); background: var(--st3); }
+.hypsvg rect[data-tip] { stroke: var(--surface); stroke-width: 1; vector-effect: non-scaling-stroke; cursor: pointer; }
+.hypsvg rect.sel { stroke: var(--ink); stroke-width: 2; }
+.axis { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.readout { margin-top: 6px; min-height: 18px; color: var(--ink); font-weight: 550; }
+.readout.muted { font-weight: 400; color: var(--muted); }
+.chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.chart .bar { fill: var(--lilac-mid); }
+.chart .bar.on { fill: var(--lilac); }
+.chart .bar.dim { opacity: .4; }
+.chart g.sel .bar, .chart g.sel .dot { fill: var(--pink); }
+.chart .hit { fill: transparent; cursor: pointer; }
+.chart .goal { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 4; vector-effect: non-scaling-stroke; }
+.chart .line { fill: none; stroke: var(--lilac); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
+.chart .dot { fill: var(--lilac); stroke: var(--surface); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.chart .rng { stroke: var(--pink-mid); stroke-width: 5; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.chart .xl { display: grid; margin-top: 4px; font-size: 11.5px; color: var(--muted); text-align: center; }
+.sb { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; }
+.sw { width: 10px; height: 10px; border-radius: 3px; flex: none; margin-top: 5px; }
+.range { position: relative; height: 8px; border-radius: 4px; background: var(--raised); margin: 6px 0 3px; }
+.range .band { position: absolute; top: 0; bottom: 0; border-radius: 4px; background: var(--lilac-soft); outline: 1px dashed var(--lilac-mid); }
+.range .mark { position: absolute; top: -3px; width: 4px; height: 14px; border-radius: 2px; margin-left: -2px; box-shadow: 0 0 0 2px var(--surface); }
+.hstats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; text-align: center; }
+.hstats b { display: block; font-size: 18px; }
+.hstats span { font-size: 11.5px; color: var(--muted); line-height: 1.25; display: block; }
+.setup { padding-left: 20px; margin: 6px 0; } .setup li { margin: 5px 0; }
+.hook { display: flex; gap: 8px; align-items: center; background: var(--surface); border-radius: 12px; padding: 8px 8px 8px 12px; }
+.hook code { flex: 1; min-width: 0; font-size: 11.5px; overflow-wrap: anywhere; color: var(--ink); }
+.swap { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: var(--lilac-soft); margin-bottom: 12px; }
+
 </style>
 </head>
 <body>
@@ -375,6 +432,7 @@ span.check { cursor: default; }
   <section class="tab" id="tab-play" hidden></section>
   <section class="tab" id="tab-train" hidden></section>
   <section class="tab" id="tab-food" hidden></section>
+  <section class="tab" id="tab-health" hidden></section>
   <section class="tab" id="tab-you" hidden></section>
 </main>
 <nav class="tabs" id="nav" aria-label="Sections">
@@ -383,6 +441,7 @@ span.check { cursor: default; }
   <button type="button" data-tab="play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg>Play</button>
   <button type="button" data-tab="train" data-me><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/></svg>Train<span class="dot" id="dotTrain"></span></button>
   <button type="button" data-tab="food" data-me><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3v8a2 2 0 0 0 4 0V3M9 11v10M17 3c-1.7 1.3-2.5 3.5-2.5 6.5V13H17v8"/></svg>Food</button>
+  <button type="button" data-tab="health"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-5 4 10 2-5h6"/></svg>Health</button>
 </nav>
 <div class="sheetbg" id="sheetbg" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
 <div id="toast" role="status" aria-live="polite"></div>
@@ -480,7 +539,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3', more: 'M5 12h.01M12 12h.01M19 12h.01', download: 'M12 4v11M7 10l5 5 5-5M5 20h14',
     pause: 'M8 5v14M16 5v14', music: 'M9 18V5l11-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM20 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z',
     disc: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM12 7a5 5 0 0 1 5 5', brush: 'M18 3l3 3-9.5 9.5-3-3zM8.5 12.5c-2 0-3.5 1.5-3.5 3.5 0 1.5-1 2.5-2 3 3 1 7 0 7.5-3.5',
-    lock: 'M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4', bolt: 'M13 3 5 14h6l-1 7 8-11h-6z', wave: 'M3 12h2M7 8v8M11 5v14M15 9v6M19 7v10M21 12h0'
+    lock: 'M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4', pulse: 'M3 12h4l2-5 4 10 2-5h6', walk: 'M13 5.5a1.5 1.5 0 1 0 0-.01M10 21l2-6 3 3v3M8 12l3-4 4 2 2 3M11 8l-3 1-1 3', bolt: 'M13 3 5 14h6l-1 7 8-11h-6z', wave: 'M3 12h2M7 8v8M11 5v14M15 9v6M19 7v10M21 12h0'
   };
   function icon(n, cls) { return '<svg class="i' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24" aria-hidden="true"><path d="' + (ICONS[n] || '') + '"/></svg>'; }
   var BADGE_ICON = { 'first-quest': 'check', 'quests-25': 'home', 'quests-100': 'home', 'streak-3': 'flame', 'streak-7': 'flame', 'streak-30': 'flame', 'streak-100': 'flame',
@@ -642,7 +701,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
       }
       h += '<section class="card blush"><div class="between"><div><div class="eyebrow" style="color:var(--pink)">Gym today</div><h2 style="margin-top:4px">' + esc(gy.session) + '</h2><div class="small muted row" style="gap:6px;margin-top:4px">' +
         (gy.travel ? icon(gy.travel === 'Bike' ? 'bike' : 'bus', 's') + esc(gy.travel) + ' · leave ' + esc(gy.leaveAt) : 'Plan arrives at 6am') + '</div>' + (leave ? '<div class="small" style="font-weight:650;margin-top:4px">' + leave + '</div>' : '') + '</div>' +
-        (gy.done ? '<span class="chip good">' + icon('check', 's') + 'Done</span>' : '<button class="btn primary sm" type="button" data-goto="train">Log it</button>') + '</div></section>';
+        (gy.done ? '<span class="chip good">' + icon('check', 's') + 'Done</span>' : '<div class="stack right"><button class="btn primary sm" type="button" data-goto="train">Log it</button><button class="btn ghost sm" type="button" data-goto="train" style="padding:4px 8px">Change</button></div>') + '</div></section>';
     }
 
     var mine = S.quests.board.filter(function (q) { return q.who === 'anyone' || q.who === S.who; });
@@ -977,6 +1036,15 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     if (rest) h += '<div class="rest"><span>Rest <b id="restLeft">' + clock(rest.until - now()) + '</b></span><button type="button" id="restSkip">Skip</button></div>';
     h += '<div class="chips" style="margin-bottom:14px">' + t.sessions.map(function (s) { return '<button class="chip" type="button" data-tsel="' + esc(s) + '" aria-pressed="' + (s === tsel) + '" style="padding:8px 14px;font-size:14px">' + esc(s) + '</button>'; }).join('') + '</div>';
     if (t.doneToday) h += '<div class="note">Today\'s workout is logged. Great work.</div>';
+    else {
+      if (tsel !== t.today) h += '<div class="swap"><div class="grow"><b>Doing ' + esc(tsel) + ' today?</b><div class="tiny muted">' + (t.today ? 'Planned: ' + esc(t.today) : 'Today is a rest day') + '. Switching moves your calendar and gym task too.</div></div><button class="btn primary sm" type="button" data-setsession="' + esc(tsel) + '">Switch</button></div>';
+      else if (t.changed) h += '<div class="swap"><div class="grow small">Changed from ' + (t.planned ? esc(t.planned) : 'a rest day') + '.</div><button class="btn line sm" type="button" data-setsession="' + esc(t.planned) + '" data-undo="1">Undo</button></div>';
+      var hints = [];
+      if (t.next && t.next !== tsel) hints.push('<button class="chip lilac" type="button" data-tsel="' + esc(t.next) + '">Next in order: ' + esc(t.next) + '</button>');
+      if (t.today) hints.push('<button class="chip" type="button" data-setsession="" data-rest="1">Make today a rest day</button>');
+      if (S.health && S.health.readiness) hints.unshift('<span class="chip ' + (S.health.readiness.score >= 80 ? 'good' : S.health.readiness.score >= 60 ? 'lilac' : 'pink') + '">' + icon('bolt', 's') + 'Readiness ' + S.health.readiness.score + '</span>');
+      if (hints.length) h += '<div class="chips" style="margin:-4px 0 14px">' + hints.join('') + '</div>';
+    }
     p.main.forEach(function (m) {
       h += '<section class="card"><div class="head"><div><div class="eyebrow">' + (m.tier === 'T1' ? 'Main lift' : 'Second lift') + '</div><h2 style="margin-top:2px">' + esc(m.exercise) + '</h2></div>' + (m.tm ? '<span class="chip pink">TM ' + m.tm + ' kg</span>' : '') + '</div>';
       if (!m.tm) {
@@ -1325,12 +1393,217 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     loadScript('words.js').catch(function () { wordsLoading = false; });
   }
 
+  // ---------- HEALTH (sleep, readiness, activity, heart) ----------
+  var hview = null; // another day being browsed
+  var STAGE = [['awake', 'Awake'], ['rem', 'REM'], ['light', 'Light'], ['deep', 'Deep']];
+  // Typical share of the night for adults (what Fitbit and the sleep research quote)
+  var TYPICAL = { awake: [5, 15], rem: [20, 25], light: [45, 60], deep: [13, 23] };
+  function hm(min) { min = Math.round(min || 0); return Math.floor(min / 60) + 'h ' + ('0' + min % 60).slice(-2) + 'm'; }
+  function hmShort(min) { min = Math.round(min || 0); return min >= 60 ? Math.floor(min / 60) + 'h' + (min % 60 ? ' ' + min % 60 + 'm' : '') : min + 'm'; }
+  function clockOf(ms) { var d = new Date(ms); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
+  function dayShort(ymd) { return new Date(ymd + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'narrow' }); }
+  function signed(n, unit) { return (n > 0 ? '+' : n < 0 ? '−' : '±') + Math.abs(n) + (unit || ''); }
+  function H() { return hview || S.health; }
+
+  function hypnogram(sl) {
+    var W = 340, rowH = 30, gap = 14, top = 6, total = (sl.end - sl.start) / 60000, x = function (m) { return 6 + m / total * (W - 12); };
+    var rows = { 0: 0, 1: 1, 2: 2, 3: 3 }, svg = '', links = '';
+    sl.stages.forEach(function (g, i) {
+      var y = top + rows[g[0]] * (rowH + gap), x0 = x(g[1]), w = Math.max(2, x(g[1] + g[2]) - x0 - 1);
+      svg += '<rect class="st' + g[0] + '" x="' + x0.toFixed(1) + '" y="' + y + '" width="' + w.toFixed(1) + '" height="' + rowH + '" rx="4" data-tip="' + STAGE[g[0]][1] + ' · ' + clockOf(sl.start + g[1] * 60000) + '–' + clockOf(sl.start + (g[1] + g[2]) * 60000) + ' · ' + hmShort(g[2]) + '"/>';
+      var n = sl.stages[i + 1];
+      if (n) { var xx = x(n[1]).toFixed(1), y1 = top + rows[g[0]] * (rowH + gap) + rowH / 2, y2 = top + rows[n[0]] * (rowH + gap) + rowH / 2; links += '<line x1="' + xx + '" x2="' + xx + '" y1="' + y1 + '" y2="' + y2 + '"/>'; }
+    });
+    var tracks = '';
+    for (var r = 0; r < 4; r++) tracks += '<rect class="track" x="0" y="' + (top + r * (rowH + gap)) + '" width="' + W + '" height="' + rowH + '" rx="8"/>';
+    var H2 = top + 4 * (rowH + gap) - gap + 4;
+    var mid = sl.start + (sl.end - sl.start) / 2;
+    return '<div class="hyp"><div class="hl">' + STAGE.map(function (s, i) {
+      var mins = sl[s[0]];
+      return '<div style="height:' + (rowH + gap) + 'px"><b>' + s[1] + '</b><span>' + hmShort(mins) + '</span></div>';
+    }).join('') + '</div><div class="hc"><svg viewBox="0 0 ' + W + ' ' + H2 + '" preserveAspectRatio="none" class="hypsvg">' + tracks + '<g class="links">' + links + '</g>' + svg + '</svg>' +
+      '<div class="axis"><span>' + clockOf(sl.start) + '</span><span>' + clockOf(mid) + '</span><span>' + clockOf(sl.end) + '</span></div></div></div>';
+  }
+
+  // Bars with a goal line. vals: [{v, label, tip, dim}], one series, so no legend.
+  function barChart(vals, goal, opts) {
+    opts = opts || {};
+    var W = 340, Hh = opts.h || 110, n = vals.length, bw = (W - (n - 1) * 3) / n, max = Math.max(goal || 0, Math.max.apply(null, vals.map(function (d) { return d.v || 0; }))) * 1.08 || 1;
+    var y = function (v) { return Hh - v / max * Hh; };
+    var bars = vals.map(function (d, i) {
+      var x = i * (bw + 3), h = Math.max(d.v ? 3 : 0, Hh - y(d.v || 0));
+      return '<g data-tip="' + esc(d.tip) + '"><rect class="hit" x="' + x.toFixed(1) + '" y="0" width="' + bw.toFixed(1) + '" height="' + Hh + '"/>' +
+        (h ? '<path class="bar' + (d.on ? ' on' : '') + (d.dim ? ' dim' : '') + '" d="M' + x.toFixed(1) + ',' + Hh + 'V' + (Hh - h + Math.min(4, h)).toFixed(1) + 'q0,-' + Math.min(4, h) + ' ' + Math.min(4, bw / 2) + ',-' + Math.min(4, h) + 'H' + (x + bw - Math.min(4, bw / 2)).toFixed(1) + 'q' + Math.min(4, bw / 2) + ',0 ' + Math.min(4, bw / 2) + ',' + Math.min(4, h) + 'V' + Hh + 'z"/>' : '') + '</g>';
+    }).join('');
+    var g = goal ? '<line class="goal" x1="0" x2="' + W + '" y1="' + y(goal).toFixed(1) + '" y2="' + y(goal).toFixed(1) + '"/>' : '';
+    var labels = opts.labels ? '<div class="xl" style="grid-template-columns:repeat(' + n + ',1fr)">' + vals.map(function (d) { return '<span>' + esc(d.label || '') + '</span>'; }).join('') + '</div>' : '';
+    return '<div class="chart"><svg viewBox="0 0 ' + W + ' ' + Hh + '" preserveAspectRatio="none">' + g + bars + '</svg>' + labels + '</div>';
+  }
+
+  // One line over two weeks (one measure per chart: never two axes).
+  function lineChart(vals, opts) {
+    opts = opts || {};
+    var pts = vals.map(function (d, i) { return { i: i, v: d.v, tip: d.tip }; }).filter(function (p) { return p.v !== null && p.v !== undefined; });
+    if (pts.length < 2) return '<p class="tiny muted" style="margin:6px 0 0">A trend appears after a few days of data.</p>';
+    var W = 340, Hh = opts.h || 70, mn = Math.min.apply(null, pts.map(function (p) { return p.v; })), mx = Math.max.apply(null, pts.map(function (p) { return p.v; }));
+    if (mx === mn) { mx += 1; mn -= 1; }
+    var X = function (i) { return 6 + i / (vals.length - 1) * (W - 12); }, Y = function (v) { return 8 + (1 - (v - mn) / (mx - mn)) * (Hh - 16); };
+    var path = pts.map(function (p, k) { return (k ? 'L' : 'M') + X(p.i).toFixed(1) + ',' + Y(p.v).toFixed(1); }).join('');
+    var last = pts[pts.length - 1];
+    var hits = vals.map(function (d, i) { return '<rect class="hit" data-tip="' + esc(d.tip) + '" x="' + (X(i) - W / vals.length / 2).toFixed(1) + '" y="0" width="' + (W / vals.length).toFixed(1) + '" height="' + Hh + '"/>'; }).join('');
+    var base = opts.base ? '<line class="goal" x1="0" x2="' + W + '" y1="' + Y(Math.max(mn, Math.min(mx, opts.base))).toFixed(1) + '" y2="' + Y(Math.max(mn, Math.min(mx, opts.base))).toFixed(1) + '"/>' : '';
+    return '<div class="chart"><svg viewBox="0 0 ' + W + ' ' + Hh + '" preserveAspectRatio="none">' + base + '<path class="line" d="' + path + '"/>' +
+      '<circle class="dot" cx="' + X(last.i).toFixed(1) + '" cy="' + Y(last.v).toFixed(1) + '" r="4.5"/>' + hits + '</svg></div>';
+  }
+
+  function hrChart(byHour) {
+    var W = 340, Hh = 110, have = byHour.filter(Boolean);
+    if (!have.length) return '';
+    var mn = Math.min.apply(null, have.map(function (x) { return x[1]; })) - 5, mx = Math.max.apply(null, have.map(function (x) { return x[2]; })) + 5;
+    var Y = function (v) { return 6 + (1 - (v - mn) / (mx - mn)) * (Hh - 12); }, bw = W / 24;
+    var out = byHour.map(function (x, h) {
+      var cx = (h + 0.5) * bw, tip = x ? (('0' + h).slice(-2) + ':00 · avg ' + x[0] + ' bpm · ' + x[1] + '–' + x[2]) : ('0' + h).slice(-2) + ':00 · no data';
+      return '<g data-tip="' + tip + '"><rect class="hit" x="' + (h * bw).toFixed(1) + '" y="0" width="' + bw.toFixed(1) + '" height="' + Hh + '"/>' +
+        (x ? '<line class="rng" x1="' + cx.toFixed(1) + '" x2="' + cx.toFixed(1) + '" y1="' + Y(x[2]).toFixed(1) + '" y2="' + Y(x[1]).toFixed(1) + '"/><circle class="dot" cx="' + cx.toFixed(1) + '" cy="' + Y(x[0]).toFixed(1) + '" r="3.2"/>' : '') + '</g>';
+    }).join('');
+    return '<div class="chart"><svg viewBox="0 0 ' + W + ' ' + Hh + '" preserveAspectRatio="none">' + out + '</svg><div class="axis"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div></div>';
+  }
+
+  function stageBreakdown(sl) {
+    return STAGE.map(function (s, i) {
+      var pct = sl.asleep + sl.awake ? Math.round(sl[s[0]] / (sl.asleep + sl.awake) * 100) : 0, t = TYPICAL[s[0]];
+      var inRange = pct >= t[0] && pct <= t[1] || (s[0] === 'awake' && pct < t[0]);
+      return '<div class="sb"><span class="sw st' + i + '"></span><div class="grow"><div class="between"><b>' + s[1] + '</b><span class="small"><b class="num">' + hmShort(sl[s[0]]) + '</b> <span class="muted">· ' + pct + '%</span></span></div>' +
+        '<div class="range"><i class="band" style="left:' + t[0] * 1.6 + '%;width:' + (t[1] - t[0]) * 1.6 + '%"></i><i class="mark st' + i + '" style="left:' + Math.min(100, pct * 1.6) + '%"></i></div>' +
+        '<div class="tiny muted">Typical ' + t[0] + '–' + t[1] + '%' + (s[0] === 'awake' && pct < t[0] ? ' · less than most, nice' : inRange ? ' · right in range' : pct < t[0] ? ' · a bit low' : ' · a bit high') + '</div></div></div>';
+    }).join('');
+  }
+
+  function readinessAdvice(r) {
+    var gym = ME && S.today && S.today.gym && !S.today.gym.done ? S.today.gym.session : '';
+    if (r.score >= 80) return gym ? 'Good day to push the 1+ set on ' + gym + '.' : 'Plenty in the tank today.';
+    if (r.score >= 60) return gym ? 'Train as planned. Keep the 1+ set honest.' : 'A normal day. Move, eat well, sleep on time.';
+    return gym ? 'Your body is asking for an easier one. Lighter ' + gym + ', or swap to rest in Train.' : 'Take it easy: an early night will help most.';
+  }
+
+  function setupCard(h) {
+    return '<section class="card tint"><div class="eyebrow" style="color:var(--lilac)">Connect your phone</div><h2 style="margin:6px 0 8px">See your sleep, steps and heart here</h2>' +
+      '<ol class="small setup"><li>Install <b>HC Webhook</b> from the ' + (/iPhone|iPad/.test(navigator.userAgent) ? 'App Store' : 'Play Store') + '.</li>' +
+      '<li>Open it and allow ' + (/iPhone|iPad/.test(navigator.userAgent) ? 'Apple Health' : 'Health Connect') + ' access: tick Steps, Sleep, Heart rate, Resting heart rate, HRV, Oxygen saturation, Respiratory rate, Distance, Active calories, Exercise, Weight.</li>' +
+      '<li>Add a webhook and paste this address:</li></ol>' +
+      '<div class="hook"><code id="hookUrl">' + esc(h.webhook) + '</code><button class="btn primary sm" type="button" data-fun="copyHook">Copy</button></div>' +
+      '<ol class="small setup" start="4"><li>Set it to sync every 15 minutes, then tap <b>Sync now</b>.</li></ol>' +
+      '<p class="tiny muted" style="margin:8px 0 0">The address has your private key in it, so don\'t share it. Your Fitbit or Pixel Watch already saves to ' + (/iPhone|iPad/.test(navigator.userAgent) ? 'Apple Health' : 'Health Connect') + '; this just forwards it.</p></section>';
+  }
+
+  function renderHealth() {
+    var h = H();
+    if (!h) return;
+    var isToday = h.date === h.today, d = new Date(h.date + 'T12:00:00'), out = '';
+    out += '<div class="top"><div><h1>Health</h1><div class="sub">' + (h.synced ? (new Date(h.synced).toDateString() === new Date(now()).toDateString() ? 'Synced at ' + clockOf(h.synced) : 'Synced ' + new Date(h.synced).toLocaleDateString('en-GB', { weekday: 'short' }) + ' ' + clockOf(h.synced)) : 'Not connected yet') + '</div></div><button class="iconbtn" type="button" data-goto="you" aria-label="You and settings">' + icon('user') + '</button></div>';
+    out += '<div class="daynav"><button class="iconbtn" type="button" data-hday="-1" aria-label="Day before">' + icon('back', 's') + '</button><b>' + (isToday ? 'Today' : d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })) + '</b><button class="iconbtn" type="button" data-hday="1" aria-label="Next day"' + (isToday ? ' disabled' : '') + '>' + icon('chevron', 's') + '</button></div>';
+    if (!h.connected) { el('tab-health').innerHTML = out + setupCard(h); return; }
+    var sl = h.sleep, rd = h.readiness, hr = h.heart;
+
+    // hero: steps ring + three tiles
+    out += '<section class="card"><div class="hhero"><div class="ring" style="width:132px;height:132px">' + ring(h.steps / h.goals.steps, 132, 12) +
+      '<div class="t"><div><div class="tiny muted">Steps</div><div class="num" style="font-size:28px;font-weight:700">' + fmt(h.steps) + '</div><div class="tiny muted">of ' + fmt(h.goals.steps) + '</div></div></div></div><div class="grow stack">' +
+      '<div class="htile ready"><span>Readiness</span><b class="num">' + (rd ? rd.score : '–') + '</b><em>' + (rd ? esc(rd.label) : 'needs sleep data') + '</em></div>' +
+      '<div class="htile sleep"><span>Sleep</span><b class="num">' + (sl ? hm(sl.asleep) : '–') + '</b><em>' + (sl ? sl.score + ' · ' + esc(sl.label) : 'none recorded') + '</em></div>' +
+      '<div class="htile heart"><span>Resting HR</span><b class="num">' + (hr.rhr || '–') + '<small> bpm</small></b><em>' + (hr.rhr && hr.rhrBase ? signed(hr.rhr - hr.rhrBase) + ' vs usual' : 'heart') + '</em></div></div></div></section>';
+
+    // Claude explains it
+    if (h.insight) out += '<section class="card tint"><div class="eyebrow" style="color:var(--lilac);display:flex;gap:6px;align-items:center">' + icon('sparkles', 's') + 'Your day, explained</div><h3 style="margin:8px 0 4px">' + esc(h.insight.headline) + '</h3><p class="small" style="margin:0 0 8px">' + esc(h.insight.insight) + '</p><div class="row small"><span class="chip lilac">Today</span><span>' + esc(h.insight.tip) + '</span></div></section>';
+    else if (S.hasClaudeKey) out += '<button class="askbar" type="button" data-fun="healthAI">' + icon('sparkles') + '<span class="grow">Explain my sleep and readiness</span>' + icon('chevron', 's') + '</button>';
+
+    // sleep
+    if (sl) {
+      out += '<section class="card"><div class="head"><h3 class="row" style="gap:8px">' + icon('moon', 's') + 'Sleep</h3><span class="chip ' + (sl.score >= 80 ? 'good' : sl.score >= 60 ? 'lilac' : 'pink') + '">' + sl.score + ' · ' + esc(sl.label) + '</span></div>' +
+        '<div class="between" style="align-items:flex-end;margin-bottom:12px"><div><div class="num" style="font-size:34px;font-weight:700;letter-spacing:-.02em">' + hm(sl.asleep) + '</div><div class="small muted">' + sl.bedtime + ' – ' + sl.wake + ' · ' + hm(sl.inBed) + ' in bed</div></div>' +
+        (sl.asleep >= h.goals.sleepMin - 30 ? '<span class="chip good">' + icon('check', 's') + 'Goal met</span>' : '<span class="chip">' + hmShort(h.goals.sleepMin - sl.asleep) + ' short</span>') + '</div>' +
+        (sl.stages.length ? hypnogram(sl) + '<div class="readout small muted" data-readout>Tap the chart for details</div>' : '<p class="small muted">No sleep stages in this record.</p>') +
+        '<div class="divider"></div>' + (sl.stages.length ? stageBreakdown(sl) + '<div class="divider"></div>' : '') +
+        '<div class="hstats"><div><b class="num">' + sl.wakeups + '</b><span>wake-ups</span></div><div><b class="num">' + hmShort(sl.awake) + '</b><span>awake</span></div>' +
+        '<div><b class="num">' + (h.week.spread === null ? '–' : '±' + h.week.spread + 'm') + '</b><span>bedtime spread</span></div><div><b class="num">' + hmShort(h.week.debt) + '</b><span>7-day debt</span></div></div>' +
+        '<div class="eyebrow" style="margin:14px 0 6px">Last 7 nights' + (h.week.avgSleep ? ' · average ' + hm(h.week.avgSleep) : '') + '</div>' +
+        barChart(h.trend.slice(-7).map(function (t) { return { v: t.sleep / 60, on: t.date === h.date, dim: !t.sleep, label: dayShort(t.date), tip: dayLabel(t.date) + ' · ' + (t.sleep ? hm(t.sleep) + (t.score ? ' · score ' + t.score : '') + (t.bed ? ' · ' + t.bed + '–' + t.wake : '') : 'no data') }; }), h.goals.sleepMin / 60, { labels: true }) +
+        '<div class="readout small muted" data-readout>Line: your ' + Math.round(h.goals.sleepMin / 60 * 10) / 10 + 'h goal</div></section>';
+    }
+
+    // readiness
+    if (rd) {
+      out += '<section class="card"><div class="head"><h3 class="row" style="gap:8px">' + icon('bolt', 's') + 'Readiness</h3><span class="chip ' + (rd.score >= 80 ? 'good' : rd.score >= 60 ? 'lilac' : 'pink') + '">' + esc(rd.label) + '</span></div>' +
+        '<div class="hero" style="margin-bottom:12px"><div class="ring" style="width:96px;height:96px">' + ring(rd.score / 100, 96, 9) + '<div class="t"><div class="num" style="font-size:26px;font-weight:700">' + rd.score + '</div></div></div><p class="grow small" style="margin:0">' + esc(readinessAdvice(rd)) + '</p></div>' +
+        '<div class="item"><div class="grow"><b>Sleep</b><div class="tiny muted">Last night\'s score</div></div><b class="num">' + (rd.sleep === null ? '–' : rd.sleep) + '</b></div>' +
+        '<div class="item"><div class="grow"><b>Heart rate variability</b><div class="tiny muted">Higher than usual is good</div></div><b class="num">' + (rd.hrv === null ? '–' : signed(rd.hrv, '%')) + '</b></div>' +
+        '<div class="item"><div class="grow"><b>Resting heart rate</b><div class="tiny muted">Lower than usual is good</div></div><b class="num">' + (rd.rhr === null ? '–' : signed(rd.rhr, ' bpm')) + '</b></div>' +
+        '<div class="eyebrow" style="margin:14px 0 6px">Two weeks</div>' + lineChart(h.trend.map(function (t) { return { v: t.ready, tip: dayLabel(t.date) + ' · readiness ' + (t.ready || '–') }; })) +
+        (ME ? '<button class="btn soft wide" type="button" data-goto="train" style="margin-top:10px">' + icon('dumbbell', 's') + 'Adjust today\'s workout</button>' : '') + '</section>';
+    }
+
+    // activity
+    out += '<section class="card"><div class="head"><h3 class="row" style="gap:8px">' + icon('walk', 's') + 'Activity</h3><span class="small muted num">' + Math.round(h.steps / h.goals.steps * 100) + '% of goal</span></div>' +
+      '<div class="hstats"><div><b class="num">' + fmt(h.steps) + '</b><span>steps</span></div><div><b class="num">' + (h.km || 0) + '</b><span>km</span></div><div><b class="num">' + fmt(h.active) + '</b><span>active kcal</span></div><div><b class="num">' + h.exercise.reduce(function (s, e) { return s + e.min; }, 0) + '</b><span>exercise min</span></div></div>' +
+      (h.steps ? '' : '') + '<div class="eyebrow" style="margin:14px 0 6px">Steps by hour</div>' + (!h.steps ? '<p class="small muted" style="margin:0">No steps yet ' + (h.date === h.today ? 'today' : 'that day') + '.</p>' : '') + barChart(h.stepsByHour.map(function (v, i) { return { v: v, tip: ('0' + i).slice(-2) + ':00 · ' + fmt(v) + ' steps' }; }), 0, { h: 80 }) +
+      '<div class="axis"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div><div class="readout small muted" data-readout>Tap a bar</div>' +
+      (h.exercise.length ? '<div class="eyebrow" style="margin:14px 0 2px">Workouts</div>' + h.exercise.map(function (e) { return '<div class="item"><span class="sw" style="background:var(--pink)"></span><div class="grow"><b>' + esc(e.type.replace(/_/g, ' ').replace(/^./, function (c) { return c.toUpperCase(); })) + '</b><div class="tiny muted">' + e.at + (e.km ? ' · ' + e.km + ' km' : '') + '</div></div><b class="num">' + hmShort(e.min) + '</b></div>'; }).join('') : '') +
+      '<div class="eyebrow" style="margin:14px 0 6px">Two weeks · average ' + fmt(h.week.avgSteps) + ' a day this week</div>' +
+      barChart(h.trend.map(function (t) { return { v: t.steps, on: t.date === h.date, dim: !t.steps, label: dayShort(t.date), tip: dayLabel(t.date) + ' · ' + fmt(t.steps) + ' steps' }; }), h.goals.steps, { labels: true, h: 90 }) +
+      '<div class="readout small muted" data-readout>Line: ' + fmt(h.goals.steps) + ' step goal</div></section>';
+
+    // heart
+    out += '<section class="card"><div class="head"><h3 class="row" style="gap:8px">' + icon('pulse', 's') + 'Heart and breathing</h3></div>' +
+      '<div class="hstats"><div><b class="num">' + (hr.rhr || '–') + '</b><span>resting bpm' + (hr.rhrBase ? ' · usual ' + hr.rhrBase : '') + '</span></div><div><b class="num">' + (hr.hrv ? Math.round(hr.hrv) : '–') + '</b><span>HRV ms' + (hr.hrvBase ? ' · usual ' + hr.hrvBase : '') + '</span></div>' +
+      '<div><b class="num">' + (hr.o2 ? hr.o2 + '%' : '–') + '</b><span>blood oxygen</span></div><div><b class="num">' + (hr.rr || '–') + '</b><span>breaths / min</span></div></div>' +
+      (hr.skin !== null && hr.skin !== undefined ? '<p class="small" style="margin:10px 0 0">Skin temperature ' + signed(Math.round(hr.skin * 10) / 10, '°C') + ' from your usual.</p>' : '') +
+      (hr.byHour.some(Boolean) ? '<div class="eyebrow" style="margin:14px 0 6px">Heart rate today · range and average each hour</div>' + hrChart(hr.byHour) + '<div class="readout small muted" data-readout>Tap an hour</div>' : '') +
+      '<div class="eyebrow" style="margin:14px 0 6px">Resting heart rate · two weeks</div>' + lineChart(h.trend.map(function (t) { return { v: t.rhr, tip: dayLabel(t.date) + ' · ' + (t.rhr || '–') + ' bpm' }; }), { base: hr.rhrBase }) +
+      '<div class="eyebrow" style="margin:14px 0 6px">HRV · two weeks</div>' + lineChart(h.trend.map(function (t) { return { v: t.hrv, tip: dayLabel(t.date) + ' · ' + (t.hrv || '–') + ' ms' }; }), { base: hr.hrvBase }) +
+      '<div class="readout small muted" data-readout>Dashed line: your two-week usual</div></section>';
+
+    if (h.weight || h.vo2) out += '<section class="card"><div class="head"><h3 class="row" style="gap:8px">' + icon('scale', 's') + 'Body</h3></div><div class="hstats">' +
+      (h.weight ? '<div><b class="num">' + h.weight.kg + '</b><span>kg · ' + esc(dayLabel(h.weight.date)) + '</span></div>' : '') + (h.vo2 ? '<div><b class="num">' + h.vo2 + '</b><span>VO2 max</span></div>' : '') + '</div></section>';
+
+    out += '<p class="tiny muted center">Sleep score and readiness are this app\'s own estimates from your phone\'s data, so they can differ a little from Fitbit\'s. Not medical advice.</p>';
+    el('tab-health').innerHTML = out;
+  }
+
+  // tap any chart mark: its details show in the card's readout line
+  document.addEventListener('click', function (ev) {
+    var m = ev.target.closest('[data-tip]');
+    if (!m || !ev.target.closest('#tab-health')) return;
+    var card = m.closest('.card'), slot = null;
+    var outs = card ? card.querySelectorAll('[data-readout]') : [];
+    for (var i = 0; i < outs.length; i++) { if (m.compareDocumentPosition(outs[i]) & Node.DOCUMENT_POSITION_FOLLOWING) { slot = outs[i]; break; } }
+    slot = slot || outs[outs.length - 1];
+    card.querySelectorAll('.sel').forEach(function (x) { x.classList.remove('sel'); });
+    m.classList.add('sel');
+    if (slot) { slot.textContent = m.getAttribute('data-tip'); slot.classList.remove('muted'); }
+  });
+  document.addEventListener('click', function (ev) {
+    var t = ev.target.closest('[data-hday], [data-fun="healthAI"], [data-fun="copyHook"]');
+    if (!t || !S) return;
+    if (t.dataset.fun === 'copyHook') {
+      var u = H().webhook;
+      if (navigator.clipboard) navigator.clipboard.writeText(u).then(function () { toast('Copied. Paste it into HC Webhook.'); }, function () { toast('Press and hold the address to copy it.'); });
+      else toast('Press and hold the address to copy it.');
+      return;
+    }
+    if (t.dataset.fun === 'healthAI') { toast('Reading your numbers…'); return call('healthInsight', [H().date], function (x) { H().insight = x; renderHealth(); }); }
+    var cur = H().date, dt = new Date(cur + 'T12:00:00');
+    dt.setDate(dt.getDate() + Number(t.dataset.hday));
+    var ymd = dt.getFullYear() + '-' + ('0' + (dt.getMonth() + 1)).slice(-2) + '-' + ('0' + dt.getDate()).slice(-2);
+    if (ymd > S.health.today) return;
+    if (ymd === S.health.today) { hview = null; return renderHealth(); }
+    call('healthDay', [ymd], function (h) { hview = h; renderHealth(); window.scrollTo(0, 0); });
+  });
+
   // ---------- rendering + tabs ----------
   function renderAll() {
     if (!S) return;
     var keep = {}, focused = document.activeElement && document.activeElement.id;
     document.querySelectorAll('main input[id], main textarea[id]').forEach(function (i) { if (i.type !== 'password') keep[i.id] = i.value; });
-    renderHome(); renderChores(); renderPlay(); renderYou();
+    renderHome(); renderChores(); renderPlay(); renderYou(); renderHealth();
     if (ME) { renderTrain(); renderFood(); }
     Object.keys(keep).forEach(function (id) { var i = el(id); if (i && keep[id]) i.value = keep[id]; });
     if (focused && el(focused)) el(focused).focus();
@@ -1439,6 +1712,11 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     }
     // train
     if (ds.tsel) { tsel = ds.tsel; save('tsel-' + S.today.date, tsel); return renderTrain(); }
+    if (ds.setsession !== undefined) {
+      var ns = ds.setsession;
+      if (ds.rest && !confirm('Make today a rest day? Your gym event and task are removed.')) return;
+      return call('setTodaySession', [ns], function (res) { if (ns) { tsel = ns; save('tsel-' + S.today.date, tsel); } apply(res, ns ? 'Today is now ' + ns + '.' : 'Rest day. Recover well.'); });
+    }
     if (ds.r) { var d = draft(); d[ds.r] = d[ds.r] || {}; var cur = d[ds.r].reps; if (cur === undefined) cur = +t.parentNode.querySelector('span').textContent; d[ds.r].reps = Math.max(0, cur + +ds.d); saveDraft(d); return renderTrain(); }
     if (ds.set) {
       var dd = draft(), k = ds.set;
@@ -1613,7 +1891,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     if (!load('badges-' + S.who)) save('badges-' + S.who, S.game.badges.filter(function (b) { return b.earned; }).map(function (b) { return b.id; }));
     renderAll();
     var hash = location.hash.replace('#', '');
-    showTab(['home', 'chores', 'play', 'train', 'food', 'you'].indexOf(hash) !== -1 ? hash : (window.LQ_TAB || load('tab') || 'home'));
+    showTab(['home', 'chores', 'play', 'train', 'food', 'health', 'you'].indexOf(hash) !== -1 ? hash : (window.LQ_TAB || load('tab') || 'home'));
     lastBoost = !!boostLeft();
     setTimeout(intro, 250);
     if (!S.brief && S.hasClaudeKey) rpc('getBrief', []).then(function (b) { if (b) { S.brief = b; renderHome(); } }, function () {});

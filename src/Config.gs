@@ -36,6 +36,8 @@ var DEFAULT_SETTINGS = [
   ['Team name', 'Yazzy & Deany', 'The two of you, together'],
   ['Your level titles', 'DJ', 'Names for your levels: DJ, Ye or None'],
   ['Partner level titles', 'Ye', 'Names for your partner\'s levels: DJ, Ye or None'],
+  ['Step goal', '7000', 'Steps a day (Health page)'],
+  ['Sleep goal (hours)', '8', 'Hours of sleep you aim for (Health page and sleep score)'],
   ['Daily challenges', 'TRUE', 'Three small goals a day each, for bonus XP'],
   ['Double XP', 'TRUE', 'A surprise half hour of double XP each day, with a notification'],
   ['Reminders', 'TRUE', 'Evening nudges when a streak is at risk'],

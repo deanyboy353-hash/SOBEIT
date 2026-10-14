@@ -26,6 +26,7 @@ var TABS = {
   workoutLog: 'Workout log',
   tmHistory: 'TM history',
   games: 'Games',
+  health: 'Health',
   inbox: 'Inbox',
   log: 'Log'
 };
@@ -44,6 +45,8 @@ var HEADERS = {
   workoutLog: ['Date', 'Session', 'Exercise', 'Tier', 'Set', 'Weight (kg)', 'Reps', 'Target', 'e1RM'],
   tmHistory: ['Date', 'Lift', 'Old TM', 'New TM', 'Change', '1+ reps'],
   games: ['Date', 'Time', 'Who', 'Game', 'Score', 'Detail'],
+  health: ['Date', 'Who', 'Steps', 'Distance (km)', 'Active kcal', 'Resting HR', 'HRV (ms)', 'SpO2 (%)', 'Breathing (rpm)', 'Sleep (min)', 'Deep (min)',
+    'Light (min)', 'REM (min)', 'Awake (min)', 'Sleep score', 'Readiness', 'Bedtime', 'Wake', 'Updated', 'Detail'],
   inbox: ['Received at', 'Source', 'Body'],
   log: ['Time', 'Level', 'Message']
 };

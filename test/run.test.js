@@ -215,10 +215,10 @@ test('web app: rejects a wrong key, stores a good request in Inbox', () => {
   const bad = JSON.parse(g.ctx.doPost({ parameter: { key: 'nope' }, postData: { contents: '{}' } }).text);
   assert.strictEqual(bad.ok, false);
   const key = g.state.props.WEBAPP_KEY;
-  const good = JSON.parse(g.ctx.doPost({ parameter: { key, source: 'health' }, postData: { contents: '{"steps":1234}' } }).text);
+  const good = JSON.parse(g.ctx.doPost({ parameter: { key, source: 'geofence' }, postData: { contents: '{"steps":1234}' } }).text);
   assert.strictEqual(good.ok, true);
   const inbox = g.tab('Inbox').rows();
-  assert.deepStrictEqual(inbox[1].slice(1), ['health', '{"steps":1234}']);
+  assert.deepStrictEqual(inbox[1].slice(1), ['geofence', '{"steps":1234}']);
   const cfg = g.tab('Config').rows();
   assert.strictEqual(cfg.find(r => r[0] === 'Web app key')[1], key);
 });

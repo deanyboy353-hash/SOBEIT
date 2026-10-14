@@ -84,10 +84,18 @@ function trainState_() {
   var day = cfg.schedule[dow];
   var sessions = Object.keys(readProgramme_());
   Object.keys(cfg.sessions).forEach(function (s) { if (sessions.indexOf(s) === -1) sessions.push(s); });
-  var todaySession = day && day.train ? day.session : '';
+  var todaySession = todaySession_(today, cfg);
   var doneToday = rowsBetween_('workoutLog', today, today).length > 0;
+  // What comes next if you just go in order (handy when the week went sideways).
+  var logged = rowsBetween_('workoutLog', addDays_(today, -60), addDays_(today, -1));
+  var last = logged.length ? String(logged[logged.length - 1]['Session']) : '';
+  var order = sessions.filter(function (s) { return readProgramme_()[s]; });
+  var next = last && order.indexOf(last) !== -1 ? order[(order.indexOf(last) + 1) % order.length] : '';
   return {
     today: todaySession,
+    planned: day && day.train ? day.session : '',
+    changed: todaySession !== (day && day.train ? day.session : ''),
+    last: last, next: next,
     sessions: sessions,
     plans: sessions.reduce(function (o, s) { o[s] = workoutPlan_(s); return o; }, {}),
     doneToday: doneToday,
@@ -187,8 +195,39 @@ function saveWorkout(key, session, sets) {
     // Best PR only, once per workout, so the XP stays sensible.
     var bestPr = prs.sort(function (a, b) { return b.e1rm - a.e1rm; })[0];
     if (bestPr) addXp_('me', 'PR: ' + bestPr.exercise + ' ' + bestPr.weight + '×' + bestPr.reps, 25, 'pr');
+    if (session !== todaySession_(today)) useSession_(today, session);
     completeTracked_('gym', today);
     onGymTaskDone_({ completed: new Date().toISOString() }, { date: today });
     return { changes: changes, prs: prs, state: appState_('me') };
+  });
+}
+
+/** Remember today's session and fix the gym row and Google Task to match. */
+function useSession_(ymd, session) {
+  setProp_('GYM_TODAY', JSON.stringify({ date: ymd, session: session }));
+  var r = findRow_('gym', 'Date', ymd);
+  if (r && session) updateRow_('gym', r, { 'Session': session });
+  var t = tracked_();
+  Object.keys(t).forEach(function (id) {
+    if (t[id].type !== 'gym' || t[id].date !== ymd || t[id].done) return;
+    try {
+      if (session) Tasks.Tasks.patch({ title: 'Gym done: ' + session }, TASK_LIST, id);
+      else { Tasks.Tasks.remove(TASK_LIST, id); delete t[id]; saveTracked_(t); }
+    } catch (e) { log_('WARN', 'Gym task: ' + e); }
+  });
+}
+
+/** Change today's workout (or make it a rest day: session ''). Moves the calendar event too. */
+function setTodaySession(key, session) {
+  requireKey_(key);
+  session = String(session || '');
+  return withLock_(function () {
+    var today = todayYmd_(), cfg = readConfig_();
+    if (session && !readProgramme_()[session] && !cfg.sessions[session]) throw new Error('No session called "' + session + '".');
+    var r = findRow_('gym', 'Date', today);
+    if (r && /^Done/.test(String(readRow_('gym', r)['Status'] || ''))) throw new Error('Today\'s workout is already logged.');
+    useSession_(today, session);
+    try { planGymDay_(today, cfg); } catch (e) { log_('WARN', 'Re-planning the gym day: ' + e); }
+    return appState_('me');
   });
 }

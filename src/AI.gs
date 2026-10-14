@@ -29,6 +29,11 @@ function dayContext_(who) {
   var lines = ['Date: ' + todayYmd_() + ' (' + DAY_NAMES[dayOfWeek_(todayYmd_())] + ')',
     'Streak: ' + g.streak.count + ' days. XP today ' + g.xpToday + ' of ' + g.goal + '.',
     'Today\'s chores: ' + (q.board.map(function (x) { return x.name + (x.doneToday ? ' (done)' : '') + ' ~' + x.minutes + 'min'; }).join('; ') || 'none')];
+  try {
+    var hs = healthState_(who);
+    if (hs.sleep) lines.push('Last night: ' + hm_(hs.sleep.asleep) + ' asleep (' + hs.sleep.bedtime + '-' + hs.sleep.wake + '), sleep score ' + hs.sleep.score + (hs.readiness ? ', readiness ' + hs.readiness.score + ' (' + hs.readiness.label + ')' : '') + '.');
+    if (hs.steps) lines.push('Steps so far: ' + hs.steps + ' of ' + hs.goals.steps + '.');
+  } catch (e) { /* health optional */ }
   if (who === 'me') {
     var t = todayState_();
     if (t.gym) lines.push('Gym: ' + t.gym.session + (t.gym.travel ? ', ' + t.gym.travel + ', leave ' + t.gym.leaveAt : '') + (t.gym.weather ? '. Weather: ' + t.gym.weather : '') + (t.gym.done ? ' (done)' : ''));
