@@ -840,3 +840,10 @@ body.dress-open { overflow: hidden; }
 .wk-bp { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--k); border-radius: 0 3px 3px 0; }
 .stat.cashrow { min-height: 32px; width: 100%; }
 @media (min-width: 960px) { nav.tabs .navinstall[hidden] { display: none; } nav.tabs .djnav { margin-top: auto; } nav.tabs .navinstall { margin-top: auto; } nav.tabs .navinstall:not([hidden]) + .djnav { margin-top: 6px; } }
+#toast.act { display: flex; align-items: center; gap: 12px; }
+.toastbtn { margin-left: auto; flex: none; background: transparent; color: var(--pink-mid); font-weight: 750; font-size: 15px; padding: 4px 6px; border-radius: 8px; text-transform: uppercase; letter-spacing: .04em; }
+.fooditem { gap: 6px; padding-right: 0; }
+.foodrow { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; text-align: left; padding: 2px 0; color: inherit; }
+.foodrow .grow { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.fooditem .iconbtn.sm { width: 32px; height: 32px; flex: none; color: var(--muted); }
+#foodEdit input { width: 100%; box-sizing: border-box; margin-top: 4px; }

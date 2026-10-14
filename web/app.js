@@ -92,12 +92,22 @@
     'gym-1': 'dumbbell', 'gym-10': 'dumbbell', 'gym-50': 'dumbbell', pr: 'trophy', 'weigh-8': 'scale', 'routine-7': 'sun', 'protein-7': 'food', 'cover-5': 'heart', 'hi5-10': 'heart', brain: 'bulb', 'level-5': 'star', 'level-10': 'star', 'create-1': 'music', 'create-20': 'disc', 'chest-7': 'gift', boost: 'bolt' };
 
   var toastTimer;
-  function toast(msg, isErr) {
+  function toast(msg, isErr, action) {
     var t = el('toast');
     t.textContent = msg;
-    t.className = 'show' + (isErr ? ' err' : '');
+    if (action) { var b = document.createElement('button'); b.type = 'button'; b.className = 'toastbtn'; b.textContent = action.label; b.onclick = function () { t.className = ''; action.fn(); }; t.appendChild(b); }
+    t.className = 'show' + (isErr ? ' err' : '') + (action ? ' act' : '');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { t.className = isErr ? 'err' : ''; }, isErr ? 6000 : 2800);
+    toastTimer = setTimeout(function () { t.className = isErr ? 'err' : ''; }, isErr ? 6000 : action ? 7000 : 2800);
+  }
+  // After anything undoable (a chore, a work block, a deadline, food), the message carries an Undo button.
+  var undoSeen = '';
+  function offerUndo(u, msg) {
+    if (!u || u.id === undoSeen) return;
+    undoSeen = u.id;
+    toast(msg || 'Done: ' + u.label, false, { label: 'Undo', fn: function () {
+      rpc('undoAction', []).then(function (res) { apply(res.state); if (S.food && res.state.food) S.food = res.state.food; renderAll(); toast('Undone: ' + res.undone); }, function (e) { toast(e.message, true); });
+    } });
   }
   var audio;
   document.addEventListener('pointerdown', function () {
@@ -165,6 +175,7 @@
     celebrate(prev, S);
     renderAll();
     if (msg) toast(msg);
+    if (S.undo && prev && (!prev.undo || prev.undo.id !== S.undo.id) && Date.now() + offset - S.undo.at < 20000) offerUndo(S.undo, msg);
   }
   // Quick taps: update the screen now, save in the background, undo if it fails.
   function quick(change, fn, args, msg) {
@@ -175,7 +186,7 @@
     inflight++;
     rpc(fn, args).then(function (res) {
       inflight--;
-      if (!inflight && !busy && res && res.game) { S = res; offset = res.now - Date.now(); save('state-' + KEY.slice(0, 6), S); renderAll(); }
+      if (!inflight && !busy && res && res.game) { var hadUndo = S.undo; S = res; offset = res.now - Date.now(); save('state-' + KEY.slice(0, 6), S); renderAll(); if (res.undo && (!hadUndo || hadUndo.id !== res.undo.id)) offerUndo(res.undo, msg); }
     }, function (err) { inflight--; S = JSON.parse(before); renderAll(); toast(err.message || String(err), true); });
   }
   function addXpLocal(xp) {
@@ -691,7 +702,9 @@
     h += '<div class="grid2" id="presets" style="margin-bottom:12px">' + F.presets.map(function (p, i) { return '<button class="preset" type="button" data-preset="' + i + '">' + esc(p.name) + '<small>' + fmt(p.kcal) + ' kcal · ' + fmt(p.protein) + 'g</small></button>'; }).join('') + '</div>';
     var rows = pending.map(function (p) { return { time: '…', item: p.name, kcal: p.kcal, protein: p.protein, pending: true }; }).concat(F.entries.slice().reverse());
     h += '<section class="card entries"><div class="head"><h3>Today</h3><button class="btn ghost sm" type="button" id="undo"' + (F.entries.length ? '' : ' disabled') + '>' + icon('undo', 's') + 'Undo last</button></div>' +
-      (rows.length ? rows.map(function (e) { return '<div class="item' + (e.pending ? ' pending' : '') + '"><span class="tm">' + esc(e.time) + '</span><span class="grow">' + esc(e.item) + '</span><span class="v">' + fmt(e.kcal) + ' · ' + fmt(e.protein) + 'g</span></div>'; }).join('') : '<p class="empty">Nothing yet today.</p>') + '</section>';
+      (rows.length ? rows.map(function (e) { return e.pending ? '<div class="item pending"><span class="tm">' + esc(e.time) + '</span><span class="grow">' + esc(e.item) + '</span><span class="v">' + fmt(e.kcal) + ' · ' + fmt(e.protein) + 'g</span></div>' :
+        '<div class="item fooditem"><button type="button" class="foodrow" data-fedit="' + esc(e.entry) + '" data-fitem="' + esc(e.item) + '"><span class="tm">' + esc(e.time) + '</span><span class="grow">' + esc(e.item) + '</span><span class="v">' + fmt(e.kcal) + ' · ' + fmt(e.protein) + 'g</span></button>' +
+        '<button type="button" class="iconbtn sm" data-fdel="' + esc(e.entry) + '" data-fitem="' + esc(e.item) + '" aria-label="Remove ' + esc(e.item) + '">' + icon('x', 's') + '</button></div>'; }).join('') + '<p class="tiny muted" style="margin:8px 0 0">Tap an item to change it, or the cross to remove it.</p>' : '<p class="empty">Nothing yet today.</p>') + '</section>';
     h += '<p class="small muted center">Edit the quick-add buttons and targets in your Sheet.</p>';
     el('tab-food').innerHTML = h;
   }
@@ -717,7 +730,7 @@
       '<p class="small muted" style="margin:8px 0 0">This month you\'ve done ' + Math.round(mo[me] / tot * 100) + '% of the shared XP.</p></section>';
     h += '<section class="card"><div class="head"><h3 class="row" style="gap:8px">' + icon('cart', 's') + 'Shopping</h3></div><form class="inline" id="shopForm" autocomplete="off"><input type="text" id="shopText" placeholder="Eggs, bin bags…" aria-label="Add to the list"><button class="btn primary" type="submit">Add</button></form>' +
       (ME && S.food && S.food.totals.protein < S.food.targets.proteinMin ? '<div class="chips" style="margin-top:10px">' + ['Greek yogurt', 'Chicken breast', 'Eggs', 'Tinned tuna', 'Cottage cheese'].map(function (x) { return '<button class="chip pink" type="button" data-addshop="' + x + '">' + icon('plus', 's') + x + '</button>'; }).join('') + '</div>' : '') +
-      '<div style="margin-top:6px">' + (S.shopping.length ? S.shopping.map(function (it) { return '<div class="item' + (it.got ? ' done' : '') + '"><button class="check' + (it.got ? ' on' : '') + '" type="button" data-shop="' + esc(it.id) + '" aria-label="Got it">' + icon('check') + '</button><div class="t grow" style="font-weight:500">' + esc(it.item) + '</div></div>'; }).join('') : '<p class="empty">The list is empty.</p>') + '</div></section>';
+      '<div style="margin-top:6px">' + (S.shopping.length ? S.shopping.map(function (it) { return '<div class="item' + (it.got ? ' done' : '') + '"><button class="check' + (it.got ? ' on' : '') + '" type="button" data-shop="' + esc(it.id) + '" aria-label="Got it">' + icon('check') + '</button><div class="t grow" style="font-weight:500">' + esc(it.item) + '</div><button class="iconbtn sm" type="button" data-shopdel="' + esc(it.id) + '" aria-label="Remove ' + esc(it.item) + '">' + icon('x', 's') + '</button></div>'; }).join('') : '<p class="empty">The list is empty.</p>') + '</div></section>';
     h += '<section class="card"><div class="head"><h3 class="row" style="gap:8px">' + icon('gift', 's') + 'Rewards</h3></div>' + g.rewards.map(function (r) {
       return '<div class="item"><div class="grow t" style="font-weight:500">' + esc(r.name) + '</div><button class="btn ' + (g.balance >= r.cost ? 'primary' : 'line') + ' sm" type="button" data-reward="' + esc(r.name) + '"' + (g.balance >= r.cost ? '' : ' disabled') + '>' + r.cost + ' XP</button></div>';
     }).join('') + '<p class="tiny muted" style="margin:8px 0 0">Add your own treats in the Rewards tab of your Sheet. Spending never lowers your level.</p></section>';
@@ -974,6 +987,12 @@
     if (f === 'tonightYes' || f === 'tonightNo') return call('answerTonight', [f === 'tonightYes'], function (res) { apply(res, f === 'tonightYes' ? 'Said yes' : 'Rain check sent'); });
     if (f === 'stakes') return stakeSheet();
     if (f === 'tempoGo') return tempoGo();
+  });
+  document.addEventListener('submit', function (ev) {
+    if (ev.target.id !== 'foodEdit') return;
+    ev.preventDefault();
+    var f = ev.target;
+    call('editFood', [f.dataset.entry, f.dataset.item, { item: el('feItem').value, kcal: +el('feKcal').value, protein: +el('feProt').value }], function (res) { closeSheet(); S.food = res.state; renderFood(); toast('Saved'); });
   });
   document.addEventListener('submit', function (ev) {
     if (ev.target.id !== 'stakeForm') return;
@@ -2459,13 +2478,24 @@
       var p = S.food.presets[+ds.preset], mine = { name: p.name, kcal: p.kcal, protein: p.protein };
       pending.push(mine); renderFood(); buzz(15);
       var drop = function () { pending.splice(pending.indexOf(mine), 1); };
-      rpc('logPreset', [p.name]).then(function (res) { drop(); S.food = res.state; renderFood(); toast('Logged ' + itemsText(res.added)); }, function (err) { drop(); renderFood(); toast(err.message, true); });
+      rpc('logPreset', [p.name]).then(function (res) { drop(); S.food = res.state; renderFood(); offerUndo(res.undo, 'Logged ' + itemsText(res.added)); }, function (err) { drop(); renderFood(); toast(err.message, true); });
       return;
     }
     if (t.id === 'undo') return call('undoLast', [], function (res) { S.food = res.state; renderFood(); toast('Removed ' + res.removed.join(', ')); });
+    if (ds.shopdel) return quick(function () { S.shopping = S.shopping.filter(function (x) { return x.id !== ds.shopdel; }); }, 'removeShopping', [ds.shopdel], 'Removed');
+    if (ds.fdel) return call('removeFood', [ds.fdel, ds.fitem], function (res) { closeSheet(); S.food = res.state; renderFood(); toast('Removed ' + ds.fitem); });
+    if (ds.fedit) {
+      var fe = S.food.entries.filter(function (x) { return x.entry === ds.fedit && x.item === ds.fitem; })[0]; if (!fe) return;
+      sheetKind = 'food';
+      openSheet('<h3 style="margin:0 0 10px">Change this</h3><form id="foodEdit" data-entry="' + esc(fe.entry) + '" data-item="' + esc(fe.item) + '" autocomplete="off">' +
+        '<label class="small">What<input type="text" id="feItem" value="' + esc(fe.item) + '"></label>' +
+        '<div class="grid2" style="margin-top:8px"><label class="small">kcal<input type="number" inputmode="numeric" id="feKcal" value="' + fe.kcal + '" min="0"></label><label class="small">Protein (g)<input type="number" inputmode="decimal" step="0.5" id="feProt" value="' + fe.protein + '" min="0"></label></div>' +
+        '<div class="grid2" style="margin-top:12px"><button class="btn line" type="button" data-fdel="' + esc(fe.entry) + '" data-fitem="' + esc(fe.item) + '">' + icon('trash', 's') + 'Remove</button><button class="btn primary" type="submit">Save</button></div></form>');
+      return;
+    }
     if (t.id === 'ideas') { toast('Thinking of ideas…'); return call('mealIdeas', [], function (list) { ideas = list; renderFood(); }); }
     if (t.id === 'ideasClose') { ideas = null; return renderFood(); }
-    if (ds.idea !== undefined) { var idea = ideas[+ds.idea]; return call('logIdea', [idea], function (res) { S.food = res.state; ideas = null; renderFood(); toast('Logged ' + idea.name); }); }
+    if (ds.idea !== undefined) { var idea = ideas[+ds.idea]; return call('logIdea', [idea], function (res) { S.food = res.state; ideas = null; renderFood(); offerUndo(res.undo, 'Logged ' + idea.name); }); }
     // you
     if (ds.reward) return call('redeemReward', [ds.reward], function (res) { confetti(true); apply(res, 'Enjoy: ' + ds.reward); });
     if (ds.addshop) return call('addShopping', [ds.addshop], function (res) { apply(res, 'Added ' + ds.addshop); });
@@ -2528,7 +2558,7 @@
     if (f.id === 'quick') {
       var text = el('quickText').value.trim(); if (!text) { toast('Type what you ate, like "2 eggs on toast"'); return; }
       el('quickBtn').disabled = true; el('quickNote').textContent = 'Working it out…';
-      return call('quickAdd', [text], function (res) { el('quickText').value = ''; S.food = res.state; renderFood(); toast('Logged ' + itemsText(res.added)); }, function () { renderFood(); });
+      return call('quickAdd', [text], function (res) { el('quickText').value = ''; S.food = res.state; renderFood(); offerUndo(res.undo, 'Logged ' + itemsText(res.added)); }, function () { renderFood(); });
     }
     if (f.id === 'keyForm') { var val = el('keyText').value.trim(); if (!val) { toast('Paste your Claude key first'); return; } return call('saveClaudeKey', [val], function (s) { el('keyText').value = ''; S.food = s; S.hasClaudeKey = true; renderAll(); toast('Claude key saved.'); }); }
     if (f.id === 'nudgeForm') { var nt = el('nudgeText').value.trim(); if (!nt) { toast('Type a message, or tap one above'); return; } return call('sendNudge', [nt], function (r) { closeSheet(); toast(r.delivered ? 'Sent' : 'Couldn\'t reach them right now'); }); }

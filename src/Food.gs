@@ -64,8 +64,8 @@ function logPreset(key, name) {
   return withLock_(function () {
     var preset = readPresets_().filter(function (p) { return p.name === name; })[0];
     if (!preset) throw new Error('"' + name + '" is no longer in your Presets tab. Close and reopen the page to refresh.');
-    addFood_([preset], 'preset');
-    return { state: foodState_(), added: [preset] };
+    undoable_('me', preset.name, function () { addFood_([preset], 'preset'); });
+    return { state: foodState_(), added: [preset], undo: undoInfo_('me') };
   });
 }
 
@@ -76,9 +76,44 @@ function quickAdd(key, text) {
   var items = estimateFood_(text, readPresets_(), String(readConfig_().settings['Claude model'] || '').trim() || CLAUDE_DEFAULT_MODEL);
   if (!items.length) throw new Error("Couldn't find any food in that. Try e.g. \"2 eggs on toast\".");
   return withLock_(function () {
-    addFood_(items, 'quick-add: ' + text);
-    return { state: foodState_(), added: items };
+    undoable_('me', text.slice(0, 40), function () { addFood_(items, 'quick-add: ' + text); });
+    return { state: foodState_(), added: items, undo: undoInfo_('me') };
   });
+}
+
+/** Remove one food item from today (the n-th row of that entry with that name). */
+function removeFood(key, entry, item) {
+  requireKey_(key);
+  return withLock_(function () {
+    var row = foodRowFor_(entry, item);
+    if (!row) throw new Error('That item has gone already.');
+    sheet_('food').deleteRow(row); forget_('food');
+    return { state: foodState_() };
+  });
+}
+
+/** Fix one food item: name, kcal or protein. */
+function editFood(key, entry, item, ch) {
+  requireKey_(key);
+  ch = ch || {};
+  return withLock_(function () {
+    var row = foodRowFor_(entry, item);
+    if (!row) throw new Error('That item has gone already.');
+    var up = {};
+    if (String(ch.item || '').trim()) up['Item'] = String(ch.item).trim().slice(0, 80);
+    if (ch.kcal !== undefined && isFinite(ch.kcal) && ch.kcal >= 0 && ch.kcal < 5000) up['kcal'] = Math.round(Number(ch.kcal));
+    if (ch.protein !== undefined && isFinite(ch.protein) && ch.protein >= 0 && ch.protein < 400) up['Protein (g)'] = Math.round(Number(ch.protein) * 10) / 10;
+    updateRow_('food', row, up);
+    return { state: foodState_() };
+  });
+}
+
+function foodRowFor_(entry, item) {
+  var v = vals_('food'), map = headerMap_('food'), today = todayYmd_();
+  for (var i = v.length - 1; i >= 1; i--) {
+    if (String(v[i][map['Entry']]) === String(entry) && String(v[i][map['Item']]) === String(item) && String(v[i][map['Date']]).slice(0, 10) === today) return i + 1;
+  }
+  return 0;
 }
 
 /** Removes the most recent entry (all rows from one tap or one quick-add), today only. */

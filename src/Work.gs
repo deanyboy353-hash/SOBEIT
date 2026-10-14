@@ -124,7 +124,8 @@ function addBlock(key, text, ymd, startMin) {
       var from = day === today ? Math.max(hours.start, minutesNow_()) : hours.start;
       p.start = placeBlock(blockRows_(who, day).filter(function (x) { return x.status !== 'skipped'; }), p.mins, from);
     }
-    var id = addBlock_(who, day, p);
+    var id = undoable_(who, 'Added: ' + p.task, function () { return addBlock_(who, day, p); });
+    var u = JSON.parse(prop_('UNDO_' + who)); u.restore = { block: { id: id, values: { 'Status': 'deleted' } } }; setProp_('UNDO_' + who, JSON.stringify(u));
     return workResult_(who, day, { added: { id: id, task: p.task, start: p.start, mins: p.mins, kind: p.kind, placed: placed, date: day } });
   });
 }
@@ -191,7 +192,10 @@ function countBlock(key, id, delta) {
     var up = { 'Count': b.count };
     if (b.status === 'planned' || b.status === 'skipped') { up['Status'] = 'active'; if (!b.startedAt) up['Started (ms)'] = new Date().getTime(); b.startedAt = b.startedAt || up['Started (ms)']; }
     updateRow_('blocks', r, up);
-    if (was < b.target && b.count >= b.target) return workResult_(who, ymd, Object.assign({ hit: true, count: b.count }, finishBlock_(who, r, b, ymd)));
+    if (was < b.target && b.count >= b.target) {
+      var snap = { block: { id: b.id, values: { 'Status': 'active', 'Done (ms)': '', 'XP': '', 'Count': was } }, clean: ymd };
+      return workResult_(who, ymd, Object.assign({ hit: true, count: b.count }, undoable_(who, b.task, function () { return finishBlock_(who, r, b, ymd); }, snap)));
+    }
     return workResult_(who, ymd, { xp: 0, count: b.count });
   });
 }
@@ -208,7 +212,8 @@ function blockAction(key, id, action) {
       if (b.status === 'planned' || b.status === 'skipped') updateRow_('blocks', r, { 'Status': 'active', 'Started (ms)': now });
     } else if (action === 'done') {
       if (b.status === 'done') return workResult_(who, ymd, { xp: 0 });
-      return workResult_(who, ymd, finishBlock_(who, r, b, ymd));
+      var snap = { block: { id: b.id, values: { 'Status': b.status, 'Done (ms)': '', 'XP': '', 'Started (ms)': b.startedAt || '', 'Count': b.target ? b.count : '' } }, clean: ymd };
+      return workResult_(who, ymd, undoable_(who, b.task, function () { return finishBlock_(who, r, b, ymd); }, snap));
     } else if (action === 'skip') {
       if (b.status !== 'done') updateRow_('blocks', r, { 'Status': 'skipped' });
     } else if (action === 'reopen') {

@@ -274,7 +274,7 @@ function finishChore(key, result) {
       else clearPartnerAlarm_();
       saveSession_(p, null);
     } else if (s) {
-      closeSession_(p, s, result === 'Stopped' ? 'Stopped' : 'Done');
+      undoable_(p, s.task, function () { closeSession_(p, s, result === 'Stopped' ? 'Stopped' : 'Done'); }, choreSnap_(s.task));
     }
     return appState_(p);
   });

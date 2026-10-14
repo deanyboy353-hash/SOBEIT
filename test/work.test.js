@@ -224,3 +224,90 @@ test('Work: counted blocks ("Queue 40 emails"): progress, hitting the target pay
   g.ctx.setPrefs(me, { workKit: ['Edit 2h', '  ', 'Queue 60 emails'] });
   assert.deepStrictEqual(plain(g.ctx.workState(me).kit), ['Edit 2h', 'Queue 60 emails']);
 });
+
+test('Undo: chores, work blocks (with clean sheet), deadlines and food all come back exactly', () => {
+  const { g, me, partner } = ready();
+  const xp = who => g.ctx.xpTotal_(who), cash = who => g.ctx.cashOf_(who);
+  const x0 = xp('me'), c0 = cash('me');
+  const chore = g.ctx.choresState(me).today ? null : null;
+  const name = g.ctx.readChores_()[0].name;
+  const before = plain(g.ctx.readRow_('chores', g.ctx.readChores_()[0].row));
+  let s = g.ctx.questDone(me, name);
+  assert.ok(xp('me') > x0);
+  assert.strictEqual(s.undo.label, name);
+  s = g.ctx.undoAction(me).state;
+  assert.strictEqual(xp('me'), x0, 'XP back');
+  assert.strictEqual(cash('me'), c0, 'cash back');
+  const after = plain(g.ctx.readRow_('chores', g.ctx.readChores_()[0].row));
+  assert.strictEqual(after['Last done'], before['Last done']);
+  assert.strictEqual(after['Next due'], before['Next due']);
+  assert.throws(() => g.ctx.undoAction(me), /Nothing to undo/);
+  g.ctx.questDone(me, name);   // can do it again properly
+  // a together chore undoes both people's XP
+  const t = g.ctx.readChores_().find(q => q.name === 'Make the bed');
+  const px = xp('partner');
+  g.ctx.questDone(partner, 'Make the bed', true);
+  g.ctx.undoAction(partner);
+  assert.strictEqual(xp('partner'), px);
+  // work: the block that completes a clean sheet
+  g.ctx.planDay(me, 'A 9-9:30\nB 9:30-10\nC 10-10:30');
+  let w = g.ctx.workState(me);
+  g.ctx.blockAction(me, w.blocks[0].id, 'done'); g.ctx.blockAction(me, w.blocks[1].id, 'done');
+  const x1 = xp('me');
+  let r = g.ctx.blockAction(me, w.blocks[2].id, 'done');
+  assert.strictEqual(r.clean, 25);
+  r = g.ctx.undoAction(me);
+  w = g.ctx.workState(me);
+  assert.strictEqual(w.blocks[2].status, 'planned');
+  assert.strictEqual(w.clean, false);
+  assert.strictEqual(xp('me'), x1);
+  // counted block: undo the hit, the count goes back
+  r = g.ctx.addBlock(me, 'Queue 10 emails 11-12');
+  g.ctx.countBlock(me, r.added.id, 5); g.ctx.countBlock(me, r.added.id, 5);
+  g.ctx.undoAction(me);
+  const cb = g.ctx.workState(me).blocks.find(b => b.id === r.added.id);
+  assert.deepStrictEqual([cb.status, cb.count], ['active', 5]);
+  // deadline: park costs 10 and saves it for later; undo puts it all back
+  g.ctx.addDeadline(me, 'Call the bank by 3pm');
+  const d = g.ctx.deadlinesState_('me')[0];
+  const x2 = xp('me');
+  g.ctx.deadlineAction(me, d.id, 'park');
+  assert.strictEqual(g.ctx.deadlinesState_('me').length, 0);
+  g.ctx.undoAction(me);
+  assert.strictEqual(g.ctx.deadlinesState_('me')[0].task, 'Call the bank');
+  assert.strictEqual(xp('me'), x2);
+  assert.ok(!g.ctx.laterState_ || !JSON.stringify(g.ctx.appState(me)).includes('Call the bank (was due'), 'Later list tidied');
+});
+
+test('Food: remove or fix any item, and undo the last log', () => {
+  const { g, me } = ready();
+  const names = g.ctx.readPresets_().map(p => p.name);
+  g.ctx.logPreset(me, names[0]);
+  let s = g.ctx.logPreset(me, names[1]);
+  assert.strictEqual(s.undo.label, names[1]);
+  let f = g.ctx.foodState_();
+  assert.strictEqual(f.entries.length, 2);
+  const e = f.entries[0];
+  s = g.ctx.editFood(me, e.entry, e.item, { kcal: 123, protein: 9.5, item: 'Smaller bowl' });
+  assert.deepStrictEqual([s.state.entries[0].item, s.state.entries[0].kcal, s.state.entries[0].protein], ['Smaller bowl', 123, 9.5]);
+  s = g.ctx.removeFood(me, e.entry, 'Smaller bowl');
+  assert.strictEqual(s.state.entries.length, 1);
+  assert.throws(() => g.ctx.removeFood(me, e.entry, 'Smaller bowl'), /gone already/);
+  g.ctx.undoAction(me);
+  assert.strictEqual(g.ctx.foodState_().entries.length, 0, 'undo takes back the last log');
+});
+
+test('Undo after adding: a deadline or a work block added by mistake just disappears; shopping items can be removed', () => {
+  const { g, me } = ready();
+  g.ctx.addDeadline(me, 'Typo deadline by 5pm');
+  assert.strictEqual(g.ctx.deadlinesState_('me').length, 1);
+  g.ctx.undoAction(me);
+  assert.strictEqual(g.ctx.deadlinesState_('me').length, 0);
+  const r = g.ctx.addBlock(me, 'Wrong block 9-10');
+  g.ctx.undoAction(me);
+  assert.ok(!g.ctx.workState(me).blocks.some(b => b.id === r.added.id));
+  let s = g.ctx.addShopping(me, 'Eggs, Milk');
+  const id = s.shopping.find(x => x.item === 'Eggs').id;
+  s = g.ctx.removeShopping(me, id);
+  assert.deepStrictEqual(plain(s.shopping.map(x => x.item)), ['Milk']);
+});

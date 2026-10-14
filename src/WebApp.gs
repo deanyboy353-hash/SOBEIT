@@ -30,7 +30,7 @@ function rpcTable_() {
     healthDay: healthDay, healthInsight: healthInsight, importHealth: importHealth, setPrefs: setPrefs,
     addDeadline: addDeadline, deadlineAction: deadlineAction, buyItem: buyItem, upgradeItem: upgradeItem, sellItem: sellItem, setFavourite: setFavourite, saveWeekPlan: saveWeekPlan, submitMix: submitMix, submitSet: submitSet,
     workState: workState, addBlock: addBlock, planDay: planDay, updateBlock: updateBlock, blockAction: blockAction, shiftBlocks: shiftBlocks, copyPlan: copyPlan,
-    buyWear: buyWear, setLook3d: setLook3d, testPush: testPush, countBlock: countBlock
+    buyWear: buyWear, setLook3d: setLook3d, testPush: testPush, countBlock: countBlock, undoAction: undoAction, removeFood: removeFood, editFood: editFood, removeShopping: removeShopping
   };
 }
 
@@ -112,6 +112,7 @@ function appState_(who) {
   s.deadlines = deadlinesState_(who);
   s.work = workState_(who);
   s.wardrobe = wardrobeState_(who);
+  s.undo = undoInfo_(who);
   s.empire = empireState_(who);
   s.catalog = empireCatalog_();
   s.plan = planState_();

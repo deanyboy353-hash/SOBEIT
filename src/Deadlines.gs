@@ -112,7 +112,8 @@ function nagDeadlines_() {
 function addDeadline(key, text) {
   var who = who_(key);
   return withLock_(function () {
-    var d = addDeadline_(who, text);
+    var d = undoable_(who, 'Added: ' + String(text).slice(0, 40), function () { return addDeadline_(who, text); });
+    var u = JSON.parse(prop_('UNDO_' + who)); u.restore = { deadline: { id: d.id, values: { 'Status': 'removed' } } }; setProp_('UNDO_' + who, JSON.stringify(u));
     var mins = Math.round((d.due - new Date().getTime()) / 60000);
     return { added: { task: d.task, due: d.due, dueText: d.dueText, inMin: mins }, state: appState_(who) };
   });
@@ -127,6 +128,8 @@ function deadlineAction(key, id, action) {
     if (!row || row['Who'] !== who) throw new Error('That deadline has gone.');
     if (row['Status'] !== 'open') return { state: appState_(who), xp: 0 };
     var d = deadlineRows_(who).filter(function (x) { return x.id === id; })[0], now = new Date().getTime(), xp = 0;
+    var snap = { deadline: { id: id, values: { 'Status': 'open', 'Finished': '', 'XP': '', 'Due (ms)': d.due, 'Due': d.dueText, 'Last nag (ms)': d.lastNag, 'Nags': d.nags } } };
+    return undoable_(who, d.task, function () {
     if (action === 'done') {
       xp = now <= d.due ? DEADLINE_XP.onTime : DEADLINE_XP.late;
       addXp_(who, (now <= d.due ? 'On time: ' : 'Done late: ') + d.task, xp, 'deadline');
@@ -145,5 +148,6 @@ function deadlineAction(key, id, action) {
       throw new Error('Unknown action.');
     }
     return { state: appState_(who), xp: xp };
+    }, snap);
   });
 }

@@ -116,7 +116,7 @@ function questDone(key, name, together) {
     var q = readChores_().filter(function (x) { return x.name === name; })[0];
     if (!q) throw new Error('"' + name + '" is no longer in the Chores tab.');
     if (q.lastDone === todayYmd_()) throw new Error(name + ' is already done today.');
-    completeQuest_(who, name, { together: !!together });
+    undoable_(who, name + (together ? ' (together)' : ''), function () { completeQuest_(who, name, { together: !!together }); }, choreSnap_(name));
     return appState_(who);
   });
 }
@@ -250,6 +250,16 @@ function addShopping(key, text) {
   var who = who_(key);
   if (!String(text || '').trim()) throw new Error('Type what to buy.');
   return withLock_(function () { addShopping_(who, text); return appState_(who); });
+}
+
+/** Take something off the list (added by mistake, or not needed now). */
+function removeShopping(key, id) {
+  var who = who_(key);
+  return withLock_(function () {
+    var r = findRow_('shopping', 'ID', id);
+    if (r) { sheet_('shopping').deleteRow(r); forget_('shopping'); }
+    return appState_(who);
+  });
 }
 
 function toggleShopping(key, id) {

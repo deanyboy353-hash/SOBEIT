@@ -191,8 +191,8 @@ function mealIdeas(key) {
 function logIdea(key, idea) {
   requireKey_(key);
   return withLock_(function () {
-    addFood_([{ name: String(idea.name).slice(0, 80), kcal: Math.max(0, Math.round(Number(idea.kcal) || 0)), protein: Math.max(0, Math.round(Number(idea.protein) || 0)) }], 'idea');
-    return { state: foodState_(), added: [idea] };
+    undoable_('me', String(idea.name).slice(0, 40), function () { addFood_([{ name: String(idea.name).slice(0, 80), kcal: Math.max(0, Math.round(Number(idea.kcal) || 0)), protein: Math.max(0, Math.round(Number(idea.protein) || 0)) }], 'idea'); });
+    return { state: foodState_(), added: [idea], undo: undoInfo_('me') };
   });
 }
 
