@@ -582,52 +582,56 @@
     apiCall('gamesState', []).then(function (st) { dailyState = st.booth; drawDailyVs(); }, function (e) { var d = el('dailyVs'); if (d) d.textContent = e.message; });
   }
 
-  // ---------- the club scene: lights pulse to the beat, the crowd follows the quality of the mix ----------
+  // ---------- lights and the energy meter (2D, cheap: never in the way of MIDI, audio or scoring) ----------
+  // Energy reacts to the mix as it happens: bass clashes and volume holes pull it down, clean transitions and drops push it up.
+  var aids = null;   // ear-training toggles (Academy): which helpers are hidden
+  function aid(name) { if (!aids) aids = S.load('aids', { phrase: true, waves: true, energy: true }); return aids[name] !== false; }
   function sizeClub() { var c = el('club'); if (!c) return; var r = c.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1); c.width = Math.round(r.width * dpr); c.height = Math.round(r.height * dpr); }
   window.addEventListener('resize', function () { sizeClub(); sizeLanes(); });
-  var heads = []; for (var hi = 0; hi < 64; hi++) heads.push({ x: Math.random(), s: 0.7 + Math.random() * 0.6, ph: Math.random() * 6.28, hand: Math.random(), hue: Math.random() < 0.5 ? 320 : 190 });
-  heads.sort(function (a, b) { return a.s - b.s; });
+  var dbHist = [];
   function crowdUpdate(dt) {
     var e = E(); if (!e) return;
     var s = samples[samples.length - 1]; if (!s) return;
-    var loud = s.db > -35, clash = Sc.bassOn(s.A) && Sc.bassOn(s.B) && !(sess && sess.kind === 'beatmatch');
-    var target = loud ? 0.62 : 0.2; if (clash) target = 0.18;
-    crowd.e += (target - crowd.e) * Math.min(1, dt * (clash ? 0.6 : 0.08));
-    crowd.boo = clash ? Math.min(1, crowd.boo + dt * 2) : Math.max(0, crowd.boo - dt);
-    crowd.cheer = Math.max(0, crowd.cheer - dt * 0.25);
+    dbHist.push(s.db); if (dbHist.length > 120) dbHist.shift();               // ~6 s of master level
+    var recent = avgDb(dbHist.slice(-10)), before = avgDb(dbHist.slice(-90, -30));
+    var loud = s.db > -38, clash = Sc.bassOn(s.A) && Sc.bassOn(s.B) && !(sess && sess.kind === 'beatmatch');
+    var hole = loud && before > -60 && recent < before - 5, drop = before > -60 && recent > before + 4;
+    if (drop && crowd.cheer < 0.3) crowd.cheer = 0.8;
+    var target = !loud ? 0.12 : clash ? 0.15 : hole ? 0.25 : 0.62;
+    crowd.e += (target - crowd.e) * Math.min(1, dt * (clash || hole ? 1.4 : 0.25));
+    crowd.boo = clash ? Math.min(1, crowd.boo + dt * 3) : Math.max(0, crowd.boo - dt * 1.5);
+    crowd.why = clash ? 'Bass clash' : hole ? 'Volume drop' : crowd.cheer > 0.4 ? 'Going off' : loud ? 'Dancing' : 'Quiet';
+    crowd.cheer = Math.max(0, crowd.cheer - dt * 0.2);
   }
+  function avgDb(a) { if (!a.length) return -120; var p = 0; a.forEach(function (d) { p += Math.pow(10, d / 10); }); return 10 * Math.log10(p / a.length); }
   var lastClubT = 0;
   function drawClub() {
     var c = el('club'); if (!c || !c.width) return;
-    var e = E(), now = performance.now() / 1000, dt = Math.min(0.1, now - (lastClubT || now)); lastClubT = now;
+    var e = E(), now = performance.now() / 1000;
+    if (now - lastClubT < 1 / 40) return;                                      // 40 fps is plenty for lights
+    var dt = Math.min(0.1, now - (lastClubT || now)); lastClubT = now;
     crowdUpdate(dt);
-    var g = c.getContext('2d'), W = c.width, H = c.height, beat = now * 2, lead = null;
-    if (e) { var A = e.decks.A, B = e.decks.B; lead = A.playing && A.vals.volume >= B.vals.volume ? A : B.playing ? B : A.playing ? A : null; if (lead && lead.track) beat = lead.beatPos(); }
-    var ph = beat - Math.floor(beat), pulse = Math.pow(1 - ph, 3), en = crowd.e + crowd.cheer * 0.4, boo = crowd.boo, isBar = Math.floor(beat) % 4 === 0;
-    var grad = g.createLinearGradient(0, 0, 0, H); grad.addColorStop(0, boo > 0.2 ? '#2a0610' : '#140726'); grad.addColorStop(1, '#05020b'); g.fillStyle = grad; g.fillRect(0, 0, W, H);
-    // beams
-    var nb = 6, sway = reduced ? 0.15 : 0.6;
+    var g = c.getContext('2d'), W = c.width, H = c.height, beat = now * 2;
+    if (e) { var A = e.decks.A, B = e.decks.B, lead = A.playing && (A.vals.volume >= B.vals.volume || !B.playing) ? A : B.playing ? B : null; if (lead && lead.track) beat = lead.beatPos(); }
+    var ph = beat - Math.floor(beat), pulse = reduced ? 0.3 : Math.pow(1 - ph, 2.5), en = Math.min(1, crowd.e + crowd.cheer * 0.4), boo = crowd.boo, nb = 16;
+    g.fillStyle = '#07030f'; g.fillRect(0, 0, W, H);
+    // neon bars across the top: they pulse on every beat, brighter on the bar, red on a clash
+    var barH = H * 0.42, isBar = ((Math.floor(beat) % 4) + 4) % 4 === 0;
     for (var i = 0; i < nb; i++) {
-      var bx = W * (i + 0.5) / nb, ang = Math.sin(beat * Math.PI / 4 + i * 1.3) * sway, hue = boo > 0.3 ? 350 : (i % 2 ? 320 : 190), alpha = 0.06 + pulse * 0.16 * en;
-      g.save(); g.translate(bx, -10); g.rotate(ang); var lg = g.createLinearGradient(0, 0, 0, H * 1.2); lg.addColorStop(0, 'hsla(' + hue + ',100%,65%,' + (alpha * 2) + ')'); lg.addColorStop(1, 'hsla(' + hue + ',100%,60%,0)');
-      g.fillStyle = lg; g.beginPath(); g.moveTo(-4, 0); g.lineTo(4, 0); g.lineTo(W * 0.09, H * 1.2); g.lineTo(-W * 0.09, H * 1.2); g.closePath(); g.fill(); g.restore();
+      var hue = boo > 0.3 ? 350 : (i % 2 ? 318 : 188), wave = reduced ? 0.5 : 0.5 + 0.5 * Math.sin(beat * Math.PI / 2 + i * 0.7);
+      var a = 0.12 + (pulse * (isBar ? 0.85 : 0.55) * (0.4 + en)) * (0.5 + 0.5 * wave);
+      g.fillStyle = 'hsla(' + hue + ',100%,' + (50 + pulse * 15) + '%,' + Math.min(1, a) + ')';
+      var x = i * W / nb + 2, w = W / nb - 4; g.fillRect(x, 6, w, barH * (0.35 + 0.65 * wave * (0.3 + en)));
     }
-    // lasers, on when the crowd is up
-    if (en > 0.55 && !reduced) { g.strokeStyle = 'rgba(127,249,255,' + (0.25 + pulse * 0.4) + ')'; g.lineWidth = 1.2; for (var l = 0; l < 7; l++) { var a = Math.sin(beat * 0.5 + l) * 0.9; g.beginPath(); g.moveTo(W / 2, H * 0.15); g.lineTo(W / 2 + Math.sin(a) * W, H * 0.15 + Math.cos(a) * H); g.stroke(); } }
-    // strobe on the bar when it's going off
-    if (isBar && ph < 0.08 && en > 0.85 && !reduced) { g.fillStyle = 'rgba(255,255,255,.18)'; g.fillRect(0, 0, W, H); }
-    // crowd
-    heads.forEach(function (p, i) {
-      var x = p.x * W, base = H * (0.78 + (1 - p.s) * 0.1), bob = reduced ? 0 : Math.sin(beat * Math.PI * 2 + p.ph * 0.2) * 5 * en * p.s * (0.4 + pulse), r = 9 * p.s * (H / 150);
-      var col = 'hsla(' + p.hue + ',70%,' + (10 + pulse * 18 * en) + '%,1)';
-      g.fillStyle = col; g.beginPath(); g.arc(x, base - r * 2.1 + bob, r, 0, 6.29); g.fill();
-      g.beginPath(); g.ellipse(x, base + r * 0.6 + bob * 0.6, r * 1.7, r * 1.6, 0, Math.PI, 0); g.fill(); g.fillRect(x - r * 1.7, base + r * 0.6 + bob * 0.6, r * 3.4, H);
-      if (p.hand < en - 0.35 && !boo) { g.strokeStyle = col; g.lineWidth = r * 0.55; g.lineCap = 'round'; g.beginPath(); g.moveTo(x + r, base + bob); g.lineTo(x + r * 1.6, base - r * 3.4 + bob * 1.5); g.stroke(); }
-    });
     // energy meter
-    g.fillStyle = 'rgba(255,255,255,.08)'; g.fillRect(W - 170, 14, 150, 8); g.fillStyle = boo > 0.3 ? '#ff5a6e' : '#ff3fb4'; g.fillRect(W - 170, 14, 150 * Math.min(1, en), 8);
-    g.fillStyle = 'rgba(244,236,255,.75)'; g.font = '600 ' + Math.round(11 * (W / c.clientWidth || 1)) + 'px Inter, sans-serif'; g.fillText(boo > 0.3 ? 'CROWD: BASS CLASH!' : en > 0.85 ? 'CROWD: GOING OFF' : en > 0.6 ? 'CROWD: DANCING' : 'CROWD', W - 170, 38);
+    var my = H * 0.62, mh = H * 0.18, mw = W - 24;
+    g.fillStyle = 'rgba(255,255,255,.07)'; g.fillRect(12, my, mw, mh);
+    var grad = g.createLinearGradient(12, 0, 12 + mw, 0); grad.addColorStop(0, '#5dffa8'); grad.addColorStop(0.6, '#ff3fb4'); grad.addColorStop(1, '#ffd36b');
+    g.fillStyle = boo > 0.3 ? '#ff5a6e' : grad; g.fillRect(12, my, mw * en, mh);
+    g.fillStyle = 'rgba(244,236,255,.85)'; g.font = '700 ' + Math.round(H * 0.13) + 'px Inter, sans-serif'; g.textBaseline = 'top';
+    g.fillText('ENERGY · ' + (crowd.why || '').toUpperCase(), 14, my + mh + 4);
   }
+  function freeTop() { return '<canvas id="club" class="club" aria-hidden="true"' + (aid('energy') ? '' : ' hidden') + '></canvas><div class="row freebar"><span class="grow small muted">Free mix: no scoring, just play.</span>' + topBar('free') + '</div>'; }
   P.view.always = function (sc) {
     if (sc === 'play' || sc === 'free') { var c = el('club'); if (c && !c.width) sizeClub(); drawClub(); }
     if (rec && rec.state === 'recording') { var t = el('recTime'); if (t) { var s = Math.round((Date.now() - rec.t0) / 1000); t.textContent = Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); } }
@@ -673,7 +677,7 @@
 
   window.BoothGame = {
     init: function (shell) { S = shell; },
-    topBar: topBar,
+    topBar: topBar, freeTop: freeTop, aid: aid,
     screens: { lessons: drawTutorials, drills: drawDrills, ghost: drawGhostPick, beatmatch: drawBeatmatchPick, set: drawSetPick, daily: drawDaily, stats: drawStats, recordings: drawRecordings,
       play: function () { if (!sess) { location.hash = 'menu'; } } },
     leave: function (next) { if (next !== 'play' && sess) stopSession(); },

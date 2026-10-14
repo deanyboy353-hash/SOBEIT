@@ -170,7 +170,7 @@ input.vert { writing-mode: vertical-lr; direction: rtl; width: 34px; height: 150
 
 /* ---------- game ---------- */
 .eyebrow { font-size: 11px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: var(--pink); }
-.club { width: 100%; height: 150px; display: block; border-radius: 16px; border: 1px solid var(--line); margin-bottom: 12px; background: #05020b; }
+.club { width: 100%; height: 96px; display: block; border-radius: 16px; border: 1px solid var(--line); margin-bottom: 12px; background: #05020b; }
 .freebar { margin-bottom: 10px; }
 .recbar { display: inline-flex; align-items: center; gap: 8px; }
 .bbtn.rec { background: #ff2d55; border-color: transparent; color: #fff; animation: recpulse 1.2s infinite; }

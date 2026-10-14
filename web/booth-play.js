@@ -8,6 +8,17 @@
   'use strict';
   var S = null, E = null, lib = null, raf = 0, ledT = 0, shift = { A: false, B: false }, sel = 0, gridDeck = '', metro = { A: false, B: false }, lastClick = { A: -1, B: -1 };
   var libFilter = { q: '', sort: 'name', genre: '', near: '' }, analysing = null, ledCache = {}, ui = {};
+  var libState = { persisted: null, lastAdd: null };
+  /** A plain-English banner when the library can't be read (nothing is ever deleted). */
+  function problemHtml() {
+    if (!lib) return '';
+    var st = BoothLibrary.status, p = lib.problem;
+    if (st.updated) return '<div class="alert">Booth was updated in another tab. <b>Reload this page</b> to keep using your library. Nothing is lost.</div>';
+    if (p === 'blocked' || st.blocked) return '<div class="alert"><b>Your library is locked by another Booth tab</b> that\'s still running an older version. Close your other Booth tabs (or reload them) and your tracks come straight back. Nothing has been deleted. <button type="button" class="bbtn sm" data-act="relist">Try again</button></div>';
+    if (p) return '<div class="alert"><b>Some of your library couldn\'t be read.</b> ' + esc(p) + ' Nothing has been deleted. Reload the page, and if it keeps happening use Sound settings, Storage check. <button type="button" class="bbtn sm" data-act="relist">Try again</button></div>';
+    return '';
+  }
+  function drawProblem() { var b = el('libProblem'); if (b) b.innerHTML = problemHtml(); }
   var settings = null, padMode = { A: 'hotcue', B: 'hotcue' }, lastLoop = { A: '', B: '' };
   var LOOP_SIZES = [1 / 4, 1 / 2, 1, 2, 4, 8, 16, 32], JUMPS = [-1, 1, -2, 2, -4, 4, -8, 8];
   var PAD_NAMES = { hotcue: 'Hot cue', loop: 'Loop', slicer: 'Slicer', slicerloop: 'Slicer loop', sampler: 'Sampler', beatjump: 'Beatjump', toneplay: 'Toneplay', fx: 'FX' };
@@ -35,7 +46,13 @@
     if (S.values.xfader !== undefined) E.setXfader(S.values.xfader);
     if (S.conn.status.state === 'ready') S.conn.requestDump();
     loop();
-    return E.resume().then(function () { return lib.list(); }).then(function () { refreshScreen(); autoAnalyse(); });
+    BoothLibrary.persist().then(function (ok) { libState.persisted = ok; });
+    BoothLibrary.onStatus(function (what) {
+      if (what === 'unblocked') lib.list().then(function () { refreshScreen(); autoAnalyse(); });
+      drawProblem();
+    });
+    E.resume();                       // sound may wait for a click; the library doesn't
+    return lib.list().then(function () { refreshScreen(); drawProblem(); autoAnalyse(); });
   }
   function applySettings() {
     if (!E) return;
@@ -54,7 +71,7 @@
     var b = el('analysing'); if (!b) return;
     b.innerHTML = analysing ? '<div class="note">Analysing your tracks (once only): ' + (analysing.done + 1) + ' of ' + analysing.total + ' · ' + esc(analysing.name) + '<div class="bar"><i style="width:' + (analysing.total ? analysing.done / analysing.total * 100 : 0) + '%"></i></div></div>' : '';
   }
-  function refreshScreen() { var s = S.screen(); if (s === 'free') drawFree(); else if (s === 'library') drawLibrary(); }
+  function refreshScreen() { var s = S.screen(); if (s === 'free') drawFree(); else if (s === 'library') drawLibrary(); else if (s === 'settings') drawSettings(); }
 
   // ---------- one path for every control ----------
   function control(e) {
@@ -220,7 +237,7 @@
       '<div class="row small"><span class="grow">Master</span><span class="mono" id="mdb">−∞ dB</span></div><div class="meter wide"><i id="lvM"></i></div></section>';
   }
   function drawFree() {
-    var h = (window.BoothGame ? '<canvas id="club" class="club" aria-hidden="true"></canvas><div class="row freebar"><span class="grow small muted">Free mix: no scoring, just play.</span>' + BoothGame.topBar('free') + '</div>' : '') + '<div id="analysing"></div>';
+    var h = (window.BoothGame ? BoothGame.freeTop() : '') + '<div id="libProblem">' + problemHtml() + '</div><div id="analysing"></div>';
     if (!E) h += '<div class="startbox panel"><h2>Ready to mix</h2><p class="muted">Chrome needs one click before it plays sound.</p><button type="button" class="bbtn primary" data-act="start">Turn the sound on</button></div>';
     h += '<div class="guide" id="guide"></div><div class="wfs"><canvas id="wfA" class="wf"></canvas><canvas id="wfB" class="wf"></canvas></div>' +
       '<div class="decks3">' + (E ? deckPanel('A') + mixerPanel() + deckPanel('B') : '') + '</div>' +
@@ -398,6 +415,7 @@
     if (!E) { S.el('screen').innerHTML = '<h1>Library</h1><div class="startbox panel"><p class="muted">Your tracks live in this browser. Turn the sound on to open them (Chrome\'s rule).</p><button type="button" class="bbtn primary" data-act="start">Open my library</button></div>'; return; }
     var list = visible(), near = libFilter.near && lib.get(libFilter.near);
     S.el('screen').innerHTML = '<div class="row"><h1 class="grow">Library</h1><label class="bbtn primary filebtn">Add tracks from this computer<input type="file" id="addFiles" accept="audio/*" multiple hidden></label></div>' +
+      '<div id="libProblem">' + problemHtml() + '</div>' + addResultHtml() +
       '<p class="sub">BPM, beat grid and key are worked out once per track and saved. Key is shown in Camelot: neighbours on the wheel (8A with 7A, 9A or 8B) mix in key.</p><div id="analysing"></div>' +
       '<section class="panel"><div class="row wrap"><input type="search" placeholder="Search" data-f="q" value="' + esc(libFilter.q) + '"><select data-f="genre">' + GENRES.map(function (g) { return '<option value="' + g + '"' + (libFilter.genre === g ? ' selected' : '') + '>' + (g || 'Every genre') + '</option>'; }).join('') + '</select>' +
       '<select data-f="sort"><option value="name">Sort by name</option><option value="bpm"' + (libFilter.sort === 'bpm' ? ' selected' : '') + '>Sort by BPM</option><option value="key"' + (libFilter.sort === 'key' ? ' selected' : '') + '>Sort by key</option></select>' +
@@ -428,9 +446,21 @@
       '<label class="radio">Pitch fader range <select id="pRange"><option value="0.08"' + (settings.pitchRange === 0.08 ? ' selected' : '') + '>±8%</option><option value="0.16"' + (settings.pitchRange === 0.16 ? ' selected' : '') + '>±16%</option><option value="0.06"' + (settings.pitchRange === 0.06 ? ' selected' : '') + '>±6%</option></select></label>' +
       '<label class="radio"><input type="checkbox" id="pInv"' + (settings.invertPitch ? ' checked' : '') + '> Flip pitch faders (top faster)</label>' +
       '<label class="radio"><input type="checkbox" id="guideOn"' + (settings.guide !== false ? ' checked' : '') + '> Beatmatch Guide lights on the controller in Free mix</label></section>';
-    if (!E) h += '<div class="startbox panel"><button type="button" class="bbtn primary" data-act="start">Turn the sound on to see your devices</button></div>';
+    h += '<section class="panel"><h3>Your library</h3><p class="small muted" style="margin:0 0 10px">Your tracks are stored in this browser on this computer. A backup file holds every track with its beat grid, key, genre and hot cues.</p>' +
+      '<div class="row wrap"><button type="button" class="bbtn primary" data-act="exportLib">Export library backup</button><label class="bbtn filebtn">Import library backup<input type="file" id="importLib" accept=".boothlib,application/octet-stream" hidden></label><button type="button" class="bbtn" data-act="persist">Keep my library safe</button><button type="button" class="bbtn ghost" data-act="diag">Storage check</button></div><div id="diagOut" class="small" style="margin-top:10px"></div></section>';
+    if (!E) h += '<div class="startbox panel"><button type="button" class="bbtn primary" data-act="start">Turn the sound on to see your devices and library</button></div>';
     S.el('screen').innerHTML = h;
     fillDevices(false);
+    if (E) runDiag();
+  }
+  function mb(n) { return n === null || n === undefined ? '?' : n > 1e9 ? (n / 1e9).toFixed(1) + ' GB' : Math.round(n / 1e6) + ' MB'; }
+  function runDiag() {
+    var o = el('diagOut'); if (!o || !lib) return; o.textContent = 'Checking…';
+    lib.diagnose().then(function (d) {
+      o.innerHTML = '<div>Tracks stored: <b>' + (d.tracks === null ? 'couldn\'t read (' + esc(d.tracksError || '') + ')' : d.tracks) + '</b> · analysed: <b>' + (d.analysis === null ? 'couldn\'t read (' + esc(d.analysisError || '') + ')' : d.analysis) + '</b> · recordings: ' + (d.mixes === null ? '–' : d.mixes) + '</div>' +
+        '<div>Space used: ' + mb(d.usage) + ' of ' + mb(d.quota) + ' · ' + (d.persisted ? '<span style="color:var(--green)">Protected: Chrome won\'t clear it on its own</span>' : '<span style="color:var(--amber)">Not protected yet: press Keep my library safe</span>') + '</div>' +
+        (d.blocked ? '<div style="color:var(--amber)">Another Booth tab is holding the library open. Close or reload your other Booth tabs.</div>' : '');
+    });
   }
   function fillDevices(ask) {
     if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
@@ -474,12 +504,26 @@
     var r = ev.target.closest && ev.target.closest('[data-r]'); if (r && S) { var id = r.getAttribute('data-r'); S.values[id] = +r.value; control({ id: id, value: +r.value }); return; }
     var f = ev.target.getAttribute && ev.target.getAttribute('data-f'); if (f === 'q') { libFilter.q = ev.target.value; sel = 0; var box = document.querySelector('.tracks'); if (box) box.outerHTML = S.screen() === 'free' ? trackRows(visible(), true) : box.outerHTML; if (S.screen() === 'library') drawLibraryKeepFocus(); }
   });
+  function addResultHtml() {
+    var r = libState.lastAdd; if (!r) return '';
+    if (r.busy) return '<div class="note">Checking and adding ' + r.n + ' file' + (r.n === 1 ? '' : 's') + '…</div>';
+    return (r.added.length ? '<div class="note">Added ' + r.added.length + ' track' + (r.added.length === 1 ? '' : 's') + ': ' + esc(r.added.join(', ')) + '. They\'ll be analysed now.</div>' : '') +
+      (r.failed.length ? '<div class="alert"><b>' + r.failed.length + ' file' + (r.failed.length === 1 ? '' : 's') + ' couldn\'t be added:</b><ul>' + r.failed.map(function (f) { return '<li><b>' + esc(f.name) + '</b>: ' + esc(f.reason) + '</li>'; }).join('') + '</ul></div>' : '');
+  }
   function drawLibraryKeepFocus() { var v = libFilter.q; drawLibrary(); var i = document.querySelector('[data-f="q"]'); if (i) { i.focus(); i.setSelectionRange(v.length, v.length); } }
   document.addEventListener('change', function (ev) {
     var t = ev.target; if (!S) return;
     var f = t.getAttribute('data-f'); if (f === 'sort' || f === 'genre') { libFilter[f] = t.value; sel = 0; return refreshScreen(); }
     if (t.getAttribute('data-genre')) { var it = lib.get(t.getAttribute('data-genre')); if (it) lib.update(it, { genre: t.value }); return; }
-    if (t.id === 'addFiles' && t.files.length) { S.toast('Adding ' + t.files.length + ' track' + (t.files.length === 1 ? '' : 's') + '…'); return lib.addFiles(t.files).then(function () { drawLibrary(); autoAnalyse(); }); }
+    if (t.id === 'addFiles' && t.files.length) {
+      var files = [].slice.call(t.files); t.value = '';
+      libState.lastAdd = { busy: true, n: files.length }; drawLibrary();
+      return lib.addFiles(files).then(function (r) { libState.lastAdd = r; drawLibrary(); autoAnalyse(); }, function (e) { libState.lastAdd = { added: [], failed: files.map(function (f) { return { name: f.name, reason: BoothLibrary.friendly(e) }; }) }; drawLibrary(); });
+    }
+    if (t.id === 'importLib' && t.files.length) {
+      var bf = t.files[0]; t.value = ''; S.toast('Restoring your library…');
+      return lib.importBackup(bf).then(function (r) { S.toast('Restored ' + r.tracks + ' track' + (r.tracks === 1 ? '' : 's') + (r.skipped ? ' (' + r.skipped + ' you already had were left as they are)' : '') + '.'); autoAnalyse(); drawSettings(); }, function (e) { S.toast('Couldn\'t restore that backup: ' + BoothLibrary.friendly(e)); });
+    }
     if (t.name === 'cue') { settings.cueMode = t.value; saveSettings(); if (t.value === 'device' && !settings.cueId) S.toast('Now pick the device under "Cue to".'); return; }
     if (t.id === 'outSel') { settings.outId = t.value; saveSettings(); return; }
     if (t.id === 'cueSel') { settings.cueId = t.value; if (settings.cueMode !== 'device') settings.cueMode = 'device'; saveSettings(); drawSettings(); return; }
@@ -514,6 +558,10 @@
     if (d.act === 'nearOff') { libFilter.near = ''; return drawLibrary(); }
     if (d.del) { var it = lib.get(d.del); if (!it || !confirm('Remove ' + it.name + ' from this computer\'s library?')) return; return lib.remove(it).then(drawLibrary); }
     if (d.act === 'names') return fillDevices(true);
+    if (d.act === 'relist') return lib.list().then(function () { refreshScreen(); drawProblem(); autoAnalyse(); });
+    if (d.act === 'persist') return BoothLibrary.persist().then(function (ok) { S.toast(ok ? 'Done: Chrome will keep your library.' : 'Chrome said no for now. It usually agrees once you\'ve used Booth a few times or installed Nudge. Keep a backup to be safe.'); runDiag(); });
+    if (d.act === 'diag') return runDiag();
+    if (d.act === 'exportLib') { S.toast('Building your backup… (big libraries take a moment)'); return lib.exportBackup().then(function (blob) { var a2 = document.createElement('a'); a2.href = URL.createObjectURL(blob); a2.download = 'booth-library-' + new Date().toISOString().slice(0, 10) + '.boothlib'; a2.click(); setTimeout(function () { URL.revokeObjectURL(a2.href); }, 60000); S.toast('Backup saved (' + mb(blob.size) + '). Keep it somewhere safe.'); }, function (e) { S.toast('Couldn\'t build the backup: ' + BoothLibrary.friendly(e)); }); }
     if (d.act === 'beepM') return beep(false);
     if (d.act === 'beepC') return beep(true);
   });

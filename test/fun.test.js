@@ -36,7 +36,13 @@ test('daily challenges: each one done is +5 XP, all three opens the chest', () =
   delete g.state.props.EXTRAS_OFF;
   // Yazzy: 2 chores, 10 XP before noon, daily goal before 8pm
   const board = g.ctx.appState(partner).quests.board.filter(q => q.who !== 'me');
-  board.slice(0, 3).forEach(q => g.ctx.questDone(partner, q.name));
+  // The chore schedule is random, so 3 chores might not reach the 30 XP goal: keep ticking until every challenge is done
+  // (the last chore on the board is kept for the "never award twice" check below).
+  const spare = board[board.length - 1];
+  for (const q of board.slice(0, -1)) {
+    g.ctx.questDone(partner, q.name);
+    if (board.indexOf(q) >= 2 && g.ctx.appState(partner).fun.challenges.list.every(c => c.done)) break;
+  }
   const ch = g.ctx.appState(partner).fun.challenges;
   assert.deepStrictEqual(plain(ch.list.map(c => c.id).sort()), ['chores2', 'early', 'goal8']);
   assert.ok(ch.list.every(c => c.done), JSON.stringify(ch));
@@ -51,7 +57,7 @@ test('daily challenges: each one done is +5 XP, all three opens the chest', () =
   assert.ok(mine.list.find(c => c.id === 'water').done);
   assert.ok(mine.list.find(c => c.id === 'word').done);
   // challenges never award twice
-  g.ctx.questDone(partner, board[3].name);
+  g.ctx.questDone(partner, spare.name);
   assert.strictEqual(xpRows(g).filter(r => r.who === 'partner' && r.kind === 'bonus').length, 4);
 });
 
