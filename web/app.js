@@ -1951,7 +1951,8 @@
     return '<section class="card djset-card"><div class="between"><div><div class="eyebrow">The full mixing game</div><h3 style="margin:2px 0 0">Afterhours: Booth</h3></div>' +
       '<div class="right small">You ' + line(m) + '<br>' + esc(n.other) + ' ' + line(o) + '</div></div>' +
       '<p class="small muted" style="margin:8px 0 10px">Guitar Hero for mixing: your own tracks or the stations, real transitions scored on timing, tempo, fader rides and bass swaps. Works with the keyboard, touch or your Hercules Inpulse 500.</p>' +
-      '<button class="btn primary wide" type="button" data-mix="set">' + icon('play', 's') + 'Open the decks</button></section>';
+      '<button class="btn primary wide" type="button" data-mix="set">' + icon('play', 's') + 'Open the decks (first version)</button>' +
+      '<a class="btn line wide" style="margin-top:8px" href="booth.html#test">' + icon('disc', 's') + 'New Booth (being rebuilt): controller test</a></section>';
   }
   function openSet() {
     if (!window.LQDJ || !M()) return toast('The DJ game isn\'t available here.', true);

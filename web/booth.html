@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Afterhours: Booth</title>
+<meta name="theme-color" content="#07030f">
+<meta name="color-scheme" content="dark">
+<link rel="icon" href="favicon-32.png" sizes="32x32">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="booth.css">
+</head>
+<body>
+<div id="booth" class="booth">
+  <header class="bh">
+    <a class="brand" href="#menu" aria-label="Booth menu"><span class="logo-dot"></span><span><b>AFTERHOURS</b><i>Booth</i></span></a>
+    <nav class="bnav" id="bnav"></nav>
+    <div class="conn" id="conn"><span class="led"></span><span id="connText">Controller not connected</span><button type="button" class="bbtn sm" id="connect">Connect controller</button></div>
+  </header>
+  <main id="screen" class="screen"></main>
+</div>
+<div id="btoast" class="btoast" role="status" aria-live="polite"></div>
+<script src="config.js"></script>
+<script src="booth-map.js"></script>
+<script src="booth-midi.js"></script>
+<script src="booth.js"></script>
+</body>
+</html>
