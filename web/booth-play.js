@@ -14,7 +14,7 @@
   var SAMPLES = ['Air horn', 'Siren', 'Riser', 'Laser', 'Clap', 'Kick', 'Crash', 'Sub drop'];
   function beatsText(b) { return b === 0.25 ? '¼ beat' : b === 0.5 ? '½ beat' : b === 0.125 ? '⅛ beat' : b + ' beat' + (b === 1 ? '' : 's'); }
   // what the current game mode wants: hidden BPMs, hidden waveforms, guide lights, a per-frame hook
-  var view = { hideBpm: {}, hideWaves: false, helper: true, guide: 'auto', frame: null, onLoad: null };
+  var view = { hideBpm: {}, hideWaves: false, helper: true, guide: 'auto', guideDeck: '', frame: null, always: null, onLoad: null, onControl: null };
   var GENRES = ['', 'Techno', 'Acid', 'Hard groove', 'Club', 'House', 'Minimal', 'Drill loop'];
   function esc(s) { return S.esc(s); }
   function el(id) { return document.getElementById(id); }
@@ -59,6 +59,7 @@
   // ---------- one path for every control ----------
   function control(e) {
     if (!e || !e.id) return;
+    if (view.onControl && E) { try { view.onControl(e); } catch (err) { console.error(err); } }
     if (!E) { if (e.kind === 'button' && e.down && S.screen() === 'free') S.toast('Click "Turn the sound on" first: Chrome needs one click before it plays sound.'); return; }   // positions are kept in S.values and applied when the sound starts
     var m = /^([AB])\.(.+)$/.exec(e.id);
     if (!m) {
@@ -219,7 +220,7 @@
       '<div class="row small"><span class="grow">Master</span><span class="mono" id="mdb">−∞ dB</span></div><div class="meter wide"><i id="lvM"></i></div></section>';
   }
   function drawFree() {
-    var h = '<div id="analysing"></div>';
+    var h = (window.BoothGame ? '<canvas id="club" class="club" aria-hidden="true"></canvas><div class="row freebar"><span class="grow small muted">Free mix: no scoring, just play.</span>' + BoothGame.topBar('free') + '</div>' : '') + '<div id="analysing"></div>';
     if (!E) h += '<div class="startbox panel"><h2>Ready to mix</h2><p class="muted">Chrome needs one click before it plays sound.</p><button type="button" class="bbtn primary" data-act="start">Turn the sound on</button></div>';
     h += '<div class="guide" id="guide"></div><div class="wfs"><canvas id="wfA" class="wf"></canvas><canvas id="wfB" class="wf"></canvas></div>' +
       '<div class="decks3">' + (E ? deckPanel('A') + mixerPanel() + deckPanel('B') : '') + '</div>' +
@@ -318,6 +319,7 @@
     var sc = S.screen();
     if (sc === 'free' || sc === 'play') { drawWave('A'); drawWave('B'); drawReadouts(); if (ui.dirty || (frameN++ % 6 === 0)) { ui.dirty = false; refreshHot(); } }
     if (view.frame && sc === 'play') { try { view.frame(); } catch (err) { console.error(err); } }
+    if (view.always) { try { view.always(sc); } catch (err) { console.error(err); } }
     var n = performance.now(); if (n - ledT > 90) { ledT = n; lights(); }
   }
   function padLabel(id, k) {
@@ -359,8 +361,8 @@
         if (pc) send(id + 'pad' + bank + k, c('pad.' + bank + '.' + (k + 1)).led, col);
       }
       // Beatmatch Guide: only for a deck you're matching by hand (SYNC off), against the other playing deck.
-      var G = MAP.lights.guide[id], tUp = 0, tDn = 0, tOk = 0, pL = 0, pR = 0, pOk = 0;
-      if (!d.sync && d.playing && o.playing && d.track && o.track && guideOn()) {
+      var G = MAP.lights.guide[id], tUp = 0, tDn = 0, tOk = 0, pL = 0, pR = 0, pOk = 0, onlyDeck = S.screen() === 'play' && view.guideDeck;
+      if ((!onlyDeck || onlyDeck === id) && !d.sync && d.playing && o.playing && d.track && o.track && guideOn()) {
         var diff = d.bpm() - o.bpm();
         if (Math.abs(diff) < 0.05) tOk = 0x7F; else if (diff > 0) tUp = 0x7F; else tDn = 0x7F;      // up arrow = move the fader up (slower)
         if (Math.abs(diff) < 0.5) { var ms = d.phaseTo(o) * 60 / o.bpm() * 1000; if (Math.abs(ms) < 12) pOk = 0x7F; else if (ms > 0) pL = 0x7F; else pR = 0x7F; }
@@ -535,6 +537,8 @@
     settings: function () { return settings; },
     deckPanel: deckPanel, mixerPanel: mixerPanel, sizeCanvases: sizeCanvases, trackRows: trackRows, visible: visible, fmtTime: fmtTime,
     dirty: function () { ui.dirty = true; },
+    shell: function () { return S; },
+    padMode: padMode, setPadMode: setPadMode, beatsText: beatsText,
     leave: function (next) { if (next !== 'free' && gridDeck) gridDeck = ''; },
     engine: function () { return E; }
   };

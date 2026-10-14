@@ -78,7 +78,7 @@
     var worst = clashes.slice().sort(function (a, b) { return b.beats - a.beats; })[0];
     var allowed = tech === 'volume' ? 8 : 1;          // a volume-only fade can't avoid a short overlap (counted only while both are loud)
     var bassScore = clamp(100 - Math.max(0, totalClash - allowed) * (tech === 'volume' ? 6 : 9));
-    if (worst && worst.beats > allowed) notes.push({ sev: worst.beats, text: 'Bass clash for ' + plural(Math.round(worst.beats), 'beat') + ' at bar ' + bar(worst.start) + (tech === 'volume' ? ': both decks loud with their full bass.' : ': both LOW EQs were up with both faders open.') + (clashes.length > 1 ? ' (' + clashes.length + ' clashes in total, ' + round(totalClash, 1) + ' beats.)' : '') });
+    if (worst && totalClash > allowed + 0.5) notes.push({ sev: worst.beats, text: 'Bass clash for ' + plural(Math.round(worst.beats), 'beat') + ' at bar ' + bar(worst.start) + (tech === 'volume' ? ': both decks loud with their full bass.' : ': both LOW EQs were up with both faders open.') + (clashes.length > 1 ? ' (' + clashes.length + ' clashes in total, ' + round(totalClash, 1) + ' beats.)' : '') });
     // where the bass changed hands
     var swapAt = null;
     for (i = i0; i < i1; i++) if (bassOn(S[i][to]) && !bassOn(S[i][from])) { swapAt = outBeat(i); break; }
@@ -93,20 +93,20 @@
     }
     var b0 = Math.floor(outBeat(i0)), b1 = Math.floor(outBeat(Math.max(i0, i1 - 1))) + (tr.open ? 0 : 8);
     var base = beatDb(b0 - 8, b0), baseVals = Object.keys(base).map(function (k) { return base[k]; });
-    var volScore = 100, dip = null, spike = null;
+    var volScore = 100, dip = null, spike = null, spikeAt = tech === 'volume' ? 5 : 3.5;   // two tracks at full add about +3 dB; a volume-only fade passes through that on purpose
     if (baseVals.length >= 3) {
       baseVals.sort(function (a, b) { return a - b; });
       var ref = baseVals[Math.floor(baseVals.length / 2)], during = beatDb(b0, b1 + 1), runD = null, runS = null;
       Object.keys(during).map(Number).sort(function (a, b) { return a - b; }).forEach(function (k) {
         var dv = during[k] - ref;
         if (dv < -3) { if (!runD) runD = { start: k, beats: 0, depth: 0 }; runD.beats++; runD.depth = Math.max(runD.depth, -dv); } else if (runD) { if (!dip || runD.depth * runD.beats > dip.depth * dip.beats) dip = runD; runD = null; }
-        if (dv > 3) { if (!runS) runS = { start: k, beats: 0, height: 0 }; runS.beats++; runS.height = Math.max(runS.height, dv); } else if (runS) { if (!spike || runS.height * runS.beats > spike.height * spike.beats) spike = runS; runS = null; }
+        if (dv > spikeAt) { if (!runS) runS = { start: k, beats: 0, height: 0 }; runS.beats++; runS.height = Math.max(runS.height, dv); } else if (runS) { if (!spike || runS.height * runS.beats > spike.height * spike.beats) spike = runS; runS = null; }
       });
       if (runD && (!dip || runD.depth * runD.beats > dip.depth * dip.beats)) dip = runD;
       if (runS && (!spike || runS.height * runS.beats > spike.height * spike.beats)) spike = runS;
       if (dip) { volScore -= (dip.depth - 3) * 8 + dip.beats * 2; notes.push({ sev: dip.depth, text: 'Volume dipped ' + round(dip.depth, 1) + ' dB at bar ' + bar(dip.start) + (dip.beats > 1 ? ' for ' + plural(dip.beats, 'beat') : '') + ': the incoming deck wasn\'t up yet when the outgoing one went down.' }); }
-      if (spike) { volScore -= (spike.height - 3) * 8 + spike.beats * 2; notes.push({ sev: spike.height, text: 'Volume jumped up ' + round(spike.height, 1) + ' dB at bar ' + bar(spike.start) + (spike.beats > 1 ? ' for ' + plural(spike.beats, 'beat') : '') + ': both decks were loud at once.' }); }
-      if (!dip && !spike) good.push('Level stayed steady through the blend (within 3 dB).');
+      if (spike) { volScore -= (spike.height - spikeAt) * 8 + spike.beats * 2; notes.push({ sev: spike.height, text: 'Volume jumped up ' + round(spike.height, 1) + ' dB at bar ' + bar(spike.start) + (spike.beats > 1 ? ' for ' + plural(spike.beats, 'beat') : '') + ': both decks were loud at once.' }); }
+      if (!dip && !spike) good.push('Level stayed steady through the blend.');
       ev.volumeRef = round(ref, 1);
     } else volScore = null;
     ev.dip = dip; ev.spike = spike;

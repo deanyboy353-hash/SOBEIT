@@ -4615,14 +4615,15 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     }
     return h + '</section>';
   }
+  function boothUrl(screen) { var base = MODE === 'gas' && S.fun && S.fun.appBase ? S.fun.appBase.replace(/[?#].*$/, '').replace(/\/?$/, '/') : ''; return base + 'booth.html' + (MODE === 'gas' && KEY ? '?key=' + encodeURIComponent(KEY) : '') + '#' + screen; }
   function setCard(set, n) {
-    var m = set && set.mine, o = set && set.other;
-    var line = function (x) { return x && x.tries ? '<b>' + esc(x.grade || '-') + '</b> ' + x.acc + '%' : '<span class="muted">not yet</span>'; };
-    return '<section class="card djset-card"><div class="between"><div><div class="eyebrow">The full mixing game</div><h3 style="margin:2px 0 0">Afterhours: Booth</h3></div>' +
+    var bo = S.games && S.games.booth, m = bo && bo.mine, o = bo && bo.other;
+    var line = function (x) { return x && x.tries ? '<b>' + esc(x.grade || '-') + '</b> ' + x.score : '<span class="muted">not yet</span>'; };
+    return '<section class="card djset-card"><div class="between"><div><div class="eyebrow">The mixing game · today\'s challenge</div><h3 style="margin:2px 0 0">Afterhours: Booth</h3></div>' +
       '<div class="right small">You ' + line(m) + '<br>' + esc(n.other) + ' ' + line(o) + '</div></div>' +
-      '<p class="small muted" style="margin:8px 0 10px">Guitar Hero for mixing: your own tracks or the stations, real transitions scored on timing, tempo, fader rides and bass swaps. Works with the keyboard, touch or your Hercules Inpulse 500.</p>' +
-      '<button class="btn primary wide" type="button" data-mix="set">' + icon('play', 's') + 'Open the decks (first version)</button>' +
-      '<a class="btn line wide" style="margin-top:8px" href="booth.html#test">' + icon('disc', 's') + 'New Booth (being rebuilt): controller test</a></section>';
+      '<p class="small muted" style="margin:8px 0 10px">Tutorials, transition drills, manual beatmatching, a ghost-line rhythm game and set mode, scored on bass clashes, volume, timing and smoothness. Best on your PC with the Inpulse 500.' + (m && m.title ? ' Today: ' + esc(m.title) + '.' : '') + '</p>' +
+      '<a class="btn primary wide" target="_top" href="' + boothUrl('menu') + '">' + icon('disc', 's') + 'Open Booth</a>' +
+      '<div class="grid2" style="margin-top:8px"><a class="btn line" target="_top" href="' + boothUrl('daily') + '">Today\'s challenge</a><button class="btn line" type="button" data-mix="set">First version</button></div></section>';
   }
   function openSet() {
     if (!window.LQDJ || !M()) return toast('The DJ game isn\'t available here.', true);

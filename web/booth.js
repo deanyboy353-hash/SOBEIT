@@ -105,16 +105,19 @@
   });
 
   // ---------- routing ----------
-  var SCREENS = { menu: drawMenu, test: drawTest }, NAV = [['menu', 'Menu'], ['lessons', 'Lessons'], ['free', 'Free mix'], ['library', 'Library'], ['stats', 'Stats'], ['test', 'Controller test'], ['settings', 'Sound settings']];
-  if (window.BoothPlay) {
-    BoothPlay.init({ conn: conn, dec: dec, map: MAP, values: values, toast: toast, el: el, esc: esc, load: load, save: save, screen: function () { return screen; },
-      diagram: function () { return '<svg class="diagram mini" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Inpulse 500: the control to use is highlighted">' + deckSvg('A', 20) + mixerSvg() + deckSvg('B', 860) + '</svg>'; } });
-    Object.keys(BoothPlay.screens).forEach(function (k) { SCREENS[k] = BoothPlay.screens[k]; });
-  }
+  var SCREENS = { menu: drawMenu, test: drawTest }, NAV = [['menu', 'Menu'], ['lessons', 'Tutorials'], ['free', 'Free mix'], ['library', 'Library'], ['stats', 'Stats'], ['test', 'Controller test'], ['settings', 'Sound settings']];
+  var shell = { conn: conn, dec: dec, map: MAP, values: values, toast: toast, el: el, esc: esc, load: load, save: save, screen: function () { return screen; },
+    diagram: function () { return '<svg class="diagram mini" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Inpulse 500: the control to use is highlighted">' + deckSvg('A', 20) + mixerSvg() + deckSvg('B', 860) + '</svg>'; } };
+  [window.BoothPlay, window.BoothGame].forEach(function (mod) {
+    if (!mod) return;
+    mod.init(shell);
+    Object.keys(mod.screens).forEach(function (k) { SCREENS[k] = mod.screens[k]; });
+  });
   function go() {
     var h = (location.hash || '#menu').slice(1), parts = h.split('/');
     screen = SCREENS[parts[0]] ? parts[0] : 'menu';
     if (window.BoothPlay) BoothPlay.leave(screen);
+    if (window.BoothGame) BoothGame.leave(screen);
     el('bnav').innerHTML = NAV.filter(function (x) { return SCREENS[x[0]]; }).map(function (x) { return '<a href="#' + x[0] + '"' + (screen === x[0] ? ' aria-current="page"' : '') + '>' + x[1] + '</a>'; }).join('') + '<a href="index.html#play">Back to Nudge</a>';
     SCREENS[screen](parts.slice(1));
     window.scrollTo(0, 0);
@@ -126,7 +129,7 @@
     var n = MAP.controls.filter(required).length, v = MAP.controls.filter(function (c) { return required(c) && verified[c.id]; }).length;
     var modes = [
       ['test', 'Controller test', 'Check every knob, fader, button and light on your Inpulse 500.', v + ' of ' + n + ' checked', v >= n],
-      ['lessons', 'Lessons', 'Step by step from volume fades to full sets. Levels unlock as your scores improve.', 'Start here', true],
+      ['lessons', 'Tutorials', 'Step by step, with the exact control lit up: loops, EQs, beatmatching and every transition.', 'Start here', true],
       ['drills', 'Transition drills', 'Pick one technique and repeat it: bass swap, EQ blend, filter fade, volume fade, 32-bar blend, quick cut.', 'Practice'],
       ['beatmatch', 'Manual beatmatching', 'Sync off. The incoming track starts at a random tempo and phase. Match it by hand.', 'Core skill', true],
       ['ghost', 'Ghost line', 'Follow the target fader and EQ curves as they scroll with the music.', 'Rhythm game'],

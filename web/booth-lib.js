@@ -19,7 +19,7 @@
   }
   var tracksDb = null, boothDb = null;
   function tdb() { return tracksDb || (tracksDb = openDb('lq-dj', 1, function (d) { if (!d.objectStoreNames.contains('tracks')) d.createObjectStore('tracks', { keyPath: 'id' }); })); }
-  function bdb() { return boothDb || (boothDb = openDb('booth', 1, function (d) { if (!d.objectStoreNames.contains('analysis')) d.createObjectStore('analysis', { keyPath: 'id' }); })); }
+  function bdb() { return boothDb || (boothDb = openDb('booth', 2, function (d) { if (!d.objectStoreNames.contains('analysis')) d.createObjectStore('analysis', { keyPath: 'id' }); if (!d.objectStoreNames.contains('mixes')) d.createObjectStore('mixes', { keyPath: 'id' }); })); }
   function tx(dbp, store, mode, fn) {
     return dbp.then(function (d) { return new Promise(function (res, rej) { var t = d.transaction(store, mode), r = fn(t.objectStore(store)); t.oncomplete = function () { res(r ? r.result : undefined); }; t.onerror = function () { rej(t.error); }; }); });
   }
@@ -49,7 +49,7 @@
         var a = an[t.id];
         return { id: t.id, name: t.name, own: true, analysed: !!(a && a.v >= 2), bpm: a ? a.bpm : t.bpm, first: a ? a.first : t.first, key: a ? a.key : '', camelot: a ? a.camelot : '', waves: a ? a.waves : null, dur: a ? a.dur : t.dur, genre: a && a.genre || '', hot: a && a.hot || [], edited: !!(a && a.edited) };
       });
-      var loops = LOOPS.map(function (l) { var a = an[l.id] || {}; return { id: l.id, name: l.name, loop: l, own: false, analysed: true, bpm: l.bpm, first: 0, key: l.key || '', camelot: l.camelot || '', waves: null, dur: 32 * 4 * 60 / l.bpm, genre: l.genre, hot: a.hot || [] }; });
+      var loops = LOOPS.map(function (l) { var a = an[l.id] || {}, prev = self.items.filter(function (x) { return x.id === l.id; })[0]; return { id: l.id, name: l.name, loop: l, own: false, analysed: true, bpm: l.bpm, first: 0, key: l.key || '', camelot: l.camelot || '', waves: prev ? prev.waves : null, dur: 32 * 4 * 60 / l.bpm, genre: l.genre, hot: a.hot || [] }; });
       self.items = mine.concat(loops);
       return self.items;
     });
@@ -148,5 +148,11 @@
     });
   };
 
+  // ---------- recorded mixes ----------
+  L.saveMix = function (m) { return tx(bdb(), 'mixes', 'readwrite', function (s) { s.put(m); }); };
+  L.mixes = function () { return tx(bdb(), 'mixes', 'readonly', function (s) { return s.getAll(); }).then(function (l) { return (l || []).sort(function (x, y) { return y.at - x.at; }); }); };
+  L.deleteMix = function (id) { return tx(bdb(), 'mixes', 'readwrite', function (s) { s.delete(id); }); };
+
+  Library.LOOPS = LOOPS;
   root.BoothLibrary = Library;
 })(typeof window !== 'undefined' ? window : globalThis);
