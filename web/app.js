@@ -1121,14 +1121,23 @@
       '<ol class="small setup"><li>In <b>HC Webhook</b>, turn on <b>Local HTTP server</b> (port 8787).</li><li>Come back here and pick how far back:</li></ol>' +
       '<div class="grid3" style="margin:10px 0"><button class="btn soft" type="button" data-days="30">30 days</button><button class="btn soft" type="button" data-days="90">90 days</button><button class="btn soft" type="button" data-days="365">1 year</button></div>' +
       '<label class="small muted">Port <input type="text" id="hcPort" inputmode="numeric" value="' + esc(load('hcPort') || '8787') + '" style="width:90px;padding:6px 8px;margin-left:6px"></label>' +
-      '<p class="tiny muted" style="margin:10px 0 0">Chrome may ask to let this app see devices on your network: allow it. Keep the app open until it finishes. Health Connect only keeps what your watch saved there, usually from when you set it up.</p><div class="readout small" id="importMsg"></div>');
+      '<p class="tiny muted" style="margin:10px 0 0">Chrome may ask to let this app see devices on your network: allow it. Keep the app open until it finishes.</p><div class="readout small" id="importMsg"></div>' +
+      '<div class="divider"></div><b class="small">If that doesn\'t work: use a file</b><ol class="small setup"><li>With the Local HTTP server on, open <b>127.0.0.1:8787/?days=365</b> in Chrome (tap to copy: <button class="chip" type="button" data-fun="copyLocal">copy address</button>). You\'ll see a page of text.</li>' +
+      '<li>Tap <b>⋮</b> then the <b>download</b> arrow to save it.</li><li>Come back here and choose that file:</li></ol>' +
+      '<label class="btn primary wide" style="cursor:pointer">' + icon('download', 's') + 'Choose the downloaded file<input type="file" id="hcFile" accept=".json,.txt,application/json,text/plain" hidden></label>');
   }
   function dayOfIso(iso) { var d = new Date(iso); return isNaN(d) ? '' : d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
   function importHistory(n) {
     var port = (el('hcPort') && el('hcPort').value.trim()) || '8787', msg = function (m) { var x = el('importMsg'); if (x) x.textContent = m; };
     save('hcPort', port);
     msg('Reading ' + n + ' days from your watch…');
-    fetch('http://127.0.0.1:' + port + '/?days=' + n).then(function (r) { if (!r.ok) throw new Error('HC Webhook said ' + r.status); return r.json(); }).then(function (p) {
+    fetch('http://127.0.0.1:' + port + '/?days=' + n, { targetAddressSpace: 'loopback' }).then(function (r) { if (!r.ok) throw new Error('HC Webhook said ' + r.status); return r.json(); }).then(uploadHealth).catch(function () {
+      msg('Couldn\'t reach HC Webhook from the app (Chrome blocks it on some phones). Use the file way below instead.');
+    });
+  }
+  function uploadHealth(p) {
+    var msg = function (m) { var x = el('importMsg'); if (x) x.textContent = m; };
+    (function () {
       var byDay = {};
       Object.keys(p).forEach(function (type) {
         if (!Array.isArray(p[type])) return;
@@ -1148,10 +1157,23 @@
         msg('Uploading… ' + done + ' of ' + (done + batch.length + dates.length) + ' days');
         rpc('importHealth', [JSON.stringify(payload)]).then(function () { done += batch.length; next(); }, function (e) { msg('Stopped: ' + e.message + '. Tap again to retry.'); });
       })();
-    }).catch(function () {
-      msg('Couldn\'t reach HC Webhook on this phone. Turn on its Local HTTP server (port ' + port + '), keep it running, then try again. This only works in the app on the same phone as your watch.');
-    });
+    })();
   }
+  document.addEventListener('change', function (ev) {
+    if (ev.target.id !== 'hcFile' || !ev.target.files[0]) return;
+    var msg = function (m) { var x = el('importMsg'); if (x) x.textContent = m; };
+    msg('Reading the file…');
+    ev.target.files[0].text().then(function (txt) {
+      var p;
+      try { p = JSON.parse(txt.slice(txt.indexOf('{'))); } catch (e) { return msg('That file isn\'t the health data. Open the 127.0.0.1 address again and download that page.'); }
+      uploadHealth(p);
+    });
+  });
+  document.addEventListener('click', function (ev) {
+    if (!ev.target.closest('[data-fun="copyLocal"]')) return;
+    var u = 'http://127.0.0.1:' + ((el('hcPort') && el('hcPort').value.trim()) || '8787') + '/?days=365';
+    if (navigator.clipboard) navigator.clipboard.writeText(u).then(function () { toast('Copied. Paste it into Chrome\'s address bar.'); });
+  });
 
   // tap any chart mark: its details show in the card's readout line
   document.addEventListener('click', function (ev) {

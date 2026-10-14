@@ -155,7 +155,7 @@ function appendRow_(key, obj) {
   for (var i = 0; i < width; i++) row.push('');
   Object.keys(obj).forEach(function (k) { if (k in map) row[map[k]] = obj[k]; });
   var r = v.length + 1;
-  sheet_(key).getRange(r, 1, 1, width).setValues([row]);
+  sheet_(key).getRange(r, 1, 1, width).setValues([row.map(asText_)]);
   v.push(row);
   derived_(key);
   return r;
@@ -187,8 +187,17 @@ function updateRow_(key, rowNum, obj) {
   var row = v[rowNum - 1];
   if (!row) return;
   Object.keys(obj).forEach(function (k) { if (k in map) row[map[k]] = obj[k]; });
-  sheet_(key).getRange(rowNum, 1, 1, row.length).setValues([row]);
+  sheet_(key).getRange(rowNum, 1, 1, row.length).setValues([row.map(asText_)]);
   derived_(key);
+}
+
+/**
+ * Clock times like "15:15" are written with a leading apostrophe so Sheets
+ * keeps them as text. Otherwise it turns them into a date in 1899 and they
+ * come back as "Sat Dec 30 1899 15:15…".
+ */
+function asText_(v) {
+  return typeof v === 'string' && /^\d{1,2}:\d{2}(:\d{2})?$/.test(v) ? "'" + v : v;
 }
 
 /** Rows whose Date (yyyy-MM-dd) is between from and to, inclusive, as objects. */

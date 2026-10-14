@@ -61,7 +61,7 @@ class FakeRange {
     vals.forEach((row, i) => row.forEach((v, j) => {
       const ri = this.r - 1 + i;
       this.sheet.data[ri] = this.sheet.data[ri] || [];
-      this.sheet.data[ri][this.c - 1 + j] = v;
+      this.sheet.data[ri][this.c - 1 + j] = typeof v === 'string' && v[0] === "'" ? v.slice(1) : v; // like Sheets: ' forces text
     }));
     return this;
   }
