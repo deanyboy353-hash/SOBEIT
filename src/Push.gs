@@ -88,10 +88,15 @@ function push_(who, title, body, tab, urgent, extra) {
           method: 'post', contentType: 'application/json', muteHttpExceptions: true,
           headers: { Authorization: 'Bearer ' + token }, payload: JSON.stringify(msg)
         });
-        var code = res.getResponseCode();
-        if (code === 200) sent++;
-        else if (code === 404 || /UNREGISTERED|INVALID_ARGUMENT/.test(res.getContentText())) dead.push(d.token);
-        else log_('WARN', 'Push ' + code + ': ' + res.getContentText().slice(0, 200));
+        var code = res.getResponseCode(), text = res.getContentText();
+        // Only forget a phone when Google says its token no longer exists; anything else is logged and kept.
+        if (code === 200) { sent++; pushNote_(who, title, d.label, 200, ''); }
+        else {
+          var gone = code === 404 || /UNREGISTERED|registration-token-not-registered|Requested entity was not found/i.test(text);
+          if (gone) dead.push(d.token);
+          pushNote_(who, title, d.label, code, (gone ? 'Phone not registered any more: ' : '') + pushError_(text));
+          log_('WARN', 'Push ' + code + ' to ' + who + ': ' + text.slice(0, 300));
+        }
       });
       if (dead.length) {
         var all = devices_();
@@ -101,6 +106,7 @@ function push_(who, title, body, tab, urgent, extra) {
     }
   } catch (e) {
     log_('WARN', 'Push: ' + e);
+    pushNote_(who, title, '', 0, String(e && e.message || e).slice(0, 200));
   }
   if (!sent && urgent) {
     if (who === 'partner') { if (emailPartner_(title, (body ? body + '\n\n' : '') + partnerUrl_())) sent = 1; }
@@ -143,5 +149,31 @@ function sendNudge(key, text) {
 }
 
 function pushStatus_(who) {
-  return { configured: !!fcmServiceAccount_(), devices: (devices_()[who] || []).length, otherDevices: (devices_()[who === 'me' ? 'partner' : 'me'] || []).length };
+  var log = pushLog_().filter(function (x) { return x.who === who; });
+  var ok = log.filter(function (x) { return x.code === 200; })[0], bad = log.filter(function (x) { return x.code !== 200; })[0];
+  return { configured: !!fcmServiceAccount_(), devices: (devices_()[who] || []).length, otherDevices: (devices_()[who === 'me' ? 'partner' : 'me'] || []).length,
+    lastOk: ok ? ok.at : 0, lastError: bad && (!ok || bad.at > ok.at) ? { at: bad.at, error: bad.error } : null,
+    phones: (devices_()[who] || []).map(function (d) { return { label: d.label, at: d.at }; }) };
+}
+
+/** The last 30 sends (both of you), for the Notifications check in the app. */
+function pushLog_() { return JSON.parse(prop_('PUSH_LOG') || '[]'); }
+function pushNote_(who, title, label, code, error) {
+  var log = pushLog_();
+  log.unshift({ at: new Date().getTime(), who: who, title: String(title).slice(0, 60), phone: String(label || '').slice(0, 40), code: code, error: error || '' });
+  setProp_('PUSH_LOG', JSON.stringify(log.slice(0, 30)));
+}
+function pushError_(text) {
+  try { var j = JSON.parse(text); return String(j.error && (j.error.message || j.error.status) || text).slice(0, 200); } catch (e) { return String(text).slice(0, 200); }
+}
+
+/** "Send me a test": straight to your own phones, with what happened. */
+function testPush(key) {
+  var who = who_(key);
+  return withLock_(function () {
+    var before = pushLog_().length ? pushLog_()[0].at : 0;
+    var sent = push_(who, 'Life Quest test', 'If you can read this, notifications work on this phone.', 'you', false);
+    var results = pushLog_().filter(function (x) { return x.who === who && x.at >= before && x.title === 'Life Quest test'; });
+    return { sent: sent, status: pushStatus_(who), results: results };
+  });
 }

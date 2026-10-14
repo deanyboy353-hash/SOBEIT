@@ -140,3 +140,53 @@ test('Work: the Work blocks tab sets itself up on first use (before the daily ru
   assert.strictEqual(r.work.blocks.length, 1);
   assert.strictEqual(r.work.blocks[0].task, 'Emails');
 });
+
+test('Wardrobe: free basics, chores unlock the best pieces, cash pays, only owned things can be worn', () => {
+  const { g, me, partner } = ready();
+  let w = g.ctx.wardrobeState_('me');
+  assert.ok(w.owned.includes('fade') && w.owned.includes('tee') && !w.owned.includes('gown'));
+  assert.strictEqual(w.chores, 0);
+  assert.throws(() => g.ctx.buyWear(me, 'grove'), /5 more chores/);
+  assert.throws(() => g.ctx.buyWear(me, 'afro'), /need \$800 more/);
+  g.ctx.addCash_('me', 'Test money', 30000, 'test');
+  g.ctx.buyWear(me, 'afro');
+  assert.throws(() => g.ctx.buyWear(me, 'afro'), /already own/);
+  for (let i = 0; i < 5; i++) g.ctx.addXp_('me', 'Chore ' + i, 5, 'quest');
+  g.ctx.buyWear(me, 'grove');
+  assert.strictEqual(g.ctx.cashOf_('me'), 30000 - 800 - 1500 + 25 * 10);
+  assert.throws(() => g.ctx.setLook3d(me, { top: 'bodice' }), /don't own/);
+  assert.throws(() => g.ctx.setLook3d(me, { hair: 'grove' }), /don't own/, 'wrong slot');
+  let s = g.ctx.setLook3d(me, { hair: 'afro', top: 'grove', topC: '#00FF00', skin: 'red', acc: [], lips: '#ff0000' });
+  assert.strictEqual(s.wardrobe.look.hair, 'afro');
+  assert.strictEqual(s.wardrobe.look.topC, '#00ff00');
+  assert.strictEqual(s.wardrobe.look.skin, '#8d5a3b', 'bad colours ignored');
+  assert.strictEqual(s.wardrobe.look.lips, '#9c4a52', 'no glam kit, no lipstick');
+  assert.throws(() => g.ctx.setLook3d(me, { acc: ['shades', 'chain', 'cap', 'hoops', 'bandana'] }), /Four extras/);
+  assert.strictEqual(g.ctx.wardrobeState_('partner').other.hair, 'afro', 'your partner sees your look');
+  assert.strictEqual(g.ctx.wardrobeState_('partner').look.body, 'f');
+});
+
+test('Push: the test goes to your own phone; a rejected message keeps the phone; a gone phone is dropped; status shows it all', () => {
+  const { g, me, partner } = ready();
+  g.state.props.FCM_SA = JSON.stringify({ client_email: 'sa@x.iam.gserviceaccount.com', private_key: 'k', project_id: 'life-quest' });
+  let r = g.ctx.testPush(me);
+  assert.strictEqual(r.sent, 0);
+  assert.strictEqual(r.status.devices, 0);
+  g.ctx.registerDevice(me, 'me-phone-token-0123456789', 'Mozilla/5.0 (Linux; Android 14; Pixel 8)');
+  g.ctx.registerDevice(partner, 'yaz-phone-token-0123456789', 'iPhone');
+  r = g.ctx.testPush(me);
+  assert.strictEqual(r.sent, 1);
+  assert.strictEqual(g.state.pushes.pop().token, 'me-phone-token-0123456789', 'to you, not your partner');
+  assert.ok(r.status.lastOk > 0);
+  // Google rejects one message: the phone stays registered and the reason shows
+  g.ctx.registerDevice(me, 'bad-token-xxxxxxxxxxxxxxxxxx', 'Desktop Windows');
+  r = g.ctx.testPush(me);
+  assert.strictEqual(r.status.devices, 2, 'kept');
+  assert.ok(/Invalid JSON payload/.test(r.results.find(x => x.code === 400).error));
+  // a phone that no longer exists is dropped
+  g.ctx.registerDevice(me, 'dead-token-xxxxxxxxxxxxxxxxx', 'Old phone');
+  r = g.ctx.testPush(me);
+  assert.strictEqual(r.status.devices, 2);
+  assert.ok(!r.status.phones.some(p => p.label === 'Old phone'));
+  assert.strictEqual(g.ctx.appState(partner).push.devices, 1);
+});

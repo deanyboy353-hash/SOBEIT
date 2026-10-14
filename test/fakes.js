@@ -202,6 +202,7 @@ function loadProject(opts = {}) {
         if (/fcm\.googleapis/.test(url)) {
           const msg = JSON.parse(opts.payload).message;
           state.pushes.push({ token: msg.token, title: msg.webpush.notification.title, body: msg.webpush.notification.body, tab: msg.data.tab, note: msg.webpush.notification, data: msg.data });
+          if (/bad/.test(msg.token)) return { getResponseCode: () => 400, getContentText: () => '{"error":{"code":400,"message":"Invalid JSON payload received.","status":"INVALID_ARGUMENT"}}' };
           return /dead/.test(msg.token) ? { getResponseCode: () => 404, getContentText: () => '{"error":{"status":"NOT_FOUND","details":[{"errorCode":"UNREGISTERED"}]}}' }
             : { getResponseCode: () => 200, getContentText: () => '{"name":"ok"}' };
         }

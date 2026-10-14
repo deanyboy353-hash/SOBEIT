@@ -215,6 +215,13 @@
     h += '<div class="top"><div><h1>' + greeting() + (n.me ? ', ' + esc(n.me) : '') + '</h1><div class="sub">' +
       d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) + (S.fun && S.fun.era ? ' · ' + esc(S.fun.era) : '') + '</div></div>' + meButton() + '</div>';
     if (MODE === 'gas' && S.fun && S.fun.appBase) h += '<a class="getapp" target="_top" href="' + esc(S.fun.appBase + '?key=' + KEY) + '">' + icon('download') + '<span class="grow"><b>Get the app</b><br><span class="small muted">Notifications, live games, faster</span></span>' + icon('chevron', 's') + '</a>';
+    if (MODE === 'web' && S.push && S.push.configured && 'Notification' in window && 'serviceWorker' in navigator && (Notification.permission !== 'granted' || !S.push.devices)) {
+      h += '<section class="card pushwarn"><div class="row" style="gap:10px;align-items:flex-start">' + icon('bell') + '<div class="grow"><b>Notifications are off on this ' + (/Android|iPhone|iPad/.test(navigator.userAgent) ? 'phone' : 'device') + '</b><div class="small">' +
+        (Notification.permission === 'denied' ? 'They\'re blocked. Open your phone\'s Settings, then Apps, Life Quest (or Chrome), Notifications, and allow them. Then come back and tap Turn on.' : 'Your reminders, deadline nags and work pings can\'t reach you until you turn them on.') +
+        '</div></div></div><button class="btn primary wide" type="button" id="pushOn" style="margin-top:10px">' + icon('bell', 's') + 'Turn on notifications</button></section>';
+    } else if (/iPhone|iPad/.test(navigator.userAgent) && MODE === 'web' && !standalone()) {
+      h += '<section class="card pushwarn"><b>Get notifications on iPhone</b><div class="small">Tap Share, then Add to Home Screen. Open Life Quest from your home screen and turn notifications on there.</div></section>';
+    }
     h += boostBanner() + wrappedCard();
     if (S.chores.invite) h += '<div class="note">' + esc(n.other) + ' wants company for chores. Pick a job in Chores.</div>';
     if (g.streak.frozeYesterday) h += '<div class="note">A streak freeze covered yesterday. Your streak is safe.</div>';
@@ -224,6 +231,8 @@
     seg('deadlines');
     h += workMini();
     seg('work');
+    h += wardrobeCard();
+    seg('wardrobe');
     // brief
     if (S.brief && S.brief.brief) h += '<section class="card tint"><div class="eyebrow" style="color:var(--lilac);display:flex;gap:6px;align-items:center">' + icon('sparkles', 's') + 'Today</div><p class="brief" style="margin:8px 0 10px">' + esc(S.brief.brief) + '</p>' +
       (S.brief.first ? '<div class="row small"><span class="chip lilac">First move</span><span>' + esc(S.brief.first) + '</span></div>' : '') + '</section>';
@@ -303,6 +312,7 @@
     seg('feed');
     h = parts.header + homeOrder().filter(function (x) { return !x.hide; }).map(function (x) { return parts[x.id] || ''; }).join('');
     el('tab-home').innerHTML = h;
+    mountHome3d();
   }
 
   // ---------- CHORES (today, schedule, timer) ----------
@@ -694,6 +704,7 @@
     var g = S.game, n = names(), th = document.documentElement.getAttribute('data-theme'), h = '';
     h += '<div class="top"><div class="row"><button class="iconbtn" type="button" data-goto="home" aria-label="Back">' + icon('back') + '</button><h1>You</h1></div></div>';
     h += charCard();
+    if (S.wardrobe) h += '<section class="card av-card"><div class="av3d tall" id="av3dYou"><div class="av3d-msg small muted center">Loading…</div></div><button class="btn primary wide" type="button" data-dress="open">' + icon('sparkles', 's') + 'Dressing room</button></section>';
     h += '<div class="grid2" style="margin-bottom:12px"><button class="btn soft" type="button" data-goto="empire">' + icon('building', 's') + 'Your empire</button><button class="btn soft" type="button" data-goto="custom">' + icon('sparkles', 's') + 'Customise</button></div>';
     h += '<section class="card tint"><div class="between"><div><div class="eyebrow" style="color:var(--lilac)">Level ' + g.level.level + (S.fun && S.fun.era ? ' · ' + esc(S.fun.era) : '') + '</div><div class="num" style="font-size:28px;font-weight:700">' + fmt(g.total) + ' XP</div></div><div class="right"><div class="eyebrow">To spend</div><div class="num" style="font-size:22px;font-weight:700">' + fmt(g.balance) + '</div></div></div>' +
       '<div class="bar" style="margin-top:10px;background:var(--surface)"><i style="width:' + Math.round(g.level.into / g.level.need * 100) + '%"></i></div><div class="tiny muted" style="margin-top:6px">' + (g.level.need - g.level.into) + ' XP to level ' + (g.level.level + 1) + ' · best streak ' + g.streak.best + (g.streak.best === 1 ? ' day' : ' days') + '</div>' + (S.fun && S.fun.nextEra && S.fun.nextEra !== S.fun.era ? '<div class="tiny muted" style="margin-top:2px">Next era: ' + esc(S.fun.nextEra) + '</div>' : '') + '</section>';
@@ -728,10 +739,12 @@
     else if (!('Notification' in window) || !('serviceWorker' in navigator)) h += '<p class="small muted" style="margin:0 0 12px">' + (/iPhone|iPad/.test(navigator.userAgent) && !standalone() ? 'On iPhone, add this app to your Home Screen first (Share, then Add to Home Screen), then open it from there.' : 'This browser can\'t show notifications.') + '</p>';
     else if (!S.push.configured) h += '<p class="small muted" style="margin:0 0 12px">Notifications aren\'t set up on the server yet.</p>';
     else h += '<div class="between" style="margin-bottom:12px"><span class="small">' + (Notification.permission === 'granted' && S.push.devices ? 'On for this phone' : Notification.permission === 'denied' ? 'Blocked in your phone settings' : 'Off') + '</span><button class="btn ' + (Notification.permission === 'granted' && S.push.devices ? 'line' : 'primary') + ' sm" type="button" id="pushOn">' + icon('bell', 's') + (Notification.permission === 'granted' && S.push.devices ? 'Test' : 'Turn on') + '</button></div>';
+    if (MODE !== 'gas' && S.push && S.push.configured) h += pushDetails();
     if (MODE === 'web' && !standalone()) h += '<div class="between" style="margin-bottom:12px"><span class="small">Install as an app</span>' + (deferredInstall ? '<button class="btn primary sm" type="button" id="install">' + icon('download', 's') + 'Install</button>' : '<span class="tiny muted right">' + (/iPhone|iPad/.test(navigator.userAgent) ? 'Share, then Add to Home Screen' : 'Menu, then Install app') + '</span>') + '</div>';
     if (ME) h += '<div class="eyebrow" style="margin:6px 0">Claude API key</div><form class="inline" id="keyForm" autocomplete="off"><input type="password" id="keyText" placeholder="' + (S.hasClaudeKey ? 'Saved. Paste a new one to replace it' : 'sk-ant-…') + '" aria-label="Claude API key"><button class="btn primary" type="submit">Save</button></form><p class="tiny muted" style="margin:6px 0 0">Powers Ask, the morning brief, meal ideas and food quick-add. Get one at console.anthropic.com.</p>';
     h += '</section><p class="small muted center">Chores, routines, rewards, lifts and targets can all be changed in your Google Sheet.</p>';
     el('tab-you').innerHTML = h;
+    mountYou3d();
   }
 
   // ---------- FUN: boost, challenges, making things, Us, stakes, Tempo, intro, Wrapped ----------
@@ -1321,8 +1334,8 @@
       wanted(g.streak.count) + '</span></button>';
   }
 
-  var HOME_NAMES = { deadlines: 'Deadlines', work: 'Work: now and next', brief: 'Morning brief', ask: 'Ask anything', ring: 'XP and streaks', challenges: 'Daily challenges', next: 'Next up', whatnow: 'What should I do now?', routine: 'Routines', gym: 'Gym today', chores: 'Today\'s chores', tiles: 'Weight and water', make: 'Make something', us: 'Us', feed: 'Partner feed' };
-  var HOME_DEFAULT = ['deadlines', 'work', 'brief', 'ask', 'ring', 'challenges', 'next', 'whatnow', 'routine', 'gym', 'chores', 'tiles', 'make', 'us', 'feed'];
+  var HOME_NAMES = { deadlines: 'Deadlines', work: 'Work: now and next', wardrobe: 'Your 3D characters', brief: 'Morning brief', ask: 'Ask anything', ring: 'XP and streaks', challenges: 'Daily challenges', next: 'Next up', whatnow: 'What should I do now?', routine: 'Routines', gym: 'Gym today', chores: 'Today\'s chores', tiles: 'Weight and water', make: 'Make something', us: 'Us', feed: 'Partner feed' };
+  var HOME_DEFAULT = ['deadlines', 'work', 'wardrobe', 'brief', 'ask', 'ring', 'challenges', 'next', 'whatnow', 'routine', 'gym', 'chores', 'tiles', 'make', 'us', 'feed'];
   function homeOrder() {
     var saved = (S.fun && S.fun.prefs && S.fun.prefs.home) || [], seen = {}, out = [];
     saved.forEach(function (x) { if (HOME_NAMES[x.id] && !seen[x.id]) { seen[x.id] = 1; out.push({ id: x.id, hide: !!x.hide }); } });
@@ -2141,6 +2154,161 @@
     return h + '</div></section>';
   }
 
+  // ---------- 3D characters: home card, You card and the dressing room ----------
+  var stages3d = {}, dress = null;
+  var STYLE_TAG = { sa: 'San Andreas', vc: 'Vice City', drag: 'Runway', basic: 'Basic' };
+  var SWATCH = ['#111111', '#f4f1ea', '#ffffff', '#e63946', '#ff5fae', '#ffb703', '#2e9e4f', '#2fe0d6', '#1f4fd1', '#7c5cff', '#8d5a3b', '#c9a227'];
+  var SKINS = ['#f3cfb3', '#e0a982', '#c68a62', '#a8714d', '#8d5a3b', '#6b4226', '#4a2c1a'];
+  var HAIRC = ['#1c1410', '#3b2416', '#6b4423', '#b5793f', '#e8c37a', '#f2f0e6', '#c1121f', '#ff5fae', '#7c5cff', '#2fe0d6'];
+  var LIPS = ['#9c4a52', '#c2185b', '#e63946', '#ff5fae', '#6a1b4d', '#d4a373', '#111111', '#7c5cff'];
+  var DRESS_TABS = [['body', 'Body'], ['hair', 'Hair'], ['top', 'Tops'], ['bottom', 'Bottoms'], ['shoes', 'Shoes'], ['acc', 'Extras'], ['pattern', 'Patterns'], ['glam', 'Glam']];
+  function threeUrl() {
+    if (MODE !== 'gas') return 'three.min.js';
+    var base = S && S.fun && S.fun.appBase ? S.fun.appBase.replace(/[?#].*$/, '').replace(/\/?$/, '/') : '';
+    return base ? base + 'three.min.js' : 'https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js';
+  }
+  function mount3d(id, looks, opts) {
+    if (!window.LQ3D || !el(id)) return;
+    window.LQ_THREE_URL = threeUrl();
+    LQ3D.load().then(function () {
+      var host = el(id); if (!host) return;
+      var key = JSON.stringify(looks), s = stages3d[id];
+      try {
+        if (!s) { s = stages3d[id] = LQ3D.stage(host, Object.assign({ looks: looks }, opts || {})); s.key = key; }
+        else { s.attach(host); if (s.key !== key) { s.set(looks); s.key = key; } }
+        host.classList.add('ready');
+      } catch (e) { host.innerHTML = '<p class="small muted center av3d-msg">3D isn\'t available on this device.</p>'; }
+    }, function (e) { var host = el(id); if (host) host.innerHTML = '<p class="small muted center av3d-msg">' + esc(e.message) + '</p>'; });
+  }
+  function nextUnlock() {
+    var W = S.wardrobe; if (!W) return null;
+    return W.catalog.filter(function (w) { return w.chores > W.chores && W.owned.indexOf(w.id) === -1; }).sort(function (a, b) { return a.chores - b.chores || b.price - a.price; })[0] || null;
+  }
+  function wardrobeCard() {
+    var W = S.wardrobe, n = names(); if (!W) return '';
+    var nu = nextUnlock(), left = nu ? nu.chores - W.chores : 0;
+    return '<section class="card av-card"><div class="head"><h3>' + esc(n.team) + '</h3><span class="small muted">' + (wide() ? 'Drag to spin' : 'Swipe to spin') + '</span></div>' +
+      '<div class="av3d" id="av3dHome"><div class="av3d-msg small muted center">Loading your characters…</div></div>' +
+      '<div class="between av-names"><span>You</span><span>' + esc(n.other) + '</span></div>' +
+      (nu ? '<p class="small center" style="margin:8px 0 10px"><b>' + left + ' more chore' + (left === 1 ? '' : 's') + '</b> unlocks the ' + esc(nu.name) + (nu.style === 'drag' ? ' (runway)' : '') + '</p>' : '<p class="small center" style="margin:8px 0 10px">Everything in the wardrobe is unlocked. Legendary.</p>') +
+      '<button class="btn primary wide" type="button" data-dress="open">' + icon('sparkles', 's') + 'Dressing room</button></section>';
+  }
+  function mountHome3d() { if (S && S.wardrobe && el('av3dHome')) mount3d('av3dHome', [S.wardrobe.look, S.wardrobe.other], { theme: 'vice' }); }
+  function mountYou3d() { if (S && S.wardrobe && el('av3dYou')) mount3d('av3dYou', [S.wardrobe.look], { theme: (charOf(S.who) || '').slice(0, 2) === 'sa' ? 'grove' : 'vice' }); }
+  function owns(id) { return S.wardrobe.owned.indexOf(id) !== -1; }
+  function wearing(L, it) {
+    if (it.slot === 'acc') return (L.acc || []).indexOf(it.id) !== -1;
+    if (it.slot === 'pattern') return L[dress.patFor === 'top' ? 'topPat' : 'botPat'] === it.id;
+    if (it.slot === 'glam') return owns('glam');
+    return L[it.slot] === it.id;
+  }
+  function unowned(L) {
+    var W = S.wardrobe, list = [];
+    ['hair', 'top', 'bottom', 'shoes', 'topPat', 'botPat'].forEach(function (k) { if (!owns(L[k])) list.push(L[k]); });
+    (L.acc || []).forEach(function (id) { if (!owns(id)) list.push(id); });
+    return list.map(function (id) { return W.catalog.filter(function (w) { return w.id === id; })[0]; }).filter(Boolean);
+  }
+  function swatches(key, list, cur) {
+    return '<div class="swatches">' + list.map(function (c) { return '<button type="button" class="sw' + (cur === c ? ' on' : '') + '" data-dcol="' + key + '" data-v="' + c + '" style="background:' + c + '" aria-label="Colour ' + c + '"></button>'; }).join('') +
+      '<label class="sw custom" title="Any colour"><input type="color" data-dcolor="' + key + '" value="' + cur + '" aria-label="Pick any colour"></label></div>';
+  }
+  function dressPanel() {
+    var W = S.wardrobe, L = dress.look, tab = dress.tab, h = '';
+    if (tab === 'body') {
+      h += '<div class="eyebrow">Frame</div><div class="seg" style="margin:6px 0 12px">' + [['m', 'Broad'], ['f', 'Curvy']].map(function (o) { return '<button type="button" data-dbody="' + o[0] + '" aria-pressed="' + (L.body === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>' +
+        '<div class="eyebrow">Skin</div>' + swatches('skin', SKINS, L.skin);
+      return h;
+    }
+    if (tab === 'glam') {
+      if (!owns('glam')) { var gk = W.catalog.filter(function (w) { return w.id === 'glam'; })[0]; return '<p class="small muted">Lipstick and eyeshadow, any colour. Unlock the Glam kit to paint your face for the runway.</p>' + itemCard(gk); }
+      return '<div class="eyebrow">Lipstick</div>' + swatches('lips', LIPS, L.lips) + '<div class="eyebrow" style="margin-top:12px">Eyeshadow</div>' + swatches('shadow', SWATCH.concat(['#ffd166']), L.shadow);
+    }
+    if (tab === 'pattern') h += '<div class="seg" style="margin:0 0 10px">' + [['top', 'On your top'], ['bottom', 'On your bottoms']].map(function (o) { return '<button type="button" data-dpat="' + o[0] + '" aria-pressed="' + (dress.patFor === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
+    var colKey = { hair: 'hairC', top: 'topC', bottom: 'botC', shoes: 'shoeC' }[tab];
+    if (colKey) h += '<div class="eyebrow">Colour</div>' + swatches(colKey, tab === 'hair' ? HAIRC : SWATCH, L[colKey]) + '<div class="eyebrow" style="margin-top:12px">' + (tab === 'acc' ? 'Up to four' : 'Styles') + '</div>';
+    if (tab === 'acc') h += '<p class="tiny muted" style="margin:0 0 8px">Wear up to four at once.</p>';
+    var items = W.catalog.filter(function (w) { return w.slot === tab; }).sort(function (a, b) { return (owns(b.id) - owns(a.id)) || a.chores - b.chores || a.price - b.price; });
+    return h + '<div class="dress-items">' + items.map(itemCard).join('') + '</div>';
+  }
+  function itemCard(it) {
+    var W = S.wardrobe, L = dress.look, own = owns(it.id), locked = W.chores < it.chores, on = wearing(L, it);
+    var state = own ? (on ? 'Wearing' : 'Owned') : locked ? (it.chores - W.chores) + ' more chore' + (it.chores - W.chores === 1 ? '' : 's') : money(it.price);
+    return '<div class="ditem' + (on ? ' on' : '') + (locked ? ' locked' : '') + ' st-' + it.style + '"><button type="button" class="ditem-main" data-dtry="' + it.id + '">' +
+      '<span class="ditem-tag">' + STYLE_TAG[it.style] + '</span><b>' + esc(it.name) + '</b><span class="small' + (own ? '' : ' muted') + '">' + (locked ? icon('lock', 's') : '') + state + '</span></button>' +
+      (!own && !locked ? '<button type="button" class="btn ' + (S.empire && S.empire.cash >= it.price ? 'primary' : 'line') + ' sm" data-dbuy="' + it.id + '">Buy</button>' : '') + '</div>';
+  }
+  function renderDress() {
+    if (!dress) return;
+    var W = S.wardrobe, un = unowned(dress.look);
+    el('dressTabs').innerHTML = DRESS_TABS.map(function (t) { return '<button type="button" data-dtab="' + t[0] + '" aria-pressed="' + (dress.tab === t[0]) + '">' + t[1] + '</button>'; }).join('');
+    el('dressPanel').innerHTML = dressPanel();
+    el('dressCash').innerHTML = money(S.empire ? S.empire.cash : 0) + ' to spend · ' + W.chores + ' chore' + (W.chores === 1 ? '' : 's') + ' done';
+    el('dressNote').innerHTML = un.length ? 'Trying on: ' + un.map(function (x) { return esc(x.name); }).join(', ') + '. Buy ' + (un.length === 1 ? 'it' : 'them') + ' to keep the look.' : '';
+    el('dressSave').disabled = !!un.length;
+  }
+  function preview(spin) {
+    var s = stages3d.av3dDress; if (!s) return;
+    s.set([dress.look]); s.key = JSON.stringify([dress.look]);
+    if (spin) s.sashay(0);
+  }
+  function openDress() {
+    if (!S.wardrobe) return;
+    dress = { look: JSON.parse(JSON.stringify(S.wardrobe.look)), tab: 'hair', patFor: 'top' };
+    var box = document.createElement('div');
+    box.id = 'dress'; box.className = 'dress'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'Dressing room');
+    box.innerHTML = '<div class="dress-in"><div class="dress-stage"><div class="av3d" id="av3dDress"><div class="av3d-msg small center">Loading…</div></div><button class="dress-spin" type="button" data-dress="spin">Sashay</button></div>' +
+      '<div class="dress-side"><div class="between"><div><div class="eyebrow">Wardrobe</div><h2 style="margin:2px 0 0">Dressing room</h2></div><button class="iconbtn" type="button" data-dress="close" aria-label="Close">' + icon('x') + '</button></div>' +
+      '<div class="small muted" id="dressCash" style="margin:4px 0 10px"></div><div class="dress-tabs" id="dressTabs"></div><div id="dressPanel" class="dress-panel"></div>' +
+      '<div class="dress-foot"><p class="tiny" id="dressNote"></p><div class="grid2"><button class="btn line" type="button" data-dress="close">Cancel</button><button class="btn primary" type="button" id="dressSave" data-dress="save">Save look</button></div></div></div></div>';
+    document.body.appendChild(box); document.body.classList.add('dress-open');
+    renderDress();
+    if (stages3d.av3dDress) { stages3d.av3dDress.dispose(); delete stages3d.av3dDress; }
+    mount3d('av3dDress', [dress.look], { theme: 'vice', spin: false, yaw: 0.2 });
+  }
+  function closeDress() {
+    if (stages3d.av3dDress) { stages3d.av3dDress.dispose(); delete stages3d.av3dDress; }
+    var d = el('dress'); if (d) d.remove();
+    document.body.classList.remove('dress-open'); dress = null;
+  }
+  document.addEventListener('click', function (ev) {
+    var t = ev.target.closest('[data-dress], [data-dtab], [data-dtry], [data-dbuy], [data-dcol], [data-dbody], [data-dpat]');
+    if (!t || !S) return;
+    var d = t.dataset, L = dress && dress.look;
+    if (d.dress === 'open') return openDress();
+    if (!dress) return;
+    if (d.dress === 'close') return closeDress();
+    if (d.dress === 'spin') { var s = stages3d.av3dDress; if (s) s.sashay(0); return; }
+    if (d.dress === 'save') {
+      return rpc('setLook3d', [L]).then(function (res) { apply(res); closeDress(); toast('Looking good. Saved.'); chime([523, 659, 784]); }, function (e) { toast(e.message, true); });
+    }
+    if (d.dtab) { dress.tab = d.dtab; return renderDress(); }
+    if (d.dpat) { dress.patFor = d.dpat; return renderDress(); }
+    if (d.dbody) { L.body = d.dbody; preview(true); return renderDress(); }
+    if (d.dcol) { L[d.dcol] = d.v; preview(false); return renderDress(); }
+    if (d.dtry) {
+      var it = S.wardrobe.catalog.filter(function (w) { return w.id === d.dtry; })[0]; if (!it) return;
+      if (it.slot === 'acc') { var a = L.acc || (L.acc = []), i = a.indexOf(it.id); if (i !== -1) a.splice(i, 1); else { if (a.length >= 4) return toast('Four extras at most. Take one off first.'); a.push(it.id); } }
+      else if (it.slot === 'pattern') L[dress.patFor === 'top' ? 'topPat' : 'botPat'] = it.id;
+      else if (it.slot === 'glam') return;
+      else L[it.slot] = it.id;
+      preview(true); return renderDress();
+    }
+    if (d.dbuy) {
+      var item = S.wardrobe.catalog.filter(function (w) { return w.id === d.dbuy; })[0];
+      t.disabled = true;
+      return rpc('buyWear', [d.dbuy]).then(function (res) {
+        apply(res); renderDress();
+        if (item.style === 'drag') { confetti(true); toast('The ' + item.name + ' is yours. Shantay, you stay.'); } else { confetti(false); toast('Bought the ' + item.name); }
+        chime([659, 784, 1047]);
+      }, function (e) { t.disabled = false; toast(e.message, true); });
+    }
+  });
+  document.addEventListener('input', function (ev) {
+    var k = ev.target.dataset && ev.target.dataset.dcolor; if (!k || !dress) return;
+    dress.look[k] = ev.target.value; preview(false);
+  });
+  document.addEventListener('change', function (ev) { if (ev.target.dataset && ev.target.dataset.dcolor && dress) renderDress(); });
+
   // ---------- taps ----------
   document.addEventListener('click', function (ev) {
     var t = ev.target.closest('button, li[data-step]');
@@ -2266,7 +2434,7 @@
     // you
     if (ds.reward) return call('redeemReward', [ds.reward], function (res) { confetti(true); apply(res, 'Enjoy: ' + ds.reward); });
     if (ds.addshop) return call('addShopping', [ds.addshop], function (res) { apply(res, 'Added ' + ds.addshop); });
-    if (t.id === 'pushOn') return enablePush();
+    if (t.id === 'pushOn') return Notification.permission === 'granted' && S.push.devices ? testPush() : enablePush();
     if (t.id === 'install' && deferredInstall) { deferredInstall.prompt(); deferredInstall = null; return; }
   });
 
@@ -2392,13 +2560,32 @@
       return silent ? Notification.permission : Notification.requestPermission();
     }).then(function (perm) {
       if (perm !== 'granted') { if (!silent) toast('Notifications are off. You can turn them on in your phone settings.', true); throw null; }
-      return firebase.messaging().getToken({ serviceWorkerRegistration: swReg, vapidKey: CFG.vapidKey || undefined });
+      return (swReg ? Promise.resolve(swReg) : navigator.serviceWorker.ready).then(function (reg) { swReg = reg; return firebase.messaging().getToken({ serviceWorkerRegistration: reg, vapidKey: CFG.vapidKey || undefined }); });
     }).then(function (token) {
       return rpc('registerDevice', [token, navigator.userAgent.slice(0, 60)]);
     }).then(function () {
-      if (!silent) { S.push.devices = Math.max(1, S.push.devices); renderYou(); toast('Notifications are on.'); rpc('sendNudge', ['Test from your own phone: notifications work.']).catch(function () {}); }
+      S.push.devices = Math.max(1, S.push.devices || 0); save('pushReg', now());
+      if (!silent) { renderAll(); testPush(); }
       firebase.messaging().onMessage(function (p) { var n = p.notification || p.data || {}; toast((n.title || '') + (n.body ? ': ' + n.body : '')); chime([880, 1175]); refreshQuiet(); });
-    }).catch(function (e) { if (e && !silent) toast(e.message || 'Couldn\'t turn on notifications.', true); });
+    }).catch(function (e) { if (e && !silent) toast('Couldn\'t turn on notifications: ' + (e.message || e), true); });
+  }
+  function pushDetails() {
+    var p = S.push, t = function (ms) { var d = new Date(ms); return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ' ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); };
+    return '<div class="pushinfo small">' +
+      '<div>' + (p.devices ? p.devices + ' phone' + (p.devices === 1 ? '' : 's') + ' registered' : '<b class="bad">No phone registered yet</b>') + (p.phones && p.phones.length ? ' · ' + p.phones.map(function (x) { return esc(/iPhone|iPad/.test(x.label) ? 'iPhone' : /Android/.test(x.label) ? 'Android' : /Windows|Macintosh|CrOS/.test(x.label) ? 'Computer' : 'Phone'); }).join(', ') : '') + '</div>' +
+      (p.lastOk ? '<div>Last delivered: ' + t(p.lastOk) + '</div>' : '<div class="muted">Nothing delivered yet</div>') +
+      (p.lastError ? '<div class="bad">Last problem (' + t(p.lastError.at) + '): ' + esc(p.lastError.error) + '</div>' : '') +
+      '<div class="muted">On a Pixel: install the app (Chrome menu, Install app), open it from the home screen, tap Turn on. Then in Android Settings, Apps, Life Quest, Notifications, make sure they\'re allowed.</div></div>';
+  }
+  function testPush() {
+    toast('Sending a test to this phone…');
+    rpc('testPush', []).then(function (r) {
+      S.push = r.status; renderAll();
+      if (r.sent) toast('Sent to ' + r.sent + ' phone' + (r.sent === 1 ? '' : 's') + '. It should pop up in a few seconds (close the app to see it as a notification).');
+      else if (!r.status.configured) toast('Notifications aren\'t set up on the server.', true);
+      else if (!r.status.devices) toast('This phone isn\'t registered. Tap Turn on.', true);
+      else toast('Google didn\'t deliver it: ' + ((r.results[0] && r.results[0].error) || 'no reason given'), true);
+    }, function (e) { toast(e.message, true); });
   }
 
   // ---------- start ----------

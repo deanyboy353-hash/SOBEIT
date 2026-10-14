@@ -374,7 +374,7 @@ function daysBetween_(a, b) {
 
 // ---------- customisation ----------
 
-var HOME_BLOCKS = ['deadlines', 'work', 'brief', 'ask', 'ring', 'challenges', 'next', 'whatnow', 'routine', 'gym', 'chores', 'tiles', 'make', 'us', 'feed'];
+var HOME_BLOCKS = ['deadlines', 'work', 'wardrobe', 'brief', 'ask', 'ring', 'challenges', 'next', 'whatnow', 'routine', 'gym', 'chores', 'tiles', 'make', 'us', 'feed'];
 var PREF_DEFAULTS = { char: '', accent: '', text: 'normal', sound: true, haptics: true, confetti: true, motion: true, home: [], nag: '', look: {} };
 var LOOK_KEYS = { hair: 1, hc: 1, top: 1, tc: 1, head: 1, eyes: 1, face: 1, skin: 1, ear: 1 };
 

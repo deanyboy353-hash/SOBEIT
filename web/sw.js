@@ -1,6 +1,6 @@
 /* Life Quest service worker: opens instantly (cached shell) and shows push notifications. */
 var CACHE = 'lq-v1';
-var SHELL = ['./', 'index.html', 'app.css', 'app.js', 'music.js', 'portraits.js', 'djset.js', 'words.js', 'config.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
+var SHELL = ['./', 'index.html', 'app.css', 'app.js', 'music.js', 'portraits.js', 'djset.js', 'avatar3d.js', 'words.js', 'config.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 
 importScripts('config.js');
 
