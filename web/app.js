@@ -1648,7 +1648,8 @@
     });
   }
   function setXf(v) { mix.xf = v; mix.gA.gain.value = Math.cos(v * Math.PI / 2) * 0.9; mix.gB.gain.value = Math.sin(v * Math.PI / 2) * 0.9; }
-  function setRate() { syncPos(); mix.b.playbackRate.value = rateB(); var r = el('readB'); if (r) r.textContent = pitchText(); var pl = el('platB'); if (pl) pl.style.animationDuration = (240 / bpmB()).toFixed(2) + 's'; }
+  // Call after changing pitch or nudge; the position up to now was already counted (syncPos) at the old speed.
+  function setRate() { mix.b.playbackRate.value = rateB(); var r = el('readB'); if (r) r.textContent = pitchText(); var pl = el('platB'); if (pl) pl.style.animationDuration = (240 / bpmB()).toFixed(2) + 's'; }
   function mixStop() { if (!mix) return; try { mix.a.stop(); mix.b.stop(); } catch (e) {} cancelAnimationFrame(mix.raf); mix = null; }
   function mixLock() {
     syncPos();
@@ -1672,16 +1673,16 @@
     if (t.dataset.mix === 'cue') { // jump deck B to the nearest beat of A, keeping its tempo (costs nothing, but you still need the tempo right)
       syncPos(); var pa = (mix.ctx.currentTime - mix.t0) * mix.bpmA / 60, d = ((pa - mix.posB) % 1 + 1.5) % 1 - 0.5;
       mix.nudge = d > 0 ? 0.08 : -0.08; setRate();
-      setTimeout(function () { if (mix) { mix.nudge = 0; setRate(); } }, Math.abs(d) * 60 / mix.bpmB0 / 0.08 * 1000);
+      setTimeout(function () { if (mix) { syncPos(); mix.nudge = 0; setRate(); } }, Math.abs(d) * 60 / mix.bpmB0 / 0.08 * 1000);
     }
   });
-  function nudgeStart(dir) { if (mix) { mix.nudge = dir * 0.04; setRate(); } }
-  function nudgeEnd() { if (mix && mix.nudge) { mix.nudge = 0; setRate(); } }
+  function nudgeStart(dir) { if (mix) { syncPos(); mix.nudge = dir * 0.04; setRate(); } }
+  function nudgeEnd() { if (mix && mix.nudge) { syncPos(); mix.nudge = 0; setRate(); } }
   document.addEventListener('pointerdown', function (ev) { var t = ev.target.closest('[data-nudge-hold]'); if (t) nudgeStart(+t.dataset.nudgeHold); });
   ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (e) { document.addEventListener(e, function (ev) { if (ev.target.closest && ev.target.closest('[data-nudge-hold]')) nudgeEnd(); }); });
   document.addEventListener('input', function (ev) {
     if (!mix) return;
-    if (ev.target.id === 'mixPitch') { mix.pitch = +ev.target.value; setRate(); }
+    if (ev.target.id === 'mixPitch') { syncPos(); mix.pitch = +ev.target.value; setRate(); }
     if (ev.target.id === 'mixXf') setXf(+ev.target.value);
   });
 
