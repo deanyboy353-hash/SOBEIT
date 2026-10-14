@@ -12,7 +12,8 @@ test('Booth MIDI: every control has a unique message; mids, highs, trim are 14-b
     if (c.lsb) { const l = c.lsb.join('.'); assert.ok(!seen[l], c.id + ' lsb clash'); seen[l] = c.id + ' lsb'; }
   });
   ['A', 'B'].forEach(d => ['eqLow', 'eqMid', 'eqHigh', 'trim', 'volume', 'pitch'].forEach(n => assert.ok(MAP.controls.find(c => c.id === d + '.' + n).lsb, d + '.' + n)));
-  assert.strictEqual(MAP.controls.filter(c => /^A\.pad\./.test(c.id)).length, 64);
+  assert.strictEqual(MAP.controls.filter(c => /^A\.pad\./.test(c.id)).length, 128);
+  assert.strictEqual(new Decoder(MAP).decode([0x96, 0x0A, 0x7F]).id, 'A.pad.hotcueShift.3');
 });
 
 test('Booth MIDI: 14-bit EQ, centre detent, buttons, note off, relative jog, unknown', () => {

@@ -160,3 +160,10 @@ input.vert { writing-mode: vertical-lr; direction: rtl; width: 34px; height: 150
 .radio.dis { opacity: .55; }
 .panel + .panel, .panel + section { margin-top: 14px; }
 @media (max-width: 1100px) { .decks3 { grid-template-columns: 1fr; } }
+.hc { font-size: 13px; padding: 2px; overflow: hidden; }
+.hc.small { font-size: 10.5px; line-height: 1.15; }
+.pm { gap: 4px; }
+.pm .bbtn { padding: 5px 9px; font-size: 12px; }
+.loops { gap: 6px; }
+.loops .mono { min-width: 92px; text-align: center; color: var(--green); }
+.trk .tmx { width: 150px; display: flex; justify-content: flex-end; }

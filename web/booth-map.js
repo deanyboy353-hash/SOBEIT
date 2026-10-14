@@ -20,10 +20,10 @@
     A: { note: 0x91, cc: 0xB1, shiftNote: 0x94, shiftCc: 0xB4, pads: 0x96 },
     B: { note: 0x92, cc: 0xB2, shiftNote: 0x95, shiftCc: 0xB5, pads: 0x97 }
   };
-  // Pad banks: the note offset each pad mode sends (pad n = base + n - 1).
+  // Pad banks: the note offset each pad mode sends (pad n = base + n - 1). Holding SHIFT sends base + 8 + n - 1.
   var PAD_BANKS = [
     { id: 'hotcue', name: 'Hot cue', base: 0x00 },
-    { id: 'roll', name: 'Roll', base: 0x10 },
+    { id: 'loop', name: 'Loop', base: 0x10 },
     { id: 'slicer', name: 'Slicer', base: 0x20 },
     { id: 'sampler', name: 'Sampler', base: 0x30 },
     { id: 'toneplay', name: 'Toneplay', base: 0x40 },
@@ -31,8 +31,10 @@
     { id: 'fx', name: 'FX', base: 0x60 },
     { id: 'beatjump', name: 'Beatjump', base: 0x70 }
   ];
-  // The 8 pad-mode buttons above the pads (4 buttons, the other 4 with SHIFT).
-  var PAD_MODES = ['Hot cue', 'Roll', 'Slicer', 'Sampler', 'Toneplay', 'FX', 'Slicer loop', 'Beatjump'];
+  // The 8 pad-mode buttons above the pads (4 buttons, the other 4 with SHIFT), in the order of their notes.
+  var PAD_MODES = ['Hot cue', 'Loop', 'Slicer', 'Sampler', 'Toneplay', 'FX', 'Slicer loop', 'Beatjump'];
+  // Which bank each mode button switches the pads to.
+  var MODE_BANK = ['hotcue', 'loop', 'slicer', 'sampler', 'toneplay', 'fx', 'slicerloop', 'beatjump'];
 
   var controls = [];
   function add(id, o) { o.id = id; controls.push(o); }
@@ -66,7 +68,10 @@
       add(d + '.mode' + (i + 1), { label: L + 'pad mode: ' + name + (i >= 4 ? ' (SHIFT + mode button)' : ''), kind: 'button', msg: [D.note, 0x0F + i], deck: d, part: 'pads', led: [D.note, 0x0F + i] });
     });
     PAD_BANKS.forEach(function (b) {
-      for (var n = 1; n <= 8; n++) add(d + '.pad.' + b.id + '.' + n, { label: L + 'pad ' + n + ' (' + b.name + ' mode)', kind: 'button', msg: [D.pads, b.base + n - 1], deck: d, part: 'pads', pad: n, bank: b.id, led: [D.pads, b.base + n - 1] });
+      for (var n = 1; n <= 8; n++) {
+        add(d + '.pad.' + b.id + '.' + n, { label: L + 'pad ' + n + ' (' + b.name + ' mode)', kind: 'button', msg: [D.pads, b.base + n - 1], deck: d, part: 'pads', pad: n, bank: b.id, led: [D.pads, b.base + n - 1] });
+        add(d + '.pad.' + b.id + 'Shift.' + n, { label: L + 'SHIFT + pad ' + n + ' (' + b.name + ' mode)', kind: 'button', msg: [D.pads, b.base + 8 + n - 1], deck: d, part: 'pads', pad: n, bank: b.id + 'Shift', shift: true, led: [D.pads, b.base + 8 + n - 1] });
+      }
     });
   });
   add('xfader', { label: 'Crossfader', kind: 'fader', msg: [0xB0, 0x00], part: 'mixer' });
@@ -103,7 +108,7 @@
     'xfader-': '[', 'xfader+': ']'
   };
 
-  var MAP = { name: 'Hercules DJControl Inpulse 500', version: 1, decks: DECKS, padBanks: PAD_BANKS, padModes: PAD_MODES, controls: controls, lights: LIGHTS, keys: KEYS,
+  var MAP = { name: 'Hercules DJControl Inpulse 500', version: 2, decks: DECKS, padBanks: PAD_BANKS, padModes: PAD_MODES, modeBank: MODE_BANK, controls: controls, lights: LIGHTS, keys: KEYS,
     // A device name containing one of these is treated as the Inpulse 500.
     match: [/inpulse\s*500/i, /DJControl Inpulse 500/i] };
 

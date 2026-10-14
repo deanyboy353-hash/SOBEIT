@@ -105,17 +105,18 @@
   });
 
   // ---------- routing ----------
-  var SCREENS = { menu: drawMenu, test: drawTest }, NAV = [['menu', 'Menu'], ['free', 'Free mix'], ['library', 'Library'], ['test', 'Controller test'], ['settings', 'Sound settings']];
+  var SCREENS = { menu: drawMenu, test: drawTest }, NAV = [['menu', 'Menu'], ['lessons', 'Lessons'], ['free', 'Free mix'], ['library', 'Library'], ['stats', 'Stats'], ['test', 'Controller test'], ['settings', 'Sound settings']];
   if (window.BoothPlay) {
-    BoothPlay.init({ conn: conn, dec: dec, map: MAP, values: values, toast: toast, el: el, esc: esc, load: load, save: save, screen: function () { return screen; } });
+    BoothPlay.init({ conn: conn, dec: dec, map: MAP, values: values, toast: toast, el: el, esc: esc, load: load, save: save, screen: function () { return screen; },
+      diagram: function () { return '<svg class="diagram mini" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Inpulse 500: the control to use is highlighted">' + deckSvg('A', 20) + mixerSvg() + deckSvg('B', 860) + '</svg>'; } });
     Object.keys(BoothPlay.screens).forEach(function (k) { SCREENS[k] = BoothPlay.screens[k]; });
   }
   function go() {
-    var h = (location.hash || '#menu').slice(1);
-    screen = SCREENS[h] ? h : 'menu';
+    var h = (location.hash || '#menu').slice(1), parts = h.split('/');
+    screen = SCREENS[parts[0]] ? parts[0] : 'menu';
     if (window.BoothPlay) BoothPlay.leave(screen);
     el('bnav').innerHTML = NAV.filter(function (x) { return SCREENS[x[0]]; }).map(function (x) { return '<a href="#' + x[0] + '"' + (screen === x[0] ? ' aria-current="page"' : '') + '>' + x[1] + '</a>'; }).join('') + '<a href="index.html#play">Back to Nudge</a>';
-    SCREENS[screen]();
+    SCREENS[screen](parts.slice(1));
     window.scrollTo(0, 0);
   }
   window.addEventListener('hashchange', go);
@@ -124,20 +125,22 @@
   function drawMenu() {
     var n = MAP.controls.filter(required).length, v = MAP.controls.filter(function (c) { return required(c) && verified[c.id]; }).length;
     var modes = [
-      ['test', 'Controller test', 'Check every knob, fader, button and light on your Inpulse 500. Do this first.', 'Ready', true],
-      ['', 'Lessons', 'From volume fades to full sets. Levels unlock as your scores improve.', 'Phase 4'],
-      ['', 'Transition drills', 'Bass swap, EQ blend, filter fade, volume fade, 32-bar blend, quick cut. Repeat one.', 'Phase 4'],
-      ['', 'Manual beatmatching', 'Sync off. Match tempo with the pitch fader and phase with the jog wheel.', 'Phase 4'],
-      ['', 'Ghost line', 'Follow a target fader and EQ curve as it scrolls with the music.', 'Phase 4'],
-      ['', 'Set mode', 'Pick 3 or 4 tracks in order, get scored on the whole run.', 'Phase 4'],
-      ['free', 'Free mix', 'No scoring, just play. Two decks, your tracks, your Inpulse 500.', 'Ready', true],
-      ['', 'Daily challenge', 'Same challenge for you and Yaz each day, head to head in Nudge.', 'Phase 5'],
-      ['library', 'Library', 'Your tracks with BPM, key (Camelot), waveforms and what mixes well together. Fix beat grids here.', 'Ready', true]
+      ['test', 'Controller test', 'Check every knob, fader, button and light on your Inpulse 500.', v + ' of ' + n + ' checked', v >= n],
+      ['lessons', 'Lessons', 'Step by step from volume fades to full sets. Levels unlock as your scores improve.', 'Start here', true],
+      ['drills', 'Transition drills', 'Pick one technique and repeat it: bass swap, EQ blend, filter fade, volume fade, 32-bar blend, quick cut.', 'Practice'],
+      ['beatmatch', 'Manual beatmatching', 'Sync off. The incoming track starts at a random tempo and phase. Match it by hand.', 'Core skill', true],
+      ['ghost', 'Ghost line', 'Follow the target fader and EQ curves as they scroll with the music.', 'Rhythm game'],
+      ['set', 'Set mode', 'Pick 3 or 4 tracks in order and get scored on the whole run.', 'Perform'],
+      ['free', 'Free mix', 'No scoring, just play.', 'Play'],
+      ['daily', 'Daily challenge', 'Same challenge for you and Yaz today, head to head in Nudge.', 'Today'],
+      ['stats', 'Stats', 'Practice time, transitions, average scores, streak and beatmatching over time.', 'Progress'],
+      ['recordings', 'Recordings', 'Mixes you recorded. Play them back or download them.', 'Listen'],
+      ['library', 'Library', 'BPM, Camelot key, waveforms, genres, what mixes with what. Fix beat grids.', 'Tracks']
     ];
     el('screen').innerHTML = '<h1>Afterhours: Booth</h1><p class="sub">Learn transitions and manual beatmatching on your Hercules DJControl Inpulse 500.</p>' +
       '<div class="modes">' + modes.map(function (m) {
         return '<button type="button" class="mode' + (m[4] ? ' star' : '') + '"' + (m[0] ? ' data-go="' + m[0] + '"' : ' disabled') + '><span class="tag' + (m[4] ? ' ok' : '') + '">' + m[3] + '</span><b>' + m[1] + '</b><span class="small muted">' + m[2] + '</span>' +
-          (m[0] === 'test' ? '<span class="small" style="margin-top:auto">' + v + ' of ' + n + ' controls checked</span>' : '') + '</button>';
+          '</button>';
       }).join('') + '</div>';
   }
 

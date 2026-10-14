@@ -20,6 +20,7 @@ function gamesDay_(ymd) {
   g.tempo = g.tempo || { me: null, partner: null };
   g.mix = g.mix || { me: null, partner: null };
   g.set = g.set || { me: null, partner: null };
+  g.booth = g.booth || { me: null, partner: null };
   g.stake = g.stake || null;
   return g;
 }
@@ -74,6 +75,7 @@ function gamesState_(who) {
     tempo: tempoState_(today, g.tempo[who], g.tempo[other]),
     mix: { puzzle: mixPuzzle(today), mine: g.mix[who], other: g.mix[other] ? { points: g.mix[other].points, scored: g.mix[other].scored, tries: g.mix[other].tries } : null },
     set: { mine: g.set[who], other: g.set[other] ? { points: g.set[other].points, score: g.set[other].score, grade: g.set[other].grade, acc: g.set[other].acc, tries: g.set[other].tries } : null },
+    booth: { mine: g.booth[who], other: g.booth[other] ? { points: g.booth[other].points, score: g.booth[other].score, grade: g.booth[other].grade, title: g.booth[other].title, tries: g.booth[other].tries } : null },
     stake: g.stake ? { text: g.stake.text, by: g.stake.by === who ? 'you' : 'them', result: stakeResult_(w[who], w[other]) } : null,
     stats: gameStats_(who)
   };
@@ -280,6 +282,23 @@ function submitSet(key, acc, score, mixes, grade) {
       function (me) { return me.grade + ' ' + me.acc + '% (' + me.mixes + ' mixes, ' + me.score + ')'; }, 'Booth', 'played a set in Booth');
     var st = gamesState_(who);
     st.last = { points: pts, acc: acc, score: score, grade: grade, firstXp: res.first ? 5 + pts : 0 };
+    return st;
+  });
+}
+
+/** Booth's daily challenge: the same challenge for both of you each day (worked out from the date in the game). Best score counts. */
+function submitBooth(key, score, grade, title) {
+  var who = who_(key);
+  score = Math.round(Number(score));
+  grade = /^(S|A|B|C|D)$/.test(String(grade)) ? String(grade) : 'D';
+  title = String(title || 'Daily challenge').slice(0, 60);
+  if (!(score >= 0 && score <= 100)) throw new Error('That score didn\'t register. Try again.');
+  return withLock_(function () {
+    var pts = Math.round(score / 10);
+    var res = replayable_(who, 'booth', pts, { score: score, grade: grade, title: title }, function (me) { return score > (me.score || 0); },
+      function (me) { return me.grade + ' ' + me.score + ' (' + me.title + ')'; }, 'Booth challenge', 'did today\'s Booth challenge');
+    var st = gamesState_(who);
+    st.last = { points: pts, score: score, grade: grade, firstXp: res.first ? 5 + pts : 0 };
     return st;
   });
 }

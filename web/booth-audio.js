@@ -89,7 +89,7 @@
     this.e = engine; this.id = id; this.c = c;
     this.track = null; this.src = null; this.playing = false; this.pos = 0; this.lastT = 0;
     this.pitch = 0; this.pitchRange = 0.08; this.faderPitch = null; this.picked = true;
-    this.nudge = 0; this.jogVel = 0; this.touching = false; this.curRate = 1;
+    this.nudge = 0; this.jogVel = 0; this.touching = false; this.curRate = 1; this.loop = null; this.loopIn = null; this.loopSize = 4; this.shadow = null;
     this.sync = true; this.cuePos = 0; this.hot = []; this.startedAt = 0; this.ended = false;
     this.vals = { trim: 0.5, eqLow: 0.5, eqMid: 0.5, eqHigh: 0.5, filter: 0.5, volume: 0, pfl: 0 };
     this.trim = c.createGain();
@@ -134,6 +134,7 @@
   D.load = function (track, buffer) {
     this.stop(); this.track = track; this.buffer = buffer;
     this.hot = (track.hot || []).slice(); this.cuePos = track.first || 0; this.pos = this.cuePos; this.nudge = 0; this.jogVel = 0; this.ended = false;
+    this.loop = null; this.loopIn = null; this.shadow = null; this.loopSize = 4;
   };
   D.baseRate = function () {
     var o = this.e.other(this);
@@ -142,7 +143,12 @@
   };
   D.rate = function () { return this.baseRate() * (1 + this.nudge); };
   D.bpm = function () { return this.track ? this.track.bpm * this.baseRate() : 0; };
-  D.time = function (t) { t = t === undefined ? this.c.currentTime : t; return this.playing ? this.pos + (t - this.lastT) * this.curRate : this.pos; };
+  D.time = function (t) {
+    t = t === undefined ? this.c.currentTime : t;
+    var raw = this.playing ? this.pos + (t - this.lastT) * this.curRate : this.pos, L = this.loop;
+    if (L && this.playing && raw >= L.end) return L.start + (raw - L.start) % (L.end - L.start);
+    return raw;
+  };
   D.beatPos = function (t) { return this.track ? (this.time(t) - this.track.first) * this.track.bpm / 60 : 0; };
   D.mark = function (t) { this.pos = this.time(t); this.lastT = t; };
   D.applyRate = function () {
@@ -168,6 +174,7 @@
   D.startAt = function (t, pos) {
     var s = this.c.createBufferSource(), self = this, dur = this.buffer.duration;
     s.buffer = this.buffer; s.playbackRate.value = this.curRate; s.connect(this.trim);
+    if (this.loop) { s.loop = true; s.loopStart = Math.max(0, this.loop.start); s.loopEnd = Math.min(dur, this.loop.end); if (pos >= this.loop.end) pos = this.loop.start + (pos - this.loop.start) % (this.loop.end - this.loop.start); }
     if (pos < 0) s.start(t + (-pos) / this.curRate, 0); else s.start(t, Math.min(pos, dur - 0.005));
     s.onended = function () { if (self.src === s) { self.mark(self.c.currentTime); self.playing = false; self.src = null; self.ended = true; } };
     if (this.src) { try { this.src.stop(t); } catch (e) {} }
@@ -181,6 +188,7 @@
   D.seek = function (pos) {
     if (!this.track) return;
     pos = Math.max(-2, Math.min(this.buffer.duration - 0.05, pos));
+    if (this.loop && (pos < this.loop.start - 0.001 || pos >= this.loop.end)) this.loop = null;   // jumping out of a loop ends it
     if (this.playing) this.startAt(this.c.currentTime + 0.005, pos); else this.pos = pos;
   };
   D.snap = function (pos) { if (!this.track) return pos; var b = 60 / this.track.bpm, k = Math.round((pos - this.track.first) / b); return this.track.first + k * b; };
@@ -192,6 +200,68 @@
     this.previewing = true; this.play(); return 'preview';
   };
   D.cueUp = function () { if (this.previewing) { this.previewing = false; this.stop(); this.pos = this.cuePos; } };
+  // ---------- loops ----------
+  D.beatSec = function () { return 60 / this.track.bpm; };
+  /** Change the loop and restart playback seamlessly from where we are (wrapped into the new loop). */
+  D.setLoop = function (L) {
+    var t = this.c.currentTime + 0.005, p = this.time(t);
+    this.loop = L;
+    if (L && p >= L.end) p = L.start + (p - L.start) % (L.end - L.start);
+    if (this.playing) this.startAt(t, p); else this.pos = p;
+  };
+  D.loopLen = function () { return this.loop ? (this.loop.end - this.loop.start) / this.beatSec() : 0; };
+  /** LOOP IN: mark the start (on the beat). While looping, it exits the loop. */
+  D.loopInBtn = function () {
+    if (!this.track) return '';
+    if (this.loop) { this.setLoop(null); return 'exit'; }
+    this.loopIn = this.snap(this.time()); return 'in';
+  };
+  /** LOOP OUT: close the loop from LOOP IN to here (whole beats). While looping, it exits. */
+  D.loopOutBtn = function () {
+    if (!this.track) return '';
+    if (this.loop) { this.setLoop(null); return 'exit'; }
+    if (this.loopIn === null || this.loopIn === undefined) return 'noin';
+    var b = this.beatSec(), now = this.time(), beats = Math.max(1, Math.round((now - this.loopIn) / b));
+    if (now <= this.loopIn) return 'noin';
+    this.setLoop({ start: this.loopIn, end: this.loopIn + beats * b }); return beats;
+  };
+  /** An auto loop of n beats from the current beat (fractions start on the matching fraction). Same size again turns it off. */
+  D.beatLoop = function (beats, keep) {
+    if (!this.track) return '';
+    var b = this.beatSec(), len = beats * b;
+    if (this.loop && !keep && Math.abs(this.loopLen() - beats) < 1e-6) { this.setLoop(null); return 'exit'; }
+    var q = beats >= 1 ? b : len, now = this.time(), start = this.track.first + Math.floor((now - this.track.first) / q + 1e-9) * q;
+    this.loopSize = beats; this.setLoop({ start: start, end: start + len }); return beats;
+  };
+  D.loopHalve = function () { if (this.loop) { var len = (this.loop.end - this.loop.start) / 2; if (len / this.beatSec() >= 1 / 32) this.setLoop({ start: this.loop.start, end: this.loop.start + len }); } else this.loopSize = Math.max(1 / 8, this.loopSize / 2); return this.loop ? this.loopLen() : this.loopSize; };
+  D.loopDouble = function () { if (this.loop) { var len = (this.loop.end - this.loop.start) * 2; if (len / this.beatSec() <= 64) this.setLoop({ start: this.loop.start, end: this.loop.start + len }); } else this.loopSize = Math.min(64, this.loopSize * 2); return this.loop ? this.loopLen() : this.loopSize; };
+  /** Momentary loops (roll, slicer): the track keeps running underneath, and you land where it would have been. */
+  D.slipStart = function () { if (!this.shadow) this.shadow = { pos: this.time(), t: this.c.currentTime, loop: this.loop }; };
+  D.slipEnd = function () {
+    var s = this.shadow; if (!s) return; this.shadow = null;
+    var t = this.c.currentTime + 0.005, pos = s.pos + (t - s.t) * this.curRate;
+    if (s.loop && pos >= s.loop.end) pos = s.loop.start + (pos - s.loop.start) % (s.loop.end - s.loop.start);
+    this.loop = s.loop || null;
+    if (this.playing) this.startAt(t, pos); else this.pos = pos;
+  };
+  D.roll = function (beats, down) { if (!this.track || !this.playing) return; if (down) { this.slipStart(); this.beatLoop(beats, true); } else this.slipEnd(); };
+  /** Slicer: the 8 beats you're in are cut into 8 slices; a pad plays its slice (looped while held). */
+  D.slice = function (n, down) {
+    if (!this.track || !this.playing) return;
+    if (!down) return this.slipEnd();
+    var b = this.beatSec(), bp = Math.floor(this.beatPos()), dom = bp - ((bp % 8) + 8) % 8, at = this.track.first + (dom + n) * b;
+    this.slipStart(); this.loop = { start: at, end: at + b }; this.startAt(this.c.currentTime + 0.005, at);
+  };
+  D.sliceIndex = function () { if (!this.track) return -1; var bp = Math.floor(this.beatPos()); return ((bp % 8) + 8) % 8; };
+  /** Beat jump: move forward or back by whole beats (the loop moves too). */
+  D.beatJump = function (beats) {
+    if (!this.track) return;
+    var d = beats * this.beatSec();
+    if (this.loop) { this.loop = { start: this.loop.start + d, end: this.loop.end + d }; }
+    var t = this.c.currentTime + 0.005, p = this.time(t) + d;
+    if (this.playing) this.startAt(t, p); else this.pos = p;
+  };
+
   D.hotcue = function (n, del) {
     if (!this.track) return '';
     if (del) { this.hot[n] = null; return 'deleted'; }
@@ -200,12 +270,18 @@
   };
   /** Pitch fader 0..1 (top = slower, bottom = faster, like the hardware arrows). Soft takeover after SYNC is turned off. */
   D.pitchFader = function (v) {
-    var p = (v - 0.5) * 2 * this.pitchRange;
+    this.faderRaw = (v - 0.5) * 2 * this.pitchRange;
+    var p = this.faderRaw + (this.pitchOffset || 0);
     this.faderPitch = p;
     if (this.sync) return;
     if (!this.picked) { if (Math.abs(p - this.pitch) < 0.0015) this.picked = true; else return; }
     this.pitch = p; this.applyRate();
   };
+  /** Beatmatching drills: start at a given tempo change, and let the fader move it from wherever it sits now. */
+  D.startAtPitch = function (p) {
+    this.sync = false; this.pitchOffset = p - (this.faderRaw || 0); this.pitch = p; this.faderPitch = p; this.picked = true; this.applyRate();
+  };
+  D.clearOffset = function () { if (this.pitchOffset) { this.pitchOffset = 0; this.picked = false; } };
   D.setSync = function (on) {
     if (!on && this.sync) { this.pitch = this.baseRate() - 1; this.picked = this.faderPitch !== null && Math.abs(this.faderPitch - this.pitch) < 0.0015; }
     this.sync = on; this.applyRate();
