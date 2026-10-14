@@ -5,6 +5,7 @@ chrome.runtime.onInstalled.addListener(function () {
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(function () {});
   chrome.contextMenus.removeAll(function () {
     chrome.contextMenus.create({ id: 'deadline', title: 'Life Quest: add "%s" as a deadline', contexts: ['selection'] });
+    chrome.contextMenus.create({ id: 'block', title: 'Life Quest: time-block "%s"', contexts: ['selection'] });
     chrome.contextMenus.create({ id: 'shop', title: 'Life Quest: add "%s" to shopping', contexts: ['selection'] });
     chrome.contextMenus.create({ id: 'park', title: 'Life Quest: save "%s" for later', contexts: ['selection'] });
     chrome.contextMenus.create({ id: 'page', title: 'Life Quest: add this page as a deadline', contexts: ['page'] });
@@ -28,6 +29,11 @@ chrome.contextMenus.onClicked.addListener(function (info, tab) {
     LQ.rpc('addDeadline', [text]).then(function (r) { note('Deadline added', r.added.task + ': due ' + r.added.dueText.slice(-5)); check(); }, function (e) {
       if (/Add a time/.test(e.message)) ask(text); else note('Couldn\'t add it', e.message);
     });
+  } else if (info.menuItemId === 'block') {
+    LQ.rpc('addBlock', [text.slice(0, 140)]).then(function (r) {
+      var a = r.added, hm = function (m) { return ('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + m % 60).slice(-2); };
+      note('Blocked ' + hm(a.start) + '-' + hm(a.start + a.mins), a.task + (a.placed ? ' (next free slot)' : ''));
+    }, function (e) { note('Couldn\'t block it', e.message); });
   } else if (info.menuItemId === 'shop') {
     LQ.rpc('addShopping', [text.slice(0, 80)]).then(function () { note('Added to shopping', text.slice(0, 80)); }, function (e) { note('Couldn\'t add it', e.message); });
   } else if (info.menuItemId === 'park') {

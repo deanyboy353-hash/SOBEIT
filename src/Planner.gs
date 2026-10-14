@@ -615,6 +615,93 @@ function setPoints(acc, mixes) {
   return Math.min(10, base + (mixes >= 3 ? 1 : 0));
 }
 
+// ---- Work blocks (time blocking) ----
+
+var BLOCK_KINDS = { focus: 'Deep work', admin: 'Admin', meet: 'Meeting', learn: 'Learning', break: 'Break' };
+
+/** What kind of block a task sounds like. */
+function guessBlockKind(task) {
+  var t = ' ' + String(task || '').toLowerCase() + ' ';
+  if (/\b(lunch|break|walk|coffee|tea|stretch|nap|rest|gym)\b/.test(t)) return 'break';
+  if (/\b(meeting|meet|call|calls|standup|stand-up|sync|1:1|one to one|interview|catch ?up|zoom|teams|huddle)\b/.test(t)) return 'meet';
+  if (/\b(email|emails|inbox|admin|invoice|invoices|expenses|slack|messages|paperwork|timesheet|booking|bills?)\b/.test(t)) return 'admin';
+  if (/\b(learn|learning|course|study|read|reading|tutorial|training|practice)\b/.test(t)) return 'learn';
+  return 'focus';
+}
+
+/**
+ * "Write the report 10-11:30", "Emails 30m", "Call Sam at 3pm for 45 min",
+ * "Deep work 2h", "Lunch 12:30-13:15 tomorrow" -> { task, start, mins, kind, tomorrow }.
+ * start is minutes since midnight, or null when no time was given.
+ * Hours without am/pm before 7 are read as afternoon (it's a work day).
+ */
+function parseBlock(text) {
+  var t = ' ' + String(text || '').replace(/[–—]/g, '-').replace(/\s+/g, ' ').trim() + ' ', m, start = null, end = null, mins = null, tomorrow = false;
+  if (!t.trim()) return null;
+  function toMin(h, mm, ap) {
+    h = Number(h); mm = Number(mm || 0);
+    if (h > 23 || mm > 59) return null;
+    ap = (ap || '').toLowerCase();
+    if (ap === 'pm' && h < 12) h += 12; else if (ap === 'am' && h === 12) h = 0; else if (!ap && h >= 1 && h < 7) h += 12;
+    return h * 60 + mm;
+  }
+  if (/\btomorrow\b/i.test(t)) { tomorrow = true; t = t.replace(/\s(for\s+)?tomorrow\b/i, ' '); }
+  var CL = '(\\d{1,2})(?:[:.](\\d{2}))?\\s*(am|pm)?';
+  m = t.match(new RegExp('\\s(?:from\\s+|at\\s+)?' + CL + '\\s*(?:-|to|until|till)\\s*' + CL + '(?=\\s)', 'i'));
+  if (m) {
+    end = toMin(m[4], m[5], m[6]);
+    start = toMin(m[1], m[2], m[3] || m[6]);
+    if (!m[3] && m[6] && start !== null && end !== null && start > end) start = toMin(m[1], m[2], '');
+    if (start !== null && end !== null) { if (end <= start) end += 12 * 60; if (end - start <= 12 * 60) { mins = end - start; t = t.replace(m[0], ' '); } else { start = null; end = null; } }
+    else { start = null; end = null; }
+  }
+  if (mins === null) {
+    m = t.match(/\s(?:for\s+)?(\d+(?:\.\d+)?)\s*(?:h|hr|hrs|hour|hours)(?:\s*(\d{1,2})\s*(?:m|min|mins|minutes)?)?(?=\s)/i);
+    if (m) { mins = Math.round(Number(m[1]) * 60) + Number(m[2] || 0); t = t.replace(m[0], ' '); }
+    else {
+      m = t.match(/\s(?:for\s+)?(\d{1,3})\s*(?:m|min|mins|minute|minutes)(?=\s)/i);
+      if (m) { mins = Number(m[1]); t = t.replace(m[0], ' '); }
+    }
+  }
+  if (start === null) {
+    m = t.match(new RegExp('\\s(?:at|@|from)\\s+' + CL + '(?=\\s)', 'i')) || t.match(/\s(\d{1,2})[:.](\d{2})\s*(am|pm)?(?=\s)/i) || t.match(/\s(\d{1,2})()\s*(am|pm)(?=\s)/i);
+    if (m) { var st = toMin(m[1], m[2], m[3]); if (st !== null) { start = st; t = t.replace(m[0], ' '); } }
+  }
+  var task = t.replace(/\s(for|at|from|on|@|,|-)\s*$/i, ' ').replace(/^\s*(-|,)\s*/, '').replace(/\s+/g, ' ').trim();
+  task = task.replace(/\s(for|at|from)$/i, '').trim();
+  if (!task) task = 'Focus block';
+  task = task.charAt(0).toUpperCase() + task.slice(1);
+  var kind = guessBlockKind(task);
+  if (mins === null) mins = kind === 'focus' || kind === 'learn' ? 60 : 30;
+  mins = Math.max(5, Math.min(600, mins));
+  if (start !== null) start = Math.max(0, Math.min(1435, start));
+  return { task: task.slice(0, 100), start: start, mins: mins, kind: kind, tomorrow: tomorrow };
+}
+
+/** First free start (minutes) for a block of `mins`, not before `from`, around the blocks already there. */
+function placeBlock(blocks, mins, from) {
+  var at = Math.ceil(from / 5) * 5;
+  blocks.slice().sort(function (a, b) { return a.start - b.start; }).forEach(function (b) {
+    if (at + mins <= b.start) return;
+    if (b.start + b.mins > at) at = b.start + b.mins;
+  });
+  return Math.min(at, 1440 - mins);
+}
+
+/**
+ * XP for finishing a block: by length (about 2 per 10 minutes, 4 to 24), deep
+ * work x1.5, meetings half, breaks 2. +3 for starting on time, +1 for each
+ * block already done today (up to +5).
+ */
+function blockXp(kind, mins, onTime, combo) {
+  if (kind === 'break') return 2;
+  var base = Math.max(4, Math.min(24, Math.round(mins / 10) * 2));
+  if (kind === 'focus') base = Math.round(base * 1.5);
+  if (kind === 'meet') base = Math.max(2, Math.round(base / 2));
+  return base + (onTime ? 3 : 0) + Math.min(5, Math.max(0, combo || 0));
+}
+
+
 // ---- Deadlines ("Send the invoice by 3pm") ----
 
 /**

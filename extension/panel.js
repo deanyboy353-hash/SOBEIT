@@ -3,9 +3,10 @@
   var root = document.getElementById('root');
   function showApp(key) {
     var url = self.LQ_EXT.app + '?key=' + encodeURIComponent(key);
-    root.innerHTML = '<div class="top"><button type="button" id="djTab">DJ Set in a tab</button><button type="button" id="fullTab">Open in a tab</button></div>' +
+    root.innerHTML = '<div class="top"><button type="button" id="workTab">Work</button><button type="button" id="djTab">DJ Set in a tab</button><button type="button" id="fullTab">Open in a tab</button></div>' +
       '<iframe src="' + url + '#home" allow="autoplay; clipboard-write; screen-wake-lock; midi" title="Life Quest"></iframe>';
     document.getElementById('fullTab').addEventListener('click', function () { chrome.tabs.create({ url: url + '#home' }); });
+    document.getElementById('workTab').addEventListener('click', function () { root.querySelector('iframe').src = url + '#work'; });
     document.getElementById('djTab').addEventListener('click', function () { chrome.tabs.create({ url: url + '#djset' }); });
   }
   function showSetup(msg) {

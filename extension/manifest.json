@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Life Quest",
   "short_name": "Life Quest",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Your Life Quest app in Chrome's side panel: deadlines, chores and music while you work, plus right-click to add a deadline.",
   "icons": { "16": "icon-16.png", "48": "icon-48.png", "128": "icon-128.png" },
   "action": { "default_title": "Life Quest", "default_icon": { "16": "icon-16.png", "48": "icon-48.png" } },

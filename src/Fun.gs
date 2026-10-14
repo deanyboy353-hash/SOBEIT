@@ -374,7 +374,7 @@ function daysBetween_(a, b) {
 
 // ---------- customisation ----------
 
-var HOME_BLOCKS = ['deadlines', 'brief', 'ask', 'ring', 'challenges', 'next', 'whatnow', 'routine', 'gym', 'chores', 'tiles', 'make', 'us', 'feed'];
+var HOME_BLOCKS = ['deadlines', 'work', 'brief', 'ask', 'ring', 'challenges', 'next', 'whatnow', 'routine', 'gym', 'chores', 'tiles', 'make', 'us', 'feed'];
 var PREF_DEFAULTS = { char: '', accent: '', text: 'normal', sound: true, haptics: true, confetti: true, motion: true, home: [], nag: '', look: {} };
 var LOOK_KEYS = { hair: 1, hc: 1, top: 1, tc: 1, head: 1, eyes: 1, face: 1, skin: 1, ear: 1 };
 
@@ -393,6 +393,11 @@ function setPrefs(key, p) {
     if (p.accent !== undefined) cur.accent = ['', 'pink', 'green', 'teal', 'orange', 'blue'].indexOf(p.accent) !== -1 ? p.accent : '';
     if (p.text !== undefined) cur.text = p.text === 'large' ? 'large' : 'normal';
     if (p.nag !== undefined) cur.nag = NAG_LEVELS[p.nag] ? p.nag : '';
+    if (p.workStart !== undefined || p.workEnd !== undefined) {
+      var ws = Math.round(Number(p.workStart !== undefined ? p.workStart : workHours_(who).start)), we = Math.round(Number(p.workEnd !== undefined ? p.workEnd : workHours_(who).end));
+      if (!(ws >= 0 && we <= 1440 && we - ws >= 60)) throw new Error('Your work day needs to be at least an hour long.');
+      cur.workStart = ws; cur.workEnd = we;
+    }
     if (p.look && typeof p.look === 'object') {
       cur.look = {};
       Object.keys(p.look).forEach(function (k) { var v = String(p.look[k]); if (LOOK_KEYS[k] && (/^[a-z]{1,12}$/.test(v) || /^#[0-9a-f]{6}$/i.test(v))) cur.look[k] = v; });
