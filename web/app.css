@@ -695,3 +695,36 @@ body.dj-open { overflow: hidden; }
 .djset-card { background: linear-gradient(135deg, rgba(255,95,174,.16), rgba(47,224,214,.14)); }
 @media (max-width: 520px) { .dj-stats { grid-template-columns: repeat(2, 1fr); } .dj-phase { width: 90px; } .dj-grade { font-size: 84px; } }
 @media (prefers-reduced-motion: reduce) { .dj-kbd.wait, .dj-spin { animation: none; } }
+
+/* ---------- computers: sidebar, wider pages, cards in columns ---------- */
+nav.tabs .desk { display: none; }
+@media (min-width: 960px) {
+  nav.tabs { top: 0; right: auto; width: 220px; flex-direction: column; justify-content: flex-start; align-items: stretch; gap: 2px; padding: 22px 12px; border-top: 0; border-right: 1px solid var(--line); overflow-y: auto; }
+  nav.tabs::before { content: 'Life Quest'; font-weight: 800; font-size: 19px; letter-spacing: -.01em; color: var(--ink); padding: 2px 12px 18px; }
+  nav.tabs .desk { display: flex; }
+  nav.tabs .navsep { display: block; height: 1px; background: var(--line); margin: 10px 12px; }
+  nav.tabs button { flex: none; max-width: none; flex-direction: row; justify-content: flex-start; gap: 12px; padding: 10px 12px; font-size: 14.5px; color: var(--muted); border-radius: 12px; }
+  nav.tabs button svg { width: 20px; height: 20px; }
+  nav.tabs button:hover { background: var(--raised); color: var(--ink); }
+  nav.tabs button[aria-current="page"] { background: var(--lilac-soft); color: var(--lilac); }
+  nav.tabs .dot { position: static; transform: none; margin-left: auto; }
+  nav.tabs .djnav { margin-top: auto; background: linear-gradient(135deg, #ff5fae, #7c5cff); color: #fff; }
+  nav.tabs .djnav:hover { color: #fff; filter: brightness(1.08); background: linear-gradient(135deg, #ff5fae, #7c5cff); }
+  main { max-width: 1120px; margin: 0 0 0 220px; padding: 30px 40px 48px; }
+  #tab-home:not([hidden]), #tab-chores:not([hidden]), #tab-train:not([hidden]), #tab-food:not([hidden]), #tab-health:not([hidden]), #tab-you:not([hidden]), #tab-custom:not([hidden]) { column-count: 2; column-gap: 20px; }
+  .tab > * { break-inside: avoid; }
+  .tab > .top, .tab > .seg, .tab > .daynav, .tab > .chips, .tab > p.center { column-span: all; }
+  .tab > .top { margin-bottom: 20px; }
+  .tab > .top h1 { font-size: 30px; }
+  #tab-play:not([hidden]), #tab-empire:not([hidden]) { max-width: 720px; }
+  #toast { left: 220px; bottom: 28px; }
+  .webplayer { bottom: 20px; right: 20px; }
+  .sheetbg { align-items: center; padding: 24px; }
+  .sheet { border-radius: 24px; max-width: 620px; max-height: 86vh; padding-bottom: 22px; }
+  .musicbtn { max-width: 100%; }
+}
+@media (min-width: 1500px) {
+  main { max-width: 1500px; }
+  #tab-home:not([hidden]), #tab-you:not([hidden]), #tab-health:not([hidden]) { column-count: 3; }
+}
+@media (min-width: 960px) { #tab-chores > section.card:first-of-type, #tab-food > section.card:first-of-type { column-span: all; } }
