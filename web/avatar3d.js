@@ -125,7 +125,10 @@
     var bellyMesh = mesh(cyl(waist + 0.015, waist, 0.2, 8), belly, 0, 0.1, 0); bellyMesh.scale.z = 0.62; torso.add(bellyMesh);
     var chestMesh = mesh(cyl(shoulder, waist + 0.015, 0.32, 8), chest, 0, 0.36, 0); chestMesh.scale.z = 0.62; torso.add(chestMesh);
     if (f) { [-1, 1].forEach(function (s) { var b = mesh(ball(0.065, 1), chest, s * 0.07, 0.38, 0.09); b.scale.z = 0.7; torso.add(b); }); }
-    if (L.top === 'grove') { torso.add(mesh(box(0.12, 0.14, 0.01), mat('#ffffff'), 0, 0.36, 0.14)); }
+    if (L.top === 'grove') {
+      var jc = document.createElement('canvas'); jc.width = jc.height = 64; var jg = jc.getContext('2d'); jg.fillStyle = L.topC; jg.fillRect(0, 0, 64, 64); jg.fillStyle = '#ffffff'; jg.font = 'bold 48px Arial, sans-serif'; jg.textAlign = 'center'; jg.fillText('7', 32, 50);
+      torso.add(mesh(box(0.14, 0.14, 0.01), new T.MeshStandardMaterial({ map: new T.CanvasTexture(jc), roughness: 0.8 }), 0, 0.33, 0.14));
+    }
     if (L.top === 'vcsuit') { torso.add(mesh(box(0.08, 0.3, 0.02), mat('#f4f1ea'), 0, 0.36, 0.13)); [-1, 1].forEach(function (s) { var lp = mesh(box(0.05, 0.22, 0.015), top, s * 0.06, 0.4, 0.14); lp.rotation.z = s * 0.25; torso.add(lp); }); }
     if (L.top === 'corset') { for (var ci = 0; ci < 5; ci++) torso.add(mesh(box(0.06, 0.008, 0.012), mat('#111111'), 0, 0.12 + ci * 0.06, 0.135)); }
     if (L.top === 'hoodie') { var hood = mesh(new T.TorusGeometry(0.11, 0.045, 6, 12), top, 0, 0.53, -0.07); hood.rotation.x = 1.2; torso.add(hood); }
@@ -177,7 +180,7 @@
     if (h === 'beehive') { cap(1.05); var b = mesh(ball(0.14, 1), m, 0, 0.2, -0.02); b.scale.set(0.95, 1.5, 1); head.add(b); head.add(mesh(new T.TorusGeometry(0.1, 0.012, 4, 12), mat('#ff5fae'), 0, 0.1, 0)); return; }
     if (h === 'volume') {
       cap(1.08);
-      for (i = 0; i < 22; i++) { var ang = i / 22 * Math.PI * 2, ring = i % 2; head.add(mesh(ball(0.075 + ring * 0.02, 0), m, Math.cos(ang) * (0.17 + ring * 0.04), 0.08 - (i % 3) * 0.12, Math.sin(ang) * 0.13 - 0.06)); }
+      for (i = 0; i < 22; i++) { var ang = Math.PI * (0.92 + 1.16 * i / 21), ring = i % 2; head.add(mesh(ball(0.075 + ring * 0.02, 0), m, Math.cos(ang) * (0.17 + ring * 0.04), 0.08 - (i % 3) * 0.12, Math.sin(ang) * 0.13 - 0.05)); }   // sides and back, face clear
       for (i = 0; i < 5; i++) head.add(mesh(ball(0.09, 0), m, (i - 2) * 0.07, 0.2 + (i % 2) * 0.05, -0.04));
       return;
     }
@@ -247,8 +250,9 @@
       var w = host.clientWidth || 300, h = host.clientHeight || 300;
       r.setSize(w, h, false); el.style.width = w + 'px'; el.style.height = h + 'px';
       cam.aspect = w / h;
-      var span = figs.length > 1 ? 1.25 : 1.05, dist = Math.max(2.2 / Math.tan(cam.fov * Math.PI / 360) / 2 * 1.0, span / Math.tan(cam.fov * Math.PI / 360) / cam.aspect);
-      cam.position.set(0, 1.05, dist); cam.lookAt(0, 0.92, 0); cam.updateProjectionMatrix();
+      // fit 2.3 m of height (tall wigs and crowns) and both figures' width
+      var tan = Math.tan(cam.fov * Math.PI / 360), halfW = figs.length > 1 ? 1.15 : 0.62, dist = Math.max(1.2 / tan, halfW / (tan * cam.aspect)) + 0.5;
+      cam.position.set(0, 1.12, dist); cam.lookAt(0, 1.02, 0); cam.updateProjectionMatrix();
     }
     function loop(now) {
       raf = requestAnimationFrame(loop);
