@@ -270,7 +270,7 @@
 
     seg('whatnow');
     S.routines.routines.filter(function (r) { return r.showNow && !r.finished && r.steps.length; }).forEach(function (r) {
-      h += '<section class="card"><div class="head"><div class="row" style="gap:8px">' + icon(r.name === 'Evening' ? 'moon' : 'sun') + '<h3>' + esc(r.name) + ' routine</h3></div><span class="muted small num">' + r.done.length + '/' + r.steps.length + '</span></div>' +
+      h += '<section class="card"><div class="head"><div class="row" style="gap:8px">' + icon(r.name === 'Evening' ? 'moon' : 'sun') + '<h3>' + esc(r.name) + ' routine</h3></div><span class="row" style="gap:6px"><span class="muted small num">' + r.done.length + '/' + r.steps.length + '</span><button class="btn ghost sm" type="button" data-redit="' + esc(r.name) + '" aria-label="Change the ' + esc(r.name) + ' routine">' + icon('edit', 's') + 'Edit</button></span></div>' +
         r.steps.map(function (s, i) { var dn = r.done.indexOf(i) !== -1; return '<div class="item' + (dn ? ' done' : '') + '"><button class="check" type="button" data-routine="' + esc(r.name) + '" data-ri="' + i + '" aria-label="Done">' + icon('check') + '</button><div class="t grow" style="font-weight:500">' + esc(s) + '</div></div>'; }).join('') + '</section>';
     });
 
@@ -324,7 +324,9 @@
     }).join('') : '<p class="empty">Nothing yet today.</p>';
     h += '</section>';
     seg('feed');
-    h = parts.header + homeOrder().filter(function (x) { return !x.hide; }).map(function (x) { return parts[x.id] || ''; }).join('');
+    if (homeEditing) h = parts.header + homeEditView(parts);
+    else h = parts.header + homeOrder().filter(function (x) { return !x.hide; }).map(function (x) { return parts[x.id] || ''; }).join('') +
+      '<p class="center" style="margin:6px 0 18px"><button class="btn line sm" type="button" id="homeEdit">' + icon('edit', 's') + 'Edit home screen</button></p>';
     el('tab-home').innerHTML = h;
     mountHome3d();
   }
@@ -1478,6 +1480,87 @@
       (S.empire && (S.empire.rideName || S.empire.homeName) ? '<span class="tiny" style="opacity:.9">' + [S.empire.rideName ? 'Rides a ' + esc(S.empire.rideName) : '', S.empire.homeName ? 'Lives at ' + esc(S.empire.homeName) : ''].filter(Boolean).join(' · ') + '</span>' : '') +
       wanted(g.streak.count) + '</span></button>';
   }
+
+  // ---------- editing Home in place: order, hide, routines, water ----------
+  var homeEditing = false, rEd = null;
+  var upSvg = '<svg class="i s" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>', downSvg = '<svg class="i s" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>';
+  function homeEditView(parts) {
+    var list = homeOrder(), shown = list.filter(function (x) { return !x.hide; }), hidden = list.filter(function (x) { return x.hide; });
+    var h = '<section class="card hedit-top"><div class="between"><div><b>Editing your home screen</b><div class="small muted">Move cards, hide what you don\'t use, change your routines.</div></div><button class="btn primary" type="button" id="homeDone">Done</button></div></section>';
+    h += '<section class="card"><div class="head"><h3>Routines</h3><button class="btn soft sm" type="button" data-redit="">' + icon('plus', 's') + 'New routine</button></div>' +
+      (S.routines.routines.length ? S.routines.routines.map(function (r) { return '<div class="item"><div class="grow"><div class="t">' + esc(r.name) + '</div><div class="m">' + (r.time ? 'From ' + esc(r.time) + ' · ' : 'All day · ') + r.steps.length + ' step' + (r.steps.length === 1 ? '' : 's') + '</div></div><button class="btn line sm" type="button" data-redit="' + esc(r.name) + '">' + icon('edit', 's') + 'Edit</button></div>'; }).join('') : '<p class="empty">No routines yet.</p>') +
+      '<div class="between" style="margin-top:10px"><span class="small"><b>Water goal</b> · ' + (S.routines.waterGoal ? S.routines.waterGoal + ' glasses a day' : 'off') + '</span><span class="row" style="gap:6px"><button class="iconbtn" type="button" data-wgoal="-1" aria-label="One glass fewer">−</button><button class="iconbtn" type="button" data-wgoal="1" aria-label="One glass more">+</button></span></div></section>';
+    shown.forEach(function (x, i) {
+      h += '<div class="hedit"><div class="hedit-bar"><b class="grow">' + esc(HOME_NAMES[x.id]) + '</b>' +
+        '<button class="iconbtn" type="button" data-hm="' + x.id + '" data-dir="-1" aria-label="Move ' + esc(HOME_NAMES[x.id]) + ' up"' + (i ? '' : ' disabled') + '>' + upSvg + '</button>' +
+        '<button class="iconbtn" type="button" data-hm="' + x.id + '" data-dir="1" aria-label="Move ' + esc(HOME_NAMES[x.id]) + ' down"' + (i < shown.length - 1 ? '' : ' disabled') + '>' + downSvg + '</button>' +
+        '<button class="btn line sm" type="button" data-hh="' + x.id + '">Hide</button></div>' +
+        '<div class="hedit-body">' + (parts[x.id] || '<p class="small muted" style="margin:4px 2px 12px">Nothing to show here right now.</p>') + '</div></div>';
+    });
+    if (hidden.length) h += '<section class="card"><div class="head"><h3>Hidden</h3></div>' + hidden.map(function (x) { return '<div class="item"><div class="grow t">' + esc(HOME_NAMES[x.id]) + '</div><button class="btn soft sm" type="button" data-hh="' + x.id + '">' + icon('plus', 's') + 'Show</button></div>'; }).join('') + '</section>';
+    h += '<p class="center" style="margin:6px 0 18px"><button class="btn ghost sm" type="button" data-homereset="1">Put everything back to the start</button> <button class="btn primary" type="button" id="homeDone2">Done</button></p>';
+    return h;
+  }
+  function routineEditor(name) {
+    var r = S.routines.routines.filter(function (x) { return x.name === name; })[0];
+    rEd = r ? { old: r.name, name: r.name, time: r.time || '', steps: r.steps.slice() } : { old: '', name: '', time: '', steps: [] };
+    drawRoutineEd();
+  }
+  function drawRoutineEd(focusLast) {
+    var r = rEd;
+    openSheet('<h2 style="margin:0 0 12px">' + (r.old ? 'Edit ' + esc(r.old) + ' routine' : 'New routine') + '</h2>' +
+      '<div class="grid2" style="gap:8px;margin-bottom:12px"><label class="small muted">Name<input type="text" id="rName" value="' + esc(r.name) + '" placeholder="Morning" maxlength="40"></label>' +
+      '<label class="small muted">Shows from<input type="time" id="rTime" value="' + esc(r.time) + '"></label></div>' +
+      '<div class="eyebrow" style="margin-bottom:6px">Steps</div><div id="rSteps">' + r.steps.map(function (s, i) {
+        return '<div class="rstep"><input type="text" value="' + esc(s) + '" data-rstep="' + i + '" aria-label="Step ' + (i + 1) + '" maxlength="80">' +
+          '<button class="iconbtn" type="button" data-rmove="' + i + '" data-dir="-1" aria-label="Move step up"' + (i ? '' : ' disabled') + '>' + upSvg + '</button>' +
+          '<button class="iconbtn" type="button" data-rmove="' + i + '" data-dir="1" aria-label="Move step down"' + (i < r.steps.length - 1 ? '' : ' disabled') + '>' + downSvg + '</button>' +
+          '<button class="iconbtn" type="button" data-rdel="' + i + '" aria-label="Remove step">' + icon('trash', 's') + '</button></div>';
+      }).join('') + '</div>' +
+      '<form class="inline" id="rAdd" autocomplete="off" style="margin:8px 0 14px"><input type="text" id="rAddText" placeholder="Add a step, e.g. Stretch 5 min" maxlength="80"><button class="btn soft" type="submit">' + icon('plus', 's') + 'Add</button></form>' +
+      '<button class="btn primary wide" type="button" id="rSave">Save routine</button>' +
+      (r.old ? '<button class="btn ghost wide" type="button" id="rDelete" style="margin-top:8px">Delete this routine</button>' : '') +
+      '<p class="tiny muted center" style="margin:10px 0 0">Leave "Shows from" empty to show it all day. It appears on Home an hour before its time.</p>');
+    var f = focusLast ? el('rAddText') : null; if (f) f.focus();
+  }
+  function syncRoutineEd() { if (!rEd || !el('rName')) return; rEd.name = el('rName').value; rEd.time = el('rTime').value; document.querySelectorAll('[data-rstep]').forEach(function (x) { rEd.steps[+x.getAttribute('data-rstep')] = x.value; }); }
+  document.addEventListener('submit', function (ev) {
+    if (ev.target.id !== 'rAdd') return;
+    ev.preventDefault(); syncRoutineEd();
+    var v = el('rAddText').value.trim(); if (!v) return el('rAddText').focus();
+    rEd.steps.push(v); drawRoutineEd(true);
+  });
+  document.addEventListener('click', function (ev) {
+    var t = ev.target.closest('button'); if (!t || !S) return;
+    var d = t.dataset;
+    if (t.id === 'homeEdit') { homeEditing = true; renderHome(); window.scrollTo(0, 0); return; }
+    if (t.id === 'homeDone' || t.id === 'homeDone2') { homeEditing = false; renderHome(); toast('Home screen saved'); return; }
+    if (d.redit !== undefined) return routineEditor(d.redit);
+    if (d.hm) {
+      var list = homeOrder(), shown = list.filter(function (x) { return !x.hide; }), i = shown.map(function (x) { return x.id; }).indexOf(d.hm), j = i + Number(d.dir);
+      if (j < 0 || j >= shown.length) return;
+      var a1 = list.indexOf(shown[i]), b1 = list.indexOf(shown[j]), tmp = list[a1]; list[a1] = list[b1]; list[b1] = tmp;
+      return savePrefs({ home: list });
+    }
+    if (d.hh) { var l2 = homeOrder(); l2.forEach(function (x) { if (x.id === d.hh) x.hide = !x.hide; }); return savePrefs({ home: l2 }); }
+    if (d.wgoal) { var g = Math.max(0, Math.min(20, (S.routines.waterGoal || 0) + +d.wgoal)); S.routines.waterGoal = g; return savePrefs({ waterGoal: g }, g ? 'Water goal: ' + g + ' glasses' : 'Water tracking off'); }
+    if (!rEd || !el('rName')) return;
+    if (d.rmove !== undefined) { syncRoutineEd(); var k = +d.rmove, k2 = k + +d.dir, s = rEd.steps; if (k2 < 0 || k2 >= s.length) return; var x = s[k]; s[k] = s[k2]; s[k2] = x; return drawRoutineEd(); }
+    if (d.rdel !== undefined) { syncRoutineEd(); rEd.steps.splice(+d.rdel, 1); return drawRoutineEd(); }
+    if (t.id === 'rSave') {
+      syncRoutineEd();
+      var extra = el('rAddText').value.trim(); if (extra) rEd.steps.push(extra);
+      var r = { name: rEd.name.trim(), time: rEd.time, steps: rEd.steps.map(function (z) { return z.trim(); }).filter(Boolean) };
+      if (!r.name) { toast('Give it a name, like Morning', true); return el('rName').focus(); }
+      if (!r.steps.length) { toast('Add at least one step', true); return el('rAddText').focus(); }
+      t.disabled = true; t.textContent = 'Saving…';
+      return rpc('saveRoutine', [rEd.old, r]).then(function (res) { closeSheet(); rEd = null; apply(res, r.name + ' routine saved'); }, function (e) { t.disabled = false; t.textContent = 'Save routine'; toast(e.message, true); });
+    }
+    if (t.id === 'rDelete') {
+      if (!confirm('Delete the ' + rEd.old + ' routine?')) return;
+      return rpc('deleteRoutine', [rEd.old]).then(function (res) { var nm = rEd.old; closeSheet(); rEd = null; apply(res, nm + ' routine deleted'); }, function (e) { toast(e.message, true); });
+    }
+  });
 
   var HOME_NAMES = { deadlines: 'Deadlines', work: 'Work: now and next', wardrobe: 'Your 3D characters', brief: 'Morning brief', ask: 'Ask anything', ring: 'XP and streaks', challenges: 'Daily challenges', next: 'Next up', whatnow: 'What should I do now?', routine: 'Routines', gym: 'Gym today', chores: 'Today\'s chores', tiles: 'Weight and water', make: 'Make something', us: 'Us', feed: 'Partner feed' };
   var HOME_DEFAULT = ['deadlines', 'work', 'wardrobe', 'brief', 'ask', 'ring', 'challenges', 'next', 'whatnow', 'routine', 'gym', 'chores', 'tiles', 'make', 'us', 'feed'];

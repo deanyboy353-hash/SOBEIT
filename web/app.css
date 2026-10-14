@@ -858,3 +858,13 @@ body.dress-open { overflow: hidden; }
 .set .stepper input[type=number] { width: 46px; padding: 8px 2px; }
 .set.done input { opacity: .6; }
 .rest button { background: rgba(255,255,255,.14); color: inherit; border-radius: 10px; padding: 6px 10px; font-weight: 600; }
+
+/* Editing Home in place */
+.hedit { border: 2px dashed var(--lilac-mid); border-radius: 22px; padding: 8px 8px 0; margin-bottom: 12px; }
+.hedit-bar { display: flex; align-items: center; gap: 6px; padding: 2px 4px 8px; }
+.hedit-body { opacity: .9; }
+.hedit-top { position: sticky; top: calc(6px + env(safe-area-inset-top)); z-index: 4; }
+.rstep { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.rstep input { flex: 1; min-width: 0; }
+.rstep .iconbtn { width: 36px; height: 36px; flex: none; }
+#rTime, #rName { display: block; width: 100%; margin-top: 4px; }

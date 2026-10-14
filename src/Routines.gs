@@ -59,8 +59,14 @@ function routinesState_(who) {
         showNow: r.time === null || nowMin >= r.time - 60 || (r.time < 6 * 60 && nowMin < 6 * 60) };
     }),
     water: d.water[who] || 0,
-    waterGoal: num_(readConfig_().settings, 'Water goal (glasses)', 8)
+    waterGoal: waterGoal_(who)
   };
+}
+
+/** Your own water goal (set in the app), or the Config tab's. 0 hides the water tile. */
+function waterGoal_(who) {
+  var p = prefs_(who);
+  return p.waterGoal !== undefined && p.waterGoal !== '' ? Number(p.waterGoal) : num_(readConfig_().settings, 'Water goal (glasses)', 8);
 }
 
 // ---- called from the page ----
@@ -89,11 +95,65 @@ function addWater(key, delta) {
   var who = who_(key);
   return withLock_(function () {
     var d = dayState_();
-    var goal = num_(readConfig_().settings, 'Water goal (glasses)', 8);
+    var goal = waterGoal_(who);
     var before = d.water[who] || 0;
     d.water[who] = Math.max(0, before + (Number(delta) || 1));
     if (goal && before < goal && d.water[who] >= goal) addXp_(who, 'Water goal hit ', 5, 'water');
     saveDay_(d);
+    return appState_(who);
+  });
+}
+
+// ---- editing routines from the app (no Sheet needed) ----
+
+function routineRow_(who, name) {
+  var v = vals_('routines');
+  for (var i = 1; i < v.length; i++) {
+    var w = String(v[i][1] || 'Me').trim().toLowerCase().replace(/^(you|anyone)$/, 'me');
+    if (String(v[i][0]).trim() === name && w === who) return i + 1;
+  }
+  return 0;
+}
+
+/** Add or change a routine. oldName '' makes a new one. Ticks already made today follow their step. */
+function saveRoutine(key, oldName, r) {
+  var who = who_(key);
+  r = r || {};
+  var name = String(r.name || '').replace(/[;|]/g, '').trim().slice(0, 40);
+  var steps = (r.steps || []).map(function (s) { return String(s || '').replace(/;/g, ',').replace(/\s+/g, ' ').trim().slice(0, 80); }).filter(Boolean).slice(0, 25);
+  var time = r.time === '' || r.time === null || r.time === undefined ? null : parseClock(String(r.time));
+  if (!name) throw new Error('Give the routine a name, like Morning.');
+  if (!steps.length) throw new Error('Add at least one step.');
+  if (r.time && time === null) throw new Error('That time doesn\'t look right. Try 08:30.');
+  oldName = String(oldName || '').trim();
+  return withLock_(function () {
+    var clash = routineRow_(who, name);
+    var row = oldName ? routineRow_(who, oldName) : 0;
+    if (clash && clash !== row) throw new Error('You already have a routine called ' + name + '.');
+    var oldSteps = row ? String(vals_('routines')[row - 1][3] || '').split(/\s*;\s*|\n/).filter(String) : [];
+    var cells = [[name, who === 'me' ? 'Me' : 'Partner', time === null ? '' : formatClock(time), steps.join('; ')]];
+    var sh = sheet_('routines');
+    if (row) sh.getRange(row, 1, 1, 4).setNumberFormat('@').setValues(cells);
+    else sh.getRange(sh.getLastRow() + 1, 1, 1, 4).setNumberFormat('@').setValues(cells);
+    forget_('routines');
+    // keep today's ticks on the same steps (by their words), under the new name
+    var d = dayState_(), ok = who + '|' + (oldName || name), nk = who + '|' + name;
+    var done = (d.done[ok] || []).map(function (i) { return steps.indexOf(oldSteps[i]); }).filter(function (i) { return i !== -1; });
+    var fin = !!d.finished[ok];
+    delete d.done[ok]; delete d.finished[ok];
+    if (done.length) d.done[nk] = done;
+    if (fin) d.finished[nk] = true;
+    saveDay_(d);
+    return appState_(who);
+  });
+}
+
+function deleteRoutine(key, name) {
+  var who = who_(key);
+  return withLock_(function () {
+    var row = routineRow_(who, String(name || '').trim());
+    if (!row) throw new Error('That routine is already gone.');
+    sheet_('routines').deleteRow(row); forget_('routines');
     return appState_(who);
   });
 }

@@ -404,6 +404,7 @@ function setPrefs(key, p) {
       Object.keys(p.look).forEach(function (k) { var v = String(p.look[k]); if (LOOK_KEYS[k] && (/^[a-z]{1,12}$/.test(v) || /^#[0-9a-f]{6}$/i.test(v))) cur.look[k] = v; });
     }
     ['sound', 'haptics', 'confetti', 'motion'].forEach(function (k) { if (p[k] !== undefined) cur[k] = !!p[k]; });
+    if (p.waterGoal !== undefined) { var wg = Math.round(Number(p.waterGoal)); if (!(wg >= 0 && wg <= 20)) throw new Error('Pick a water goal from 0 to 20 glasses.'); cur.waterGoal = wg; }
     if (Array.isArray(p.home)) {
       cur.home = p.home.filter(function (x) { return x && HOME_BLOCKS.indexOf(x.id) !== -1; }).map(function (x) { return { id: x.id, hide: !!x.hide }; });
     }
