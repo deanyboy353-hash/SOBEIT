@@ -104,3 +104,17 @@ test('Cardio: log with distance and heart rate, XP, undo and delete', () => {
   assert.throws(() => g.ctx.logCardio(me, { type: 'Run', minutes: 0 }), /How many minutes/);
   assert.throws(() => g.ctx.logCardio(g.state.props.PARTNER_KEY, { type: 'Run', minutes: 10 }));
 });
+
+test('Training max: changing it can be undone (lift and TM history put back)', () => {
+  const { g, me } = ready();
+  const C = g.ctx;
+  C.setTrainingMax(me, 'Bench press', 55, 5);
+  const before = plain(C.appState(me).train.plans['Upper A'].main[0].tm);
+  const histN = C.vals_('tmHistory').length;
+  const t = plain(C.setTrainingMax(me, 'Bench press', 80, 10));
+  assert.strictEqual(t.tmSet.to, 95);
+  assert.ok(t.undo && /Bench/.test(t.undo.label));
+  const res = plain(C.undoAction(me));
+  assert.strictEqual(res.state.train.plans['Upper A'].main[0].tm, before);
+  assert.strictEqual(C.vals_('tmHistory').length, histN);
+});

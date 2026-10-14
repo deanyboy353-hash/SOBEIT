@@ -151,10 +151,15 @@ function setTrainingMax(key, lift, weight, reps) {
     if (!(w > 0) || !(r >= 1 && r <= 15)) throw new Error('Enter a weight and 1–15 reps you did recently.');
     var step = num_(readConfig_().settings, 'Plate step (kg)', 2.5);
     var tm = roundTo(e1rm(w, r) * 0.9, step);
-    sheet_('lifts').getRange(l.row, 2).setValue(tm);
-    forget_('lifts');
-    appendRow_('tmHistory', { 'Date': todayYmd_(), 'Lift': l.name, 'Old TM': l.tm || '', 'New TM': tm, 'Change': l.tm ? tm - l.tm : 0, '1+ reps': '' });
-    return trainState_();
+    undoable_('me', 'Training max for ' + l.name, function () {
+      sheet_('lifts').getRange(l.row, 2).setValue(tm);
+      forget_('lifts');
+      appendRow_('tmHistory', { 'Date': todayYmd_(), 'Lift': l.name, 'Old TM': l.tm || '', 'New TM': tm, 'Change': l.tm ? tm - l.tm : 0, '1+ reps': '' });
+    }, { lift: { name: l.name, row: l.row, tm: l.tm || '', set: tm } });
+    var out = trainState_();
+    out.undo = undoInfo_('me');
+    out.tmSet = { lift: l.name, from: l.tm || 0, to: tm };
+    return out;
   });
 }
 

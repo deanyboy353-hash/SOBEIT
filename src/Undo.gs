@@ -46,6 +46,11 @@ function undoAction(key) {
     if (r.chore) updateRow_('chores', r.chore.row, r.chore.values);
     if (r.block) { var br = blockRow_(r.block.id); if (br) updateRow_('blocks', br, r.block.values); }
     if (r.deadline) { var dr = deadlineRow_(r.deadline.id); if (dr) updateRow_('deadlines', dr, r.deadline.values); }
+    if (r.lift) {
+      sheet_('lifts').getRange(r.lift.row, 2).setValue(r.lift.tm); forget_('lifts');
+      var th = vals_('tmHistory');
+      for (var j = th.length - 1; j >= 1; j--) if (String(th[j][1]) === r.lift.name && Number(th[j][3]) === Number(r.lift.set)) { sheet_('tmHistory').deleteRow(j + 1); forget_('tmHistory'); break; }
+    }
     if (r.clean) { var c = cleanDays_(who).filter(function (d) { return d !== r.clean; }); setProp_('CLEAN_' + who, JSON.stringify(c)); }
     if (u.feed && u.feed.length) PROPS.setProperty('FEED', JSON.stringify(feed_().filter(function (f) { return u.feed.indexOf(f.id) === -1; })));
     delProp_('UNDO_' + who);
