@@ -1,5 +1,5 @@
 /*
- * 3D characters for Life Quest: low-poly, San Andreas / Vice City style, with
+ * 3D characters for Nudge: low-poly, San Andreas / Vice City style, with
  * runway glam. Built from simple shapes with three.js (loaded on demand), so
  * every hair style, outfit, pattern and extra is generated here, no model files.
  *   LQ3D.load() -> Promise
@@ -272,7 +272,7 @@
     if (id === 'boa') { for (var i = 0; i < 18; i++) { var a = i / 17 * Math.PI * 1.15 - 0.08; torso.add(mesh(ball(0.05, 0), mat('#ff7eb6', { roughness: 1 }), Math.cos(a + Math.PI) * -0.21, 0.5 - Math.sin(a) * 0.12 - (i > 14 ? (i - 14) * 0.06 : 0), Math.sin(a) * 0.13 + 0.02)); } }
     if (id === 'sash') {
       var cv = document.createElement('canvas'); cv.width = 256; cv.height = 32; var g = cv.getContext('2d');
-      g.fillStyle = '#ffffff'; g.fillRect(0, 0, 256, 32); g.fillStyle = '#c9a227'; g.font = 'bold 20px Georgia, serif'; g.textAlign = 'center'; g.fillText('MISS LIFE QUEST', 128, 23);
+      g.fillStyle = '#ffffff'; g.fillRect(0, 0, 256, 32); g.fillStyle = '#c9a227'; g.font = 'bold 20px Georgia, serif'; g.textAlign = 'center'; g.fillText('MISS NUDGE', 128, 23);
       var st = new T.CanvasTexture(cv), sm = mesh(box(0.06, 0.62, 0.01), new T.MeshStandardMaterial({ map: st, roughness: 0.5 }), 0, 0.28, 0.125);
       st.center.set(0.5, 0.5); st.rotation = Math.PI / 2; sm.rotation.z = -0.62; torso.add(sm);
     }

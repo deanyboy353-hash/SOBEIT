@@ -94,9 +94,11 @@ function doGet(e) {
   page.theme = String(prop_('THEME_' + who) || 'light');
   page.tab = ({ chores: 'chores', quests: 'chores', food: 'food', train: 'train', play: 'play', you: 'you', more: 'you' })[String(params.page || '')] || '';
   page.initialJson = JSON.stringify(appState_(who)).replace(/</g, '\\u003c');
-  return page.evaluate()
-    .setTitle('Life Quest')
+  var out = page.evaluate()
+    .setTitle('Nudge')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover');
+  try { if (appBaseUrl_()) out.setFaviconUrl(appBaseUrl_().replace(/\/?$/, '/') + 'favicon-32.png'); } catch (e) {}
+  return out;
 }
 
 function appState_(who) {

@@ -1,18 +1,18 @@
-/* Life Quest for Chrome: menu, badge and desktop nags. */
+/* Nudge for Chrome: menu, badge and desktop nags. */
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false }).catch(function () {});   // clicking the icon opens the full website
 importScripts('config.js', 'shared.js');
 
 chrome.runtime.onInstalled.addListener(function () {
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false }).catch(function () {});
   chrome.contextMenus.removeAll(function () {
-    chrome.contextMenus.create({ id: 'deadline', title: 'Life Quest: add "%s" as a deadline', contexts: ['selection'] });
-    chrome.contextMenus.create({ id: 'block', title: 'Life Quest: time-block "%s"', contexts: ['selection'] });
-    chrome.contextMenus.create({ id: 'shop', title: 'Life Quest: add "%s" to shopping', contexts: ['selection'] });
-    chrome.contextMenus.create({ id: 'park', title: 'Life Quest: save "%s" for later', contexts: ['selection'] });
-    chrome.contextMenus.create({ id: 'page', title: 'Life Quest: add this page as a deadline', contexts: ['page'] });
+    chrome.contextMenus.create({ id: 'deadline', title: 'Nudge: add "%s" as a deadline', contexts: ['selection'] });
+    chrome.contextMenus.create({ id: 'block', title: 'Nudge: time-block "%s"', contexts: ['selection'] });
+    chrome.contextMenus.create({ id: 'shop', title: 'Nudge: add "%s" to shopping', contexts: ['selection'] });
+    chrome.contextMenus.create({ id: 'park', title: 'Nudge: save "%s" for later', contexts: ['selection'] });
+    chrome.contextMenus.create({ id: 'page', title: 'Nudge: add this page as a deadline', contexts: ['page'] });
     chrome.contextMenus.create({ id: 'panel', title: 'Open in the side panel', contexts: ['action'] });
     chrome.contextMenus.create({ id: 'go-work', title: 'Open Work', contexts: ['action'] });
-    chrome.contextMenus.create({ id: 'go-djset', title: 'Open DJ Set', contexts: ['action'] });
+    chrome.contextMenus.create({ id: 'go-djset', title: 'Open Booth (DJ game)', contexts: ['action'] });
   });
   chrome.alarms.create('check', { periodInMinutes: 1 });
   LQ.get().then(function (k) { if (!k) chrome.runtime.openOptionsPage(); });

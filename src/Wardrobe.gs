@@ -85,7 +85,7 @@ function buyWear(key, id) {
     mine.push(id);
     setProp_('WARDROBE_' + who, JSON.stringify(mine));
     addFeed_(who, 'Bought the ' + it.name, 'empire');
-    if (it.style === 'drag') push_(who === 'me' ? 'partner' : 'me', nicks_()[who] + ' bought the ' + it.name, 'Category is: Life Quest realness.', 'home');
+    if (it.style === 'drag') push_(who === 'me' ? 'partner' : 'me', nicks_()[who] + ' bought the ' + it.name, 'Category is: Nudge realness.', 'home');
     return appState_(who);
   });
 }

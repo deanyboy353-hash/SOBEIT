@@ -1,4 +1,4 @@
-/* Life Quest portraits: original illustrated busts in each character's style
+/* Nudge portraits: original illustrated busts in each character's style
  * (their colours, hair, headwear, glasses and clothes), drawn as SVG.
  * Not game artwork; just a nod to the look. */
 (function () {

@@ -1,4 +1,4 @@
-/* Life Quest: calm, clean, pink and lilac accents. */
+/* Nudge: calm, clean, pink and lilac accents. */
 :root {
   color-scheme: light;
   --bg: #fbf8fb; --surface: #ffffff; --raised: #f6f1f7; --ink: #1f1a24; --muted: #776d82; --faint: #a79eb0; --line: #eee5ef;
@@ -700,7 +700,7 @@ body.dj-open { overflow: hidden; }
 nav.tabs .desk { display: none; }
 @media (min-width: 960px) {
   nav.tabs { top: 0; right: auto; width: 220px; flex-direction: column; justify-content: flex-start; align-items: stretch; gap: 2px; padding: 22px 12px; border-top: 0; border-right: 1px solid var(--line); overflow-y: auto; }
-  nav.tabs::before { content: 'Life Quest'; font-weight: 800; font-size: 19px; letter-spacing: -.01em; color: var(--ink); padding: 2px 12px 18px; }
+  nav.tabs::before { content: 'nudge'; font-weight: 900; font-size: 24px; letter-spacing: -.03em; padding: 2px 12px 18px 44px; background: url(icon-192.png) left 10px top 2px / 26px 26px no-repeat, linear-gradient(90deg, #ff3fb4, #b44bff 60%, #8f6bff) 44px 0 / calc(100% - 44px) 100% no-repeat; -webkit-background-clip: padding-box, text; background-clip: padding-box, text; color: transparent; }
   nav.tabs .desk { display: flex; }
   nav.tabs .navsep { display: block; height: 1px; background: var(--line); margin: 10px 12px; }
   nav.tabs button { flex: none; max-width: none; flex-direction: row; justify-content: flex-start; gap: 12px; padding: 10px 12px; font-size: 14.5px; color: var(--muted); border-radius: 12px; }

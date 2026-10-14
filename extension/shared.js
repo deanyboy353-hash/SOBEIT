@@ -8,7 +8,7 @@ self.LQ = {
   },
   rpc: function (fn, args) {
     return LQ.get().then(function (key) {
-      if (!key) throw new Error('Open the Life Quest panel and paste your app link first.');
+      if (!key) throw new Error('Open the Nudge panel and paste your app link first.');
       return fetch(self.LQ_EXT.api, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn: fn, key: key, args: args || [] }) })
         .then(function (r) { return r.json(); })
         .then(function (j) { if (!j.ok) throw new Error(j.error || 'Something went wrong.'); return j.result; });

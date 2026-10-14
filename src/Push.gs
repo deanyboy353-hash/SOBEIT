@@ -173,8 +173,8 @@ function testPush(key) {
   var who = who_(key);
   return withLock_(function () {
     var before = pushLog_().length ? pushLog_()[0].at : 0;
-    var sent = push_(who, 'Life Quest test', 'If you can read this, notifications work on this phone.', 'you', false);
-    var results = pushLog_().filter(function (x) { return x.who === who && x.at >= before && x.title === 'Life Quest test'; });
+    var sent = push_(who, 'Nudge test', 'If you can read this, notifications work on this phone.', 'you', false);
+    var results = pushLog_().filter(function (x) { return x.who === who && x.at >= before && x.title === 'Nudge test'; });
     return { sent: sent, status: pushStatus_(who), results: results };
   });
 }

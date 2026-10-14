@@ -1,16 +1,16 @@
 {
   "manifest_version": 3,
-  "name": "Life Quest",
-  "short_name": "Life Quest",
-  "version": "1.3.0",
-  "description": "Your Life Quest app in Chrome's side panel: deadlines, chores and music while you work, plus right-click to add a deadline.",
+  "name": "Nudge",
+  "short_name": "Nudge",
+  "version": "1.4.0",
+  "description": "Your Nudge app in Chrome's side panel: deadlines, chores and music while you work, plus right-click to add a deadline.",
   "icons": {
     "16": "icon-16.png",
     "48": "icon-48.png",
     "128": "icon-128.png"
   },
   "action": {
-    "default_title": "Open Life Quest (right-click for the side panel)",
+    "default_title": "Open Nudge (right-click for the side panel)",
     "default_icon": {
       "16": "icon-16.png",
       "48": "icon-48.png"
@@ -41,7 +41,7 @@
         "default": "Ctrl+Shift+L",
         "mac": "Command+Shift+L"
       },
-      "description": "Open Life Quest"
+      "description": "Open Nudge"
     }
   }
 }

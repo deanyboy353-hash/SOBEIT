@@ -1,4 +1,4 @@
-/* Life Quest music: original, generated mixes that last as long as your chore.
+/* Nudge music: original, generated mixes that last as long as your chore.
  * Each station is a style (tempo, drum pattern, bass, chords). A mix is built
  * phrase by phrase (8 bars at a time) and always ends on a proper outro, so it
  * never stops mid-beat: at most one phrase (~15-28 s) past your timer.
@@ -216,7 +216,7 @@
     me.on({ type: 'start', station: st });
     if ('mediaSession' in navigator) {
       try {
-        navigator.mediaSession.metadata = new MediaMetadata({ title: st.name, artist: 'Life Quest', album: st.style });
+        navigator.mediaSession.metadata = new MediaMetadata({ title: st.name, artist: 'Nudge', album: st.style });
         navigator.mediaSession.setActionHandler('pause', function () { stop(); });
         navigator.mediaSession.setActionHandler('stop', function () { stop(); });
       } catch (e) {}

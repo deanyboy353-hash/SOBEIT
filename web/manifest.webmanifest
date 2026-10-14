@@ -1,9 +1,9 @@
 {
-  "name": "Life Quest",
-  "short_name": "Life Quest",
-  "description": "Chores, training, food and daily games for two.",
+  "name": "Nudge",
+  "short_name": "Nudge",
+  "description": "Nudge: chores, work, training, food and games for two. After dark.",
   "display": "standalone",
-  "background_color": "#fbf8fb",
+  "background_color": "#0b0414",
   "theme_color": "#fbf8fb",
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },

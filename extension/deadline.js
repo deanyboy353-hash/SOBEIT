@@ -5,7 +5,7 @@
   function add(text) {
     msg.textContent = 'Adding…';
     LQ.rpc('addDeadline', [text]).then(function (r) {
-      msg.innerHTML = '<span class="ok">' + r.added.task + ': due ' + r.added.dueText.slice(-5) + '. Life Quest will keep reminding you.</span>';
+      msg.innerHTML = '<span class="ok">' + r.added.task + ': due ' + r.added.dueText.slice(-5) + '. Nudge will keep reminding you.</span>';
       chrome.runtime.sendMessage({ refresh: true });
       setTimeout(function () { window.close(); }, 1800);
     }, function (e) { msg.innerHTML = '<span class="err">' + e.message + '</span>'; });

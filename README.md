@@ -1,4 +1,4 @@
-# Life Automation
+# Nudge
 
 Your training and weigh-ins, pushed to your phone and watch. You never need to open an app to report in. Ticking a task off is the log.
 
@@ -21,8 +21,8 @@ A Duolingo for your whole life, shared with your partner. Chores that keep the h
 - **Work**: time blocking for your work day. Type "Write the report 10-11:30", "Emails 30m" or "Call Sam at 3pm 45m" and it lands on today's timeline (no time given: the next free slot). On a computer, drag blocks to move them and drag the bottom edge to resize; click an empty time to add one there. Start a block, tick it off, get paid: about 2 XP per 10 minutes (deep work 1.5x, meetings half, breaks 2), +3 for starting on time, +1 for each block already done today (up to +5). Finish every work block (3 or more) for a **clean sheet**: +25 XP and a work streak. Also: plan tomorrow, fill a day from a list (one per line), copy your last plan, "Running late +15" to push the rest of the day back, "Block 30m" for deadlines that have no time set aside, music that lasts the block, and your work hours. Blocks with a number ("Queue 40 emails", "Edit 3 videos") get a counter: hit the number and it ticks itself off, stop early for a share, beat it for +3. Your job kit (editable) drops your usual tasks in with one tap, and the pay card shows this week's totals. Your phone pings you just before each block, if you haven't started it, and when it ends (quiet from 22:30 to 08:00). In the Chrome add-on, select any text and right-click **time-block** it.
 - **Play**: five daily games (Word, Numbers, Recall, Tempo, and **Mix**: a DJ beatmatching game where you pitch deck B to match deck A and nudge the beats together), the same for both of you, with live scores. **Word** (five letters, six guesses; you see your partner's colours but not their letters until you've both finished), **Numbers** (reach the target), **Recall** (remember the sequence). **Stats** shows your head-to-head record and word streak. You get a notification when your partner plays.
 - **3D characters and wardrobe**: you and your partner as smooth 3D characters (Vice City and San Andreas style, with runway glam) on Home and You. The Dressing room sells hair, tops, bottoms, shoes, extras, patterns and a Glam kit for cash; the best pieces also need chores done (ball gown 75, winner's crown 100).
-- **DJ Set** (Play, then Mix, then Open the decks): Guitar Hero for mixing. Two decks play your own tracks (added once from your computer, analysed for tempo and beats, kept on that device) or the stations. Notes scroll down a highway: drop the next track on the line, ride the crossfader along the purple path, swap the bass on the yellow line, cut or take the old track out. Scored on timing, tempo match, beatmatch, fader rides and bass clashes, with combos and an S to D grade. Easy, Normal or Hard; your own keys; replay as often as you like, XP for your first scoring set each day, best score against your partner.
-  - **Hercules DJControl Inpulse 500**: on your PC, close DJUCED, open the app in Chrome, then DJ Set, Connect controller. The Inpulse map loads by itself; if a control doesn't respond, press Learn on its row and move it. Headphone cueing isn't available in a browser, so use the phase meter to beatmatch.
+- **Afterhours: Booth** (Play, then Mix, then Open the decks): Guitar Hero for mixing. Two decks play your own tracks (added once from your computer, analysed for tempo and beats, kept on that device) or the stations. Notes scroll down a highway: drop the next track on the line, ride the crossfader along the purple path, swap the bass on the yellow line, cut or take the old track out. Scored on timing, tempo match, beatmatch, fader rides and bass clashes, with combos and an S to D grade. Easy, Normal or Hard; your own keys; replay as often as you like, XP for your first scoring set each day, best score against your partner.
+  - **Hercules DJControl Inpulse 500**: on your PC, close DJUCED, open the app in Chrome, then Booth, Connect controller. The Inpulse map loads by itself; if a control doesn't respond, press Learn on its row and move it. Headphone cueing isn't available in a browser, so use the phase meter to beatmatch.
   - If a track's tempo reads double or half, press ×2 or ÷2 next to it. If its beats feel half a beat off, press ½.
 - **Train**: nSuns-style upper/lower. The main lift (9 sets) and second lift (8 sets) come from your training max, then accessories. Tick sets as you go and the rest timer starts itself. Doing a different session today? Tap it and press **Switch** (or **Make today a rest day**): your calendar event, gym task and Home card follow. **Next in order** suggests the session after your last one. The heavy **1+** set sets next week's training max. Progress shows your history and PRs.
 - **Food**: calories and protein versus targets, one-tap foods, Claude quick-add, **Meal ideas** that fit what's left, undo.
@@ -65,9 +65,9 @@ Your partner's link opens the same app without Train and Food.
 - Switch any of these off in the Config tab: **Daily challenges**, **Double XP**, **Reminders**.
 
 
-## Life Quest for Chrome (your PC)
+## Nudge for Chrome (your PC)
 
-On a computer, the You page has a **Life Quest for Chrome** card. Download the add-on, unzip it, go to chrome://extensions, turn on Developer mode, press Load unpacked and pick the life-quest folder. Pin it and paste your app link once. Clicking the icon opens the full website in a tab; right-click it for the side panel, Work or DJ Set. Then:
+On a computer, the You page has a **Nudge for Chrome** card. Download the add-on, unzip it, go to chrome://extensions, turn on Developer mode, press Load unpacked and pick the nudge folder. Pin it and paste your app link once. Clicking the icon opens the full website in a tab; right-click it for the side panel, Work or DJ Set. Then:
 
 - Click the icon (or Ctrl+Shift+L) to open your app in the side panel while you work.
 - Select text on any page, right-click, and add it as a deadline ("Send the invoice by 3pm"), to shopping, or save it for later. No time in it? A small window asks when.
@@ -106,7 +106,7 @@ Everything is in the Sheet. Edit on your phone (Google Sheets app) or PC. Only c
 2. **On your PC, open the Sheet → Automation → Repair (re-run setup).** This rebuilds anything missing. It never wipes your data or settings.
 3. **Look at the Log tab.** Every run writes a line there, and errors are marked ERROR.
 4. **Quick-add says the key was rejected, or you're out of credit?** Top up or make a new key at console.anthropic.com, then paste it in the app under **You → Claude API key**.
-5. **No notifications?** Open the app, then **You → Turn on notifications** again. Check your phone's settings allow notifications for Life Quest (and for Calendar). On iPhone it only works from the Home Screen icon. If push isn't working, nudges fall back to email for your partner and a calendar alert for you.
+5. **No notifications?** Open the app, then **You → Turn on notifications** again. Check your phone's settings allow notifications for Nudge (and for Calendar). On iPhone it only works from the Home Screen icon. If push isn't working, nudges fall back to email for your partner and a calendar alert for you.
 6. **Still stuck?** Start a new Claude Code session on this GitHub repo and say what's happening. Everything Claude needs is in this folder.
 
 ---

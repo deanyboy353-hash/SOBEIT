@@ -1,4 +1,4 @@
-/* Life Quest: the app. Runs as the installable app (talks to Apps Script over
+/* Nudge: the app. Runs as the installable app (talks to Apps Script over
  * HTTPS) or inside the Google page (google.script.run). Same code for both. */
 (function () {
   'use strict';
@@ -228,10 +228,10 @@
     if (MODE === 'gas' && S.fun && S.fun.appBase) h += '<a class="getapp" target="_top" href="' + esc(S.fun.appBase + '?key=' + KEY) + '">' + icon('download') + '<span class="grow"><b>Get the app</b><br><span class="small muted">Notifications, live games, faster</span></span>' + icon('chevron', 's') + '</a>';
     if (MODE === 'web' && S.push && S.push.configured && 'Notification' in window && 'serviceWorker' in navigator && (Notification.permission !== 'granted' || !S.push.devices || (load('pushErr') && !load('pushTok')))) {
       h += '<section class="card pushwarn"><div class="row" style="gap:10px;align-items:flex-start">' + icon('bell') + '<div class="grow"><b>Notifications are off on this ' + (/Android|iPhone|iPad/.test(navigator.userAgent) ? 'phone' : 'device') + '</b><div class="small">' +
-        (Notification.permission === 'denied' ? 'They\'re blocked. Open your phone\'s Settings, then Apps, Life Quest (or Chrome), Notifications, and allow them. Then come back and tap Turn on.' : 'Your reminders, deadline nags and work pings can\'t reach you until you turn them on.') +
+        (Notification.permission === 'denied' ? 'They\'re blocked. Open your phone\'s Settings, then Apps, Nudge (or Chrome), Notifications, and allow them. Then come back and tap Turn on.' : 'Your reminders, deadline nags and work pings can\'t reach you until you turn them on.') +
         '</div></div></div><button class="btn primary wide" type="button" id="pushOn" style="margin-top:10px">' + icon('bell', 's') + 'Turn on notifications</button></section>';
     } else if (/iPhone|iPad/.test(navigator.userAgent) && MODE === 'web' && !standalone()) {
-      h += '<section class="card pushwarn"><b>Get notifications on iPhone</b><div class="small">Tap Share, then Add to Home Screen. Open Life Quest from your home screen and turn notifications on there.</div></section>';
+      h += '<section class="card pushwarn"><b>Get notifications on iPhone</b><div class="small">Tap Share, then Add to Home Screen. Open Nudge from your home screen and turn notifications on there.</div></section>';
     }
     h += boostBanner() + wrappedCard();
     if (S.chores.invite) h += '<div class="note">' + esc(n.other) + ' wants company for chores. Pick a job in Chores.</div>';
@@ -837,7 +837,7 @@
   // ---------- YOU (profile, lists, rewards, settings) ----------
   var deferredInstall = null;
   window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferredInstall = e; var ni = el('navInstall'); if (ni) ni.hidden = false; if (current === 'you') renderYou(); });
-  window.addEventListener('appinstalled', function () { deferredInstall = null; var ni = el('navInstall'); if (ni) ni.hidden = true; toast('Installed. Open Life Quest from your apps.'); });
+  window.addEventListener('appinstalled', function () { deferredInstall = null; var ni = el('navInstall'); if (ni) ni.hidden = true; toast('Installed. Open Nudge from your apps.'); });
   function standalone() { return window.matchMedia && matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; }
   function renderYou() {
     var g = S.game, n = names(), th = document.documentElement.getAttribute('data-theme'), h = '';
@@ -864,10 +864,10 @@
     }).join('') + '</div></section>';
     h += laterCard();
     if (!/Android|iPhone|iPad/.test(navigator.userAgent)) {   // on a computer: offer the Chrome add-on
-      var zipUrl = (MODE === 'gas' && S.fun && S.fun.appBase ? S.fun.appBase.replace(/[?#].*$/, '').replace(/\/?$/, '/') : '') + 'life-quest-chrome.zip';
-      h += '<section class="card"><div class="head"><h3 class="row" style="gap:8px">' + icon('download', 's') + 'Life Quest for Chrome</h3></div>' +
+      var zipUrl = (MODE === 'gas' && S.fun && S.fun.appBase ? S.fun.appBase.replace(/[?#].*$/, '').replace(/\/?$/, '/') : '') + 'nudge-chrome.zip';
+      h += '<section class="card"><div class="head"><h3 class="row" style="gap:8px">' + icon('download', 's') + 'Nudge for Chrome</h3></div>' +
         '<p class="small muted" style="margin:0 0 8px">For your PC: the app in a side panel while you work, right-click any text to make it a deadline, a count of open deadlines on the icon, and desktop nags with Done and +30 min.</p>' +
-        '<ol class="small howto"><li>Download it and unzip it (right-click, Extract all).</li><li>In Chrome, go to <b>chrome://extensions</b> and turn on <b>Developer mode</b> (top right).</li><li>Click <b>Load unpacked</b> and pick the <b>life-quest</b> folder.</li><li>Pin it (the jigsaw icon), click it and paste your app link once.</li></ol>' +
+        '<ol class="small howto"><li>Download it and unzip it (right-click, Extract all).</li><li>In Chrome, go to <b>chrome://extensions</b> and turn on <b>Developer mode</b> (top right).</li><li>Click <b>Load unpacked</b> and pick the <b>nudge</b> folder.</li><li>Pin it (the jigsaw icon), click it and paste your app link once.</li></ol>' +
         '<a class="btn primary wide" href="' + esc(zipUrl) + '" download target="_top">' + icon('download', 's') + 'Download the add-on</a></section>';
     }
     // settings
@@ -1865,7 +1865,7 @@
   function setCard(set, n) {
     var m = set && set.mine, o = set && set.other;
     var line = function (x) { return x && x.tries ? '<b>' + esc(x.grade || '-') + '</b> ' + x.acc + '%' : '<span class="muted">not yet</span>'; };
-    return '<section class="card djset-card"><div class="between"><div><div class="eyebrow">The full game</div><h3 style="margin:2px 0 0">DJ Set</h3></div>' +
+    return '<section class="card djset-card"><div class="between"><div><div class="eyebrow">The full mixing game</div><h3 style="margin:2px 0 0">Afterhours: Booth</h3></div>' +
       '<div class="right small">You ' + line(m) + '<br>' + esc(n.other) + ' ' + line(o) + '</div></div>' +
       '<p class="small muted" style="margin:8px 0 10px">Guitar Hero for mixing: your own tracks or the stations, real transitions scored on timing, tempo, fader rides and bass swaps. Works with the keyboard, touch or your Hercules Inpulse 500.</p>' +
       '<button class="btn primary wide" type="button" data-mix="set">' + icon('play', 's') + 'Open the decks</button></section>';
@@ -2779,7 +2779,7 @@
       thisPhoneLine(p) +
       (p.lastOk ? '<div>Last delivered: ' + t(p.lastOk) + '</div>' : '<div class="muted">Nothing delivered yet</div>') +
       (p.lastError ? '<div class="bad">Last problem (' + t(p.lastError.at) + '): ' + esc(p.lastError.error) + '</div>' : '') +
-      '<div class="muted">On a Pixel: install the app (Chrome menu, Install app), open it from the home screen, tap Turn on. Then in Android Settings, Apps, Life Quest, Notifications, make sure they\'re allowed.</div></div>';
+      '<div class="muted">On a Pixel: install the app (Chrome menu, Install app), open it from the home screen, tap Turn on. Then in Android Settings, Apps, Nudge, Notifications, make sure they\'re allowed.</div></div>';
   }
   // Is THIS phone one of the registered ones? (Your computer counts as a device too, so "1 registered" can mean the wrong one.)
   function thisPhoneLine(p) {

@@ -1,4 +1,4 @@
-/* Life Quest service worker: opens instantly (cached shell) and shows push notifications. */
+/* Nudge service worker: opens instantly (cached shell) and shows push notifications. */
 var CACHE = 'lq-v1';
 var SHELL = ['./', 'index.html', 'app.css', 'app.js', 'music.js', 'portraits.js', 'djset.js', 'avatar3d.js', 'words.js', 'config.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 
@@ -38,7 +38,7 @@ if (self.LQ_CONFIG && self.LQ_CONFIG.firebase) {
       opts.tag = 'deadline-' + d.deadline; opts.renotify = true; opts.requireInteraction = true; opts.data.deadline = d.deadline;
       opts.actions = [{ action: 'done', title: 'Done' }, { action: 'extend', title: '+30 min' }, { action: 'park', title: 'Park it' }];
     }
-    return self.registration.showNotification(d.title || 'Life Quest', opts);
+    return self.registration.showNotification(d.title || 'Nudge', opts);
   });
 }
 self.addEventListener('notificationclick', function (e) {

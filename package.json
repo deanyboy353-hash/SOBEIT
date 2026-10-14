@@ -1,7 +1,7 @@
 {
   "name": "sobeit-life-automation",
   "private": true,
-  "description": "Life Quest: chores, training, food and daily games for two (Apps Script backend, installable app)",
+  "description": "Nudge: chores, training, food and daily games for two (Apps Script backend, installable app)",
   "scripts": {
     "build": "node scripts/build.js",
     "test": "node scripts/build.js && node --test test/*.test.js",

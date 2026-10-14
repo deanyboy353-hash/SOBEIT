@@ -1,6 +1,6 @@
 /*
  * DJ Set: a rhythm game for real transitions ("Guitar Hero for mixing").
- * Two decks play your own tracks or the Life Quest stations. Notes scroll down
+ * Two decks play your own tracks or the Nudge stations. Notes scroll down
  * a highway: drop the next track in on the phrase, ride the crossfader along
  * the line, swap the bass on the bar, take the old track out. Scored on timing,
  * tempo, beatmatch, fader rides and bass clashes, with combos and an S-D grade.
@@ -786,7 +786,7 @@
   }
   function setupHtml() {
     var best = opts.best ? opts.best() : null, stations = M() ? M().STATIONS : [];
-    var h = '<div class="dj-head"><div><div class="dj-eyebrow">Life Quest · the full mixing game</div><h2>DJ Set</h2></div><button type="button" class="dj-x" data-dj="close" aria-label="Close">Close</button></div>';
+    var h = '<div class="dj-head"><div><div class="dj-eyebrow">Afterhours</div><h2>Booth</h2></div><button type="button" class="dj-x" data-dj="close" aria-label="Close">Close</button></div>';
     h += '<p class="dj-sub">Guitar Hero for mixing. Drop the next track on the line, ride the crossfader along the purple path, swap the bass on the yellow line and take the old track out. Your own tracks or the stations, scored on every transition.</p>';
     if (best) h += '<div class="dj-card dj-best">' + bestLine(best.mine, 'You') + bestLine(best.other, esc(opts.otherName || 'Them')) + '<span class="dj-muted">XP for your first scoring set each day. Replays count for your best.</span></div>';
     // tracks
@@ -818,7 +818,7 @@
     // MIDI
     var names = midiNames();
     h += '<div class="dj-card"><div class="dj-h3">DJ controller (MIDI)</div>';
-    if (!navigator.requestMIDIAccess) h += '<p class="dj-muted">This browser can\'t use MIDI. Open Life Quest in Chrome or Edge on your PC.</p>';
+    if (!navigator.requestMIDIAccess) h += '<p class="dj-muted">This browser can\'t use MIDI. Open Nudge in Chrome or Edge on your PC.</p>';
     else if (!midi) h += '<p class="dj-muted">Plug in your Hercules DJControl Inpulse 500 by USB, close DJUCED (only one app can use it at a time), then connect.</p><button type="button" class="dj-btn primary" data-dj="midi">Connect controller</button>';
     else {
       h += '<p>' + (names.length ? 'Connected: <b>' + esc(names.join(', ')) + '</b>' : '<span class="dj-muted">No controller found. Plug it in, close DJUCED, and it shows up here.</span>') + '</p>';
@@ -853,11 +853,11 @@
       '<div class="dj-pause" id="djPause" hidden><div class="dj-card"><h3>Paused</h3><button type="button" class="dj-go" data-dj="resume">Keep mixing</button><button type="button" class="dj-btn line" data-dj="endset">End the set here</button><button type="button" class="dj-btn line" data-dj="restart">Start again</button><button type="button" class="dj-btn line" data-dj="quit">Back to setup</button></div></div>';
   }
   function resultsHtml() {
-    var r = st.result, c = r.count, h = '<div class="dj-head"><div><div class="dj-eyebrow">Set complete</div><h2>DJ Set</h2></div><button type="button" class="dj-x" data-dj="close" aria-label="Close">Close</button></div>';
+    var r = st.result, c = r.count, h = '<div class="dj-head"><div><div class="dj-eyebrow">Afterhours: Booth</div><h2>Set complete</h2></div><button type="button" class="dj-x" data-dj="close" aria-label="Close">Close</button></div>';
     h += '<div class="dj-grade g' + r.grade + '">' + r.grade + '</div>';
     h += '<div class="dj-stats"><div><b>' + r.score.toLocaleString('en-GB') + '</b><span>score</span></div><div><b>' + r.acc + '%</b><span>accuracy</span></div><div><b>' + r.maxCombo + '</b><span>best combo</span></div><div><b>' + r.clashes + '</b><span>bass clashes</span></div></div>';
     h += '<p class="dj-muted center">' + c.P + ' perfect · ' + c.G + ' great · ' + c.O + ' good · ' + c.M + ' missed</p>';
-    h += '<p class="center">' + (!r.mixes ? 'No mixes finished, so nothing to save.' : r.saving ? 'Saving to Life Quest…' : r.failed ? 'Couldn\'t save it. Check your connection.' : r.saved ? (r.saved.points ? r.saved.points + ' points' + (r.saved.firstXp ? ', +' + r.saved.firstXp + ' XP' : ' (XP already earned today)') : 'Under 50% earns nothing. Go again.') : '') + '</p>';
+    h += '<p class="center">' + (!r.mixes ? 'No mixes finished, so nothing to save.' : r.saving ? 'Saving to Nudge…' : r.failed ? 'Couldn\'t save it. Check your connection.' : r.saved ? (r.saved.points ? r.saved.points + ' points' + (r.saved.firstXp ? ', +' + r.saved.firstXp + ' XP' : ' (XP already earned today)') : 'Under 50% earns nothing. Go again.') : '') + '</p>';
     st.log.forEach(function (tr, i) {
       h += '<div class="dj-card"><div class="dj-h3">Mix ' + (i + 1) + ' <span class="dj-muted">' + ({ blend: 'Long blend', quick: 'Quick blend', cut: 'Cut' })[tr.style] + '</span></div>' + tr.res.map(function (x) {
         return '<div class="dj-res"><span>' + x[0] + (x[2] ? ' <span class="dj-muted small">' + esc(x[2]) + '</span>' : '') + '</span><b class="j' + x[1] + '">' + WORD[x[1]] + '</b></div>';
@@ -942,7 +942,7 @@
     P = loadPrefs(); buildRev(); ledState = {};
     if (root) close();
     root = document.createElement('div');
-    root.id = 'djset'; root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', 'DJ Set');
+    root.id = 'djset'; root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', 'Afterhours: Booth');
     root.innerHTML = '<div class="dj-in" id="djBody"></div>';
     document.body.appendChild(root);
     document.body.classList.add('dj-open');

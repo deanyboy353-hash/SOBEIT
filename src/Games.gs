@@ -277,7 +277,7 @@ function submitSet(key, acc, score, mixes, grade) {
   return withLock_(function () {
     var pts = setPoints(acc, mixes);
     var res = replayable_(who, 'set', pts, { acc: acc, score: score, mixes: mixes, grade: grade }, function (me) { return score > (me.score || 0); },
-      function (me) { return me.grade + ' ' + me.acc + '% (' + me.mixes + ' mixes, ' + me.score + ')'; }, 'DJ Set', 'played a DJ set');
+      function (me) { return me.grade + ' ' + me.acc + '% (' + me.mixes + ' mixes, ' + me.score + ')'; }, 'Booth', 'played a set in Booth');
     var st = gamesState_(who);
     st.last = { points: pts, acc: acc, score: score, grade: grade, firstXp: res.first ? 5 + pts : 0 };
     return st;
