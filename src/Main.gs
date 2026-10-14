@@ -25,7 +25,8 @@ function dailyJobs_() {
     { name: 'Gym plan', run: planGymDay_ },
     { name: 'Weigh-in', run: planWeighIn_ },
     { name: 'Food check', run: scheduleFoodCheck_ },
-    { name: 'Morning briefs', run: planBriefs_ }
+    { name: 'Morning briefs', run: planBriefs_ },
+    { name: 'Business income', run: function () { return payIncome_(); } }
   ];
 }
 
@@ -57,6 +58,7 @@ function prepareSheet_() {
   ensureQuests_();
   forget_('chores');
   ensureSchedule_();
+  ensureTogether_();
   upgradeSessions_();
   seedSimple_('rewards', ['Reward', 'Cost (XP)', 'Who'], DEFAULT_REWARDS, [320]);
   seedSimple_('routines', ['Routine', 'Who', 'Time', 'Steps (separate with ;)'], DEFAULT_ROUTINES, [120, 0, 0, 600]);
@@ -77,11 +79,16 @@ function prepareSheet_() {
   // Names arrived after setup for some: fill blanks once.
   if (!String(settings['Your name'] || '').trim()) setSetting_('Your name', 'Dean');
   if (!String(settings['Partner name'] || '').trim()) setSetting_('Partner name', 'Yaz');
+  // Cash arrived after you'd already earned XP: pay that out once.
+  if (!props.getProperty('CASH_V1')) {
+    PEOPLE.forEach(function (w) { var xp = xpTotal_(w); if (xp > 0) addCash_(w, 'Starting cash for ' + xp + ' XP earned so far', xp * CASH_PER_XP, 'start'); });
+    props.setProperty('CASH_V1', '1');
+  }
   if (settings['Your app link'] !== appUrl_()) setSetting_('Your app link', appUrl_());
   if (settings['Partner app link'] !== theirs) setSetting_('Partner app link', theirs);
 }
 
-var RECURRING_TRIGGERS = ['dailyRun', 'pollTasks', 'weeklySummary'];
+var RECURRING_TRIGGERS = ['dailyRun', 'pollTasks', 'weeklySummary', 'nagRun'];
 
 function installTriggers_() {
   ScriptApp.getProjectTriggers().forEach(function (t) {
@@ -95,6 +102,7 @@ function ensureTriggers_() {
   var have = ScriptApp.getProjectTriggers().map(function (t) { return t.getHandlerFunction(); });
   if (have.indexOf('dailyRun') === -1) ScriptApp.newTrigger('dailyRun').timeBased().everyDays(1).atHour(6).inTimezone(TZ).create();
   if (have.indexOf('pollTasks') === -1) ScriptApp.newTrigger('pollTasks').timeBased().everyMinutes(10).create();
+  if (have.indexOf('nagRun') === -1) ScriptApp.newTrigger('nagRun').timeBased().everyMinutes(5).create();
   if (have.indexOf('weeklySummary') === -1) ScriptApp.newTrigger('weeklySummary').timeBased().onWeekDay(ScriptApp.WeekDay.SUNDAY).atHour(18).inTimezone(TZ).create();
 }
 

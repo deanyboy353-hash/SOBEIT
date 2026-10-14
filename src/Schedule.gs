@@ -196,3 +196,48 @@ function deleteQuest(key, name) {
     return appState_(who);
   });
 }
+
+// ---- the week plan: who does what, and doing things together ----
+
+var TOGETHER_MULTIPLIER = 2;
+
+/** Once: a daily "Make the bed" for the two of you, and the bedding and food shop as together jobs. */
+function ensureTogether_() {
+  if (prop_('TOGETHER_V1')) return;
+  var chores = readChores_();
+  if (!chores.some(function (q) { return q.name.toLowerCase() === 'make the bed'; })) {
+    addQuestRow_('Make the bed', 3, 'daily', 'Together');
+    var head = vals_('chores')[0];
+    updateRow_('chores', vals_('chores').length, (function () { var o = {}; o[head[2]] = 'Duvet straight; Pillows up; Throw on'; o['Next due'] = todayYmd_(); return o; })());
+  }
+  readChores_().forEach(function (q) {
+    if ((q.name === 'Change the bedding' || q.name === 'Food shop') && q.who === 'anyone') updateRow_('chores', q.row, { 'Who': 'Together' });
+  });
+  forget_('chores');
+  setProp_('TOGETHER_V1', '1');
+}
+
+/** The main jobs for the planner: everyday and weekly ones (not the once-a-month bits). */
+function planState_() {
+  return readChores_().filter(function (q) { return q.rhythm === 'daily' || q.rhythm === 'weekly' || q.rhythm === 'biweekly'; })
+    .map(function (q) { return { name: q.name, who: q.who, rhythm: q.rhythm, label: q.label, minutes: q.minutes, xp: q.xp }; });
+}
+
+/** Save the week plan: {chore name: 'me' | 'partner' | 'together' | 'anyone'}. */
+function saveWeekPlan(key, plan) {
+  var who = who_(key);
+  var col = { me: 'Me', partner: 'Partner', together: 'Together', anyone: 'Anyone' };
+  return withLock_(function () {
+    var changed = 0;
+    readChores_().forEach(function (q) {
+      var w = plan && plan[q.name];
+      if (!col[w] || w === q.who) return;
+      updateRow_('chores', q.row, { 'Who': col[w] });
+      changed++;
+    });
+    forget_('chores');
+    delProp_('BOARD');
+    if (changed) push_(who === 'me' ? 'partner' : 'me', nicks_()[who] + ' planned the week', 'See who\'s doing what in Chores.', 'chores');
+    return appState_(who);
+  });
+}

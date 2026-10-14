@@ -27,21 +27,23 @@ function addXp_(who, what, xp, kind) {
   if (xp > 0 && kind !== 'reward' && kind !== 'bonus' && boostActive_()) { xp *= 2; what += ' (double XP)'; }
   appendRow_('xp', { 'Date': todayYmd_(), 'Time': now_('HH:mm'), 'Who': who, 'What': what, 'XP': xp, 'Kind': kind });
   xpCache_ = null;
-  if (kind !== 'reward' && kind !== 'spice' && !(kind === 'bonus' && !/chest/.test(what))) addFeed_(who, what + (xp > 0 ? ' · +' + xp + ' XP' : ''), kind);
-  if (kind !== 'bonus' && kind !== 'reward') checkChallenges_(who);
+  if (kind !== 'reward' && kind !== 'spice' && kind !== 'penalty' && !(kind === 'bonus' && !/chest/.test(what))) addFeed_(who, what + (xp > 0 ? ' · +' + xp + ' XP' : ''), kind);
+  if (kind !== 'bonus' && kind !== 'reward' && kind !== 'penalty') checkChallenges_(who);
+  if (xp > 0 && kind !== 'reward') addCash_(who, what, xp * CASH_PER_XP, 'earned');
   return xp;
 }
 
 function xpOn_(who, ymd) {
-  return xpRows_().reduce(function (s, r) { return r.who === who && r.date === ymd && r.xp > 0 ? s + r.xp : s; }, 0);
+  return xpRows_().reduce(function (s, r) { return r.who === who && r.date === ymd && (r.xp > 0 || r.kind === 'penalty') ? s + r.xp : s; }, 0);
 }
 
 function xpBetween_(who, from, to) {
-  return xpRows_().reduce(function (s, r) { return r.who === who && r.date >= from && r.date <= to && r.xp > 0 ? s + r.xp : s; }, 0);
+  return xpRows_().reduce(function (s, r) { return r.who === who && r.date >= from && r.date <= to && (r.xp > 0 || r.kind === 'penalty') ? s + r.xp : s; }, 0);
 }
 
+/** Everything earned, minus penalties (never below zero). Spending on rewards doesn't count. */
 function xpTotal_(who) {
-  return xpRows_().reduce(function (s, r) { return r.who === who && r.xp > 0 ? s + r.xp : s; }, 0);
+  return Math.max(0, xpRows_().reduce(function (s, r) { return r.who === who && (r.xp > 0 || r.kind === 'penalty') ? s + r.xp : s; }, 0));
 }
 
 /** XP you can spend: everything earned minus rewards bought. */

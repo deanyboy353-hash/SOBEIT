@@ -27,7 +27,8 @@ function rpcTable_() {
     registerDevice: registerDevice, sendNudge: sendNudge, ask: ask, clearAsk: clearAsk, getBrief: getBrief,
     mealIdeas: mealIdeas, logIdea: logIdea, logUs: logUs, sendWink: sendWink, answerTonight: answerTonight,
     setStake: setStake, submitTempo: submitTempo, getWrapped: getWrapped, setTodaySession: setTodaySession,
-    healthDay: healthDay, healthInsight: healthInsight, importHealth: importHealth, setPrefs: setPrefs
+    healthDay: healthDay, healthInsight: healthInsight, importHealth: importHealth, setPrefs: setPrefs,
+    addDeadline: addDeadline, deadlineAction: deadlineAction, buyItem: buyItem, upgradeItem: upgradeItem, sellItem: sellItem, setFavourite: setFavourite, saveWeekPlan: saveWeekPlan, submitMix: submitMix
   };
 }
 
@@ -106,6 +107,10 @@ function appState_(who) {
   };
   s.fun = funState_(who, s.game);
   s.health = healthState_(who);
+  s.deadlines = deadlinesState_(who);
+  s.empire = empireState_(who);
+  s.catalog = empireCatalog_();
+  s.plan = planState_();
   if (who === 'me') {
     s.today = todayState_();
     s.food = foodState_();

@@ -66,8 +66,8 @@ test('double XP: a surprise half hour where everything counts twice, announced o
   assert.strictEqual(xpRows(g).find(r => r.what === q[0].name).xp, q[0].xp);
   at(g, '2026-10-13T' + String(Math.floor(w.start / 60) - 1).padStart(2, '0') + ':' + String(w.start % 60 + 1).padStart(2, '0') + ':00Z'); // BST: UTC+1
   assert.ok(g.ctx.boostActive_());
-  g.ctx.pollTasks();
-  g.ctx.pollTasks();
+  g.ctx.nagRun();
+  g.ctx.nagRun();
   assert.strictEqual(pushesTo(g, 'me-phone-token-0123456789').filter(p => /Double XP/.test(p.title)).length, 1);
   assert.strictEqual(pushesTo(g, 'yaz-phone-token-0123456789').filter(p => /Double XP/.test(p.title)).length, 1);
   g.ctx.questDone(me, q[1].name);
@@ -76,26 +76,27 @@ test('double XP: a surprise half hour where everything counts twice, announced o
   assert.match(row.what, /\(double XP\)$/);
 });
 
-test('evening reminders: streak saver at 19:30, last call at 21:30, never twice, quiet at night', () => {
+test('evening reminders (normal level): streak saver at 19:30, last call at 21:30, never twice, quiet at night', () => {
   const { g, me } = ready();
   delete g.state.props.EXTRAS_OFF;
   g.ctx.setSetting_('Double XP', 'FALSE');
   withPush(g);
+  g.ctx.setPrefs(me, { nag: 'normal' });
   g.state.props.STREAK_me = JSON.stringify({ count: 4, freezes: 0, best: 4, through: '2026-10-12', frozeOn: '' });
   at(g, '2026-10-13T18:35:00Z');
-  g.ctx.pollTasks(); g.ctx.pollTasks();
+  g.ctx.nagRun(); g.ctx.nagRun();
   let mine = pushesTo(g, 'me-phone-token-0123456789');
   assert.strictEqual(mine.length, 1);
   assert.strictEqual(mine[0].title, 'Keep your streak');
   assert.match(mine[0].body, /4-day|30 XP|streak/);
   at(g, '2026-10-13T20:35:00Z');
-  g.ctx.pollTasks();
+  g.ctx.nagRun();
   mine = pushesTo(g, 'me-phone-token-0123456789');
   assert.strictEqual(mine.length, 2);
   assert.strictEqual(mine[1].title, 'Streak alert');
   at(g, '2026-10-13T22:00:00Z'); // 23:00: quiet
   const before = g.state.pushes.length;
-  g.ctx.pollTasks();
+  g.ctx.nagRun();
   assert.strictEqual(g.state.pushes.length, before);
   g.ctx.questDone(me, g.ctx.appState(me).quests.board[0].name);
 });

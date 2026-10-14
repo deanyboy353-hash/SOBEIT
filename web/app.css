@@ -507,3 +507,81 @@ nav.tabs button { max-width: 92px; font-size: 11px; }
 .toggle i { display: block; width: 22px; height: 22px; border-radius: 50%; background: var(--surface); box-shadow: 0 1px 3px rgba(0, 0, 0, .25); transition: transform .15s; }
 .toggle.on { background: var(--lilac); }
 .toggle.on i { transform: translateX(20px); }
+
+/* deadlines */
+.dlrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 11px 0; border-top: 1px solid var(--line); }
+.dlrow:first-of-type { border-top: 0; padding-top: 2px; }
+.dlrow .small { color: var(--muted); }
+.dlrow.late b, .dlrow.late .small { color: var(--warn); }
+.dlrow.late { animation: pulse-late 2.4s ease-in-out infinite; }
+@keyframes pulse-late { 50% { background: color-mix(in srgb, var(--warn) 7%, transparent); } }
+.dlbtns { display: flex; gap: 6px; }
+.dlbtns .btn { padding: 7px 10px; }
+.card.dl:has(.dlrow.late) { border-color: var(--warn); }
+
+/* cash and empire */
+.cashrow { width: 100%; text-align: left; padding: 0; color: inherit; }
+.cashrow b { color: var(--good); }
+.card.bank { color: #fff; border: 0; background: linear-gradient(125deg, #1f6b46, #2f9e6a 45%, #c9a227); }
+:root[data-theme="vice"] .card.bank, :root[data-theme="rave"] .card.bank { background: linear-gradient(125deg, #8f2c66, #ff5fae 50%, #2fe0d6); }
+.card.bank .eyebrow { color: rgba(255, 255, 255, .8); }
+.card.bank .num.big { font-size: 40px; font-weight: 800; letter-spacing: -.02em; margin: 2px 0 4px; }
+.art { display: inline-grid; place-items: center; border-radius: 14px; flex: none; color: #fff; }
+.art svg { width: 55%; height: 55%; }
+.art.sa { background: linear-gradient(135deg, #2e9e4f, #c9862b); }
+.art.vc { background: linear-gradient(135deg, #ff5fae, #2fc4d6); }
+.item.shop { gap: 12px; }
+.card.owned b { font-size: 16px; }
+
+/* plan the week */
+.pairs { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 10px; margin-bottom: 12px; align-items: start; }
+.pcol { display: flex; flex-direction: column; gap: 8px; }
+.pwho { display: flex; flex-direction: column; gap: 8px; position: sticky; top: 10px; }
+.pjob, .ppl { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 10px 12px; border-radius: 14px; border: 2px solid var(--line); background: var(--surface); transition: transform .12s, border-color .12s; }
+.pjob b, .ppl b { font-size: 14.5px; }
+.pjob span, .ppl span { font-size: 12px; color: var(--muted); }
+.pjob em { font-style: normal; font-size: 12px; font-weight: 700; margin-top: 3px; }
+.pjob.pick { transform: scale(1.02); border-color: var(--ink); box-shadow: var(--shadow); }
+.ppl { align-items: center; text-align: center; padding: 12px 8px; }
+.ppl.ready { animation: wiggle .5s ease-in-out; }
+@keyframes wiggle { 30% { transform: translateY(-2px); } 60% { transform: translateY(1px); } }
+.w-me { border-color: var(--lilac-mid); } .w-me em { color: var(--lilac); }
+.ppl.w-me { background: var(--lilac-soft); color: var(--lilac); }
+.w-partner { border-color: var(--pink-mid); } .w-partner em { color: var(--pink); }
+.ppl.w-partner { background: var(--pink-soft); color: var(--pink); }
+.w-together { border-color: var(--amber); } .w-together em { color: var(--amber); }
+.ppl.w-together { background: var(--amber-soft); color: var(--amber); }
+.ppl.w-anyone { background: var(--raised); }
+.item.tog .check { border-color: var(--amber); }
+.nx { padding: 8px 0; }
+.nx .bar { margin-top: 6px; }
+
+/* music */
+.musicbtn { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 10px 12px; border-radius: 14px; background: var(--raised); margin: 10px 0 4px; color: var(--ink); }
+.musicbtn > svg:first-child { color: var(--pink); }
+.musicbtn.playing { color: #fff; background: linear-gradient(120deg, var(--c1), var(--c2)); }
+.musicbtn.playing .btn { color: #fff; }
+.eqi { display: inline-flex; align-items: flex-end; gap: 2px; height: 18px; width: 18px; }
+.eqi i { flex: 1; background: #fff; border-radius: 1px; animation: eq .9s ease-in-out infinite alternate; }
+.eqi i:nth-child(2) { animation-duration: .6s; } .eqi i:nth-child(3) { animation-duration: 1.2s; }
+.stations { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.station { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 12px; border-radius: 16px; color: #fff; background: linear-gradient(135deg, var(--c1), var(--c2)); min-height: 120px; }
+.station b { font-size: 14.5px; margin-top: 8px; text-shadow: 0 1px 2px rgba(0, 0, 0, .25); }
+.station span:not(.sart), .station em { font-size: 12px; opacity: .92; font-style: normal; }
+.sart { width: 30px; height: 30px; border-radius: 9px; background: rgba(255, 255, 255, .22); display: grid; place-items: center; }
+.sart svg { width: 18px; height: 18px; }
+
+/* mix */
+.seg.six button { font-size: 12.5px; padding: 9px 2px; }
+.decks { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0 6px; }
+.deck { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 3px; position: relative; }
+.platter { width: 118px; height: 118px; border-radius: 50%; display: grid; place-items: center; margin-bottom: 4px;
+  background: radial-gradient(circle, #111 0 14%, var(--c1) 15% 36%, #161616 37% 100%); box-shadow: inset 0 0 0 3px rgba(255, 255, 255, .06), 0 6px 18px rgba(0, 0, 0, .25);
+  background-image: radial-gradient(circle, #111 0 14%, var(--c1) 15% 36%, transparent 37%), repeating-radial-gradient(circle, #1b1b1b 0 2px, #121212 2px 4px); }
+.platter span { color: #fff; font-weight: 800; font-size: 13px; }
+.platter.spin { animation: spin 1.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.led { width: 14px; height: 14px; border-radius: 50%; background: var(--raised); box-shadow: inset 0 0 0 1px var(--line); }
+.led.on { background: var(--good); box-shadow: 0 0 12px var(--good); }
+.mixlab { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); font-weight: 600; margin: 8px 0; }
+.mixlab input { width: 100%; accent-color: var(--lilac); }

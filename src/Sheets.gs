@@ -26,7 +26,8 @@ var TABS = {
   workoutLog: 'Workout log',
   tmHistory: 'TM history',
   games: 'Games',
-  health: 'Health',
+  deadlines: 'Deadlines',
+  cash: 'Cash',
   inbox: 'Inbox',
   log: 'Log'
 };
@@ -36,7 +37,6 @@ var TABS = {
 var HEADERS = {
   gym: ['Date', 'Day', 'Session', 'Travel', 'Leave at', 'Weather', 'Status', 'Ticked at', 'Arrived', 'Left', 'Minutes at gym', 'Notes'],
   weight: ['Date', 'Time', 'Weight (kg)', 'You typed', 'Change (kg)'],
-  health: ['Date', 'Sleep (h)', 'Steps', 'Resting HR', 'Avg HR', 'Source', 'Received at'],
   food: ['Date', 'Time', 'Item', 'kcal', 'Protein (g)', 'Source', 'Entry', 'Photo', 'Notes'],
   choresLog: ['Date', 'Who', 'Task', 'Planned (min)', 'Actual (min)', 'Result', 'Started', 'Finished', 'Steps done'],
   later: ['Date', 'Who', 'Thing', 'Done', 'ID'],
@@ -47,6 +47,8 @@ var HEADERS = {
   games: ['Date', 'Time', 'Who', 'Game', 'Score', 'Detail'],
   health: ['Date', 'Who', 'Steps', 'Distance (km)', 'Active kcal', 'Resting HR', 'HRV (ms)', 'SpO2 (%)', 'Breathing (rpm)', 'Sleep (min)', 'Deep (min)',
     'Light (min)', 'REM (min)', 'Awake (min)', 'Sleep score', 'Readiness', 'Bedtime', 'Wake', 'Updated', 'Detail'],
+  deadlines: ['Date', 'ID', 'Who', 'Task', 'Due', 'Due (ms)', 'Status', 'Nags', 'Last nag (ms)', 'Finished', 'XP'],
+  cash: ['Date', 'Time', 'Who', 'What', 'Amount', 'Kind'],
   inbox: ['Received at', 'Source', 'Body'],
   log: ['Time', 'Level', 'Message']
 };
@@ -192,12 +194,12 @@ function updateRow_(key, rowNum, obj) {
 }
 
 /**
- * Clock times like "15:15" are written with a leading apostrophe so Sheets
+ * Clock times like "15:15" (and "2026-10-14 15:15") are written with a leading apostrophe so Sheets
  * keeps them as text. Otherwise it turns them into a date in 1899 and they
  * come back as "Sat Dec 30 1899 15:15…".
  */
 function asText_(v) {
-  return typeof v === 'string' && /^\d{1,2}:\d{2}(:\d{2})?$/.test(v) ? "'" + v : v;
+  return typeof v === 'string' && /^(\d{4}-\d{2}-\d{2} )?\d{1,2}:\d{2}(:\d{2})?$/.test(v) ? "'" + v : v;
 }
 
 /** Rows whose Date (yyyy-MM-dd) is between from and to, inclusive, as objects. */

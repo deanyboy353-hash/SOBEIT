@@ -82,8 +82,8 @@ var ASK_SCHEMA = {
       items: {
         type: 'object',
         properties: {
-          type: { type: 'string', enum: ['add_shopping', 'add_todo', 'add_chore', 'park', 'start_job', 'log_food'] },
-          text: { type: 'string', description: 'The item, to-do, chore name, note, job, or food eaten' },
+          type: { type: 'string', enum: ['add_shopping', 'add_todo', 'add_deadline', 'add_chore', 'park', 'start_job', 'log_food'] },
+          text: { type: 'string', description: 'The item, to-do, chore name, note, job, or food eaten. For add_deadline: the task with its time, like "Send the invoice by 3pm"' },
           rhythm: { type: 'string', enum: ['daily', 'weekly', 'biweekly', 'monthly', 'none'], description: 'For add_chore' },
           minutes: { type: 'integer', description: 'For add_chore or start_job: realistic minutes' }
         },
@@ -104,7 +104,7 @@ function ask(key, text) {
   var history = JSON.parse(prop_('ASK_' + who) || '[]').slice(-6);
   var convo = history.map(function (h) { return (h.role === 'user' ? 'They said: ' : 'You said: ') + h.text; }).join('\n');
   var res = callClaudeJson_(AI_VOICE +
-    'You can act in the app with actions: add_shopping (one per item), add_todo (a one-off task), add_chore (a repeating household job; pick a rhythm), ' +
+    'You can act in the app with actions: add_shopping (one per item), add_todo (a one-off task with no time), add_deadline (a task with a time it must be done by: the app will nag until it is done), add_chore (a repeating household job; pick a rhythm), ' +
     'park (a note or worry for later), start_job (suggest one job to start now on a timer), log_food (only for ' + (who === 'me' ? 'food they say they ate' : 'nothing: never use it') + '). ' +
     'Only act when they ask or clearly want it. If they are overwhelmed, pick ONE small thing and offer start_job.',
     'Today:\n' + dayContext_(who) + (convo ? '\n\nEarlier:\n' + convo : '') + '\n\nNow they say: ' + text, ASK_SCHEMA, claudeModel_(), 12000);
@@ -116,7 +116,9 @@ function ask(key, text) {
       if (!t) return;
       if (a.type === 'add_shopping') { addShopping_(who, t); done.push('Added ' + t + ' to the shopping list'); }
       else if (a.type === 'park') { park_(who, t); done.push('Parked: ' + t); }
-      else if (a.type === 'add_todo') {
+      else if (a.type === 'add_deadline') {
+        try { var dl = addDeadline_(who, t); done.push('Deadline: ' + dl.task + ' by ' + dl.dueText.slice(-5)); } catch (e) { done.push('Couldn\'t set a deadline: ' + e.message); }
+      } else if (a.type === 'add_todo') {
         park_(who, 'To do: ' + t);
         if (who === 'me') Tasks.Tasks.insert({ title: t, due: todayYmd_() + 'T00:00:00.000Z' }, TASK_LIST);
         done.push('To-do added: ' + t);

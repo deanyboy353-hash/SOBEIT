@@ -18,13 +18,32 @@ A Duolingo for your whole life, shared with your partner. Chores that keep the h
 **Tabs**
 - **Home**: a short morning brief from Claude, **Ask anything** (type how you feel or what you need; it can add shopping, chores and to-dos, park a worry or pick one job for you), your XP ring, streaks, **What should I do now?**, your routine, today's gym, today's chores, weight, water, and what your partner has done (high-five them or send a nudge).
 - **Chores**: **Today** shows today's jobs. Start one on a timer with steps; your partner can join. **Schedule** shows every chore under Every day, Weekly, Every 2 weeks and Monthly, each with a next date. Tap one to change its days or date, **Add a chore**, or **Spread the dates** to share everything out again (heavy jobs stay off gym days).
-- **Play**: four daily puzzles (Word, Numbers, Recall, Tempo), the same for both of you, with live scores. **Word** (five letters, six guesses; you see your partner's colours but not their letters until you've both finished), **Numbers** (reach the target), **Recall** (remember the sequence). **Stats** shows your head-to-head record and word streak. You get a notification when your partner plays.
+- **Play**: five daily games (Word, Numbers, Recall, Tempo, and **Mix**: a DJ beatmatching game where you pitch deck B to match deck A and nudge the beats together), the same for both of you, with live scores. **Word** (five letters, six guesses; you see your partner's colours but not their letters until you've both finished), **Numbers** (reach the target), **Recall** (remember the sequence). **Stats** shows your head-to-head record and word streak. You get a notification when your partner plays.
 - **Train**: nSuns-style upper/lower. The main lift (9 sets) and second lift (8 sets) come from your training max, then accessories. Tick sets as you go and the rest timer starts itself. Doing a different session today? Tap it and press **Switch** (or **Make today a rest day**): your calendar event, gym task and Home card follow. **Next in order** suggests the session after your last one. The heavy **1+** set sets next week's training max. Progress shows your history and PRs.
 - **Food**: calories and protein versus targets, one-tap foods, Claude quick-add, **Meal ideas** that fit what's left, undo.
 - **Health**: your sleep (score, time asleep, a stage-by-stage chart of the night, how deep/REM/light/awake compare with what's typical, wake-ups, bedtime consistency, sleep debt, last 7 nights), readiness (sleep plus heart-rate variability and resting heart rate against your own two weeks, with advice for today's workout), activity (steps by hour, distance, active calories, workouts, two weeks of steps) and heart (resting HR, HRV, blood oxygen, breathing, heart rate through the day, trends). Tap any chart for details, use the arrows for earlier days, and tap **Explain my sleep and readiness** for Claude's take. Needs the free **HC Webhook** app; the Health tab shows the steps and your private address. Sleep score and readiness are the app's own estimates.
 - **You** (the person icon, top right): level, this week's scores, shopping list, rewards, badges, and settings: Light, Dark or Match phone, notifications, installing, and the Claude key.
 
 Your partner's link opens the same app without Train and Food.
+
+**Deadlines (they nag until it's done)**
+- On Home, type something with a time: "Send the invoice by 3pm", "Call the garage in 20 mins", "Bins out tonight". (Or tell Ask.)
+- It reminds you as the time gets close, then once it's late keeps going (every 5 minutes on **Duolingo** level) until you tap **Done** or **Park it**. The notification stays on screen and has the buttons on it.
+- Done on time +15 XP, late +5 XP. **+30m** costs 3 XP, **Park it** costs 10 XP (it goes to Saved for later).
+- How hard it pushes: Customise, then Reminders: Gentle, Normal or Duolingo (also a streak nag every half hour from 6pm until you hit your goal). Quiet from 10:30pm to 8am.
+
+**Cash and your empire**
+- Every XP also pays $10. Spend it under You, then **Your empire**: San Andreas and Vice City homes and businesses (the Grove Street house, the Malibu Club, the Vercetti Estate…), cars, bikes, a boat, a helicopter, even a jump jet.
+- Upgrade places (a music studio and DJ booth, an art wall, a pool…) and vehicles (respray, hydraulics, nitro…). Businesses pay out every morning. Sell anything back for 60%.
+- Your character card shows your ride, your home and your net worth. **Next up** on Home shows what you're closest to.
+
+**Plan the week**
+- Chores, then **Plan**: tap a job, then tap who does it (you, your partner, **Together** or Either), like matching pairs. Save the week and your partner sees it.
+- **Together** jobs (making the bed, the food shop, the bedding) pay **both of you double XP** when you do them together: tick one and choose Together.
+
+**Music for chores**
+- On a chore timer (or Chores, then Music library), pick one of 12 stations: lo-fi, house, disco, garage, techno, drum and bass, synthwave, hip hop, afro house, trance, dubstep, ambient.
+- The app makes an original mix that lasts as long as your timer and finishes on a proper outro, never mid-beat (at most one phrase, about 15 to 28 seconds, either side). If you add 5 minutes, the mix follows.
 
 **The fun parts**
 - **Yazzy & Deany**: nicknames and a team name throughout (Config tab). Your levels have names: a DJ career for Deany (Bedroom DJ, Warm-up set… Headliner), album eras for Yazzy (The College Dropout, Late Registration, Graduation…). Change them with **Your level titles** / **Partner level titles** (DJ, Ye or None).

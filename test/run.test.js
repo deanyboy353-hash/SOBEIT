@@ -74,7 +74,7 @@ test('Tuesday: setup builds the sheet and plans a dry-day bike session', () => {
   g.ctx.setup();
   ['Config', 'Sessions', 'Gym log', 'Weight', 'Health', 'Food', 'Inbox', 'Log'].forEach(n => assert.ok(g.tab(n), n));
   assert.strictEqual(g.tab('Sheet1'), null);
-  assert.deepStrictEqual(g.state.triggers.map(t => t.fn).sort(), ['dailyRun', 'foodCheck', 'pollTasks', 'weeklySummary']);
+  assert.deepStrictEqual(g.state.triggers.map(t => t.fn).sort(), ['dailyRun', 'foodCheck', 'nagRun', 'pollTasks', 'weeklySummary']);
   assert.ok(g.state.props.WEBAPP_KEY);
 
   const ev = gymEvents(g);

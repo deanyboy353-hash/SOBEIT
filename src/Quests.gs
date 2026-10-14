@@ -69,6 +69,15 @@ function completeQuest_(who, name, opts) {
   var rule = parseEvery(q.every);
   if (rule.kind !== 'none') upd['Next due'] = nextAfterDone(rule, today, q.nextDue);
   updateRow_('chores', q.row, upd);
+  if (opts.together) {
+    // Done together: you both get double XP.
+    var other = who === 'me' ? 'partner' : 'me', both = q.xp * TOGETHER_MULTIPLIER;
+    var xpT = addXp_(who, name + ' (together)', both, 'quest');
+    addXp_(other, name + ' (together)', both, 'quest');
+    push_(other, nicks_()[who] + ' logged ' + name.toLowerCase() + ' with you', '+' + both + ' XP each for doing it together.', 'home');
+    completeTracked_('quest', today, name);
+    return xpT;
+  }
   var xp = addXp_(who, name, q.xp, 'quest');
   var owner = q.who === 'me' || q.who === 'partner' ? q.who : null;
   if (owner && owner !== who) addXp_(who, 'Covered: ' + name, Math.round(q.xp / 2), 'cover');
@@ -101,13 +110,13 @@ function questsState_(who) {
 
 // ---------- called from the page ----------
 
-function questDone(key, name) {
+function questDone(key, name, together) {
   var who = who_(key);
   return withLock_(function () {
     var q = readChores_().filter(function (x) { return x.name === name; })[0];
     if (!q) throw new Error('"' + name + '" is no longer in the Chores tab.');
     if (q.lastDone === todayYmd_()) throw new Error(name + ' is already done today.');
-    completeQuest_(who, name, {});
+    completeQuest_(who, name, { together: !!together });
     return appState_(who);
   });
 }
@@ -135,7 +144,7 @@ function whatNow(key, energy, minutes, skip) {
   var b = board_();
   var fits = readChores_().filter(function (q) {
     var e = { low: 1, medium: 2, high: 3 }[q.energy] || 2;
-    var mine = q.who === 'anyone' || q.who === who;
+    var mine = q.who === 'anyone' || q.who === 'together' || q.who === who;
     var claimedByOther = b.claims[q.name] && b.claims[q.name] !== who;
     return mine && !claimedByOther && q.lastDone !== today && e <= level && q.minutes <= Number(minutes || 999) && (skip || []).indexOf(q.name) === -1;
   });

@@ -15,10 +15,11 @@ const index = web('index.html');
 const shell = index.split('<!--SHELL-->')[1].split('<!--/SHELL-->')[0].trim();
 const css = web('app.css');
 const app = web('app.js');
+const music = web('music.js');
 
 // ---- Google page ----
 // (No word list here to keep the page light: the server checks guesses.)
-for (const [name, src] of [['app.css', css], ['app.js', app]]) {
+for (const [name, src] of [['app.css', css], ['music.js', music], ['app.js', app]]) {
   if (src.includes('<?') || src.includes('</script') || src.includes('</style')) throw new Error(name + ' contains text that would break the Google page template');
 }
 const gas = `<!DOCTYPE html>
@@ -37,6 +38,9 @@ ${shell}
 window.LQ_KEY = <?!= JSON.stringify(key) ?>;
 window.LQ_BOOT = <?!= initialJson ?>;
 window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
+</script>
+<script>
+${music}
 </script>
 <script>
 ${app}

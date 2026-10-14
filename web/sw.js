@@ -1,6 +1,6 @@
 /* Life Quest service worker: opens instantly (cached shell) and shows push notifications. */
 var CACHE = 'lq-v1';
-var SHELL = ['./', 'index.html', 'app.css', 'app.js', 'words.js', 'config.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
+var SHELL = ['./', 'index.html', 'app.css', 'app.js', 'music.js', 'words.js', 'config.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 
 importScripts('config.js');
 
@@ -33,17 +33,23 @@ if (self.LQ_CONFIG && self.LQ_CONFIG.firebase) {
   firebase.messaging().onBackgroundMessage(function (p) {
     if (p.notification) return;
     var d = p.data || {};
-    return self.registration.showNotification(d.title || 'Life Quest', { body: d.body || '', icon: 'icon-192.png', badge: 'icon-192.png', tag: d.tab || 'home', data: { tab: d.tab || 'home' } });
+    var opts = { body: d.body || '', icon: 'icon-192.png', badge: 'icon-192.png', tag: d.tab || 'home', data: { tab: d.tab || 'home' } };
+    if (d.deadline) {
+      opts.tag = 'deadline-' + d.deadline; opts.renotify = true; opts.requireInteraction = true; opts.data.deadline = d.deadline;
+      opts.actions = [{ action: 'done', title: 'Done' }, { action: 'extend', title: '+30 min' }, { action: 'park', title: 'Park it' }];
+    }
+    return self.registration.showNotification(d.title || 'Life Quest', opts);
   });
 }
 self.addEventListener('notificationclick', function (e) {
   e.notification.close();
-  var d = e.notification.data || {};
-  var tab = (d.FCM_MSG && d.FCM_MSG.data && d.FCM_MSG.data.tab) || d.tab || 'home';
+  var d = e.notification.data || {}, fd = (d.FCM_MSG && d.FCM_MSG.data) || {};
+  var tab = fd.tab || d.tab || 'home', deadline = fd.deadline || d.deadline || '';
+  var act = ['done', 'extend', 'park'].indexOf(e.action) !== -1 ? e.action : '';
   e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
     for (var i = 0; i < list.length; i++) {
-      if ('focus' in list[i]) { list[i].postMessage({ tab: tab }); return list[i].focus(); }
+      if ('focus' in list[i]) { list[i].postMessage({ tab: tab, deadline: deadline, act: act }); return list[i].focus(); }
     }
-    return self.clients.openWindow(self.registration.scope + '#' + tab);
+    return self.clients.openWindow(self.registration.scope + '#' + (deadline && act ? 'dl=' + deadline + ':' + act : tab));
   }));
 });

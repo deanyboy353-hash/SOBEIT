@@ -12,12 +12,13 @@
  * person sees it live; finished games are logged to the Games tab.
  */
 
-var GAME_LIST = ['word', 'target', 'recall', 'tempo'];
+var GAME_LIST = ['word', 'target', 'recall', 'tempo', 'mix'];
 
 function gamesDay_(ymd) {
   var g = JSON.parse(prop_('GAMES_' + ymd) || 'null') ||
     { word: { me: null, partner: null }, target: { me: null, partner: null }, recall: { me: null, partner: null } };
   g.tempo = g.tempo || { me: null, partner: null };
+  g.mix = g.mix || { me: null, partner: null };
   g.stake = g.stake || null;
   return g;
 }
@@ -70,6 +71,7 @@ function gamesState_(who) {
     },
     recall: { mine: g.recall[who], other: g.recall[other] },
     tempo: tempoState_(today, g.tempo[who], g.tempo[other]),
+    mix: { puzzle: mixPuzzle(today), mine: g.mix[who], other: g.mix[other] ? { points: g.mix[other].points, final: g.mix[other].final, tries: g.mix[other].tries } : null },
     stake: g.stake ? { text: g.stake.text, by: g.stake.by === who ? 'you' : 'them', result: stakeResult_(w[who], w[other]) } : null,
     stats: gameStats_(who)
   };
@@ -240,6 +242,31 @@ function submitTempo(key, bpm) {
       push_(who === 'me' ? 'partner' : 'me', nicks_()[who] + ' locked in Tempo', me.points + ' points. Can you keep better time?', 'play');
     }
     g.tempo[who] = me;
+    saveGamesDay_(today, g);
+    return gamesState_(who);
+  });
+}
+
+/** A Mix attempt: how far off the tempos were and how far apart the beats landed. Three tries; best counts. */
+function submitMix(key, bpmDiff, phaseMs) {
+  var who = who_(key);
+  bpmDiff = Math.round(Math.abs(Number(bpmDiff)) * 100) / 100;
+  phaseMs = Math.round(Math.abs(Number(phaseMs)));
+  if (!isFinite(bpmDiff) || !isFinite(phaseMs) || bpmDiff > 60 || phaseMs > 2000) throw new Error('That mix didn\'t register. Try again.');
+  return withLock_(function () {
+    var today = todayYmd_(), g = gamesDay_(today);
+    var me = g.mix[who] || { points: 0, bpm: null, phase: null, tries: 0, final: false };
+    if (me.final) throw new Error('Done for today. New records tomorrow.');
+    me.tries++;
+    var pts = mixPoints(bpmDiff, phaseMs);
+    if (me.bpm === null || pts > me.points || (pts === me.points && bpmDiff + phaseMs / 100 < me.bpm + me.phase / 100)) { me.points = pts; me.bpm = bpmDiff; me.phase = phaseMs; }
+    if (me.tries >= 3 || pts === 10) {
+      me.final = true;
+      logGame_(who, 'mix', me.points, me.bpm + ' BPM off, ' + me.phase + ' ms');
+      addXp_(who, 'Mix: ' + me.points + ' points', 5 + me.points, 'game');
+      push_(who === 'me' ? 'partner' : 'me', nicks_()[who] + ' dropped a mix', me.points + ' points. Think you can beatmatch better?', 'play');
+    }
+    g.mix[who] = me;
     saveGamesDay_(today, g);
     return gamesState_(who);
   });

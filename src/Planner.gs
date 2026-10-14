@@ -577,6 +577,94 @@ function tempoPoints(tapped, bpm) {
   return d <= 1 ? 10 : d <= 2 ? 8 : d <= 4 ? 6 : d <= 7 ? 4 : 2;
 }
 
+// ---- Mix (the DJ game) ----
+
+var MIX_STATIONS = ['vice-house', 'sunset-disco', 'warehouse', 'garage-run', 'afro-house', 'trance'];
+
+/** Today's two records: deck A plays at its tempo, deck B starts off and you match it. */
+function mixPuzzle(ymd) {
+  var r = seededRandom('mix' + ymd);
+  var a = MIX_STATIONS[Math.floor(r() * MIX_STATIONS.length)], b = a;
+  while (b === a) b = MIX_STATIONS[Math.floor(r() * MIX_STATIONS.length)];
+  var bpmA = 118 + Math.floor(r() * 13), off = (3 + Math.floor(r() * 5)) * (r() < 0.5 ? -1 : 1);
+  return { a: a, b: b, bpmA: bpmA, bpmB: bpmA + off };
+}
+
+/** Points for a mix: how close the tempos are (BPM) and how tight the beats line up (ms). */
+function mixPoints(bpmDiff, phaseMs) {
+  var d = Math.abs(Number(bpmDiff)), ph = Math.abs(Number(phaseMs));
+  if (!isFinite(d) || !isFinite(ph)) return 0;
+  if (d <= 0.5 && ph <= 30) return 10;
+  if (d <= 1 && ph <= 60) return 8;
+  if (d <= 2 && ph <= 100) return 6;
+  if (d <= 4 && ph <= 160) return 4;
+  return 2;
+}
+
+// ---- Deadlines ("Send the invoice by 3pm") ----
+
+/**
+ * Finds the time in a to-do and splits it off.
+ * Understands: by/at/before 3pm, 3:30pm, 15:00, noon, midday, tonight,
+ * this afternoon, end of day / eod, in 20 mins, in 2 hours, tomorrow ...
+ * nowMin: minutes since midnight now. Returns {task, dayOffset, min} or null.
+ * A time that has already gone today means tomorrow.
+ */
+function parseDeadline(text, nowMin) {
+  var s = ' ' + String(text || '').replace(/\s+/g, ' ').trim() + ' ';
+  var day = 0, min = null, m;
+  function cut(re) { s = s.replace(re, ' '); }
+  if (/\btomorrow\b/i.test(s)) { day = 1; cut(/\b(by |for )?tomorrow\b/i); }
+  if ((m = s.match(/\bin (\d+(?:\.\d+)?|an?|half an?) ?(mins?|minutes?|hours?|hrs?|h)\b/i))) {
+    var n = /half/i.test(m[1]) ? 0.5 : /^an?$/i.test(m[1]) ? 1 : Number(m[1]);
+    min = nowMin + Math.round(/^h/i.test(m[2]) ? n * 60 : n);
+    cut(m[0]);
+  } else if ((m = s.match(/\b(?:by|at|before|for|until|til) (\d{1,2})(?:[:.](\d{2}))? ?(am|pm)?\b/i)) || (m = s.match(/\b(\d{1,2})(?:[:.](\d{2}))? ?(am|pm)\b/i)) || (m = s.match(/\b(\d{1,2})[:.](\d{2})\b/))) {
+    var h = Number(m[1]), mm = Number(m[2] || 0), ap = (m[3] || '').toLowerCase();
+    if (h > 23 || mm > 59) return null;
+    if (ap === 'pm' && h < 12) h += 12;
+    if (ap === 'am' && h === 12) h = 0;
+    if (!ap && !m[2] && h >= 1 && h <= 7) h += 12;           // "by 3" means 3pm
+    min = h * 60 + mm;
+    cut(m[0]);
+  } else if ((m = s.match(/\b(?:by |at |before )?(noon|midday|this afternoon|end of (?:the )?(?:work ?)?day|eod|tonight|this evening|bedtime)\b/i)) || (m = s.match(/\b(?:by|at|before) (lunch ?time|lunch)\b/i))) {
+    var w = m[1].toLowerCase();
+    min = /noon|midday/.test(w) ? 720 : /lunch/.test(w) ? 780 : /afternoon/.test(w) ? 900 : /end|eod/.test(w) ? 1020 : /bed/.test(w) ? 1350 : 1260;
+    cut(m[0]);
+  }
+  if (min === null) return null;
+  day += Math.floor(min / 1440);
+  min = ((min % 1440) + 1440) % 1440;
+  if (day === 0 && min <= nowMin) day = 1;
+  var task = s.replace(/\b(by|at|before|until|til)\s*$/i, '').replace(/\s+([,.!])/g, '$1').replace(/\s+/g, ' ').trim().replace(/[,.;:-]+$/, '').trim();
+  if (!task) return null;
+  return { task: task.charAt(0).toUpperCase() + task.slice(1), dayOffset: day, min: min };
+}
+
+var NAG_LEVELS = {
+  gentle: { before: [15], soon: 60, later: 120 },
+  normal: { before: [30, 10], soon: 15, later: 30 },
+  aggressive: { before: [60, 30, 15, 5], soon: 5, later: 15 }
+};
+
+/**
+ * Should a deadline nag now? All times in ms. Before the deadline: a reminder
+ * as each "minutes before" mark passes. At the deadline: one straight away.
+ * After it: every `soon` minutes for two hours, then every `later` minutes.
+ * Returns '' (no), 'before', 'due' or 'late'.
+ */
+function nagDue(dueMs, nowMs, lastNagMs, level) {
+  var L = NAG_LEVELS[level] || NAG_LEVELS.normal, M = 60000;
+  lastNagMs = lastNagMs || 0;
+  if (nowMs < dueMs) {
+    var marks = L.before.map(function (b) { return dueMs - b * M; });
+    return marks.some(function (t) { return lastNagMs < t && t <= nowMs; }) ? 'before' : '';
+  }
+  if (lastNagMs < dueMs) return 'due';
+  var every = (nowMs - dueMs < 120 * M ? L.soon : L.later) * M;
+  return nowMs - lastNagMs >= every - 30000 ? 'late' : '';
+}
+
 // Node test hook. Apps Script ignores this because `module` doesn't exist there.
 if (typeof module !== 'undefined') {
   module.exports = {

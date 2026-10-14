@@ -100,13 +100,13 @@ function challengeStats_(who, ymd) {
     if (r.time && r.time < '12:00') beforeNoon += r.xp;
     if (r.time && r.time < '20:00') by8 += r.xp;
   });
-  var g = gamesDay_(ymd), w = g.word[who], t = g.target[who], rc = g.recall[who], tp = (g.tempo || {})[who];
+  var g = gamesDay_(ymd), w = g.word[who], t = g.target[who], rc = g.recall[who], tp = (g.tempo || {})[who], mx = (g.mix || {})[who];
   var timers = rowsBetween_('choresLog', ymd, ymd).filter(function (r) { return r['Who'] === who && r['Result'] === 'Done'; }).length;
   return {
     kinds: kinds, beforeNoon: beforeNoon, goalBy8: by8 >= dailyGoal_(), timers: timers,
     chores: (kinds.quest || 0) + (kinds.cover || 0),
     wordWon: !!(w && w.won), tempo: !!(tp && tp.final),
-    games: [w && w.guesses.length, t && t.tries, rc && rc.plays, tp && tp.tries].filter(Boolean).length
+    games: [w && w.guesses.length, t && t.tries, rc && rc.plays, tp && tp.tries, mx && mx.tries].filter(Boolean).length
   };
 }
 
@@ -150,6 +150,17 @@ var STREAK_LINES = [
   'Five minutes now keeps your {n}-day streak alive.',
   'Your streak is looking at you. {x} XP to go.'
 ];
+var PUSHY_LINES = [
+  '{x} XP to go today. One chore does it.',
+  'Your {n}-day streak is not going to save itself.',
+  'Still {x} XP short. Pick the smallest job.',
+  'Quick one: {x} XP and the day counts.',
+  'The streak misses you. {x} XP.',
+  'Ten minutes. That is all it takes. {x} XP to go.',
+  '{other} has {ox} XP today. You have {mx}.',
+  'Your {n}-day streak trusted you.',
+  '{char} didn\'t get where they are by sitting on the sofa. {x} XP.'
+];
 var LATE_LINES = [
   'These reminders don\'t seem to be working. One small job and the streak lives.',
   'Last call for your {n}-day streak. Dishes count.',
@@ -178,9 +189,19 @@ function heartbeat_() {
     PEOPLE.forEach(function (who) {
       var other = who === 'me' ? 'partner' : 'me';
       var xp = xpOn_(who, ymd), st = streakNow_(who, ymd, goal);
-      var fill = function (s) { return s.replace('{n}', st.count).replace('{x}', Math.max(0, goal - xp)); };
-      if (m >= 19 * 60 + 30 && xp < goal) once(who, 'streak', st.count ? 'Keep your streak' : 'Today still counts', fill(st.count ? STREAK_LINES[Math.floor(r() * STREAK_LINES.length)] : 'Two small jobs and today counts.'), 'chores');
-      if (m >= 21 * 60 + 30 && xp < goal && st.count) once(who, 'late', 'Streak alert', fill(LATE_LINES[Math.floor(r() * LATE_LINES.length)]), 'chores');
+      var oxp = xpOn_(other, ymd), cname = charName_(prefs_(who).char) || 'Tommy';
+      var fill = function (s) { return s.replace('{n}', st.count).replace('{x}', Math.max(0, goal - xp)).replace('{other}', nk[other]).replace('{ox}', oxp).replace('{mx}', xp).replace('{char}', cname); };
+      var pushy = nagLevel_(who) === 'aggressive';
+      if (!pushy && m >= 19 * 60 + 30 && xp < goal) once(who, 'streak', st.count ? 'Keep your streak' : 'Today still counts', fill(st.count ? STREAK_LINES[Math.floor(r() * STREAK_LINES.length)] : 'Two small jobs and today counts.'), 'chores');
+      if (!pushy && m >= 21 * 60 + 30 && xp < goal && st.count) once(who, 'late', 'Streak alert', fill(LATE_LINES[Math.floor(r() * LATE_LINES.length)]), 'chores');
+      // Duolingo level: from 6pm, every half hour until today's goal is hit.
+      if (pushy && m >= 18 * 60 && xp < goal) {
+        var slot = Math.floor(m / 30), pool = PUSHY_LINES.filter(function (l) { return (st.count || l.indexOf('{n}') === -1) && (oxp > xp || l.indexOf('{ox}') === -1); });
+        if (sent[who].indexOf('streak-' + slot) === -1) {
+          sent[who].push('streak-' + slot);
+          push_(who, st.count ? 'Your streak needs you' : 'Today still counts', fill(pool[slot % pool.length]), 'chores', false, { persist: true, tag: 'streak' });
+        }
+      }
       if (m >= 17 * 60 && xpOn_(other, ymd) >= xp + 20) once(who, 'ahead', nk[other] + ' is ahead today', nk[other] + ' has ' + (xpOn_(other, ymd) - xp) + ' more XP than you today. Just saying.', 'home');
       var theirs = g.word[other], mine = g.word[who];
       if (m >= 20 * 60 && theirs && theirs.done && !(mine && mine.done)) once(who, 'word', 'Your move', nk[other] + (theirs.won ? ' got the word in ' + theirs.guesses.length + '.' : ' missed today\'s word.') + ' Can you do better?', 'play');
@@ -352,8 +373,8 @@ function daysBetween_(a, b) {
 
 // ---------- customisation ----------
 
-var HOME_BLOCKS = ['brief', 'ask', 'ring', 'challenges', 'whatnow', 'routine', 'gym', 'chores', 'tiles', 'make', 'us', 'feed'];
-var PREF_DEFAULTS = { char: '', accent: '', text: 'normal', sound: true, haptics: true, confetti: true, motion: true, home: [] };
+var HOME_BLOCKS = ['deadlines', 'brief', 'ask', 'ring', 'challenges', 'next', 'whatnow', 'routine', 'gym', 'chores', 'tiles', 'make', 'us', 'feed'];
+var PREF_DEFAULTS = { char: '', accent: '', text: 'normal', sound: true, haptics: true, confetti: true, motion: true, home: [], nag: '' };
 
 function prefs_(who) {
   return Object.assign({}, PREF_DEFAULTS, JSON.parse(prop_('PREFS_' + who) || '{}'));
@@ -368,6 +389,7 @@ function setPrefs(key, p) {
     if (p.char !== undefined) cur.char = /^(sa|vc)-[a-z]+$/.test(String(p.char)) ? String(p.char) : '';
     if (p.accent !== undefined) cur.accent = ['', 'pink', 'green', 'teal', 'orange', 'blue'].indexOf(p.accent) !== -1 ? p.accent : '';
     if (p.text !== undefined) cur.text = p.text === 'large' ? 'large' : 'normal';
+    if (p.nag !== undefined) cur.nag = NAG_LEVELS[p.nag] ? p.nag : '';
     ['sound', 'haptics', 'confetti', 'motion'].forEach(function (k) { if (p[k] !== undefined) cur[k] = !!p[k]; });
     if (Array.isArray(p.home)) {
       cur.home = p.home.filter(function (x) { return x && HOME_BLOCKS.indexOf(x.id) !== -1; }).map(function (x) { return { id: x.id, hide: !!x.hide }; });

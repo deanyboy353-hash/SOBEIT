@@ -52,7 +52,7 @@ function devices_() {
  * tab: which app tab opens when it's tapped. urgent: fall back to email or a
  * calendar alert if push isn't set up (used for nudges and time's up).
  */
-function push_(who, title, body, tab, urgent) {
+function push_(who, title, body, tab, urgent, extra) {
   var sent = 0;
   try {
     var sa = fcmServiceAccount_();
@@ -62,8 +62,28 @@ function push_(who, title, body, tab, urgent) {
       var link = appBaseUrl_() ? appBaseUrl_() + '#' + (tab || 'home') : '';
       var dead = [];
       list.forEach(function (d) {
-        var msg = { message: { token: d.token, data: { tab: tab || 'home', title: title, body: body || '' },
-          webpush: { notification: { title: title, body: body || '', icon: link ? appBaseUrl_() + 'icon-192.png' : undefined, tag: tab || 'home' }, fcm_options: link ? { link: link } : undefined } } };
+        var data = { tab: tab || 'home', title: title, body: body || '' };
+        var note = { title: title, body: body || '', icon: link ? appBaseUrl_() + 'icon-192.png' : undefined, tag: tab || 'home' };
+        if (extra && extra.persist) {
+          // Stays on the screen until you deal with it, and buzzes again each time.
+          note.tag = extra.tag || tab || 'home';
+          note.renotify = true;
+          note.requireInteraction = true;
+          note.vibrate = [200, 100, 200, 100, 400];
+          data.persist = '1';
+        }
+        if (extra && extra.deadline) {
+          // One notification per deadline that buzzes again each time, with buttons right on it.
+          data.deadline = extra.deadline;
+          note.tag = 'deadline-' + extra.deadline;
+          note.renotify = true;
+          note.requireInteraction = true;
+          note.data = { deadline: extra.deadline, tab: 'home' };
+          note.vibrate = [200, 100, 200, 100, 400];
+          note.actions = [{ action: 'done', title: 'Done' }, { action: 'extend', title: '+30 min' }, { action: 'park', title: 'Park it' }];
+        }
+        var msg = { message: { token: d.token, data: data,
+          webpush: { notification: note, fcm_options: link ? { link: link } : undefined } } };
         var res = UrlFetchApp.fetch('https://fcm.googleapis.com/v1/projects/' + sa.project_id + '/messages:send', {
           method: 'post', contentType: 'application/json', muteHttpExceptions: true,
           headers: { Authorization: 'Bearer ' + token }, payload: JSON.stringify(msg)
