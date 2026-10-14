@@ -27,7 +27,7 @@ function rpcTable_() {
     registerDevice: registerDevice, sendNudge: sendNudge, ask: ask, clearAsk: clearAsk, getBrief: getBrief,
     mealIdeas: mealIdeas, logIdea: logIdea, logUs: logUs, sendWink: sendWink, answerTonight: answerTonight,
     setStake: setStake, submitTempo: submitTempo, getWrapped: getWrapped, setTodaySession: setTodaySession,
-    healthDay: healthDay, healthInsight: healthInsight
+    healthDay: healthDay, healthInsight: healthInsight, importHealth: importHealth
   };
 }
 

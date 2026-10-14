@@ -135,3 +135,16 @@ test('today\'s workout can change: the plan, calendar event and gym task follow'
   assert.throws(() => g.ctx.setTodaySession(me, 'Lower B'), /already logged/);
   assert.strictEqual(g.ctx.trainState(me).next, '');
 });
+
+test('HC Webhook test syncs are ignored, and a history import rebuilds whole days', () => {
+  const { g, me } = ready();
+  const fake = data.day('2026-10-13'); fake.test = true; fake.steps = [{ count: 8432, start_time: '2026-10-13T00:00:00Z' }];
+  post(g, me, fake);
+  assert.ok(!healthRow(g, '2026-10-13', 'me'), 'test data never saved');
+  post(g, me, { steps: [{ count: 99999, start_time: '2026-10-12T09:00:00Z' }] });   // junk from before the fix
+  const res = g.ctx.importHealth(me, JSON.stringify(data.day('2026-10-12')));
+  assert.strictEqual(res.days, 1);
+  const row = healthRow(g, '2026-10-12', 'me');
+  assert.ok(Number(row['Steps']) < 20000, 'junk replaced: ' + row['Steps']);
+  assert.ok(Number(row['Sleep (min)']) > 400);
+});

@@ -1492,7 +1492,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
       '<li>Open it and allow ' + (/iPhone|iPad/.test(navigator.userAgent) ? 'Apple Health' : 'Health Connect') + ' access: tick Steps, Sleep, Heart rate, Resting heart rate, HRV, Oxygen saturation, Respiratory rate, Distance, Active calories, Exercise, Weight.</li>' +
       '<li>Add a webhook and paste this address:</li></ol>' +
       '<div class="hook"><code id="hookUrl">' + esc(h.webhook) + '</code><button class="btn primary sm" type="button" data-fun="copyHook">Copy</button></div>' +
-      '<ol class="small setup" start="4"><li>Set it to sync every 15 minutes, then tap <b>Sync now</b>.</li></ol>' +
+      '<ol class="small setup" start="4"><li>Make sure the format is <b>JSON</b> (not gRPC). Set it to sync every 15 minutes, then tap <b>Sync now</b>.</li></ol>' +
       '<p class="tiny muted" style="margin:8px 0 0">The address has your private key in it, so don\'t share it. Your Fitbit or Pixel Watch already saves to ' + (/iPhone|iPad/.test(navigator.userAgent) ? 'Apple Health' : 'Health Connect') + '; this just forwards it.</p></section>';
   }
 
@@ -1564,8 +1564,47 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     if (h.weight || h.vo2) out += '<section class="card"><div class="head"><h3 class="row" style="gap:8px">' + icon('scale', 's') + 'Body</h3></div><div class="hstats">' +
       (h.weight ? '<div><b class="num">' + h.weight.kg + '</b><span>kg · ' + esc(dayLabel(h.weight.date)) + '</span></div>' : '') + (h.vo2 ? '<div><b class="num">' + h.vo2 + '</b><span>VO2 max</span></div>' : '') + '</div></section>';
 
+    out += '<button class="btn soft wide" type="button" data-fun="importHealth" style="margin-bottom:12px">' + icon('download', 's') + 'Import your history from the watch</button>';
     out += '<p class="tiny muted center">Sleep score and readiness are this app\'s own estimates from your phone\'s data, so they can differ a little from Fitbit\'s. Not medical advice.</p>';
     el('tab-health').innerHTML = out;
+  }
+
+  // ---- history import: read HC Webhook's local server on this phone, upload a few days at a time ----
+  function importSheet() {
+    openSheet('<h2>Import your history</h2><p class="small muted" style="margin:4px 0 12px">Pulls past days from your watch through HC Webhook on this phone.</p>' +
+      '<ol class="small setup"><li>In <b>HC Webhook</b>, turn on <b>Local HTTP server</b> (port 8787).</li><li>Come back here and pick how far back:</li></ol>' +
+      '<div class="grid3" style="margin:10px 0"><button class="btn soft" type="button" data-days="30">30 days</button><button class="btn soft" type="button" data-days="90">90 days</button><button class="btn soft" type="button" data-days="365">1 year</button></div>' +
+      '<label class="small muted">Port <input type="text" id="hcPort" inputmode="numeric" value="' + esc(load('hcPort') || '8787') + '" style="width:90px;padding:6px 8px;margin-left:6px"></label>' +
+      '<p class="tiny muted" style="margin:10px 0 0">Chrome may ask to let this app see devices on your network: allow it. Keep the app open until it finishes. Health Connect only keeps what your watch saved there, usually from when you set it up.</p><div class="readout small" id="importMsg"></div>');
+  }
+  function dayOfIso(iso) { var d = new Date(iso); return isNaN(d) ? '' : d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function importHistory(n) {
+    var port = (el('hcPort') && el('hcPort').value.trim()) || '8787', msg = function (m) { var x = el('importMsg'); if (x) x.textContent = m; };
+    save('hcPort', port);
+    msg('Reading ' + n + ' days from your watch…');
+    fetch('http://127.0.0.1:' + port + '/?days=' + n).then(function (r) { if (!r.ok) throw new Error('HC Webhook said ' + r.status); return r.json(); }).then(function (p) {
+      var byDay = {};
+      Object.keys(p).forEach(function (type) {
+        if (!Array.isArray(p[type])) return;
+        p[type].forEach(function (rec) {
+          var ymd = dayOfIso(rec.session_end_time || rec.start_time || rec.time);
+          if (!ymd) return;
+          delete rec.metadata;
+          ((byDay[ymd] = byDay[ymd] || {})[type] = byDay[ymd][type] || []).push(rec);
+        });
+      });
+      var dates = Object.keys(byDay).sort(), done = 0;
+      if (!dates.length) { msg('Nothing found. Check HC Webhook has Health Connect permissions.'); return; }
+      (function next() {
+        if (!dates.length) { msg('Imported ' + done + ' days.'); toast('History imported'); return refreshQuiet(); }
+        var batch = dates.splice(0, 4), payload = {};
+        batch.forEach(function (d) { Object.keys(byDay[d]).forEach(function (t) { payload[t] = (payload[t] || []).concat(byDay[d][t]); }); });
+        msg('Uploading… ' + done + ' of ' + (done + batch.length + dates.length) + ' days');
+        rpc('importHealth', [JSON.stringify(payload)]).then(function () { done += batch.length; next(); }, function (e) { msg('Stopped: ' + e.message + '. Tap again to retry.'); });
+      })();
+    }).catch(function () {
+      msg('Couldn\'t reach HC Webhook on this phone. Turn on its Local HTTP server (port ' + port + '), keep it running, then try again. This only works in the app on the same phone as your watch.');
+    });
   }
 
   // tap any chart mark: its details show in the card's readout line
@@ -1581,7 +1620,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     if (slot) { slot.textContent = m.getAttribute('data-tip'); slot.classList.remove('muted'); }
   });
   document.addEventListener('click', function (ev) {
-    var t = ev.target.closest('[data-hday], [data-fun="healthAI"], [data-fun="copyHook"]');
+    var t = ev.target.closest('[data-hday], [data-fun="healthAI"], [data-fun="copyHook"], [data-fun="importHealth"], [data-days]');
     if (!t || !S) return;
     if (t.dataset.fun === 'copyHook') {
       var u = H().webhook;
@@ -1589,6 +1628,8 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
       else toast('Press and hold the address to copy it.');
       return;
     }
+    if (t.dataset.fun === 'importHealth') return importSheet();
+    if (t.dataset.days) return importHistory(+t.dataset.days);
     if (t.dataset.fun === 'healthAI') { toast('Reading your numbers…'); return call('healthInsight', [H().date], function (x) { H().insight = x; renderHealth(); }); }
     var cur = H().date, dt = new Date(cur + 'T12:00:00');
     dt.setDate(dt.getDate() + Number(t.dataset.hday));

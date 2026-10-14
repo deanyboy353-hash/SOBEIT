@@ -55,10 +55,12 @@ function localTime_(iso) {
 }
 
 /** The webhook: merge a batch into the days it touches, then recompute those days. */
-function ingestHealth_(raw, who) {
+function ingestHealth_(raw, who, opts) {
   var p = typeof raw === 'string' ? JSON.parse(raw || '{}') : raw;
+  if (p.test) return { test: true, days: 0 };   // HC Webhook's "Test" button sends made-up data
+  var replace = opts && opts.replace;
   var days = {};
-  function day(ymd) { return days[ymd] || (days[ymd] = loadHealthDay_(ymd, who)); }
+  function day(ymd) { return days[ymd] || (days[ymd] = replace ? emptyHealthDay_() : loadHealthDay_(ymd, who)); }
   function each(list, fn) { (Array.isArray(list) ? list : []).forEach(function (r) { try { fn(r); } catch (e) { /* skip a bad record */ } }); }
   function put(field, timeKey, value, list) {
     each(list, function (r) {
@@ -317,4 +319,14 @@ function healthInsight(key, ymd) {
   var out = { date: h.date, headline: String(res.headline || ''), insight: String(res.insight || ''), tip: String(res.tip || '') };
   setProp_('HEALTH_AI_' + who, JSON.stringify(out));
   return out;
+}
+
+/**
+ * History import from the app: a few whole days at a time, read from HC
+ * Webhook's local server on the phone. Each day in the batch is rebuilt from
+ * scratch, so it also clears out anything wrong that was there.
+ */
+function importHealth(key, json) {
+  var who = who_(key);
+  return withLock_(function () { return ingestHealth_(json, who, { replace: true }); });
 }
