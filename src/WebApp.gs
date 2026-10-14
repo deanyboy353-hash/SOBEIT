@@ -137,7 +137,7 @@ function appState(key) {
     s.now = new Date().getTime();
     return s;
   }
-  var state = withLock_(function () { return appState_(who); });
+  var state = withLock_(function () { if (!prop_('TRANSPORT_V1')) { try { ensureTransport_(); } catch (e) { log_('WARN', 'Transport setup: ' + e); } } return appState_(who); });
   if (cache) { try { cache.put('STATE_' + who, JSON.stringify(state), 60); } catch (e) { /* too big to cache: fine */ } }
   return state;
 }

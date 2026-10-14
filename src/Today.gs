@@ -17,6 +17,7 @@ function todayState_() {
       session: session,
       travel: String(row['Travel'] || ''),
       leaveAt: hhmm_(row['Leave at']),
+      bus: String(row['Bus'] || ''), window: String(row['Gym window'] || ''), homeBy: hhmm_(row['Home by']), plan: String(row['Plan'] || ''),
       weather: String(row['Weather'] || ''),
       done: /^Done/.test(String(row['Status'] || '')),
       exercises: (cfg.sessions[session] || []).map(function (ex) {

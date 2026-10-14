@@ -854,6 +854,7 @@ body.dress-open { overflow: hidden; }
 .foodrow .grow { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .fooditem .iconbtn.sm { width: 32px; height: 32px; flex: none; color: var(--muted); }
 #foodEdit input { width: 100%; box-sizing: border-box; margin-top: 4px; }
+.gymplan summary { cursor: pointer; color: var(--pink); font-weight: 650; margin-top: 10px; } .gymplan ul { margin: 6px 0 0; padding-left: 18px; line-height: 1.5; } .gymplan li { margin: 2px 0; }
 
 </style>
 </head>
@@ -2932,8 +2933,11 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
         if (mins > 0 && mins < 300) leave = 'Leave in ' + (mins >= 60 ? Math.floor(mins / 60) + 'h ' : '') + (mins % 60) + 'm';
       }
       h += '<section class="card blush"><div class="between"><div><div class="eyebrow" style="color:var(--pink)">Gym today</div><h2 style="margin-top:4px">' + esc(gy.session) + '</h2><div class="small muted row" style="gap:6px;margin-top:4px">' +
-        (gy.travel ? icon(gy.travel === 'Bike' ? 'bike' : 'bus', 's') + esc(gy.travel) + ' · leave ' + esc(gy.leaveAt) : 'Plan arrives at 6am') + '</div>' + (leave ? '<div class="small" style="font-weight:650;margin-top:4px">' + leave + '</div>' : '') + '</div>' +
-        (gy.done ? '<span class="chip good">' + icon('check', 's') + 'Done</span>' : '<div class="stack right"><button class="btn primary sm" type="button" data-goto="train">Log it</button><button class="btn ghost sm" type="button" data-goto="train" style="padding:4px 8px">Change</button></div>') + '</div></section>';
+        (gy.travel === 'Move' ? icon('bus', 's') + 'No bus after work' : gy.travel ? icon(gy.travel === 'Bike' ? 'bike' : 'bus', 's') + (gy.bus ? 'Bus ' + esc(gy.bus.split(' / ')[0]) : esc(gy.travel === 'Bike' ? 'E-bike' : gy.travel)) + ' · leave ' + esc(gy.leaveAt) + (gy.homeBy ? ' · home ' + esc(gy.homeBy) : '') : 'Plan arrives at 6am') + '</div>' +
+        (gy.window ? '<div class="small muted" style="margin-top:2px">Gym ' + esc(gy.window) + (gy.bus ? ' · back on the ' + esc(gy.bus.split(' / ')[1] || '') : '') + '</div>' : '') +
+        (leave ? '<div class="small" style="font-weight:650;margin-top:4px">' + leave + '</div>' : '') + '</div>' +
+        (gy.done ? '<span class="chip good">' + icon('check', 's') + 'Done</span>' : '<div class="stack right"><button class="btn primary sm" type="button" data-goto="train">Log it</button><button class="btn ghost sm" type="button" data-goto="train" style="padding:4px 8px">Change</button></div>') + '</div>' +
+        (gy.plan && !gy.done ? '<details class="gymplan"><summary class="small">Travel plan</summary><ul class="small">' + gy.plan.split('\n').map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ul></details>' : '') + '</section>';
     }
 
     seg('gym');

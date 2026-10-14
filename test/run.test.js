@@ -69,7 +69,7 @@ const gymTasks = g => g.tasks.open().filter(t => /Gym done/.test(t.title));
 
 function at(state, iso) { state.now = new Date(iso); }
 
-test('Tuesday: setup builds the sheet and plans a dry-day bike session', () => {
+test('Tuesday: setup builds the sheet and plans the bus 3 (e-bike offered when dry)', () => {
   const g = loadProject({ now: new Date('2026-10-13T05:05:00Z') }); // Tue 06:05 BST
   g.ctx.setup();
   ['Config', 'Sessions', 'Gym log', 'Weight', 'Health', 'Food', 'Inbox', 'Log'].forEach(n => assert.ok(g.tab(n), n));
@@ -79,29 +79,35 @@ test('Tuesday: setup builds the sheet and plans a dry-day bike session', () => {
 
   const ev = gymEvents(g);
   assert.strictEqual(ev.length, 1, 'one event (gym, no weigh-in on Tue)');
-  assert.match(ev[0].title, /Upper A · Bike · leave 15:15/);
+  assert.strictEqual(ev[0].title, 'Upper A · Bus 3 15:01 · leave 14:59');
+  assert.match(ev[0].opts.description, /Leave by 14:59 → bus 3 at 15:01 from Whitelaw Avenue/);
+  assert.match(ev[0].opts.description, /Gym 15:14–17:01, 107 min/);
+  assert.match(ev[0].opts.description, /Back: bus 3 at 17:15 from Coatbridge Bus Stance \(westbound\) → home by 17:26/);
+  assert.match(ev[0].opts.description, /Miss the 15:01\? Next: bus 3 at 16:01 \(leave 15:59\), gym 16:14–18:16, back on the 3 at 18:30, home by 18:44/);
+  assert.match(ev[0].opts.description, /It's dry, so the e-bike works too: leave 15:05, 17 min each way/);
   assert.match(ev[0].opts.description, /1\. Bench press \(T1\): set a training max/);
   assert.match(ev[0].opts.description, /3\. Barbell row: 4 × 6-8 @ RPE 8 · rest 2 min/);
   assert.strictEqual(ev[0].opts.location, 'JD Gym Coatbridge');
-  assert.deepStrictEqual(ev[0].reminders, [30, 0]); // 14:45 alert, then "time to go"
-  assert.strictEqual(g.ctx.Utilities.formatDate(ev[0].start, 'Europe/London', 'HH:mm'), '15:15');
+  assert.deepStrictEqual(ev[0].reminders, [14, 0]); // 14:45 alert, then "time to go"
+  assert.strictEqual(g.ctx.Utilities.formatDate(ev[0].start, 'Europe/London', 'HH:mm'), '14:59');
+  assert.strictEqual(g.ctx.Utilities.formatDate(ev[0].end, 'Europe/London', 'HH:mm'), '17:26');
 
   const open = gymTasks(g);
   assert.strictEqual(open.length, 1);
   assert.match(open[0].title, /Gym done: Upper A/);
   const log = g.tab('Gym log').rows();
-  assert.deepStrictEqual(log[1].slice(0, 7), ['2026-10-13', 'Tue', 'Upper A', 'Bike', '15:15', log[1][5], 'Planned']);
+  assert.deepStrictEqual(log[1].slice(0, 7), ['2026-10-13', 'Tue', 'Upper A', 'Bus', '14:59', log[1][5], 'Planned']);
   assert.strictEqual(g.state.mails.length, 0, JSON.stringify(g.tab('Log').rows()));
 });
 
-test('rain means bus, with a latest-leave time from the last bus', () => {
+test('rain: the bus plan without the e-bike option', () => {
   const g = loadProject({ now: new Date('2026-10-13T05:05:00Z') });
   g.state.rainy = true;
   g.ctx.setup();
   const ev = gymEvents(g)[0];
-  assert.match(ev.title, /Bus · leave 15:15/);
-  assert.match(ev.opts.description, /Latest you can leave: \d\d:\d\d \(and still make the last bus at 18:15\)/);
-  assert.match(ev.opts.description, /80% chance of rain/);
+  assert.match(ev.title, /Bus 3 15:01 · leave 14:59/);
+  assert.doesNotMatch(ev.opts.description, /e-bike/);
+  assert.match(ev.opts.description, /Weather: .*80%/);
 });
 
 test('weather service down → bus, no crash', () => {
@@ -201,12 +207,11 @@ test('editing the Config tab changes the plan', () => {
   const set = (label, col, v) => { const r = rows.findIndex(x => x[0] === label); cfg.getRange(r + 1, col).setValue(v); };
   set('Tue', 4, '16:00');
   set('Tue', 3, 'Lower B');
-  set('Session length (min)', 2, '60');
   g.ctx.dailyRun();
   const ev = gymEvents(g);
   assert.strictEqual(ev.length, 1);
-  assert.match(ev[0].title, /Lower B · .* · leave 16:15/);
-  assert.match(ev[0].opts.description, /about 60 min/);
+  assert.strictEqual(ev[0].title, 'Lower B · Bus 3 16:01 · leave 15:59');
+  assert.match(ev[0].opts.description, /Gym 16:14–18:16, 122 min/);
 });
 
 test('web app: rejects a wrong key, stores a good request in Inbox', () => {
@@ -230,4 +235,38 @@ test('a broken job emails you instead of failing silently', () => {
   g.ctx.dailyRun();
   assert.strictEqual(g.state.mails.length, 1);
   assert.match(g.state.mails[0].body, /Calendar unavailable/);
+});
+
+test('Transport: Config tab gets a TRANSPORT section, old bus settings go, edits change the plan', () => {
+  const g = loadProject({ now: new Date('2026-10-14T05:05:00Z') }); // Wed
+  g.ctx.setup();
+  const rows = g.tab('Config').rows().map(r => String(r[0]));
+  ['Bus: door to gym (min)', 'Bus: gym to stop (min)', 'Last bus home'].forEach(n => assert.ok(!rows.includes(n), n + ' removed'));
+  ['TRANSPORT', 'Transport setting', 'Thursday early finish', 'Bus'].forEach(n => assert.ok(rows.includes(n), n));
+  const cfg = g.ctx.readConfig_();
+  assert.strictEqual(cfg.timetable.length, 9);
+  assert.deepStrictEqual(Array.from(cfg.timetable[0].times), [901, 961]);
+  assert.deepStrictEqual(Array.from(cfg.timetable[0].days), [1, 2, 3, 4, 5]);
+  // an old sheet with the old rows gets migrated, and only once
+  g.ctx.ensureTransport_();
+  assert.strictEqual(g.tab('Config').rows().filter(r => r[0] === 'TRANSPORT').length, 1);
+});
+
+test('Transport: Thursday plan with and without the early finish; wet vs dry; Friday day off', () => {
+  const g = loadProject({ now: new Date('2026-10-14T05:05:00Z') });
+  g.ctx.setup();
+  const lines = (early, rainy) => { g.state.rainy = !!rainy; g.ctx.resetRun_(); return g.ctx.previewTransport_('2026-10-15', early).lines.join('\n'); };
+  let t = lines(true);
+  assert.match(t, /Leave by 14:59 → bus 3 at 15:01/);
+  assert.match(t, /home by 17:26/);
+  t = lines(false);
+  assert.match(t, /The 16:01 \(3\) means leaving at 15:59, before you finish at 16:00, so it isn't realistic/);
+  assert.match(t, /E-BIKE today \(dry\): leave 16:05, 17 min each way/);
+  assert.match(t, /Gym 16:22–17:52, 90 min/);
+  assert.match(t, /Late option: bus 132 at 18:18/);
+  t = lines(false, true);
+  assert.match(t, /It's wet, so move this session to Friday/);
+  const fri = g.ctx.previewTransport_('2026-10-16');
+  assert.strictEqual(fri.dayOff, true);
+  assert.match(fri.lines.join('\n'), /No bus near 12:00 in the timetable yet/);
 });

@@ -847,3 +847,4 @@ body.dress-open { overflow: hidden; }
 .foodrow .grow { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .fooditem .iconbtn.sm { width: 32px; height: 32px; flex: none; color: var(--muted); }
 #foodEdit input { width: 100%; box-sizing: border-box; margin-top: 4px; }
+.gymplan summary { cursor: pointer; color: var(--pink); font-weight: 650; margin-top: 10px; } .gymplan ul { margin: 6px 0 0; padding-left: 18px; line-height: 1.5; } .gymplan li { margin: 2px 0; }

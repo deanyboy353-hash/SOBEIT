@@ -615,6 +615,136 @@ function setPoints(acc, mixes) {
   return Math.min(10, base + (mixes >= 3 ? 1 : 0));
 }
 
+// ---- Gym transport: hourly buses, timetable in the Config tab ----
+
+/** "Mon-Fri", "Sat", "Mon, Wed", "Weekdays", "Daily" -> [1..5] etc. */
+function parseDayRange(text) {
+  var t = String(text || '').trim().toLowerCase();
+  if (!t) return [];
+  if (/^(daily|every ?day|all)$/.test(t)) return [0, 1, 2, 3, 4, 5, 6];
+  if (/^week ?days?$/.test(t)) return [1, 2, 3, 4, 5];
+  if (/^week ?ends?$/.test(t)) return [0, 6];
+  var m = t.match(/^([a-z]+)\s*[-–to]+\s*([a-z]+)$/);
+  if (m) {
+    var a = parseDays(m[1])[0], b = parseDays(m[2])[0], out = [];
+    if (a === undefined || b === undefined) return [];
+    for (var d = a; ; d = (d + 1) % 7) { out.push(d); if (d === b) break; }
+    return out.sort();
+  }
+  return parseDays(t);
+}
+
+/** "15:01, 16:01 18:30" -> [901, 961, 1110] (sorted). */
+function parseTimes(text) {
+  return String(text || '').split(/[,;\s]+/).map(parseClock).filter(function (x) { return x !== null; }).sort(function (a, b) { return a - b; });
+}
+
+/**
+ * Plan a gym trip by bus (and the e-bike as a dry-day alternative).
+ * o: { dow, free (minutes, when you can leave work or, on a day off, roughly when you want to leave),
+ *      dayOff, earlyBy (minutes you can leave work early), tt: [{route, way:'out'|'back', days:[..], times:[..], door}],
+ *      walkToStop, gymToStance, buffer, minGym, maxGym, preferred:'3', sessionMins (day off), bikeMins, dry, bikeLeaveAfter }
+ * Returns { ok, leaveBy, out, arrive, gymFrom, gymTo, gymMins, back, homeBy, finishBy, missed, bike, notes, problem }.
+ */
+function planTransport(o) {
+  var pref = String(o.preferred || '3');
+  var buses = function (way) {
+    var list = [];
+    (o.tt || []).forEach(function (r) { if (r.way === way && r.days.indexOf(o.dow) !== -1) r.times.forEach(function (t) { list.push({ route: String(r.route), dep: t, door: r.door }); }); });
+    return list.sort(function (a, b) { return a.dep - b.dep || (a.route === pref ? -1 : b.route === pref ? 1 : 0); });
+  };
+  var outs = buses('out'), backs = buses('back');
+  var leaveFor = function (b) { return b.dep - o.walkToStop; };
+  var pairFor = function (out, want) {
+    var arrive = out.dep + out.door;
+    var options = backs.map(function (b) { var leaveGym = b.dep - o.gymToStance - o.buffer; return { back: b, leaveGym: leaveGym, gym: leaveGym - arrive, home: b.dep + b.door }; })
+      .filter(function (x) { return x.gym >= 30; });
+    var ok = function (x) { return x.gym >= o.minGym; };
+    var inRange = function (x) { return x.gym >= o.minGym && x.gym <= o.maxGym; };
+    var pick = options.filter(function (x) { return x.back.route === pref && inRange(x); })[0] ||
+      options.filter(function (x) { return x.back.route === pref && ok(x); })[0] ||
+      options.filter(function (x) { return inRange(x); })[0] ||
+      options.filter(ok)[0] ||
+      options.sort(function (a, b) { return b.gym - a.gym; })[0];
+    if (want && pick) {
+      // a day off: the pair closest to the session length you want, without going under it
+      var fit = options.filter(function (x) { return x.gym >= want; }).sort(function (a, b) { return (a.back.route === pref ? 0 : 1) - (b.back.route === pref ? 0 : 1) || a.gym - b.gym; })[0];
+      if (fit) pick = fit;
+    }
+    if (!pick) return null;
+    return { out: out, leaveBy: leaveFor(out), arrive: arrive, gymFrom: arrive, gymTo: pick.leaveGym, gymMins: pick.gym, back: pick.back, homeBy: pick.home };
+  };
+  var res = { ok: false, notes: [] };
+  // which outbound buses can you make?
+  var earliest = o.dayOff ? -1 : o.free - (o.earlyBy || 0);
+  var candidates = outs.filter(function (b) { return leaveFor(b) >= earliest; });
+  var first;
+  if (o.dayOff) {
+    var target = o.free;
+    first = candidates.filter(function (b) { return b.route === pref; }).sort(function (a, b) { return Math.abs(leaveFor(a) - target) - Math.abs(leaveFor(b) - target); })[0] ||
+      candidates.sort(function (a, b) { return Math.abs(leaveFor(a) - target) - Math.abs(leaveFor(b) - target); })[0];
+  } else {
+    first = candidates.filter(function (b) { return b.route === pref; })[0];
+  }
+  var plan = first ? pairFor(first, o.dayOff ? o.sessionMins : 0) : null;
+  if (plan) {
+    Object.assign(res, plan, { ok: true });
+    if (o.dayOff && Math.abs(plan.leaveBy - o.free) > 60) res.notes.push('No bus near ' + formatClock(o.free) + ' in the timetable yet; this is the nearest. Add the full timetable in the Transport section.');
+    if (!o.dayOff && plan.leaveBy < o.free) { res.finishBy = plan.leaveBy; res.notes.push('Wrap up work a few minutes early: you need to be out the door at ' + formatClock(plan.leaveBy) + '.'); }
+    if (plan.gymMins < o.minGym) res.notes.push('Short session: only ' + plan.gymMins + ' min in the gym before the last bus back.');
+    // missed it? the next bus out
+    var next = outs.filter(function (b) { return b.dep > first.dep && (b.route === pref || !outs.some(function (x) { return x.dep > first.dep && x.route === pref; })); })[0];
+    var nb = next ? pairFor(next, o.dayOff ? o.sessionMins : 0) : null;
+    if (nb) res.missed = nb;
+  } else {
+    // no preferred bus you can make: the fallback bus, if one works
+    var fb = candidates.map(function (b) { return pairFor(b, o.dayOff ? o.sessionMins : 0); }).filter(function (p) { return p && p.gymMins >= o.minGym; })[0];
+    if (fb && o.dayOff) { Object.assign(res, fb, { ok: true, fallback: true }); res.notes.push('No ' + pref + ' near then, so the ' + fb.out.route + '.'); }
+    else {
+      if (fb) res.late = fb;   // a work day with no preferred bus: the late fallback is only offered, not planned
+      res.problem = outs.length ? 'No bus ' + pref + ' you can make after work today.' : 'No buses in the Transport timetable for this day yet.';
+    }
+  }
+  var nextPref = outs.filter(function (b) { return b.route === pref; }).filter(function (b) { return leaveFor(b) >= o.free; })[0];
+  if (!o.dayOff && !res.ok && outs.some(function (b) { return b.route === pref; })) {
+    var close = outs.filter(function (b) { return b.route === pref && leaveFor(b) < earliest; }).pop();
+    if (close) res.problem = 'The ' + formatClock(close.dep) + ' (' + pref + ') means leaving at ' + formatClock(leaveFor(close)) + ', before you finish at ' + formatClock(o.free) + ', so it isn\'t realistic.';
+  }
+  // the e-bike: no timetable
+  var bLeave = (o.dayOff ? (res.ok ? res.leaveBy : o.free) : o.free + (o.bikeLeaveAfter || 0)), want = o.dayOff ? o.sessionMins : Math.min(o.maxGym, Math.max(o.minGym, res.gymMins || 90));
+  res.bike = { leave: bLeave, gymFrom: bLeave + o.bikeMins, gymTo: bLeave + o.bikeMins + want, gymMins: want, home: bLeave + o.bikeMins * 2 + want, dry: !!o.dry };
+  return res;
+}
+
+/** Lines for the calendar event and the alert. */
+function transportLines(t, opts) {
+  opts = opts || {};
+  var hm = formatClock, lines = [];
+  if (t.mode === 'bike') {
+    lines.push('E-BIKE today (dry): leave ' + hm(t.bike.leave) + ', ' + opts.bikeMins + ' min each way, no timetable');
+    lines.push('Gym ' + hm(t.bike.gymFrom) + '–' + hm(t.bike.gymTo) + ', ' + t.bike.gymMins + ' min');
+    lines.push('Home by ' + hm(t.bike.home));
+    if (t.problem) lines.push('Why not the bus: ' + t.problem);
+    if (t.late) lines.push('Late option: bus ' + t.late.out.route + ' at ' + hm(t.late.out.dep) + ' (leave ' + hm(t.late.leaveBy) + '), gym ' + hm(t.late.gymFrom) + '–' + hm(t.late.gymTo) + ', back on the ' + t.late.back.route + ' at ' + hm(t.late.back.dep) + ', home by ' + hm(t.late.homeBy) + '.');
+    return lines;
+  }
+  if (!t.ok) {
+    lines.push('No bus plan: ' + t.problem);
+    if (t.bike.dry) lines.push('It\'s dry: take the e-bike. Leave ' + hm(t.bike.leave) + ', ' + opts.bikeMins + ' min each way, gym ' + hm(t.bike.gymFrom) + '–' + hm(t.bike.gymTo) + ' (' + t.bike.gymMins + ' min), home by ' + hm(t.bike.home) + '.');
+    else if (opts.moveTo) lines.push('It\'s wet, so move this session to ' + opts.moveTo + ' (tap Change on the gym card).');
+    if (t.late) lines.push('Late option: bus ' + t.late.out.route + ' at ' + hm(t.late.out.dep) + ' (leave ' + hm(t.late.leaveBy) + '), gym ' + hm(t.late.gymFrom) + '–' + hm(t.late.gymTo) + ', back on the ' + t.late.back.route + ' at ' + hm(t.late.back.dep) + ', home by ' + hm(t.late.homeBy) + '.');
+    return lines;
+  }
+  lines.push('Leave by ' + hm(t.leaveBy) + ' → bus ' + t.out.route + ' at ' + hm(t.out.dep) + ' from ' + (opts.outStop || 'Whitelaw Avenue'));
+  lines.push('Gym ' + hm(t.gymFrom) + '–' + hm(t.gymTo) + ', ' + t.gymMins + ' min (leave the gym at ' + hm(t.gymTo) + ')');
+  lines.push('Back: bus ' + t.back.route + ' at ' + hm(t.back.dep) + ' from ' + (opts.backStop || 'Coatbridge Bus Stance (westbound)') + ' → home by ' + hm(t.homeBy));
+  t.notes.forEach(function (n) { lines.push(n); });
+  if (t.missed) lines.push('Miss the ' + hm(t.out.dep) + '? Next: bus ' + t.missed.out.route + ' at ' + hm(t.missed.out.dep) + ' (leave ' + hm(t.missed.leaveBy) + '), gym ' + hm(t.missed.gymFrom) + '–' + hm(t.missed.gymTo) + ', back on the ' + t.missed.back.route + ' at ' + hm(t.missed.back.dep) + ', home by ' + hm(t.missed.homeBy) + '.');
+  if (t.bike.dry) lines.push('It\'s dry, so the e-bike works too: leave ' + hm(t.bike.leave) + ', ' + opts.bikeMins + ' min each way, gym ' + hm(t.bike.gymFrom) + '–' + hm(t.bike.gymTo) + ', home by ' + hm(t.bike.home) + '.');
+  return lines;
+}
+
+
 // ---- Work blocks (time blocking) ----
 
 var BLOCK_KINDS = { focus: 'Deep work', admin: 'Admin', meet: 'Meeting', learn: 'Learning', break: 'Break' };

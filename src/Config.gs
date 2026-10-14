@@ -10,9 +10,6 @@ var DEFAULT_SETTINGS = [
   ['Weigh-in days', 'Mon, Wed', 'Days to weigh in, e.g. "Mon, Wed"'],
   ['Weight unit', 'kg', 'What a bare number means when you weigh in: kg, st or lb. You can always type "13st 2" or "185 lb".'],
   ['Prep before leaving (min)', '15', 'Time to change and get out the door after you are free'],
-  ['Bus: door to gym (min)', '30', 'Walk to stop + wait + bus ride'],
-  ['Bus: gym to stop (min)', '5', 'Walk from the gym to the stop for the bus home'],
-  ['Last bus home', '18:15', 'Last bus back. Leave-by times are worked back from this.'],
   ['Bike: door to gym (min)', '17', 'E-bike ride each way'],
   ['Session length (min)', 'auto', '"auto" works it out from the Sessions tab, or type a number'],
   ['Warm-up (min)', '10', 'Added to the auto session length'],
@@ -114,6 +111,65 @@ function seedConfig_() {
   sh.setColumnWidth(1, 230);
   sh.setColumnWidth(3, 420);
   return true;
+}
+
+// ---- Transport: the gym bus plan, edited in the Config tab ----
+var OLD_BUS_SETTINGS = ['Bus: door to gym (min)', 'Bus: gym to stop (min)', 'Last bus home'];
+var TRANSPORT_SETTINGS = [
+  ['Walk home to Whitelaw Avenue stop (min)', '2', 'The stop is about 2 minutes from home'],
+  ['Walk JD Gym to Coatbridge Bus Stance (min)', '12', 'For the bus home'],
+  ['Buffer before the bus back (min)', '2', 'Extra minutes so you are not running for it'],
+  ['Gym time: at least (min)', '75', 'A return bus has to give you at least this long in the gym'],
+  ['Gym time: at most (min)', '100', 'Preferred upper end'],
+  ['Preferred bus', '3', 'Always picked first (gets you home earliest). Others are the fallback.'],
+  ['Can leave work early by (min)', '5', 'How early you can slip out to catch a bus (Mon to Wed)'],
+  ['Thursday early finish', 'FALSE', 'Tick on Thursdays you finish at the time below'],
+  ['Thursday early finish time', '15:00', ''],
+  ['Thursday: can leave work early by (min)', '0', 'At 0, the 16:01 counts as not realistic after a 16:00 finish'],
+  ['Days off work', 'Fri, Sat, Sun', 'On these days the plan is built around the time below'],
+  ['Day off: leave around', '12:00', 'When you would like to head to the gym on a day off'],
+  ['Day off: session length (min)', '90', ''],
+  ['E-bike each way (min)', '17', 'No timetable; offered when it is dry'],
+  ['E-bike: leave after work (min)', '5', 'Minutes to get out the door on the bike']
+];
+var TIMETABLE_HEADERS = ['Bus', 'Way', 'Days', 'Departs', 'Door to door (min)', 'Notes'];
+// Out: from Whitelaw Avenue, door to door = departure to walking into JD Gym. Back: from Coatbridge Bus Stance (westbound), to your front door.
+var DEFAULT_TIMETABLE = [
+  ['3', 'Out', 'Mon-Fri', '15:01, 16:01', '13', 'Whitelaw Avenue to Coatbridge, then a 4 min walk'],
+  ['132', 'Out', 'Mon-Fri', '18:18, 19:18, 20:18', '17', 'Includes the 12 min walk to the gym'],
+  ['3', 'Back', 'Mon-Fri', '16:41, 18:30', '14', 'Coatbridge Bus Stance (westbound) to home'],
+  ['3', 'Back', 'Mon-Fri', '17:15', '11', ''],
+  ['132', 'Back', 'Mon-Fri', '18:30, 19:30, 20:30', '8', ''],
+  ['3', 'Out', 'Sat', '', '13', 'Add Saturday times'],
+  ['3', 'Back', 'Sat', '', '14', ''],
+  ['3', 'Out', 'Sun', '', '13', 'Add Sunday times'],
+  ['3', 'Back', 'Sun', '', '14', '']
+];
+
+/** Adds the TRANSPORT section to the Config tab (once) and takes out the old bus settings. */
+function ensureTransport_() {
+  var sh = sheet_('config'), rows = sh.getDataRange().getValues();
+  var has = rows.some(function (r) { return String(r[0]).trim() === 'Transport setting'; });
+  for (var i = rows.length - 1; i >= 0; i--) if (OLD_BUS_SETTINGS.indexOf(String(rows[i][0]).trim()) !== -1) sh.deleteRow(i + 1);
+  if (!has) {
+    var r = sh.getLastRow() + 2;
+    var block = [['TRANSPORT', '', '', '', '', ''], ['Transport setting', 'Value', 'What it does', '', '', '']]
+      .concat(TRANSPORT_SETTINGS.map(function (t) { return [t[0], t[1], t[2], '', '', '']; }))
+      .concat([['', '', '', '', '', ''], TIMETABLE_HEADERS]).concat(DEFAULT_TIMETABLE);
+    sh.getRange(r, 1, block.length, 6).setNumberFormat('@').setValues(block);
+    [r, r + 1, r + 2 + TRANSPORT_SETTINGS.length + 1].forEach(function (x) { sh.getRange(x, 1, 1, 6).setFontWeight('bold'); });
+    var tRow = r + 2 + TRANSPORT_SETTINGS.map(function (t) { return t[0]; }).indexOf('Thursday early finish');
+    sh.getRange(tRow, 2).setNumberFormat('General').insertCheckboxes().setValue(false);
+  } else {
+    // newer settings added later go in at the end of the transport list
+    var at = -1, have = {};
+    rows = sh.getDataRange().getValues();
+    for (i = 0; i < rows.length; i++) { var a = String(rows[i][0]).trim(); if (a === 'Transport setting') at = i; else if (at !== -1 && a && a !== 'Bus') { have[a] = true; } if (a === 'Bus') break; }
+    var last = at + 1 + Object.keys(have).length;
+    TRANSPORT_SETTINGS.forEach(function (t) { if (!have[t[0]]) { sh.insertRowAfter(last); last++; sh.getRange(last, 1, 1, 3).setNumberFormat('@').setValues([t]); } });
+  }
+  forget_('config'); configCache_ = null;
+  setProp_('TRANSPORT_V1', '1');
 }
 
 var PRESET_HEADERS = ['Food', 'kcal', 'Protein (g)'];
@@ -364,12 +420,19 @@ function readConfig_() {
   var rows = vals_('config');
   var settings = {};
   var schedule = {};
+  var timetable = [];
   var mode = '';
   rows.forEach(function (row) {
     var a = String(row[0]).trim();
-    if (a === 'Setting') { mode = 'settings'; return; }
+    if (a === 'Setting' || a === 'Transport setting') { mode = 'settings'; return; }
     if (a === 'Day') { mode = 'schedule'; return; }
-    if (!a || a === 'SETTINGS' || a === 'WEEKLY PLAN') return;
+    if (a === 'Bus') { mode = 'timetable'; return; }
+    if (!a || a === 'SETTINGS' || a === 'WEEKLY PLAN' || a === 'TRANSPORT') return;
+    if (mode === 'timetable') {
+      var way = String(row[1]).trim().toLowerCase();
+      timetable.push({ route: a, way: /^b|^ret|home/.test(way) ? 'back' : 'out', days: parseDayRange(row[2]), times: parseTimes(row[3] instanceof Date ? Utilities.formatDate(row[3], TZ, 'HH:mm') : row[3]), door: Number(row[4]) || 0, notes: String(row[5] || '') });
+      return;
+    }
     if (mode === 'settings') settings[a] = row[1];
     if (mode === 'schedule') {
       var d = parseDays(a)[0];
@@ -395,7 +458,7 @@ function readConfig_() {
       rpe: r[h.indexOf('rpe')], rest: r[h.indexOf('rest')], notes: h.indexOf('notes') >= 0 ? r[h.indexOf('notes')] : ''
     });
   }
-  return (configCache_ = { settings: settings, schedule: schedule, sessions: sessions });
+  return (configCache_ = { settings: settings, schedule: schedule, sessions: sessions, timetable: timetable });
 }
 
 /** Times typed into Sheets can come back as Date objects. */

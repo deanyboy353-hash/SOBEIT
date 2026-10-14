@@ -36,7 +36,7 @@ var TABS = {
 // Columns for the data tabs. Add a column at the END of a list and it is
 // created automatically next time setup() runs.
 var HEADERS = {
-  gym: ['Date', 'Day', 'Session', 'Travel', 'Leave at', 'Weather', 'Status', 'Ticked at', 'Arrived', 'Left', 'Minutes at gym', 'Notes'],
+  gym: ['Date', 'Day', 'Session', 'Travel', 'Leave at', 'Weather', 'Status', 'Ticked at', 'Arrived', 'Left', 'Minutes at gym', 'Notes', 'Bus', 'Gym window', 'Home by', 'Plan'],
   weight: ['Date', 'Time', 'Weight (kg)', 'You typed', 'Change (kg)'],
   food: ['Date', 'Time', 'Item', 'kcal', 'Protein (g)', 'Source', 'Entry', 'Photo', 'Notes'],
   choresLog: ['Date', 'Who', 'Task', 'Planned (min)', 'Actual (min)', 'Result', 'Started', 'Finished', 'Steps done'],
