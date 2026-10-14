@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en-GB">
+<head><meta charset="utf-8"><title>Life Quest setup</title>
+<style>
+  body { font: 15px system-ui, sans-serif; max-width: 520px; margin: 40px auto; padding: 0 16px; color: #1f1a24; }
+  input { width: 100%; box-sizing: border-box; padding: 12px; border: 1px solid #e5dbe8; border-radius: 12px; font: inherit; margin: 6px 0 10px; }
+  button { background: #5b44b8; color: #fff; border: 0; border-radius: 12px; padding: 12px 16px; font: 600 15px system-ui; cursor: pointer; }
+  .ok { color: #23855a; font-weight: 600; } .err { color: #b8325c; font-weight: 600; }
+  li { margin: 6px 0; } p { color: #554b60; line-height: 1.5; }
+</style></head>
+<body>
+<h1>Life Quest for Chrome</h1>
+<p>Paste your app link (Config tab of your Google Sheet). It stays on this computer.</p>
+<form id="f"><input id="link" placeholder="https://life-quest…web.app/?key=…"><button type="submit">Save</button> <button type="button" id="forget" style="background:#eee;color:#333">Forget</button></form>
+<p id="msg"></p>
+<h2>What it does</h2>
+<ul>
+  <li>Click the Life Quest icon (or press Ctrl+Shift+L) to open your app in the side panel while you work.</li>
+  <li>Select text on any page, right-click, then <b>Life Quest: add as a deadline</b>. Include a time ("by 3pm") or pick one after.</li>
+  <li>The icon shows how many deadlines are open. Red means one is late.</li>
+  <li>Late deadlines also nag you here on the desktop, with Done and +30 min buttons.</li>
+</ul>
+<script src="config.js"></script>
+<script src="shared.js"></script>
+<script src="setup.js"></script>
+</body>
+</html>

@@ -595,6 +595,10 @@ nav.tabs button { max-width: 92px; font-size: 11px; }
 .lookprev { display: flex; align-items: center; gap: 14px; margin-bottom: 4px; }
 .swatches.small button { width: 30px; height: 30px; border-width: 2px; }
 .chips .chip[aria-pressed="true"] { background: var(--lilac); color: #fff; }
+.webplayer { position: fixed; right: 12px; bottom: calc(76px + env(safe-area-inset-bottom)); width: min(320px, calc(100vw - 24px)); z-index: 7; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 8px; box-shadow: 0 10px 30px rgba(0, 0, 0, .2); }
+.webplayer[hidden] { display: none; }
+.webplayer iframe, .webplayer #ytFrame { border-radius: 10px; display: block; margin-top: 6px; }
+.howto { margin: 0 0 12px; padding-left: 20px; line-height: 1.5; } .howto li { margin: 3px 0; }
 
 </style>
 </head>
@@ -1742,6 +1746,13 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
       return '<div class="badge' + (b.earned ? '' : ' locked') + '" title="' + esc(b.desc) + '">' + icon(BADGE_ICON[b.id] || 'star', 'l') + esc(b.name) + '</div>';
     }).join('') + '</div></section>';
     h += laterCard();
+    if (!/Android|iPhone|iPad/.test(navigator.userAgent)) {   // on a computer: offer the Chrome add-on
+      var zipUrl = (MODE === 'gas' && S.fun && S.fun.appBase ? S.fun.appBase.replace(/[?#].*$/, '').replace(/\/?$/, '/') : '') + 'life-quest-chrome.zip';
+      h += '<section class="card"><div class="head"><h3 class="row" style="gap:8px">' + icon('download', 's') + 'Life Quest for Chrome</h3></div>' +
+        '<p class="small muted" style="margin:0 0 8px">For your PC: the app in a side panel while you work, right-click any text to make it a deadline, a count of open deadlines on the icon, and desktop nags with Done and +30 min.</p>' +
+        '<ol class="small howto"><li>Download it and unzip it (right-click, Extract all).</li><li>In Chrome, go to <b>chrome://extensions</b> and turn on <b>Developer mode</b> (top right).</li><li>Click <b>Load unpacked</b> and pick the <b>life-quest</b> folder.</li><li>Pin it (the jigsaw icon), click it and paste your app link once.</li></ol>' +
+        '<a class="btn primary wide" href="' + esc(zipUrl) + '" download target="_top">' + icon('download', 's') + 'Download the add-on</a></section>';
+    }
     // settings
     h += '<section class="card"><div class="head"><h3>Settings</h3></div>';
     h += '<div class="eyebrow" style="margin-bottom:6px">Appearance</div><div class="seg">' + [['light', 'Light'], ['dark', 'Dark'], ['rave', 'Rave'], ['auto', 'Auto']].map(function (o) { return '<button type="button" data-theme="' + o[0] + '" aria-pressed="' + (th === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
@@ -2643,7 +2654,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
   var own = null;
   function ownEndAt() { var cur = mySession(); return cur ? cur.endsAt - offset : own.fixedEnd; }
   function playOwn(files) {
-    stopOwn(); if (M() && M().now()) M().stop(true);
+    stopOwn(); stopWeb(); if (M() && M().now()) M().stop(true);
     own = { files: files, idx: 0, audio: new Audio(), fixedEnd: Date.now() + musicMins * 60000, timer: 0, fading: false };
     own.audio.onended = function () { if (!own) return; own.idx++; if (own.idx >= own.files.length || Date.now() >= ownEndAt()) return stopOwn(); loadOwn(); };
     own.timer = setInterval(function () {
@@ -2658,6 +2669,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     if ('mediaSession' in navigator) try { navigator.mediaSession.metadata = new MediaMetadata({ title: own.name, artist: 'Your music' }); } catch (e) {} }
   function stopOwn() { if (!own) return; clearInterval(own.timer); try { own.audio.pause(); } catch (e) {} own = null; renderChores(); }
   function musicBar() {
+    if (web) return '<div class="musicbtn playing" style="--c1:' + (web.kind === 'sc' ? '#ff5500' : '#e11d48') + ';--c2:#1f1f1f"><span class="eqi"><i></i><i></i><i></i></span><span class="grow"><b>' + (web.kind === 'sc' ? 'SoundCloud' : 'YouTube') + '</b><br><span class="tiny">Fades out with your timer</span></span><button class="btn ghost sm" type="button" data-fun="webStop">Stop</button></div>';
     if (own) return '<div class="musicbtn playing" style="--c1:#141414;--c2:#b3121f"><span class="eqi"><i></i><i></i><i></i></span><span class="grow"><b>' + esc(own.name || 'Your music') + '</b><br><span class="tiny">Song ' + (own.idx + 1) + ' of ' + own.files.length + ' · fades out with your timer</span></span><button class="btn ghost sm" type="button" data-fun="ownStop">Stop</button></div>';
     var m = M() && M().now();
     if (!m) return '<button class="musicbtn" type="button" data-fun="music">' + icon('music', 's') + '<span class="grow"><b>' + (mySession() ? 'Music for this job' : 'Music library') + '</b><br><span class="tiny muted">' + (mySession() ? 'A mix that lasts your timer and ends on time' : '12 stations. Pick how long and it ends right on time.') + '</span></span>' + icon('chevron', 's') + '</button>';
@@ -2670,7 +2682,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     h += '<div class="stations">' + M().STATIONS.map(function (st) {
       return '<button type="button" class="station" data-station="' + st.id + '" style="--c1:' + st.c1 + ';--c2:' + st.c2 + '"><span class="sart">' + icon(st.p.k.indexOf('x') === -1 ? 'sparkles' : 'disc') + '</span><b>' + esc(st.name) + '</b><span>' + esc(st.style) + ' · ' + st.bpm + ' BPM</span><em>' + esc(st.mood) + '</em></button>';
     }).join('') + '</div><p class="tiny muted" style="margin:10px 0 0">Original music made by the app as it plays, so it\'s never the same twice. If your timer moves, the mix follows.</p>' +
-      '<div class="divider"></div><b>Your own music</b><p class="small muted" style="margin:4px 0 8px">Pick songs saved on this phone. They play in order and fade out when the timer ends. Nothing is uploaded.</p>' +
+      onlineSection() + '<div class="divider"></div><b>Your own music</b><p class="small muted" style="margin:4px 0 8px">Pick songs saved on this phone. They play in order and fade out when the timer ends. Nothing is uploaded.</p>' +
       '<label class="btn soft wide" style="cursor:pointer">' + icon('music', 's') + 'Choose songs<input type="file" id="ownFiles" accept="audio/*" multiple hidden></label>' +
       '<div class="divider"></div><b>Open in Spotify</b><p class="small muted" style="margin:4px 0 8px">Spotify can\'t follow the timer, but it\'s one tap away.</p>' +
       '<div class="chips" style="margin-bottom:8px">' + ['My Beautiful Dark Twisted Fantasy', 'Kanye West', 'Lo-fi beats', 'House music'].map(function (q) { return '<button class="chip" type="button" data-spotify="' + esc(q) + '">' + esc(q) + '</button>'; }).join('') + '</div>' +
@@ -2696,7 +2708,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     if (t.dataset.fun === 'music') return musicSheet();
     if (t.dataset.fun === 'musicStop') { M().stop(); return; }
     if (t.dataset.mmins) { musicMins = +t.dataset.mmins; return musicSheet(); }
-    if (t.dataset.station) { stopOwn(); return startMusic(t.dataset.station); }
+    if (t.dataset.station) { stopOwn(); stopWeb(); return startMusic(t.dataset.station); }
   });
   function openSpotify(q) { window.open('https://open.spotify.com/search/' + encodeURIComponent(q), '_blank'); }
   document.addEventListener('change', function (ev) { if (ev.target.id === 'ownFiles' && ev.target.files.length) playOwn([].slice.call(ev.target.files)); });
@@ -2792,6 +2804,96 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     if (ev.target.id === 'mixXf') setXf(+ev.target.value);
   });
 
+  // ---------- SOUNDCLOUD and YOUTUBE (official players, faded out with your timer) ----------
+  var web = null;   // { kind, url, title, endAt, frame, widget/player, timer, fading }
+  function parseLink(u) {
+    u = String(u || '').trim();
+    if (/^https?:\/\/(www\.|m\.|on\.)?soundcloud\.com\//i.test(u) || /^https?:\/\/snd\.sc\//i.test(u)) return { kind: 'sc', url: u.split('?')[0] };
+    var m = u.match(/[?&]list=([\w-]+)/), v = u.match(/(?:v=|youtu\.be\/|\/shorts\/|\/embed\/)([\w-]{11})/);
+    if (/youtu\.?be|youtube\.com/i.test(u) && (m || v)) return { kind: 'yt', list: m ? m[1] : '', video: v ? v[1] : '', url: u };
+    return null;
+  }
+  function savedLinks() { return load('links') || []; }
+  function rememberLink(l, title) {
+    var list = savedLinks().filter(function (x) { return x.url !== l.url; });
+    list.unshift({ url: l.url, title: title || l.url.replace(/^https?:\/\/(www\.)?/, '').slice(0, 40), kind: l.kind });
+    save('links', list.slice(0, 8));
+  }
+  function loadScriptOnce(src, ready) {
+    return new Promise(function (res, rej) {
+      if (ready()) return res();
+      var s = document.createElement('script'); s.src = src; s.onload = function () { var n = 0, w = setInterval(function () { if (ready() || ++n > 100) { clearInterval(w); ready() ? res() : rej(new Error('Player didn\'t load')); } }, 100); }; s.onerror = rej; document.head.appendChild(s);
+    });
+  }
+  function webBox() {
+    var box = el('webplayer');
+    if (!box) { document.body.insertAdjacentHTML('beforeend', '<div id="webplayer" class="webplayer" hidden><div class="between"><b class="small" id="wpTitle">Your music</b><span class="row" style="gap:6px"><span class="tiny" id="wpLeft"></span><button class="iconbtn" type="button" data-fun="webStop" aria-label="Stop">' + icon('x', 's') + '</button></span></div><div id="wpFrame"></div></div>'); box = el('webplayer'); }
+    return box;
+  }
+  function webVolume(v) { try { if (!web) return; if (web.kind === 'sc') web.widget.setVolume(Math.round(v * 100)); else web.player.setVolume(Math.round(v * 100)); } catch (e) {} }
+  function stopWeb() {
+    if (!web) return;
+    clearInterval(web.timer);
+    try { if (web.kind === 'sc') web.widget.pause(); else web.player.stopVideo(); } catch (e) {}
+    el('wpFrame').innerHTML = ''; webBox().hidden = true; web = null; renderChores();
+  }
+  function playWeb(link) {
+    var l = parseLink(link);
+    if (!l) return toast('That link isn\'t SoundCloud or YouTube. Copy the share link from the app.', true);
+    stopWeb(); stopOwn(); if (M() && M().now()) M().stop(true);
+    var box = webBox(), fixedEnd = Date.now() + musicMins * 60000;
+    box.hidden = false; el('wpTitle').textContent = l.kind === 'sc' ? 'SoundCloud' : 'YouTube';
+    web = { kind: l.kind, url: l.url, endAt: function () { var cur = mySession(); return cur ? cur.endsAt - offset : fixedEnd; }, fading: false };
+    var started = function (title) {
+      if (title) el('wpTitle').textContent = title;
+      rememberLink(l, title);
+      web.timer = setInterval(function () {
+        if (!web) return;
+        var left = web.endAt() - Date.now(), lt = el('wpLeft');
+        if (lt) lt.textContent = left > 0 ? clock(left) + ' left' : '';
+        if (left <= 10000 && !web.fading) {              // ten-second fade, then stop: no sudden cut
+          web.fading = true; var v = 1;
+          var f = setInterval(function () { v -= 0.05; webVolume(Math.max(0, v)); if (v <= 0 || !web) { clearInterval(f); if (web) { stopWeb(); chime([523, 659]); toast('Time\'s up. Music faded out.'); } } }, 500);
+        }
+      }, 1000);
+      closeSheet(); renderChores();
+    };
+    if (l.kind === 'sc') {
+      el('wpFrame').innerHTML = '<iframe id="scFrame" allow="autoplay" width="100%" height="120" frameborder="no" src="https://w.soundcloud.com/player/?url=' + encodeURIComponent(l.url) + '&auto_play=true&visual=false&show_comments=false&hide_related=true&show_teaser=false"></iframe>';
+      loadScriptOnce('https://w.soundcloud.com/player/api.js', function () { return window.SC && SC.Widget; }).then(function () {
+        if (!web) return;
+        web.widget = SC.Widget(el('scFrame'));
+        web.widget.bind(SC.Widget.Events.READY, function () { web.widget.setVolume(100); web.widget.play(); web.widget.getCurrentSound(function (s) { started(s && s.title); }); });
+        web.widget.bind(SC.Widget.Events.PLAY, function () { if (web) web.widget.getCurrentSound(function (s) { if (s && s.title && el('wpTitle')) el('wpTitle').textContent = s.title; }); });
+      }, function () { toast('Couldn\'t load SoundCloud.', true); stopWeb(); });
+    } else {
+      el('wpFrame').innerHTML = '<div id="ytFrame"></div>';
+      loadScriptOnce('https://www.youtube.com/iframe_api', function () { return window.YT && YT.Player; }).then(function () {
+        if (!web) return;
+        var vars = { autoplay: 1, playsinline: 1, rel: 0 };
+        if (l.list) { vars.listType = 'playlist'; vars.list = l.list; }
+        web.player = new YT.Player('ytFrame', { width: '100%', height: '160', videoId: l.video || undefined, playerVars: vars,
+          events: {
+            onReady: function (e) { e.target.setVolume(100); e.target.playVideo(); var d = e.target.getVideoData && e.target.getVideoData(); started(d && d.title); },
+            onError: function () { toast('YouTube won\'t play that one here. Try another link or a playlist.', true); }
+          } });
+      }, function () { toast('Couldn\'t load YouTube.', true); stopWeb(); });
+    }
+  }
+  function onlineSection() {
+    var list = savedLinks();
+    return '<div class="divider"></div><b>SoundCloud or YouTube Music</b><p class="small muted" style="margin:4px 0 8px">Paste a track or playlist link (Share, then Copy link). It plays here and fades out over the last ten seconds of your timer. Keep the app open.</p>' +
+      (list.length ? '<div class="chips" style="margin-bottom:8px">' + list.map(function (x) { return '<button class="chip" type="button" data-weblink="' + esc(x.url) + '">' + icon(x.kind === 'sc' ? 'wave' : 'play', 's') + esc(x.title.slice(0, 28)) + '</button>'; }).join('') + '</div>' : '') +
+      '<form class="inline" id="webForm" autocomplete="off"><input type="url" id="webText" placeholder="https://soundcloud.com/… or music.youtube.com/…" aria-label="SoundCloud or YouTube link"><button class="btn primary" type="submit">Play</button></form>';
+  }
+  document.addEventListener('submit', function (ev) { if (ev.target.id !== 'webForm') return; ev.preventDefault(); var v = el('webText').value.trim(); if (!v) return toast('Paste a SoundCloud or YouTube link first'); playWeb(v); });
+  document.addEventListener('click', function (ev) {
+    var t = ev.target.closest('[data-weblink], [data-fun="webStop"]');
+    if (!t) return;
+    if (t.dataset.fun === 'webStop') return stopWeb();
+    playWeb(t.dataset.weblink);
+  });
+
   // ---------- rendering + tabs ----------
   function renderAll() {
     if (!S) return;
@@ -2863,9 +2965,9 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     if (ds.step !== undefined) return call('stepDone', [+ds.step], function (res) { apply(res); });
     if (t.id === 'parkBtn') { parking = !parking; renderChores(); if (parking) el('parkText').focus(); return; }
     if (ds.more) return call('extendChore', [+ds.more], function (res) { upShown = ''; apply(res, '+' + ds.more + ' minutes. Finish it off.'); });
-    if (t.id === 'cdone') { var task = mySession().task; return call('finishChore', ['Done'], function (res) { parking = false; if (M() && M().now()) M().stop(); stopOwn(); apply(res, task + ': done. Nice.'); }); }
-    if (t.id === 'cstop') return call('finishChore', ['Stopped'], function (res) { parking = false; if (M() && M().now()) M().stop(); stopOwn(); apply(res, 'Stopped. Starting was the hard part.'); });
-    if (t.id === 'ccancel') return call('finishChore', ['Cancelled'], function (res) { parking = false; if (M() && M().now()) M().stop(); stopOwn(); apply(res, 'Cancelled.'); });
+    if (t.id === 'cdone') { var task = mySession().task; return call('finishChore', ['Done'], function (res) { parking = false; if (M() && M().now()) M().stop(); stopOwn(); stopWeb(); apply(res, task + ': done. Nice.'); }); }
+    if (t.id === 'cstop') return call('finishChore', ['Stopped'], function (res) { parking = false; if (M() && M().now()) M().stop(); stopOwn(); stopWeb(); apply(res, 'Stopped. Starting was the hard part.'); });
+    if (t.id === 'ccancel') return call('finishChore', ['Cancelled'], function (res) { parking = false; if (M() && M().now()) M().stop(); stopOwn(); stopWeb(); apply(res, 'Cancelled.'); });
     if (t.id === 'askJoin') return call('askToJoin', [], function (r) { apply(r.state, r.sent ? 'Asked ' + names().other + ' to join' : 'Added to the feed'); });
     if (t.id === 'dumpBtn') { var txt = el('dumpText').value.trim(); if (!txt) return; toast(S.hasClaudeKey ? 'Sorting it out…' : 'Splitting it up…'); return call('brainDump', [txt], dumpReview); }
     if (t.id === 'dumpSave') {

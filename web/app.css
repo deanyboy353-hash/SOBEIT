@@ -588,3 +588,7 @@ nav.tabs button { max-width: 92px; font-size: 11px; }
 .lookprev { display: flex; align-items: center; gap: 14px; margin-bottom: 4px; }
 .swatches.small button { width: 30px; height: 30px; border-width: 2px; }
 .chips .chip[aria-pressed="true"] { background: var(--lilac); color: #fff; }
+.webplayer { position: fixed; right: 12px; bottom: calc(76px + env(safe-area-inset-bottom)); width: min(320px, calc(100vw - 24px)); z-index: 7; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 8px; box-shadow: 0 10px 30px rgba(0, 0, 0, .2); }
+.webplayer[hidden] { display: none; }
+.webplayer iframe, .webplayer #ytFrame { border-radius: 10px; display: block; margin-top: 6px; }
+.howto { margin: 0 0 12px; padding-left: 20px; line-height: 1.5; } .howto li { margin: 3px 0; }

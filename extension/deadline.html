@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en-GB">
+<head><meta charset="utf-8"><title>Add a deadline</title>
+<style>
+  body { font: 15px system-ui, sans-serif; margin: 0; padding: 18px; color: #1f1a24; background: #fbf8fb; }
+  h1 { font-size: 18px; margin: 0 0 10px; }
+  input { width: 100%; box-sizing: border-box; padding: 11px; border: 1px solid #e5dbe8; border-radius: 12px; font: inherit; margin-bottom: 10px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .chips button { background: #efeafe; color: #5b44b8; border: 0; border-radius: 999px; padding: 8px 12px; font: 600 14px system-ui; cursor: pointer; }
+  .go { background: #5b44b8; color: #fff; border: 0; border-radius: 12px; padding: 11px 16px; font: 600 15px system-ui; cursor: pointer; width: 100%; }
+  .err { color: #b8325c; font-weight: 600; } .ok { color: #23855a; font-weight: 600; }
+</style></head>
+<body>
+<h1>Add a deadline</h1>
+<input id="task" aria-label="What needs doing">
+<div class="chips">
+  <button type="button" data-when="in 1 hour">In 1 hour</button><button type="button" data-when="by 12pm">By noon</button>
+  <button type="button" data-when="by 3pm">By 3pm</button><button type="button" data-when="by 5pm">By 5pm</button>
+  <button type="button" data-when="tonight">Tonight</button><button type="button" data-when="tomorrow by 9am">Tomorrow 9am</button>
+</div>
+<button class="go" id="go" type="button">Add with the time I typed</button>
+<p id="msg"></p>
+<script src="config.js"></script>
+<script src="shared.js"></script>
+<script src="deadline.js"></script>
+</body>
+</html>
