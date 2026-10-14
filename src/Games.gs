@@ -5,16 +5,21 @@
  *           Checked here on the server, so neither of you can peek.
  *   Target  six numbers, one target: get as close as you can (+ − × ÷).
  *   Recall  remember a growing sequence of flashes; your best length counts.
+ *   Tempo   hear a beat, then keep it going by tapping; closest BPM wins.
+ *   Stakes  what the loser of today's word owes the winner (Fun.gs).
  *
  * Today's progress lives in Script Properties (GAMES_<date>) so the other
  * person sees it live; finished games are logged to the Games tab.
  */
 
-var GAME_LIST = ['word', 'target', 'recall'];
+var GAME_LIST = ['word', 'target', 'recall', 'tempo'];
 
 function gamesDay_(ymd) {
-  var g = JSON.parse(prop_('GAMES_' + ymd) || 'null');
-  return g || { word: { me: null, partner: null }, target: { me: null, partner: null }, recall: { me: null, partner: null } };
+  var g = JSON.parse(prop_('GAMES_' + ymd) || 'null') ||
+    { word: { me: null, partner: null }, target: { me: null, partner: null }, recall: { me: null, partner: null } };
+  g.tempo = g.tempo || { me: null, partner: null };
+  g.stake = g.stake || null;
+  return g;
 }
 
 function saveGamesDay_(ymd, g) {
@@ -64,8 +69,25 @@ function gamesState_(who) {
       mine: t[who], other: t[other] ? { best: t[other].best, points: t[other].points, expr: t[who] && t[who].final ? t[other].expr : '' } : null
     },
     recall: { mine: g.recall[who], other: g.recall[other] },
+    tempo: tempoState_(today, g.tempo[who], g.tempo[other]),
+    stake: g.stake ? { text: g.stake.text, by: g.stake.by === who ? 'you' : 'them', result: stakeResult_(w[who], w[other]) } : null,
     stats: gameStats_(who)
   };
+}
+
+function tempoState_(ymd, mine, theirs) {
+  var pz = tempoPuzzle(ymd), done = mine && mine.final;
+  return {
+    bpm: pz.bpm, style: done ? pz.style : '', mine: mine,
+    other: theirs ? { points: theirs.points, final: theirs.final, bpm: done && theirs.final ? theirs.bpm : null, tries: theirs.tries } : null
+  };
+}
+
+/** Once you've both finished the word: 'you', 'them' or 'draw'. */
+function stakeResult_(mine, theirs) {
+  if (!mine || !theirs || !mine.done || !theirs.done) return '';
+  var a = mine.won ? mine.guesses.length : 7, b = theirs.won ? theirs.guesses.length : 7;
+  return a === b ? 'draw' : a < b ? 'you' : 'them';
 }
 
 /** Wins, current word streak and averages from the Games tab. */
@@ -82,7 +104,7 @@ function gameStats_(who) {
     var d = byDay[k], game = k.split('|')[1];
     if (d.me === undefined || d.partner === undefined) return;
     // Word: fewer guesses wins (7 = didn't get it). Target: more points. Recall: longer sequence.
-    var lowWins = game === 'word';
+    var lowWins = game === 'word';  // the rest: more points wins
     if (d.me === d.partner) h2h.draws++;
     else if ((d.me < d.partner) === lowWins) h2h.me++;
     else h2h.partner++;
@@ -135,7 +157,14 @@ function guessWord(key, guess) {
       var tries = me.won ? me.guesses.length : 7;
       logGame_(who, 'word', tries, me.colours.join(' '));
       addXp_(who, me.won ? 'Word in ' + tries : 'Word attempt', me.won ? 10 + (7 - tries) * 5 : 5, 'game');
-      push_(who === 'me' ? 'partner' : 'me', me.won ? n + ' got the word in ' + tries : n + ' missed today\'s word', me.won ? 'Your turn. Can you beat ' + tries + '/6?' : 'Can you get it?', 'play');
+      var res = stakeResult_(me, g.word[who === 'me' ? 'partner' : 'me']);
+      if (g.stake && res) {
+        var nk = nicks_(), win = res === 'you' ? who : who === 'me' ? 'partner' : 'me', lose = win === 'me' ? 'partner' : 'me';
+        var line = res === 'draw' ? 'A draw. ' + g.stake.text + ': you both owe each other.' : nk[win] + ' wins. ' + nk[lose] + ' owes: ' + g.stake.text.toLowerCase() + '.';
+        PEOPLE.forEach(function (p) { push_(p, 'Word settled', line, 'play'); });
+      } else {
+        push_(who === 'me' ? 'partner' : 'me', me.won ? n + ' got the word in ' + tries : n + ' missed today\'s word', me.won ? 'Your turn. Can you beat ' + tries + '/6?' : 'Can you get it?', 'play');
+      }
     } else if (me.guesses.length === 1) {
       push_(who === 'me' ? 'partner' : 'me', n + ' has started today\'s word', 'Race you.', 'play');
     }
@@ -188,6 +217,30 @@ function submitRecall(key, level) {
     var rows = rowsBetween_('games', today, today).filter(function (r) { return r['Who'] === who && r['Game'] === 'recall'; });
     if (rows.length) updateRow_('games', findRow_('games', 'Detail', 'recall-' + who + '-' + today), { 'Score': me.best });
     else logGame_(who, 'recall', me.best, 'recall-' + who + '-' + today);
+    return gamesState_(who);
+  });
+}
+
+/** A Tempo attempt: the BPM you tapped. Three tries a day; your best counts. */
+function submitTempo(key, bpm) {
+  var who = who_(key);
+  bpm = Math.round(Number(bpm) * 10) / 10;
+  if (!(bpm > 30 && bpm < 300)) throw new Error('That tap didn\'t register. Try again.');
+  return withLock_(function () {
+    var today = todayYmd_(), g = gamesDay_(today), pz = tempoPuzzle(today);
+    var me = g.tempo[who] || { best: null, bpm: null, points: 0, tries: 0, final: false };
+    if (me.final) throw new Error('Done for today. New beat tomorrow.');
+    me.tries++;
+    var pts = tempoPoints(bpm, pz.bpm);
+    if (me.best === null || pts > me.points || (pts === me.points && Math.abs(bpm - pz.bpm) < Math.abs(me.bpm - pz.bpm))) { me.points = pts; me.bpm = bpm; me.best = pts; }
+    if (me.tries >= 3 || pts === 10) {
+      me.final = true;
+      logGame_(who, 'tempo', me.points, me.bpm + ' BPM (' + pz.bpm + ')');
+      addXp_(who, 'Tempo: ' + me.points + ' points', 5 + me.points, 'game');
+      push_(who === 'me' ? 'partner' : 'me', nicks_()[who] + ' locked in Tempo', me.points + ' points. Can you keep better time?', 'play');
+    }
+    g.tempo[who] = me;
+    saveGamesDay_(today, g);
     return gamesState_(who);
   });
 }

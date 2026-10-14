@@ -57,9 +57,10 @@
     return /m/.test(s) ? Math.round(n * 60) : /s/.test(s) ? Math.round(n) : (n > 10 ? n : n * 60);
   }
   function names() {
-    var n = S.names || {};
-    return { me: n[S.who] && n[S.who] !== 'Your partner' ? n[S.who] : '', other: n[S.who === 'me' ? 'partner' : 'me'] || 'Your partner' };
+    var n = S.names || {}, f = S.fun || {};
+    return { me: f.nick || (n[S.who] && n[S.who] !== 'Your partner' ? n[S.who] : ''), other: f.otherNick || n[S.who === 'me' ? 'partner' : 'me'] || 'Your partner', team: f.team || 'Together' };
   }
+  function greeting() { var hr = new Date(now()).getHours(); return hr < 5 ? 'Late one' : hr < 12 ? 'Morning' : hr < 18 ? 'Afternoon' : 'Evening'; }
 
   var ICONS = {
     home: 'M3 10.5 12 3l9 7.5M5 9.5V21h5v-6h4v6h5V9.5', list: 'M10 6h10M10 12h10M10 18h10M4 6l1.2 1.2L7.5 5M4 12l1.2 1.2L7.5 11M4 18l1.2 1.2L7.5 17',
@@ -82,11 +83,13 @@
     bike: 'M5.5 18a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM18.5 18a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM5.5 14.5 9 7h5l4.5 7.5M9 7l3.5 7.5h-7',
     bus: 'M5 4h14v13H5zM5 11h14M8 20v-3M16 20v-3M8 14.5h.01M16 14.5h.01', edit: 'M4 20h4L19 9l-4-4L4 16zM14 6l4 4',
     trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3', more: 'M5 12h.01M12 12h.01M19 12h.01', download: 'M12 4v11M7 10l5 5 5-5M5 20h14',
-    pause: 'M8 5v14M16 5v14'
+    pause: 'M8 5v14M16 5v14', music: 'M9 18V5l11-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM20 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z',
+    disc: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM12 7a5 5 0 0 1 5 5', brush: 'M18 3l3 3-9.5 9.5-3-3zM8.5 12.5c-2 0-3.5 1.5-3.5 3.5 0 1.5-1 2.5-2 3 3 1 7 0 7.5-3.5',
+    lock: 'M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4', bolt: 'M13 3 5 14h6l-1 7 8-11h-6z', wave: 'M3 12h2M7 8v8M11 5v14M15 9v6M19 7v10M21 12h0'
   };
   function icon(n, cls) { return '<svg class="i' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24" aria-hidden="true"><path d="' + (ICONS[n] || '') + '"/></svg>'; }
   var BADGE_ICON = { 'first-quest': 'check', 'quests-25': 'home', 'quests-100': 'home', 'streak-3': 'flame', 'streak-7': 'flame', 'streak-30': 'flame', 'streak-100': 'flame',
-    'gym-1': 'dumbbell', 'gym-10': 'dumbbell', 'gym-50': 'dumbbell', pr: 'trophy', 'weigh-8': 'scale', 'routine-7': 'sun', 'protein-7': 'food', 'cover-5': 'heart', 'hi5-10': 'heart', brain: 'bulb', 'level-5': 'star', 'level-10': 'star' };
+    'gym-1': 'dumbbell', 'gym-10': 'dumbbell', 'gym-50': 'dumbbell', pr: 'trophy', 'weigh-8': 'scale', 'routine-7': 'sun', 'protein-7': 'food', 'cover-5': 'heart', 'hi5-10': 'heart', brain: 'bulb', 'level-5': 'star', 'level-10': 'star', 'create-1': 'music', 'create-20': 'disc', 'chest-7': 'gift', boost: 'bolt' };
 
   var toastTimer;
   function toast(msg, isErr) {
@@ -175,6 +178,7 @@
     }, function (err) { inflight--; S = JSON.parse(before); renderAll(); toast(err.message || String(err), true); });
   }
   function addXpLocal(xp) {
+    if (boostLeft()) xp *= 2;
     var prev = JSON.parse(JSON.stringify(S));
     S.game.xpToday += xp; S.game.total += xp; S.game.balance += xp;
     var into = S.game.level.into + xp;
@@ -204,9 +208,11 @@
 
   function renderHome() {
     var g = S.game, n = names(), h = '';
-    var d = new Date(now()), hr = d.getHours();
-    h += '<div class="top"><div><h1>' + (hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening') + (n.me ? ', ' + esc(n.me) : '') + '</h1><div class="sub">' +
-      d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) + '</div></div><button class="iconbtn" type="button" data-goto="you" aria-label="You and settings">' + icon('user') + '</button></div>';
+    var d = new Date(now());
+    h += '<div class="top"><div><h1>' + greeting() + (n.me ? ', ' + esc(n.me) : '') + '</h1><div class="sub">' +
+      d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) + (S.fun && S.fun.era ? ' · ' + esc(S.fun.era) : '') + '</div></div><button class="iconbtn" type="button" data-goto="you" aria-label="You and settings">' + icon('user') + '</button></div>';
+    if (MODE === 'gas' && S.fun && S.fun.appBase) h += '<a class="getapp" target="_top" href="' + esc(S.fun.appBase + '?key=' + KEY) + '">' + icon('download') + '<span class="grow"><b>Get the app</b><br><span class="small muted">Notifications, live games, faster</span></span>' + icon('chevron', 's') + '</a>';
+    h += boostBanner() + wrappedCard();
     if (S.chores.invite) h += '<div class="note">' + esc(n.other) + ' wants company for chores. Pick a job in Chores.</div>';
     if (g.streak.frozeYesterday) h += '<div class="note">A streak freeze covered yesterday. Your streak is safe.</div>';
 
@@ -219,10 +225,11 @@
     h += '<section class="card"><div class="hero"><div class="ring" style="width:104px;height:104px">' + ring(g.xpToday / g.goal, 104, 10) +
       '<div class="t"><div><div class="num" style="font-size:24px;font-weight:700">' + g.xpToday + '</div><div class="tiny muted">of ' + g.goal + ' XP</div></div></div></div><div class="grow">' +
       '<div class="stat"><span class="row" style="gap:6px">' + icon('flame', 's') + 'Streak</span><b>' + g.streak.count + ' day' + (g.streak.count === 1 ? '' : 's') + (g.streak.freezes ? ' · ' + g.streak.freezes + ' freeze' + (g.streak.freezes > 1 ? 's' : '') : '') + '</b></div>' +
-      '<div class="stat"><span class="row" style="gap:6px">' + icon('heart', 's') + 'Together</span><b>' + g.team.count + ' day' + (g.team.count === 1 ? '' : 's') + '</b></div>' +
+      '<div class="stat"><span class="row" style="gap:6px">' + icon('heart', 's') + esc(n.team) + '</span><b>' + g.team.count + ' day' + (g.team.count === 1 ? '' : 's') + '</b></div>' +
       '<div class="stat"><span>' + esc(n.other) + ' today</span><b>' + g.otherXpToday + ' XP</b></div>' +
       '<div class="bar" style="margin-top:8px"><i style="width:' + Math.round(g.level.into / g.level.need * 100) + '%"></i></div><div class="tiny muted" style="margin-top:4px">Level ' + g.level.level + ' · ' + (g.level.need - g.level.into) + ' XP to the next</div>' +
       '</div></div></section>';
+    h += challengesCard();
 
     h += '<button class="btn primary big wide" type="button" id="whatNow" style="margin-bottom:12px">' + icon('sparkles') + 'What should I do now?</button>';
 
@@ -263,6 +270,7 @@
     }
     h += '</div>';
 
+    h += creativeCard() + usCard();
     h += '<section class="card"><div class="head"><h3>' + esc(n.other) + '</h3><button class="btn soft sm" type="button" id="nudge">' + icon('send', 's') + 'Nudge</button></div>';
     var feed = S.game.feed.slice(0, 6);
     h += feed.length ? feed.map(function (f) {
@@ -471,10 +479,11 @@
   function renderPlay() {
     var G = S.games, n = names(), h = '<div class="top"><div><h1>Play</h1><div class="sub">Same puzzles for you both. Live scores.</div></div><button class="iconbtn" type="button" data-goto="you" aria-label="You and settings">' + icon('user') + '</button></div>';
     h += '<section class="card"><div class="vs"><div><div class="small muted">You</div><div class="num" style="font-size:28px;font-weight:700">' + G.stats.you + '</div></div><div class="center small muted">head to head<br><span class="tiny">' + G.stats.draws + ' draws</span></div><div class="right"><div class="small muted">' + esc(n.other) + '</div><div class="num" style="font-size:28px;font-weight:700">' + G.stats.them + '</div></div></div></section>';
-    h += '<div class="seg">' + [['word', 'Word'], ['target', 'Numbers'], ['recall', 'Recall'], ['stats', 'Stats']].map(function (o) { return '<button type="button" data-pview="' + o[0] + '" aria-pressed="' + (playView === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
+    h += '<div class="seg">' + [['word', 'Word'], ['target', 'Numbers'], ['recall', 'Recall'], ['tempo', 'Tempo'], ['stats', 'Stats']].map(function (o) { return '<button type="button" data-pview="' + o[0] + '" aria-pressed="' + (playView === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
     if (playView === 'word') h += wordView(G.word, n);
     else if (playView === 'target') h += targetView(G.target, n);
     else if (playView === 'recall') h += recallView(G.recall, n);
+    else if (playView === 'tempo') h += tempoView(G.tempo, n);
     else h += statsView(G.stats);
     el('tab-play').innerHTML = h;
   }
@@ -483,6 +492,7 @@
     h += '<section class="card"><div class="between"><div class="row">' + (o ? mini(o.colours) : mini([])) + '<div><div class="small" style="font-weight:650">' + esc(n.other) + '</div><div class="small muted">' +
       (!o ? 'Hasn\'t started' : o.done ? (o.won ? 'Got it in ' + o.tries : 'Didn\'t get it') : 'On guess ' + (o.tries + 1) + (o.tries ? '' : '')) + '</div></div></div>' +
       (wd.done ? '<div class="right"><div class="small" style="font-weight:650">You</div><div class="small muted">' + (wd.won ? wd.guesses.length + '/6' : 'X/6') + '</div></div>' : '<span class="chip lilac">Live</span>') + '</div></section>';
+    h += stakeCard(S.games, n);
     h += wordBoard(wd);
     if (wd.done) {
       h += '<section class="card center"><div class="eyebrow">Today\'s word</div><div style="font-size:26px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;margin:6px 0">' + esc(wd.answer) + '</div><p class="small muted" style="margin:0">' +
@@ -648,8 +658,9 @@
   function renderYou() {
     var g = S.game, n = names(), th = document.documentElement.getAttribute('data-theme'), h = '';
     h += '<div class="top"><div class="row"><button class="iconbtn" type="button" data-goto="home" aria-label="Back">' + icon('back') + '</button><h1>You</h1></div></div>';
-    h += '<section class="card tint"><div class="between"><div><div class="eyebrow" style="color:var(--lilac)">Level ' + g.level.level + '</div><div class="num" style="font-size:28px;font-weight:700">' + fmt(g.total) + ' XP</div></div><div class="right"><div class="eyebrow">To spend</div><div class="num" style="font-size:22px;font-weight:700">' + fmt(g.balance) + '</div></div></div>' +
-      '<div class="bar" style="margin-top:10px;background:var(--surface)"><i style="width:' + Math.round(g.level.into / g.level.need * 100) + '%"></i></div><div class="tiny muted" style="margin-top:6px">' + (g.level.need - g.level.into) + ' XP to level ' + (g.level.level + 1) + ' · best streak ' + g.streak.best + (g.streak.best === 1 ? ' day' : ' days') + '</div></section>';
+    h += '<section class="card tint"><div class="between"><div><div class="eyebrow" style="color:var(--lilac)">Level ' + g.level.level + (S.fun && S.fun.era ? ' · ' + esc(S.fun.era) : '') + '</div><div class="num" style="font-size:28px;font-weight:700">' + fmt(g.total) + ' XP</div></div><div class="right"><div class="eyebrow">To spend</div><div class="num" style="font-size:22px;font-weight:700">' + fmt(g.balance) + '</div></div></div>' +
+      '<div class="bar" style="margin-top:10px;background:var(--surface)"><i style="width:' + Math.round(g.level.into / g.level.need * 100) + '%"></i></div><div class="tiny muted" style="margin-top:6px">' + (g.level.need - g.level.into) + ' XP to level ' + (g.level.level + 1) + ' · best streak ' + g.streak.best + (g.streak.best === 1 ? ' day' : ' days') + '</div>' + (S.fun && S.fun.nextEra && S.fun.nextEra !== S.fun.era ? '<div class="tiny muted" style="margin-top:2px">Next era: ' + esc(S.fun.nextEra) + '</div>' : '') + '</section>';
+    h += '<button class="wrapped-btn" type="button" data-fun="wrapped">' + icon('wave') + '<span class="grow"><b>Your week, wrapped</b><br><span class="small">The last seven days of ' + esc(n.team) + '</span></span>' + icon('chevron', 's') + '</button>';
     var wk = g.week, mo = g.month, me = S.who, ot = S.who === 'me' ? 'partner' : 'me', mxw = Math.max(wk.me, wk.partner, 1), tot = Math.max(1, mo.me + mo.partner);
     h += '<section class="card"><div class="head"><h3>This week</h3></div>' +
       '<div class="score"><span>You</span><span class="bar"><i style="width:' + (wk[me] / mxw * 100) + '%"></i></span><b class="num right">' + wk[me] + '</b></div>' +
@@ -667,7 +678,7 @@
     h += laterCard();
     // settings
     h += '<section class="card"><div class="head"><h3>Settings</h3></div>';
-    h += '<div class="eyebrow" style="margin-bottom:6px">Appearance</div><div class="seg">' + [['light', 'Light'], ['dark', 'Dark'], ['auto', 'Match phone']].map(function (o) { return '<button type="button" data-theme="' + o[0] + '" aria-pressed="' + (th === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
+    h += '<div class="eyebrow" style="margin-bottom:6px">Appearance</div><div class="seg">' + [['light', 'Light'], ['dark', 'Dark'], ['rave', 'Rave'], ['auto', 'Auto']].map(function (o) { return '<button type="button" data-theme="' + o[0] + '" aria-pressed="' + (th === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
     h += '<div class="eyebrow" style="margin:6px 0">Notifications</div>';
     if (MODE === 'gas') h += '<p class="small muted" style="margin:0 0 12px">Push notifications work in the installed app. Open your new app link from the Config tab of your Sheet.</p>';
     else if (!('Notification' in window) || !('serviceWorker' in navigator)) h += '<p class="small muted" style="margin:0 0 12px">' + (/iPhone|iPad/.test(navigator.userAgent) && !standalone() ? 'On iPhone, add this app to your Home Screen first (Share, then Add to Home Screen), then open it from there.' : 'This browser can\'t show notifications.') + '</p>';
@@ -677,6 +688,246 @@
     if (ME) h += '<div class="eyebrow" style="margin:6px 0">Claude API key</div><form class="inline" id="keyForm" autocomplete="off"><input type="password" id="keyText" placeholder="' + (S.hasClaudeKey ? 'Saved. Paste a new one to replace it' : 'sk-ant-…') + '" aria-label="Claude API key"><button class="btn primary" type="submit">Save</button></form><p class="tiny muted" style="margin:6px 0 0">Powers Ask, the morning brief, meal ideas and food quick-add. Get one at console.anthropic.com.</p>';
     h += '</section><p class="small muted center">Chores, routines, rewards, lifts and targets can all be changed in your Google Sheet.</p>';
     el('tab-you').innerHTML = h;
+  }
+
+  // ---------- FUN: boost, challenges, making things, Us, stakes, Tempo, intro, Wrapped ----------
+  function boostLeft() {
+    var b = S && S.fun && S.fun.boost, t = now();
+    return b && t >= b.startsAt && t < b.endsAt ? Math.max(1, Math.ceil((b.endsAt - t) / 60000)) : 0;
+  }
+  function boostBanner() {
+    var left = boostLeft();
+    return left ? '<div class="boost">' + icon('bolt', 's') + '<b>Double XP</b><span class="grow">Everything counts twice</span><span class="num" id="boostLeft">' + left + ' min</span></div>' : '';
+  }
+  function challengesCard() {
+    var c = S.fun && S.fun.challenges;
+    if (!c) return '';
+    var done = c.list.filter(function (x) { return x.done; }).length;
+    return '<section class="card"><div class="head"><h3>Daily challenges</h3><span class="small muted num">' + done + '/3</span></div>' +
+      c.list.map(function (x) {
+        return '<div class="item' + (x.done ? ' done' : '') + '"><span class="check' + (x.done ? ' on' : '') + '">' + icon('check') + '</span><div class="grow t" style="font-weight:500">' + esc(x.text) + '</div><span class="chip ' + (x.done ? 'good' : 'lilac') + '">+' + x.xp + ' XP</span></div>';
+      }).join('') +
+      '<div class="chest' + (c.chest ? ' open' : '') + '">' + icon('gift', 's') + '<span>' + (c.chest ? 'Chest opened: +' + c.chestXp + ' XP' : 'Finish all three to open today\'s chest: +' + c.chestXp + ' XP') + '</span></div></section>';
+  }
+
+  var CREATE = [
+    ['music', 'Make a beat', 20, 'music', ['Open a project or start fresh', 'Make a loop you like', 'Add one more layer', 'Save or bounce it']],
+    ['mix', 'Mix practice', 30, 'disc', ['Pick five tracks', 'Beatmatch two of them by ear', 'Practise one transition until it\'s smooth', 'Record a short mix']],
+    ['art', 'Draw or paint', 25, 'brush', ['Set up your space', 'Warm up: five minutes of anything', 'Pick one idea', 'Keep going until the timer ends']]
+  ];
+  function creativeCard() {
+    if (mySession()) return '';
+    return '<section class="card"><div class="head"><h3>Make something</h3><span class="small muted">Studio time counts</span></div><div class="grid3">' + CREATE.map(function (c, i) {
+      return '<button class="tile make" type="button" data-fun="create" data-v="' + i + '">' + icon(c[3]) + '<div class="small" style="font-weight:650">' + c[1] + '</div><div class="tiny muted">' + c[2] + ' min</div></button>';
+    }).join('') + '</div></section>';
+  }
+
+  var usOpen = false, diceIdea = '';
+  var DICE = ['Candles on, phones in a drawer', 'Ten-minute massage each, then see what happens', 'Shower together', 'Slow dance in the kitchen: one song each',
+    'Make tonight\'s playlist together', 'Recreate your first date', 'Lights on', 'Somewhere other than the bedroom', 'Blindfold taste test',
+    'Loser of today\'s word is in charge', 'Dress up like it\'s a night out, then stay in', 'Start with a kiss that lasts a whole song',
+    'Late Registration, start to finish, as background music', 'Lights low, a DJ set on the speakers', 'Truth or dare, house rules', 'Breakfast in bed, but at night'];
+  function usCard() {
+    var u = S.fun && S.fun.us;
+    if (!u) return '';
+    var n = names(), ask = u.ask, h = '<section class="card us">';
+    h += '<button class="between ushead" type="button" data-fun="usToggle"><span class="row" style="gap:8px">' + icon('flame', 's') + '<b>Us</b><span class="chip">' + icon('lock', 's') + 'Private</span></span>' + icon(usOpen ? 'x' : 'chevron', 's') + '</button>';
+    if (ask && ask.from !== S.who && !ask.answer) {
+      h += '<div class="ask"><b>' + esc(n.other) + ': tonight?</b><div class="row" style="gap:8px"><button class="btn primary sm" type="button" data-fun="tonightYes">Yes</button><button class="btn line sm" type="button" data-fun="tonightNo">Rain check</button></div></div>';
+    } else if (ask && ask.from === S.who) {
+      h += '<p class="small muted" style="margin:10px 0 0">' + (ask.answer ? esc(n.other) + (ask.answer === 'yes' ? ' said yes.' : ': rain check.') : 'Asked ' + esc(n.other) + '. Waiting…') + '</p>';
+    }
+    if (usOpen) {
+      h += '<div class="grid3 center us-stats"><div><div class="num big">' + u.week + '</div><div class="tiny muted">this week</div></div><div><div class="num big">' + u.month + '</div><div class="tiny muted">this month</div></div><div><div class="num big">' + u.heat + '</div><div class="tiny muted">week' + (u.heat === 1 ? '' : 's') + ' running</div></div></div>' +
+        '<button class="btn primary wide" type="button" data-fun="usLog">' + icon('flame', 's') + 'Log it · +20 XP each</button>' +
+        '<div class="grid3" style="margin-top:8px"><button class="btn soft" type="button" data-fun="wink">Wink</button><button class="btn soft" type="button" data-fun="tonight">Tonight?</button><button class="btn soft" type="button" data-fun="dice">' + icon('shuffle', 's') + 'Dice</button></div>' +
+        (diceIdea ? '<div class="dice">' + esc(diceIdea) + '</div>' : '') +
+        '<div class="chips" style="margin-top:12px">' + u.badges.map(function (b) { return '<span class="chip' + (b.earned ? ' pink' : '') + '" title="' + esc(b.desc) + '">' + esc(b.name) + '</span>'; }).join('') + '</div>' +
+        '<p class="tiny muted" style="margin:10px 0 0">Only the two of you see this. It never appears in the feed or the weekly email.</p>';
+    }
+    return h + '</section>';
+  }
+  function wrappedCard() {
+    var d = new Date(now()), day = d.getDay();
+    if (!(day === 0 && d.getHours() >= 12) && day !== 1) return '';
+    return '<button class="wrapped-btn" type="button" data-fun="wrapped">' + icon('wave') + '<span class="grow"><b>Your week, wrapped</b><br><span class="small">' + esc(names().team) + ', the last seven days</span></span>' + icon('play', 's') + '</button>';
+  }
+
+  // ---- word stakes ----
+  var STAKES = ['Loser makes the tea', 'Loser does the dishes', 'Winner picks the film', 'Winner picks the takeaway', 'Loser gives a 10-minute massage',
+    'Winner picks tonight\'s playlist', 'Loser does the next bin run', 'Loser plays the winner\'s favourite album, start to finish'];
+  function stakeCard(G, n) {
+    var st = G.stake, wd = G.word, o = wd.other;
+    if (st) {
+      var res = st.result === 'draw' ? 'A draw. You both owe each other.' : st.result === 'you' ? 'You win. ' + n.other + ' owes you.' : st.result === 'them' ? n.other + ' wins. You owe them.' : 'Set by ' + (st.by === 'you' ? 'you' : n.other);
+      return '<div class="stake">' + icon('trophy', 's') + '<div class="grow"><div class="tiny muted">Today\'s stakes</div><b>' + esc(st.text) + '</b><div class="small' + (st.result ? '' : ' muted') + '">' + esc(res) + '</div></div></div>';
+    }
+    if (wd.done || (o && o.done)) return '';
+    return '<div class="stake">' + icon('trophy', 's') + '<div class="grow small">Play for something?</div><button class="btn soft sm" type="button" data-fun="stakes">Set stakes</button></div>';
+  }
+  function stakeSheet() {
+    openSheet('<h2>Today\'s stakes</h2><p class="small muted" style="margin:4px 0 12px">Fewest guesses wins. ' + esc(names().other) + ' gets a notification.</p><div class="stack">' +
+      STAKES.map(function (x) { return '<button class="btn line wide" type="button" data-stake="' + esc(x) + '" style="justify-content:flex-start">' + esc(x) + '</button>'; }).join('') + '</div>' +
+      '<form class="inline" id="stakeForm" autocomplete="off" style="margin-top:12px"><input type="text" id="stakeText" placeholder="Or make your own" maxlength="60" aria-label="Your stakes"><button class="btn primary" type="submit">Set</button></form>');
+  }
+
+  // ---- Tempo: hear the beat, keep it going ----
+  var tempo = null;
+  function tempoView(t, n) {
+    var m = t.mine || { points: 0, tries: 0, final: false, bpm: null }, o = t.other, h = '';
+    h += '<section class="card"><div class="between"><div><div class="eyebrow">Best today</div><div class="num" style="font-size:28px;font-weight:700">' + (m.tries ? m.points : 0) + '<span class="small muted"> pts</span></div></div><div class="right"><div class="small muted">' + esc(n.other) + '</div><div class="num" style="font-size:28px;font-weight:700">' + (o && o.tries ? o.points : 0) + '<span class="small muted"> pts</span></div><div class="tiny muted">' + (!o ? 'not yet' : o.final ? 'locked in' : 'playing') + '</div></div></div>';
+    if (m.final) {
+      h += '<div class="divider"></div><div class="center"><div class="eyebrow">Today\'s beat</div><div class="num" style="font-size:44px;font-weight:700;letter-spacing:-.02em">' + t.bpm + '<span class="small muted"> BPM</span></div><div class="small" style="font-weight:600">' + esc(t.style) + '</div>' +
+        '<p class="small muted" style="margin:8px 0 0">You tapped ' + m.bpm + '.' + (o && o.final && o.bpm ? ' ' + esc(n.other) + ' tapped ' + o.bpm + '.' : '') + '</p></div></section>';
+      return h;
+    }
+    var phase = tempo ? tempo.phase : '';
+    h += '<button class="tpad' + (phase === 'tap' ? ' live' : '') + '" type="button" data-fun="tap" id="tpad"><span id="tpadTxt">' + (phase === 'listen' ? 'Listen' : phase === 'tap' ? 'Tap' : phase === 'send' ? '…' : 'Tempo') + '</span></button>' +
+      '<p class="center small muted" id="tmsg">' + (tempo ? tempo.msg : 'Hear eight beats, then keep the beat going on your own: tap eight times. Closest BPM wins.') + '</p>' +
+      (tempo ? '' : '<button class="btn primary wide" type="button" data-fun="tempoGo">' + icon('play', 's') + (m.tries ? 'Try ' + (m.tries + 1) + ' of 3' : 'Play the beat') + '</button>') +
+      '<p class="tiny muted center" style="margin:8px 0 0">Within 1 BPM scores 10. Three tries, best one counts. Sound on.</p></section>';
+    return h;
+  }
+  function kick(at) {
+    if (!audio) return;
+    var o = audio.createOscillator(), g = audio.createGain();
+    o.connect(g); g.connect(audio.destination);
+    o.frequency.setValueAtTime(150, at); o.frequency.exponentialRampToValueAtTime(42, at + 0.13);
+    g.gain.setValueAtTime(0.0001, at); g.gain.exponentialRampToValueAtTime(0.9, at + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, at + 0.3);
+    o.start(at); o.stop(at + 0.32);
+  }
+  function pulse() { var p = el('tpad'); if (p) { p.classList.remove('beat'); void p.offsetWidth; p.classList.add('beat'); } }
+  function tempoMsg(m) { tempo.msg = m; var x = el('tmsg'); if (x) x.textContent = m; var tt = el('tpadTxt'); if (tt) tt.textContent = tempo.phase === 'listen' ? 'Listen' : tempo.phase === 'tap' ? 'Tap' : '…'; var p = el('tpad'); if (p) p.classList.toggle('live', tempo.phase === 'tap'); }
+  function tempoGo() {
+    var bpm = S.games.tempo.bpm, iv = 60 / bpm;
+    tempo = { phase: 'listen', taps: [], msg: 'Listen…' };
+    renderPlay();
+    var t0 = audio ? audio.currentTime + 0.25 : 0;
+    for (var i = 0; i < 8; i++) {
+      kick(t0 + i * iv);
+      setTimeout(pulse, 250 + i * iv * 1000);
+    }
+    setTimeout(function () { if (!tempo) return; tempo.phase = 'tap'; tempoMsg('Now you: keep it going. Tap 8 times.'); }, 250 + 8 * iv * 1000 - iv * 500);
+  }
+  function tempoTap() {
+    if (!tempo || tempo.phase !== 'tap') return;
+    pulse(); buzz(10);
+    tempo.taps.push(performance.now());
+    var left = 9 - tempo.taps.length;
+    if (left > 0) return tempoMsg(left === 8 ? 'Keep going…' : left + ' more');
+    var gaps = [];
+    for (var i = 1; i < tempo.taps.length; i++) gaps.push(tempo.taps[i] - tempo.taps[i - 1]);
+    gaps.sort(function (a, b) { return a - b; });
+    var bpm = Math.round(600000 / gaps[Math.floor(gaps.length / 2)]) / 10;
+    tempo.phase = 'send'; tempoMsg('You tapped ' + bpm + ' BPM');
+    rpc('submitTempo', [bpm]).then(function (g) {
+      tempo = null; S.games = g; renderPlay();
+      var m = g.tempo.mine;
+      if (m.final) { confetti(m.points >= 8); toast(m.points === 10 ? 'Perfect timing. ' + g.tempo.bpm + ' BPM.' : 'Locked in: ' + m.points + ' points'); refreshQuiet(); }
+      else toast(bpm + ' BPM: ' + (m.points >= 8 ? 'so close' : 'try again') + '. ' + (3 - m.tries) + ' left.');
+    }, function (err) { tempo = null; renderPlay(); toast(err.message, true); });
+  }
+
+  // ---- the daily intro (first open each day) ----
+  function intro() {
+    if (!S || !S.fun || current !== 'home') return;
+    var day = S.today ? S.today.date : new Date(now()).toDateString();
+    if (load('intro-' + S.who) === day) return;
+    save('intro-' + S.who, day);
+    var f = S.fun, g = S.game, n = names(), c = f.challenges;
+    var bars = ''; for (var i = 0; i < 24; i++) bars += '<i style="animation-delay:' + (-i * 0.13).toFixed(2) + 's"></i>';
+    var h = '<div class="intro" id="intro" role="dialog" aria-label="Welcome"><div class="in">' +
+      '<div class="eq">' + bars + '</div>' +
+      '<div class="eyebrow l1">Day ' + f.day + ' of ' + esc(f.team) + '</div>' +
+      '<h1 class="l2">' + greeting() + ',<br>' + esc(n.me || 'you') + '</h1>' +
+      (f.era ? '<div class="era l3">Level ' + g.level.level + ' · ' + esc(f.era) + '</div>' : '') +
+      '<div class="istats l4"><div><b class="num">' + g.streak.count + '</b><span>day streak</span></div><div><b class="num">' + g.team.count + '</b><span>together</span></div><div><b class="num">' + (g.xpToday >= g.goal ? g.xpToday : g.goal - g.xpToday) + '</b><span>' + (g.xpToday >= g.goal ? 'XP today' : 'XP to go') + '</span></div></div>' +
+      (c ? '<div class="ich l5"><div class="eyebrow">Today\'s challenges</div>' + c.list.map(function (x) { return '<div>' + icon(x.done ? 'check' : 'star', 's') + esc(x.text) + '</div>'; }).join('') + '</div>' : '') +
+      (f.boost ? '<p class="l6 small">Double XP is hiding somewhere between noon and 9pm. Keep notifications on.</p>' : '') +
+      (S.brief ? '<p class="l6 small">' + esc(S.brief.first ? 'First move: ' + S.brief.first : S.brief.brief) + '</p>' : '') +
+      '<button class="btn primary big wide l7" type="button" data-fun="introGo">Let\'s go</button></div></div>';
+    document.body.insertAdjacentHTML('beforeend', h);
+    chime([523, 659, 784]);
+  }
+
+  // ---- Wrapped: your week as a story ----
+  var story = null;
+  function wrappedSlides(w) {
+    var y = w.you, t = w.them, out = [];
+    var dayName = function (ymd) { return ymd ? new Date(ymd + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long' }) : ''; };
+    var fmtD = function (ymd) { return new Date(ymd + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }); };
+    out.push(['a', '<div class="eyebrow">' + fmtD(w.from) + ' to ' + fmtD(w.to) + '</div><h1>' + esc(w.team.name) + '</h1><p>Your week, wrapped.</p>']);
+    var lead = y.xp === t.xp ? 'Dead even.' : (y.xp > t.xp ? 'You' : esc(t.name)) + ' took the week.';
+    out.push(['b', '<div class="eyebrow">XP earned</div><div class="huge num">' + fmt(y.xp) + '</div><p>' + esc(t.name) + ': ' + fmt(t.xp) + '. ' + lead + '</p>']);
+    out.push(['c', '<div class="eyebrow">Chores done between you</div><div class="huge num">' + (y.chores + t.chores) + '</div>' + (y.top ? '<p>Your most played track: <b>' + esc(y.top) + '</b>, ' + y.topCount + ' time' + (y.topCount === 1 ? '' : 's') + '.</p>' : '<p>Next week\'s set is wide open.</p>')]);
+    if (y.bestDay) out.push(['a', '<div class="eyebrow">Your peak-time set</div><h1>' + dayName(y.bestDay) + '</h1><p>' + y.bestDayXp + ' XP in one day.</p>']);
+    out.push(['b', '<div class="eyebrow">Head to head</div><div class="huge num">' + w.games.you + '<span class="dim"> to </span>' + w.games.them + '</div><p>' + (w.games.bestWord ? 'Your best word: ' + w.games.bestWord + '/6. ' : '') + (w.games.theirBestWord ? esc(t.name) + '\'s: ' + w.games.theirBestWord + '/6.' : '') + '</p>']);
+    var extra = [];
+    if (y.gym) extra.push(y.gym + ' gym session' + (y.gym === 1 ? '' : 's') + (y.prs ? ', ' + y.prs + ' PR' + (y.prs === 1 ? '' : 's') : ''));
+    if (y.create + t.create) extra.push((y.create + t.create) + ' studio session' + (y.create + t.create === 1 ? '' : 's'));
+    if (y.challenges) extra.push(y.challenges + ' challenge' + (y.challenges === 1 ? '' : 's') + ' beaten');
+    if (extra.length) out.push(['c', '<div class="eyebrow">Also</div>' + extra.map(function (x) { return '<h2>' + esc(x) + '</h2>'; }).join('')]);
+    if (w.team.us) out.push(['a', '<div class="eyebrow">And</div><div class="huge num">' + w.team.us + '</div><p>time' + (w.team.us === 1 ? '' : 's') + ' you made time for each other.</p>']);
+    out.push(['b', '<div class="eyebrow">' + esc(w.team.name) + '</div><h1>' + w.team.streak + '-day team streak.</h1><p>Same time next week?</p><button class="btn primary big wide" type="button" data-fun="storyClose" style="margin-top:18px">Done</button>']);
+    return out;
+  }
+  function showStory(i) {
+    if (!story) return;
+    story.i = Math.max(0, Math.min(story.slides.length - 1, i));
+    var s = story.slides[story.i];
+    el('story').className = 'story g' + s[0];
+    el('storyBars').innerHTML = story.slides.map(function (x, j) { return '<i class="' + (j < story.i ? 'done' : j === story.i ? 'on' : '') + '"></i>'; }).join('');
+    el('storyBody').innerHTML = '<div class="slide">' + s[1] + '</div>';
+    clearTimeout(story.timer);
+    if (story.i < story.slides.length - 1) story.timer = setTimeout(function () { showStory(story.i + 1); }, 5000);
+  }
+  function openWrapped() {
+    toast('Wrapping your week…');
+    call('getWrapped', [], function (w) {
+      story = { slides: wrappedSlides(w), i: 0 };
+      document.body.insertAdjacentHTML('beforeend', '<div class="story" id="story"><div class="bars" id="storyBars"></div><button class="iconbtn sx" type="button" data-fun="storyClose" aria-label="Close">' + icon('x') + '</button><div id="storyBody"></div></div>');
+      el('story').addEventListener('click', function (e) {
+        if (e.target.closest('button')) return;
+        showStory(story.i + (e.clientX < innerWidth / 3 ? -1 : 1));
+      });
+      showStory(0);
+      chime([523, 659, 784, 1047]);
+    });
+  }
+
+  // ---- taps for all of the above ----
+  document.addEventListener('click', function (ev) {
+    var t = ev.target.closest('[data-fun], [data-stake]');
+    if (!t || !S) return;
+    var f = t.dataset.fun, v = t.dataset.v;
+    if (t.dataset.stake) return call('setStake', [t.dataset.stake], function (g) { closeSheet(); S.games = g; renderPlay(); toast('Stakes set. ' + names().other + ' knows.'); });
+    if (f === 'introGo') { var x = el('intro'); if (x) { x.classList.add('out'); setTimeout(function () { x.remove(); }, 350); } return; }
+    if (f === 'storyClose') { if (story) clearTimeout(story.timer); story = null; var st = el('story'); if (st) st.remove(); return; }
+    if (f === 'wrapped') return openWrapped();
+    if (f === 'usToggle') { usOpen = !usOpen; return renderHome(); }
+    if (f === 'dice') { var d; do { d = DICE[Math.floor(Math.random() * DICE.length)]; } while (d === diceIdea && DICE.length > 1); diceIdea = d; buzz(15); return renderHome(); }
+    if (f === 'tap') return tempoTap();
+    if (busy) return;
+    if (f === 'create') { var c = CREATE[+v]; return startPlan({ name: c[1], minutes: c[2], steps: c[4].slice(), creative: c[0] }, c[1] + ' for ' + c[2] + ' minutes. Make something.'); }
+    if (f === 'usLog') return call('logUs', [], function (res) { confetti(true); chime([523, 784, 1047]); apply(res, 'Logged. +20 XP each.'); });
+    if (f === 'wink') return call('sendWink', ['wink'], function (res) { apply(res, 'Wink sent'); });
+    if (f === 'tonight') return call('sendWink', ['tonight'], function (res) { apply(res, 'Asked. Waiting for ' + names().other + '…'); });
+    if (f === 'tonightYes' || f === 'tonightNo') return call('answerTonight', [f === 'tonightYes'], function (res) { apply(res, f === 'tonightYes' ? 'Said yes' : 'Rain check sent'); });
+    if (f === 'stakes') return stakeSheet();
+    if (f === 'tempoGo') return tempoGo();
+  });
+  document.addEventListener('submit', function (ev) {
+    if (ev.target.id !== 'stakeForm') return;
+    var v = el('stakeText').value.trim();
+    if (v) call('setStake', [v], function (g) { closeSheet(); S.games = g; renderPlay(); toast('Stakes set.'); });
+  });
+
+  // The word list is only needed for the word game: fetch it when Play opens.
+  var wordsLoading = false;
+  function loadWords() {
+    if (MODE !== 'web' || wordsLoading || typeof ALLOWED_WORDS !== 'undefined') return;
+    wordsLoading = true;
+    loadScript('words.js').catch(function () { wordsLoading = false; });
   }
 
   // ---------- rendering + tabs ----------
@@ -699,7 +950,7 @@
     el('nav').querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-current', b.dataset.tab === name ? 'page' : 'false'); });
     if (name !== 'you') save('tab', name);
     window.scrollTo(0, 0);
-    if (name === 'play') pollGames();
+    if (name === 'play') { loadWords(); pollGames(); }
   }
 
   // ---------- taps ----------
@@ -907,7 +1158,11 @@
       if (left <= 0) { rest = null; chime([880, 1175, 1568]); buzz([120, 60, 120]); toast('Rest over. Next set.'); renderTrain(); }
     }
     var tb = el('dotTrain'); if (tb) tb.textContent = rest ? clock(rest.until - now()) : '';
+    var bl = boostLeft(), be = el('boostLeft');
+    if (be) be.textContent = bl + ' min';
+    if (!!bl !== lastBoost) { lastBoost = !!bl; renderHome(); }
   }, 1000);
+  var lastBoost = false;
   function refresh() {
     if (!S || busy || inflight || parking || !el('sheetbg').hidden || document.visibilityState !== 'visible') return;
     if (document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
@@ -964,11 +1219,21 @@
     renderAll();
     var hash = location.hash.replace('#', '');
     showTab(['home', 'chores', 'play', 'train', 'food', 'you'].indexOf(hash) !== -1 ? hash : (window.LQ_TAB || load('tab') || 'home'));
+    lastBoost = !!boostLeft();
+    setTimeout(intro, 250);
     if (!S.brief && S.hasClaudeKey) rpc('getBrief', []).then(function (b) { if (b) { S.brief = b; renderHome(); } }, function () {});
   }
   if (!KEY) {
-    el('tab-home').innerHTML = '<div class="loading"><h2>Open your app link</h2><p class="muted">Use the link from the Config tab of your Google Sheet. It has your private key in it.</p></div>';
+    el('tab-home').innerHTML = '<div class="loading"><h2>Open your app link</h2><p class="muted">Paste your link from the Config tab of your Google Sheet (Your app link, or Partner app link). It has your private key in it.</p>' +
+      '<form class="inline" id="linkForm" autocomplete="off" style="margin-top:16px"><input type="text" id="linkText" placeholder="Paste your link" aria-label="Your app link"><button class="btn primary" type="submit">Open</button></form></div>';
     el('tab-home').hidden = false;
+    el('nav').hidden = true;
+    el('linkForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var v = el('linkText').value.trim(), m = v.match(/key=([A-Za-z0-9]+)/) || v.match(/^([A-Za-z0-9]{20,})$/);
+      if (!m) { toast('That doesn\'t look like your link. It ends in ?key= and a long code.', true); return; }
+      save('key', m[1]); location.href = location.pathname + '?key=' + m[1];
+    });
   } else if (S) {
     boot();
     if (MODE === 'web') refreshQuiet();

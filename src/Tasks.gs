@@ -72,6 +72,7 @@ function pollTasks() {
       if (task.status === 'completed' && !taskHandlers_()[info.type].onDone(task, info)) info.done = true;
     });
     saveTracked_(t);
+    try { heartbeat_(); } catch (e) { log_('WARN', 'Reminders: ' + e); }
   });
 }
 

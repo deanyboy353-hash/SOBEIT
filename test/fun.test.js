@@ -1,0 +1,218 @@
+const test = require('node:test');
+const assert = require('node:assert');
+const { loadProject } = require('./fakes');
+
+// Tue 13 Oct 2026, 10:00 in Glenboig. Extras (double XP, challenges) are switched on per test.
+function ready(iso) {
+  const g = loadProject({ now: new Date(iso || '2026-10-13T09:00:00Z') });
+  g.ctx.setup();
+  return { g, me: g.state.props.WEBAPP_KEY, partner: g.state.props.PARTNER_KEY };
+}
+const at = (g, iso) => { g.state.now = new Date(iso); };
+const plain = x => JSON.parse(JSON.stringify(x));
+const xpRows = g => g.tab('XP log').rows().slice(1).map(r => ({ who: r[2], what: r[3], xp: Number(r[4]), kind: r[5] }));
+const withPush = g => {
+  g.state.props.FCM_SA = JSON.stringify({ client_email: 'sa@x.iam.gserviceaccount.com', private_key: 'k', project_id: 'life-quest' });
+  g.ctx.registerDevice(g.state.props.WEBAPP_KEY, 'me-phone-token-0123456789', 'Pixel');
+  g.ctx.registerDevice(g.state.props.PARTNER_KEY, 'yaz-phone-token-0123456789', 'iPhone');
+};
+const pushesTo = (g, token) => g.state.pushes.filter(p => p.token === token);
+
+test('names, team and level eras: Deany the bedroom DJ, Yazzy in her College Dropout era', () => {
+  const { g, me, partner } = ready();
+  const mine = g.ctx.appState(me).fun, hers = g.ctx.appState(partner).fun;
+  assert.strictEqual(mine.nick, 'Deany');
+  assert.strictEqual(mine.otherNick, 'Yazzy');
+  assert.strictEqual(mine.team, 'Yazzy & Deany');
+  assert.strictEqual(mine.era, 'Bedroom DJ');
+  assert.strictEqual(hers.era, 'The College Dropout');
+  assert.strictEqual(hers.nextEra, 'Late Registration');
+  assert.strictEqual(g.ctx.eraTitle_('partner', 3), 'Graduation');
+  assert.strictEqual(g.ctx.eraTitle_('me', 12), 'Legend 3');
+});
+
+test('daily challenges: each one done is +5 XP, all three opens the chest', () => {
+  const { g, me, partner } = ready();
+  delete g.state.props.EXTRAS_OFF;
+  // Yazzy: 2 chores, 10 XP before noon, daily goal before 8pm
+  const board = g.ctx.appState(partner).quests.board.filter(q => q.who !== 'me');
+  board.slice(0, 3).forEach(q => g.ctx.questDone(partner, q.name));
+  const ch = g.ctx.appState(partner).fun.challenges;
+  assert.deepStrictEqual(plain(ch.list.map(c => c.id).sort()), ['chores2', 'early', 'goal8']);
+  assert.ok(ch.list.every(c => c.done), JSON.stringify(ch));
+  assert.ok(ch.chest);
+  const bonus = xpRows(g).filter(r => r.who === 'partner' && r.kind === 'bonus');
+  assert.strictEqual(bonus.length, 4);
+  assert.strictEqual(bonus.reduce((s, r) => s + r.xp, 0), 3 * 5 + 15);
+  // Deany: water, word, goal by 8pm
+  for (let i = 0; i < 8; i++) g.ctx.addWater(me, 1);
+  g.ctx.guessWord(me, g.ctx.todaysWord_('2026-10-13'));
+  const mine = g.ctx.appState(me).fun.challenges;
+  assert.ok(mine.list.find(c => c.id === 'water').done);
+  assert.ok(mine.list.find(c => c.id === 'word').done);
+  // challenges never award twice
+  g.ctx.questDone(partner, board[3].name);
+  assert.strictEqual(xpRows(g).filter(r => r.who === 'partner' && r.kind === 'bonus').length, 4);
+});
+
+test('double XP: a surprise half hour where everything counts twice, announced once', () => {
+  const { g, me } = ready();
+  delete g.state.props.EXTRAS_OFF;
+  withPush(g);
+  const w = g.ctx.boostWindow_('2026-10-13');
+  assert.ok(w.start >= 12 * 60 && w.end <= 21 * 60);
+  const q = g.ctx.appState(me).quests.board.filter(x => x.who !== 'partner');
+  g.ctx.questDone(me, q[0].name);
+  assert.strictEqual(xpRows(g).find(r => r.what === q[0].name).xp, q[0].xp);
+  at(g, '2026-10-13T' + String(Math.floor(w.start / 60) - 1).padStart(2, '0') + ':' + String(w.start % 60 + 1).padStart(2, '0') + ':00Z'); // BST: UTC+1
+  assert.ok(g.ctx.boostActive_());
+  g.ctx.pollTasks();
+  g.ctx.pollTasks();
+  assert.strictEqual(pushesTo(g, 'me-phone-token-0123456789').filter(p => /Double XP/.test(p.title)).length, 1);
+  assert.strictEqual(pushesTo(g, 'yaz-phone-token-0123456789').filter(p => /Double XP/.test(p.title)).length, 1);
+  g.ctx.questDone(me, q[1].name);
+  const row = xpRows(g).find(r => r.what.startsWith(q[1].name));
+  assert.strictEqual(row.xp, q[1].xp * 2);
+  assert.match(row.what, /\(double XP\)$/);
+});
+
+test('evening reminders: streak saver at 19:30, last call at 21:30, never twice, quiet at night', () => {
+  const { g, me } = ready();
+  delete g.state.props.EXTRAS_OFF;
+  g.ctx.setSetting_('Double XP', 'FALSE');
+  withPush(g);
+  g.state.props.STREAK_me = JSON.stringify({ count: 4, freezes: 0, best: 4, through: '2026-10-12', frozeOn: '' });
+  at(g, '2026-10-13T18:35:00Z');
+  g.ctx.pollTasks(); g.ctx.pollTasks();
+  let mine = pushesTo(g, 'me-phone-token-0123456789');
+  assert.strictEqual(mine.length, 1);
+  assert.strictEqual(mine[0].title, 'Keep your streak');
+  assert.match(mine[0].body, /4-day|30 XP|streak/);
+  at(g, '2026-10-13T20:35:00Z');
+  g.ctx.pollTasks();
+  mine = pushesTo(g, 'me-phone-token-0123456789');
+  assert.strictEqual(mine.length, 2);
+  assert.strictEqual(mine[1].title, 'Streak alert');
+  at(g, '2026-10-13T22:00:00Z'); // 23:00: quiet
+  const before = g.state.pushes.length;
+  g.ctx.pollTasks();
+  assert.strictEqual(g.state.pushes.length, before);
+  g.ctx.questDone(me, g.ctx.appState(me).quests.board[0].name);
+});
+
+test('Us: one tap logs it for both, private, with winks and "tonight?"', () => {
+  const { g, me, partner } = ready('2026-10-13T20:00:00Z');
+  withPush(g);
+  let s = g.ctx.logUs(partner);
+  assert.strictEqual(s.fun.us.week, 1);
+  assert.strictEqual(g.ctx.appState(me).fun.us.week, 1);
+  const rows = xpRows(g).filter(r => r.kind === 'spice');
+  assert.deepStrictEqual(rows.map(r => r.who).sort(), ['me', 'partner']);
+  assert.ok(rows.every(r => r.xp === 20));
+  assert.ok(!s.game.feed.some(f => f.kind === 'spice'), 'never in the feed');
+  assert.match(pushesTo(g, 'me-phone-token-0123456789').at(-1).title, /Yazzy logged it/);
+  assert.throws(() => g.ctx.logUs(me), /Already counted/);
+  assert.ok(s.fun.us.badges.find(b => b.name === 'First flame').earned);
+  // tonight?
+  g.ctx.sendWink(me, 'tonight');
+  assert.strictEqual(pushesTo(g, 'yaz-phone-token-0123456789').at(-1).title, 'Deany: tonight?');
+  assert.throws(() => g.ctx.answerTonight(me, true), /Nothing to answer/);
+  assert.strictEqual(g.ctx.appState(partner).fun.us.ask.from, 'me');
+  s = g.ctx.answerTonight(partner, true);
+  assert.strictEqual(s.fun.us.ask.answer, 'yes');
+  assert.strictEqual(pushesTo(g, 'me-phone-token-0123456789').at(-1).title, 'Yazzy said yes');
+  g.ctx.sendWink(partner, 'wink');
+  assert.strictEqual(pushesTo(g, 'me-phone-token-0123456789').at(-1).title, 'Yazzy sent you a wink');
+  // weekly summary stays private
+  assert.doesNotMatch(JSON.stringify(g.state.mails), /Quality time/);
+});
+
+test('word stakes: set before anyone finishes, settled for both when you both have', () => {
+  const { g, me, partner } = ready();
+  withPush(g);
+  const answer = g.ctx.todaysWord_('2026-10-13');
+  let s = g.ctx.setStake(me, 'Loser makes the tea');
+  assert.deepStrictEqual(plain(s.stake), { text: 'Loser makes the tea', by: 'you', result: '' });
+  assert.strictEqual(g.ctx.gamesState(partner).stake.by, 'them');
+  assert.match(pushesTo(g, 'yaz-phone-token-0123456789').at(-1).title, /set today's stakes/);
+  g.ctx.guessWord(me, answer === 'crane' ? 'slate' : 'crane');
+  g.ctx.guessWord(me, answer);
+  assert.throws(() => g.ctx.setStake(partner, 'Winner picks the film'), /Too late/);
+  s = g.ctx.guessWord(partner, answer);
+  assert.strictEqual(s.stake.result, 'you');
+  assert.strictEqual(g.ctx.gamesState(me).stake.result, 'them');
+  const settled = g.state.pushes.filter(p => p.title === 'Word settled');
+  assert.strictEqual(settled.length, 2);
+  assert.match(settled[0].body, /Yazzy wins\. Deany owes: loser makes the tea/);
+});
+
+test('Tempo: tap the beat, three tries, best counts, scores like a DJ', () => {
+  const { g, me, partner } = ready();
+  const pz = g.ctx.tempoPuzzle('2026-10-13');
+  assert.ok(pz.bpm >= 86 && pz.bpm <= 176 && pz.style);
+  assert.strictEqual(g.ctx.tempoPoints(87, 174), 10, 'half time counts for drum and bass');
+  assert.strictEqual(g.ctx.tempoPoints(124, 128), 6);
+  let s = g.ctx.submitTempo(me, pz.bpm + 5);
+  assert.strictEqual(s.tempo.mine.points, 4);
+  assert.strictEqual(s.tempo.style, '', 'style stays secret until you lock in');
+  s = g.ctx.submitTempo(me, pz.bpm + 1.5);
+  assert.strictEqual(s.tempo.mine.points, 8);
+  s = g.ctx.submitTempo(me, pz.bpm + 9);
+  assert.ok(s.tempo.mine.final);
+  assert.strictEqual(s.tempo.mine.points, 8);
+  assert.strictEqual(s.tempo.style, pz.style);
+  assert.throws(() => g.ctx.submitTempo(me, pz.bpm), /Done for today/);
+  assert.throws(() => g.ctx.submitTempo(partner, 'x'), /didn't register/);
+  s = g.ctx.submitTempo(partner, pz.bpm);
+  assert.ok(s.tempo.mine.final, 'a perfect tap locks in at once');
+  assert.strictEqual(s.tempo.other.bpm, pz.bpm + 1.5);
+  assert.strictEqual(s.stats.you, 1);
+  assert.strictEqual(g.tab('Games').rows().filter(r => r[3] === 'tempo').length, 2);
+});
+
+test('make something: a studio session on the timer earns creative XP and a badge', () => {
+  const { g, me } = ready();
+  g.ctx.startChore(me, { name: 'Make a beat', minutes: 20, steps: ['Make a loop'], creative: 'music' });
+  at(g, '2026-10-13T09:22:00Z');
+  const s = g.ctx.finishChore(me, 'Done');
+  const row = xpRows(g).find(r => r.kind === 'create');
+  assert.strictEqual(row.what, 'Make a beat');
+  assert.strictEqual(row.xp, 11);
+  assert.ok(s.game.badges.find(b => b.id === 'create-1').earned);
+  assert.strictEqual(g.tab('Later').rows().length, 1, 'nothing parked');
+});
+
+test('wrapped: the week as a story', () => {
+  const { g, me, partner } = ready();
+  const board = g.ctx.appState(me).quests.board;
+  const mine = board.filter(q => q.who !== 'partner'), theirs = board.filter(q => q.who !== 'me' && q.name !== mine[0].name && q.name !== mine[1].name);
+  g.ctx.questDone(me, mine[0].name);
+  g.ctx.questDone(me, mine[1].name);
+  g.ctx.questDone(partner, theirs[0].name);
+  g.ctx.guessWord(me, g.ctx.todaysWord_('2026-10-13'));
+  g.ctx.guessWord(partner, g.ctx.todaysWord_('2026-10-13'));
+  g.ctx.logUs(me);
+  const w = plain(g.ctx.getWrapped(me));
+  assert.strictEqual(w.team.name, 'Yazzy & Deany');
+  assert.strictEqual(w.you.name, 'Deany');
+  assert.strictEqual(w.you.chores, 2);
+  assert.strictEqual(w.them.chores, 1);
+  assert.ok(w.you.xp > 0 && w.them.xp > 0);
+  assert.strictEqual(w.games.bestWord, 1);
+  assert.strictEqual(w.team.us, 1);
+  assert.strictEqual(w.from, '2026-10-07');
+});
+
+test('speed: the app\'s refresh is served from cache until something changes', () => {
+  const { g, me, partner } = ready();
+  const first = g.ctx.appState(me);
+  assert.ok(g.state.cache.STATE_me);
+  g.state.cache.STATE_me = g.state.cache.STATE_me.replace('"nick":"Deany"', '"nick":"Cached"');
+  assert.strictEqual(g.ctx.appState(me).fun.nick, 'Cached');
+  g.ctx.addShopping(partner, 'Milk'); // any change by either of you clears it
+  assert.strictEqual(g.state.cache.STATE_me, undefined);
+  const fresh = g.ctx.appState(me);
+  assert.strictEqual(fresh.fun.nick, 'Deany');
+  assert.ok(fresh.shopping.some(i => i.item === 'Milk'));
+  assert.ok(first.now <= fresh.now);
+});

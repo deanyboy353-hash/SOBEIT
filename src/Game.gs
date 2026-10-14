@@ -17,16 +17,18 @@ var xpCache_ = null;
 function xpRows_() {
   if (!xpCache_) {
     xpCache_ = rowsBetween_('xp', '0000', '9999').map(function (r) {
-      return { date: String(r['Date']), who: String(r['Who']), what: String(r['What']), xp: Number(r['XP']) || 0, kind: String(r['Kind']) };
+      return { date: String(r['Date']), time: hhmm_(r['Time']), who: String(r['Who']), what: String(r['What']), xp: Number(r['XP']) || 0, kind: String(r['Kind']) };
     });
   }
   return xpCache_;
 }
 
 function addXp_(who, what, xp, kind) {
+  if (xp > 0 && kind !== 'reward' && kind !== 'bonus' && boostActive_()) { xp *= 2; what += ' (double XP)'; }
   appendRow_('xp', { 'Date': todayYmd_(), 'Time': now_('HH:mm'), 'Who': who, 'What': what, 'XP': xp, 'Kind': kind });
   xpCache_ = null;
-  if (kind !== 'reward') addFeed_(who, what + (xp > 0 ? ' · +' + xp + ' XP' : ''), kind);
+  if (kind !== 'reward' && kind !== 'spice' && !(kind === 'bonus' && !/chest/.test(what))) addFeed_(who, what + (xp > 0 ? ' · +' + xp + ' XP' : ''), kind);
+  if (kind !== 'bonus' && kind !== 'reward') checkChallenges_(who);
   return xp;
 }
 
@@ -119,6 +121,10 @@ var BADGES = [
   ['cover-5', '', 'Teammate', 'Cover 5 of your partner\'s jobs', function (s) { return s.covers >= 5; }],
   ['hi5-10', '', 'Hype squad', 'Give 10 high-fives', function (s) { return s.hi5 >= 10; }],
   ['brain', '', 'Brain dumped', 'Use the brain dump', function (s) { return s.brain >= 1; }],
+  ['create-1', '', 'Studio time', 'Finish a creative session', function (s) { return s.create >= 1; }],
+  ['create-20', '', 'Resident artist', '20 creative sessions', function (s) { return s.create >= 20; }],
+  ['chest-7', '', 'Treasure hunter', 'Open 7 daily chests', function (s) { return s.chests >= 7; }],
+  ['boost', '', 'Double trouble', 'Earn XP in a Double XP half hour', function (s) { return s.boosted >= 1; }],
   ['level-5', '', 'Level 5', 'Reach level 5', function (s) { return s.level >= 5; }],
   ['level-10', '', 'Level 10', 'Reach level 10', function (s) { return s.level >= 10; }]
 ];
@@ -129,7 +135,10 @@ function badges_(who, streak) {
     weighs: countKind_(who, 'weigh'), routines: countKind_(who, 'routine'), protein: countKind_(who, 'protein'),
     covers: xpRows_().filter(function (r) { return r.who === who && r.kind === 'cover'; }).length,
     hi5: Number(PROPS.getProperty('HI5_' + who) || 0),
-    brain: countKind_(who, 'brain'), bestStreak: streak.best, level: levelFor(xpTotal_(who)).level
+    brain: countKind_(who, 'brain'), create: countKind_(who, 'create'),
+    chests: xpRows_().filter(function (r) { return r.who === who && r.kind === 'bonus' && /chest/.test(r.what); }).length,
+    boosted: xpRows_().filter(function (r) { return r.who === who && /\(double XP\)$/.test(r.what); }).length,
+    bestStreak: streak.best, level: levelFor(xpTotal_(who)).level
   };
   return BADGES.map(function (b) { return { id: b[0], emoji: b[1], name: b[2], desc: b[3], earned: b[4](stats) }; });
 }

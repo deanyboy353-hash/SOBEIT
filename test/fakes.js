@@ -157,7 +157,7 @@ function loadProject(opts = {}) {
   const state = {
     now: opts.now || new RealDate('2026-10-13T05:00:00Z'),
     rainy: false, weatherDown: false,
-    props: {}, mails: [], triggers: [], fetches: [], claudeRequests: [], pushes: [],
+    props: { EXTRAS_OFF: '1' }, cache: {}, mails: [], triggers: [], fetches: [], claudeRequests: [], pushes: [],
     claudeReply: { body: { stop_reason: 'end_turn', content: [{ type: 'text', text: JSON.stringify({ items: [
       { name: '2 Weetabix Protein', kcal: 200, protein_g: 14 }, { name: '200ml semi-skimmed milk', kcal: 100, protein_g: 7 }] }) }] } }
   };
@@ -182,6 +182,11 @@ function loadProject(opts = {}) {
         deleteProperty: k => { delete state.props[k]; }
       })
     },
+    CacheService: { getScriptCache: () => ({
+      get: k => (k in state.cache ? state.cache[k] : null),
+      put: (k, v) => { if (v.length > 100000) throw new Error('Argument too large'); state.cache[k] = v; },
+      removeAll: ks => ks.forEach(k => { delete state.cache[k]; })
+    }) },
     LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock() {} }) },
     CalendarApp: { getDefaultCalendar: () => calendar, EventColor: { GREEN: '10', BLUE: '9', YELLOW: '5', ORANGE: '6', PALE_BLUE: '1', GRAY: '8', MAUVE: '3' } },
     Tasks: { Tasks: tasks },

@@ -25,7 +25,8 @@ function rpcTable_() {
     respreadSchedule: respreadSchedule, saveQuest: saveQuest, deleteQuest: deleteQuest,
     gamesState: gamesState, guessWord: guessWord, submitTarget: submitTarget, submitRecall: submitRecall,
     registerDevice: registerDevice, sendNudge: sendNudge, ask: ask, clearAsk: clearAsk, getBrief: getBrief,
-    mealIdeas: mealIdeas, logIdea: logIdea
+    mealIdeas: mealIdeas, logIdea: logIdea, logUs: logUs, sendWink: sendWink, answerTonight: answerTonight,
+    setStake: setStake, submitTempo: submitTempo, getWrapped: getWrapped
   };
 }
 
@@ -91,6 +92,7 @@ function appState_(who) {
     games: gamesState_(who), push: pushStatus_(who), brief: brief && brief.date === todayYmd_() ? brief : null,
     theme: String(prop_('THEME_' + who) || 'light')
   };
+  s.fun = funState_(who, s.game);
   if (who === 'me') {
     s.today = todayState_();
     s.food = foodState_();
@@ -99,17 +101,39 @@ function appState_(who) {
   return s;
 }
 
-/** Everything for the app at once (used to refresh after coming back to it). */
+/**
+ * Everything for the app at once (used to refresh after coming back to it).
+ * Kept for a minute in the script cache: any change by either of you clears
+ * it (withLock_), so the app's background refreshes are near-instant.
+ */
 function appState(key) {
   var who = who_(key);
-  return withLock_(function () { return appState_(who); });
+  var cache = stateCache_(), hit = cache && cache.get('STATE_' + who);
+  if (hit) {
+    var s = JSON.parse(hit);
+    s.now = new Date().getTime();
+    return s;
+  }
+  var state = withLock_(function () { return appState_(who); });
+  if (cache) { try { cache.put('STATE_' + who, JSON.stringify(state), 60); } catch (e) { /* too big to cache: fine */ } }
+  return state;
+}
+
+function stateCache_() {
+  try { return CacheService.getScriptCache(); } catch (e) { return null; }
+}
+
+function clearStateCache_() {
+  var cache = stateCache_();
+  if (cache) cache.removeAll(['STATE_me', 'STATE_partner']);
 }
 
 /** Light, dark, or "auto" (match the phone). Remembered per person. */
 function setTheme(key, theme) {
   var who = who_(key);
-  if (['light', 'dark', 'auto'].indexOf(theme) === -1) throw new Error('Unknown theme.');
+  if (['light', 'dark', 'auto', 'rave'].indexOf(theme) === -1) throw new Error('Unknown theme.');
   setProp_('THEME_' + who, theme);
+  clearStateCache_();
   return theme;
 }
 

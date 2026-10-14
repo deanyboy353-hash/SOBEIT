@@ -73,7 +73,10 @@ function prepareSheet_() {
   var settings = readConfig_().settings;
   if (settings['Web app key'] !== props.getProperty('WEBAPP_KEY')) setSetting_('Web app key', props.getProperty('WEBAPP_KEY'));
   if (settings['Web app URL'] !== WEBAPP_URL) setSetting_('Web app URL', WEBAPP_URL);
-  var theirs = WEBAPP_URL + '?key=' + props.getProperty('PARTNER_KEY');
+  var theirs = partnerUrl_();
+  // Names arrived after setup for some: fill blanks once.
+  if (!String(settings['Your name'] || '').trim()) setSetting_('Your name', 'Dean');
+  if (!String(settings['Partner name'] || '').trim()) setSetting_('Partner name', 'Yaz');
   if (settings['Your app link'] !== appUrl_()) setSetting_('Your app link', appUrl_());
   if (settings['Partner app link'] !== theirs) setSetting_('Partner app link', theirs);
 }
@@ -130,7 +133,7 @@ function withLock_(fn) {
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(60000)) throw new Error('Another run is still going; try again in a minute.');
   resetRun_(); // someone else may have just changed things: read fresh
-  try { return fn(); } finally { lock.releaseLock(); }
+  try { return fn(); } finally { clearStateCache_(); lock.releaseLock(); }
 }
 
 // ---- Sheet menu (PC only: the Sheets phone app doesn't show custom menus) ----

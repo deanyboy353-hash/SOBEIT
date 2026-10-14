@@ -559,6 +559,24 @@ function numbersPoints(value, target) {
   return d === 0 ? 10 : d <= 5 ? 7 : d <= 10 ? 5 : 0;
 }
 
+// ---- Tempo (the DJ game) ----
+
+var TEMPO_STYLES = [['Hip hop', 86, 98], ['Afrobeats', 100, 112], ['Disco', 110, 120], ['House', 120, 126], ['Tech house', 124, 128],
+  ['UK garage', 130, 134], ['Techno', 130, 140], ['Trance', 136, 140], ['Dubstep', 140, 140], ['Drum and bass', 170, 176]];
+
+function tempoPuzzle(ymd) {
+  var r = seededRandom('tempo' + ymd);
+  var s = TEMPO_STYLES[Math.floor(r() * TEMPO_STYLES.length)];
+  return { style: s[0], bpm: s[1] + Math.floor(r() * (s[2] - s[1] + 1)) };
+}
+
+/** Points for a tapped tempo. Half time counts for fast tracks (nobody taps 174). */
+function tempoPoints(tapped, bpm) {
+  var d = Math.abs(tapped - bpm);
+  if (bpm > 150) d = Math.min(d, Math.abs(tapped * 2 - bpm));
+  return d <= 1 ? 10 : d <= 2 ? 8 : d <= 4 ? 6 : d <= 7 ? 4 : 2;
+}
+
 // Node test hook. Apps Script ignores this because `module` doesn't exist there.
 if (typeof module !== 'undefined') {
   module.exports = {

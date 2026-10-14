@@ -73,7 +73,7 @@ function buildWeeklySummary_(endYmd, cfg) {
     var names = { me: String(cfg.settings['Your name'] || 'You'), partner: String(cfg.settings['Partner name'] || 'Partner') };
     lines.push(['me', 'partner'].map(function (p) {
       var mine = chores.filter(function (r) { return r['Who'] === p; });
-      return names[p] + ': ' + mine.length + ' jobs, ' + mine.reduce(function (s, r) { return s + (Number(r['Actual (min)']) || 0); }, 0) + ' min';
+      return names[p] + ': ' + mine.length + (mine.length === 1 ? ' job, ' : ' jobs, ') + mine.reduce(function (s, r) { return s + (Number(r['Actual (min)']) || 0); }, 0) + ' min';
     }).join(' · '));
   } else {
     lines.push('No chores logged this week.');

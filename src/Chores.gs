@@ -125,12 +125,14 @@ function closeSession_(p, s, result) {
     'Result': result, 'Started': Utilities.formatDate(new Date(s.startedAt), TZ, 'HH:mm'),
     'Finished': Utilities.formatDate(now, TZ, 'HH:mm'), 'Steps done': s.steps.length ? s.step + '/' + s.steps.length : ''
   });
-  if (result === 'Stopped' && s.step < s.steps.length && !s.taster) {
+  if (result === 'Stopped' && s.step < s.steps.length && !s.taster && !s.creative) {
     park_(p, s.task + ': ' + s.steps.slice(s.step).join(', '));
   }
   var isQuest = readChores_().filter(function (q) { return q.name === s.task; })[0];
   var minutes = Math.max(1, Math.round((now.getTime() - s.startedAt) / 60000));
-  if (result === 'Done') {
+  if (s.creative && result !== 'Cancelled') {
+    addXp_(p, s.task, Math.max(5, Math.round(minutes / 2)), 'create');
+  } else if (result === 'Done') {
     if (isQuest && isQuest.lastDone !== todayYmd_()) completeQuest_(p, s.task, {});
     else if (!isQuest) addXp_(p, s.task, Math.max(5, Math.round(minutes / 5) * 5), 'job');
   } else if (result === 'Stopped') {
@@ -222,7 +224,8 @@ function startChore(key, plan) {
     var now = new Date().getTime();
     var s = {
       task: name, steps: (plan.steps || []).slice(0, 8).map(String), step: 0,
-      startedAt: now, endsAt: now + minutes * 60000, planned: minutes, taster: !!plan.taster
+      startedAt: now, endsAt: now + minutes * 60000, planned: minutes, taster: !!plan.taster,
+      creative: ['music', 'mix', 'art'].indexOf(plan.creative) !== -1 ? plan.creative : ''
     };
     saveSession_(p, s);
     if (p === 'me') setChoreAlert_(s);

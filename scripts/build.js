@@ -14,11 +14,11 @@ const web = f => fs.readFileSync(path.join(root, 'web', f), 'utf8');
 const index = web('index.html');
 const shell = index.split('<!--SHELL-->')[1].split('<!--/SHELL-->')[0].trim();
 const css = web('app.css');
-const words = web('words.js');
 const app = web('app.js');
 
 // ---- Google page ----
-for (const [name, src] of [['app.css', css], ['words.js', words], ['app.js', app]]) {
+// (No word list here to keep the page light: the server checks guesses.)
+for (const [name, src] of [['app.css', css], ['app.js', app]]) {
   if (src.includes('<?') || src.includes('</script') || src.includes('</style')) throw new Error(name + ' contains text that would break the Google page template');
 }
 const gas = `<!DOCTYPE html>
@@ -37,9 +37,6 @@ ${shell}
 window.LQ_KEY = <?!= JSON.stringify(key) ?>;
 window.LQ_BOOT = <?!= initialJson ?>;
 window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
-</script>
-<script>
-${words}
 </script>
 <script>
 ${app}

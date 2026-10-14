@@ -160,6 +160,6 @@ test('Sunday summary includes daily food averages, gym, weight and the week ahea
   assert.match(d, /Logged 3 of 7 days · protein hit on 2 · within calories on 2/);
   assert.match(d, /1 of 2 sessions done \(Wed Lower A\)/);
   assert.match(d, /83\.5 → 83\.1 kg \(-0\.4\)/);
-  assert.match(d, /CHORES\nYou: 2 jobs, 32 min · Partner: 1 jobs, 14 min/);
+  assert.match(d, /CHORES\nDean: 2 jobs, 32 min · Yaz: 1 job, 14 min/);
   assert.match(d, /Mon: weigh-in\nTue: Upper A\nWed: Lower A · weigh-in/);
 });

@@ -18,12 +18,27 @@ A Duolingo for your whole life, shared with your partner. Chores that keep the h
 **Tabs**
 - **Home**: a short morning brief from Claude, **Ask anything** (type how you feel or what you need; it can add shopping, chores and to-dos, park a worry or pick one job for you), your XP ring, streaks, **What should I do now?**, your routine, today's gym, today's chores, weight, water, and what your partner has done (high-five them or send a nudge).
 - **Chores**: **Today** shows today's jobs. Start one on a timer with steps; your partner can join. **Schedule** shows every chore under Every day, Weekly, Every 2 weeks and Monthly, each with a next date. Tap one to change its days or date, **Add a chore**, or **Spread the dates** to share everything out again (heavy jobs stay off gym days).
-- **Play**: three daily puzzles, the same for both of you, with live scores. **Word** (five letters, six guesses; you see your partner's colours but not their letters until you've both finished), **Numbers** (reach the target), **Recall** (remember the sequence). **Stats** shows your head-to-head record and word streak. You get a notification when your partner plays.
+- **Play**: four daily puzzles (Word, Numbers, Recall, Tempo), the same for both of you, with live scores. **Word** (five letters, six guesses; you see your partner's colours but not their letters until you've both finished), **Numbers** (reach the target), **Recall** (remember the sequence). **Stats** shows your head-to-head record and word streak. You get a notification when your partner plays.
 - **Train**: nSuns-style upper/lower. The main lift (9 sets) and second lift (8 sets) come from your training max, then accessories. Tick sets as you go and the rest timer starts itself. The heavy **1+** set sets next week's training max. Progress shows your history and PRs.
 - **Food**: calories and protein versus targets, one-tap foods, Claude quick-add, **Meal ideas** that fit what's left, undo.
 - **You** (the person icon, top right): level, this week's scores, shopping list, rewards, badges, and settings: Light, Dark or Match phone, notifications, installing, and the Claude key.
 
 Your partner's link opens the same app without Train and Food.
+
+**The fun parts**
+- **Yazzy & Deany**: nicknames and a team name throughout (Config tab). Your levels have names: a DJ career for Deany (Bedroom DJ, Warm-up set… Headliner), album eras for Yazzy (The College Dropout, Late Registration, Graduation…). Change them with **Your level titles** / **Partner level titles** (DJ, Ye or None).
+- **Daily intro**: the first time you open the app each day, a quick welcome with your streaks and today's challenges.
+- **Daily challenges**: three small goals each a day, +5 XP each; finish all three to open a +15 XP chest.
+- **Double XP**: a surprise half hour every day between noon and 9pm. You both get a notification when it starts.
+- **Reminders**: if your streak is at risk, a nudge at 7:30pm and a cheekier one at 9:30pm. Also when your partner pulls ahead, or has done the word and you haven't. Nothing after 10:30pm.
+- **Make something**: Make a beat, Mix practice, or Draw or paint on the timer, for XP.
+- **Us** (Home, private): one tap logs it, +20 XP each. Wink, ask "Tonight?" (one-tap Yes or Rain check), roll the dice for an idea, and earn private badges. Never in the feed or the weekly email.
+- **Stakes**: before either of you finishes the word, set what the loser owes the winner.
+- **Tempo** (Play): hear a beat, then keep it going on your own. Closest BPM wins.
+- **Wrapped** (You, and Home on Sundays and Mondays): your week as a story.
+- **Rave theme**: You, then Appearance, then Rave.
+- Switch any of these off in the Config tab: **Daily challenges**, **Double XP**, **Reminders**.
+
 
 ## What arrives by itself
 
