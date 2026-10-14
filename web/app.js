@@ -507,7 +507,7 @@
     else if (playView === 'target') h += targetView(G.target, n);
     else if (playView === 'recall') h += recallView(G.recall, n);
     else if (playView === 'tempo') h += tempoView(G.tempo, n);
-    else if (playView === 'mix') h += mixView(G.mix, n);
+    else if (playView === 'mix') h += setCard(G.set, n) + mixView(G.mix, n);
     else h += statsView(G.stats);
     el('tab-play').innerHTML = h;
   }
@@ -1702,6 +1702,25 @@
     }
     return h + '</section>';
   }
+  function setCard(set, n) {
+    var m = set && set.mine, o = set && set.other;
+    var line = function (x) { return x && x.tries ? '<b>' + esc(x.grade || '-') + '</b> ' + x.acc + '%' : '<span class="muted">not yet</span>'; };
+    return '<section class="card djset-card"><div class="between"><div><div class="eyebrow">The full game</div><h3 style="margin:2px 0 0">DJ Set</h3></div>' +
+      '<div class="right small">You ' + line(m) + '<br>' + esc(n.other) + ' ' + line(o) + '</div></div>' +
+      '<p class="small muted" style="margin:8px 0 10px">Guitar Hero for mixing: your own tracks or the stations, real transitions scored on timing, tempo, fader rides and bass swaps. Works with the keyboard, touch or your Hercules Inpulse 500.</p>' +
+      '<button class="btn primary wide" type="button" data-mix="set">' + icon('play', 's') + 'Open the decks</button></section>';
+  }
+  function openSet() {
+    if (!window.LQDJ || !M()) return toast('The DJ game isn\'t available here.', true);
+    if (M().now()) M().stop(true);
+    stopWeb(); stopOwn(); mixStop();
+    LQDJ.open({
+      otherName: names().other, toast: toast,
+      best: function () { var s = S.games && S.games.set; return s ? { mine: s.mine, other: s.other } : null; },
+      submit: function (r) { return rpc('submitSet', [r.acc, r.score, r.mixes, r.grade]).then(function (g) { S.games = g; renderPlay(); if (g.last && g.last.firstXp) refreshQuiet(); return g.last; }); },
+      onClose: function () { renderPlay(); }
+    });
+  }
   function pitchText() { return (mix.pitch > 0 ? '+' : '') + mix.pitch.toFixed(1) + '%'; }
   function rateB() { return 1 + mix.pitch / 100 + mix.nudge; }
   function bpmB() { return mix.bpmB0 * rateB(); }
@@ -1750,6 +1769,7 @@
   document.addEventListener('click', function (ev) {
     var t = ev.target.closest('[data-mix]');
     if (!t || !S) return;
+    if (t.dataset.mix === 'set') return openSet();
     if (t.dataset.mix === 'start') return mixStart();
     if (!mix) return;
     if (t.dataset.mix === 'lock') return mixLock();

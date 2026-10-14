@@ -270,3 +270,27 @@ test('Mix: replay as often as you like; doing nothing scores 0; XP once', () => 
   assert.strictEqual(s.mix.other.points, 10);
   assert.strictEqual(s.stats.them, 1);
 });
+
+test('DJ Set: grades and points; replayable, best score counts, XP once', () => {
+  const { g, me, partner } = ready();
+  assert.deepStrictEqual([96, 90, 75, 55, 40].map(a => g.ctx.setGrade(a)), ['S', 'A', 'B', 'C', 'D']);
+  assert.deepStrictEqual([g.ctx.setPoints(96, 3), g.ctx.setPoints(96, 2), g.ctx.setPoints(88, 4), g.ctx.setPoints(72, 2), g.ctx.setPoints(55, 3), g.ctx.setPoints(30, 5)], [10, 9, 8, 5, 4, 0]);
+  const xp = () => g.tab('XP log').rows().filter(r => r[2] === 'me' && r[5] === 'game').length;
+  let s = g.ctx.submitSet(me, 35, 1200, 3, 'D');
+  assert.strictEqual(s.set.mine.points, 0);
+  assert.strictEqual(xp(), 0, 'a train wreck earns nothing');
+  s = g.ctx.submitSet(me, 78, 9000, 3, 'B');
+  assert.strictEqual(s.last.firstXp, 11);
+  s = g.ctx.submitSet(me, 60, 4000, 3, 'C');
+  assert.strictEqual(s.set.mine.grade, 'B', 'best counts');
+  assert.strictEqual(s.set.mine.tries, 3);
+  s = g.ctx.submitSet(me, 97, 20000, 3, 'X');
+  assert.strictEqual(s.set.mine.grade, 'S', 'bad grade text is replaced');
+  assert.strictEqual(s.set.mine.points, 10);
+  assert.strictEqual(s.last.firstXp, 0);
+  assert.strictEqual(xp(), 1);
+  assert.throws(() => g.ctx.submitSet(partner, 150, 1, 3, 'S'), /didn't register/);
+  s = g.ctx.submitSet(partner, 90, 15000, 2, 'A');
+  assert.strictEqual(s.set.other.score, 20000);
+  assert.strictEqual(s.set.mine.grade, 'A');
+});

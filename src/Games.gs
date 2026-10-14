@@ -19,6 +19,7 @@ function gamesDay_(ymd) {
     { word: { me: null, partner: null }, target: { me: null, partner: null }, recall: { me: null, partner: null } };
   g.tempo = g.tempo || { me: null, partner: null };
   g.mix = g.mix || { me: null, partner: null };
+  g.set = g.set || { me: null, partner: null };
   g.stake = g.stake || null;
   return g;
 }
@@ -72,6 +73,7 @@ function gamesState_(who) {
     recall: { mine: g.recall[who], other: g.recall[other] },
     tempo: tempoState_(today, g.tempo[who], g.tempo[other]),
     mix: { puzzle: mixPuzzle(today), mine: g.mix[who], other: g.mix[other] ? { points: g.mix[other].points, scored: g.mix[other].scored, tries: g.mix[other].tries } : null },
+    set: { mine: g.set[who], other: g.set[other] ? { points: g.set[other].points, score: g.set[other].score, grade: g.set[other].grade, acc: g.set[other].acc, tries: g.set[other].tries } : null },
     stake: g.stake ? { text: g.stake.text, by: g.stake.by === who ? 'you' : 'them', result: stakeResult_(w[who], w[other]) } : null,
     stats: gameStats_(who)
   };
@@ -262,6 +264,22 @@ function submitTempo(key, bpm) {
       function (me) { return me.bpm + ' BPM (' + pz.bpm + ')'; }, 'Tempo', 'kept time in Tempo');
     var st = gamesState_(who);
     st.last = { points: pts, bpm: bpm, firstXp: res.first ? 5 + pts : 0 };
+    return st;
+  });
+}
+
+/** A DJ Set: accuracy (0-100), score, how many mixes and the grade, from the rhythm game. */
+function submitSet(key, acc, score, mixes, grade) {
+  var who = who_(key);
+  acc = Math.round(Number(acc) * 10) / 10; score = Math.round(Number(score)); mixes = Math.round(Number(mixes));
+  grade = /^(S|A|B|C|D)$/.test(String(grade)) ? String(grade) : setGrade(acc);
+  if (!(acc >= 0 && acc <= 100) || !(score >= 0 && score < 1e7) || !(mixes >= 1 && mixes <= 8)) throw new Error('That set didn\'t register. Try again.');
+  return withLock_(function () {
+    var pts = setPoints(acc, mixes);
+    var res = replayable_(who, 'set', pts, { acc: acc, score: score, mixes: mixes, grade: grade }, function (me) { return score > (me.score || 0); },
+      function (me) { return me.grade + ' ' + me.acc + '% (' + me.mixes + ' mixes, ' + me.score + ')'; }, 'DJ Set', 'played a DJ set');
+    var st = gamesState_(who);
+    st.last = { points: pts, acc: acc, score: score, grade: grade, firstXp: res.first ? 5 + pts : 0 };
     return st;
   });
 }
