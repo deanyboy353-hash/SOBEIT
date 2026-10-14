@@ -42,7 +42,8 @@
       if (e.kind === 'button') values[e.id] = e.down ? 1 : 0;
       if (e.kind === 'relative') spins[e.id] = (spins[e.id] || 0) + e.delta;
       if (!verified[e.id] && (e.kind !== 'button' || e.down)) { verified[e.id] = true; save('verified', verified); if (screen === 'test') drawChecklist(); }
-      echoLight(e);
+      if (screen === 'test') echoLight(e);
+      else if (window.BoothPlay) BoothPlay.control(e);
     }
     // Fine (LSB) halves of a 14-bit move aren't worth a log line each.
     if (!(e.bits === 14)) addLog(bytes, e);
@@ -95,6 +96,7 @@
     var action = keyFor[ev.key.toLowerCase()]; if (!action) return;
     ev.preventDefault();
     var id = action.replace(/[+-]$/, ''), dir = /\+$/.test(action) ? 1 : /-$/.test(action) ? -1 : 0, c = control(id) || {};
+    if (screen !== 'test' && window.BoothPlay) { if (!ev.repeat || dir) BoothPlay.key(id, dir, values[id]); return; }
     if (dir && (c.kind === 'fader' || c.kind === 'knob' || c.kind === 'center')) values[id] = Math.max(0, Math.min(1, (values[id] === undefined ? (c.kind === 'center' ? .5 : 0) : values[id]) + dir * .05));
     if (/nudge/.test(id)) { id = id.replace('nudge', 'jogEdge'); spins[id] = (spins[id] || 0) + dir * 8; }
     addLog([0, 0, 0].slice(0, 0), { id: id });
@@ -103,11 +105,16 @@
   });
 
   // ---------- routing ----------
-  var SCREENS = { menu: drawMenu, test: drawTest };
+  var SCREENS = { menu: drawMenu, test: drawTest }, NAV = [['menu', 'Menu'], ['free', 'Free mix'], ['library', 'Library'], ['test', 'Controller test'], ['settings', 'Sound settings']];
+  if (window.BoothPlay) {
+    BoothPlay.init({ conn: conn, dec: dec, map: MAP, values: values, toast: toast, el: el, esc: esc, load: load, save: save, screen: function () { return screen; } });
+    Object.keys(BoothPlay.screens).forEach(function (k) { SCREENS[k] = BoothPlay.screens[k]; });
+  }
   function go() {
     var h = (location.hash || '#menu').slice(1);
     screen = SCREENS[h] ? h : 'menu';
-    el('bnav').innerHTML = [['menu', 'Menu'], ['test', 'Controller test']].map(function (x) { return '<a href="#' + x[0] + '"' + (screen === x[0] ? ' aria-current="page"' : '') + '>' + x[1] + '</a>'; }).join('') + '<a href="index.html#play">Back to Nudge</a>';
+    if (window.BoothPlay) BoothPlay.leave(screen);
+    el('bnav').innerHTML = NAV.filter(function (x) { return SCREENS[x[0]]; }).map(function (x) { return '<a href="#' + x[0] + '"' + (screen === x[0] ? ' aria-current="page"' : '') + '>' + x[1] + '</a>'; }).join('') + '<a href="index.html#play">Back to Nudge</a>';
     SCREENS[screen]();
     window.scrollTo(0, 0);
   }
@@ -123,9 +130,9 @@
       ['', 'Manual beatmatching', 'Sync off. Match tempo with the pitch fader and phase with the jog wheel.', 'Phase 4'],
       ['', 'Ghost line', 'Follow a target fader and EQ curve as it scrolls with the music.', 'Phase 4'],
       ['', 'Set mode', 'Pick 3 or 4 tracks in order, get scored on the whole run.', 'Phase 4'],
-      ['', 'Free mix', 'No scoring. Just play.', 'Phase 2'],
+      ['free', 'Free mix', 'No scoring, just play. Two decks, your tracks, your Inpulse 500.', 'Ready', true],
       ['', 'Daily challenge', 'Same challenge for you and Yaz each day, head to head in Nudge.', 'Phase 5'],
-      ['', 'Library', 'Your tracks with BPM, key (Camelot), waveforms and what mixes well together.', 'Phase 2']
+      ['library', 'Library', 'Your tracks with BPM, key (Camelot), waveforms and what mixes well together. Fix beat grids here.', 'Ready', true]
     ];
     el('screen').innerHTML = '<h1>Afterhours: Booth</h1><p class="sub">Learn transitions and manual beatmatching on your Hercules DJControl Inpulse 500.</p>' +
       '<div class="modes">' + modes.map(function (m) {
