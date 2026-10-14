@@ -1955,7 +1955,7 @@
       h += '<div class="eyebrow k-' + c.kind + '-t">' + (c.status === 'active' ? 'In progress' : 'Now') + ' · ' + KIND_NAME[c.kind] + '</div>' +
         '<div class="wk-nowt">' + esc(c.task) + '</div>' +
         '<div class="small muted">' + hm(c.start) + '–' + hm(c.start + c.mins) + ' · ' + (left > 0 ? Math.ceil(left) + ' min left' : 'over time') + '</div>' +
-        '<div class="bar" style="margin:10px 0"><i style="width:' + Math.round(frac * 100) + '%"></i></div><div class="wk-btns">' +
+        '<div class="bar" style="margin:10px 0"><i style="width:' + Math.round(frac * 100) + '%"></i></div>' + (c.target ? wkCounter(c) : '') + '<div class="wk-btns">' +
         (c.status === 'planned' ? '<button class="btn primary" type="button" data-wk="start" data-id="' + c.id + '">' + icon('play', 's') + 'Start' + (ontime ? ' (+3 on time)' : '') + '</button>' : '') +
         '<button class="btn ' + (c.status === 'active' ? 'primary' : 'soft') + '" type="button" data-wk="done" data-id="' + c.id + '">' + icon('check', 's') + 'Done</button>' +
         '<button class="btn soft" type="button" data-wk="late" data-v="15">+15 min</button>' +
@@ -1971,6 +1971,12 @@
       h += '<div class="eyebrow">Work</div><div class="wk-nowt">Plan your day in blocks</div><div class="small muted">Give every hour a job. Start each block on time for bonus XP, clear them all for a clean sheet.</div>';
     }
     return h + '</section>';
+  }
+  function wkCounter(b) {
+    var pct = Math.min(100, Math.round(b.count / b.target * 100));
+    return '<div class="wk-count"><div class="wk-count-n"><b class="num">' + b.count + '</b><span>/ ' + b.target + ' ' + esc(b.unit) + '</span></div>' +
+      '<div class="bar wk-count-bar"><i style="width:' + pct + '%"></i></div>' +
+      '<div class="wk-count-btns">' + [[-1, '−1'], [1, '+1'], [5, '+5'], [10, '+10']].map(function (x) { return '<button class="btn ' + (x[0] > 0 ? 'soft' : 'line') + ' sm" type="button" data-wkc="' + x[0] + '" data-id="' + b.id + '">' + x[1] + '</button>'; }).join('') + '</div></div>';
   }
   function wkTimeline(w) {
     var P = ppm(), hrs = w.hours, from = hrs.start, to = hrs.end;
@@ -1997,7 +2003,8 @@
       var cls = 'wk-b k-' + b.kind + ' s-' + b.status + (cur && cur.id === b.id ? ' cur' : '') + (late ? ' late' : '') + (ht < 44 ? ' short' : '');
       h += '<div class="' + cls + '" data-blk="' + b.id + '" style="top:' + top + 'px;height:' + ht + 'px;left:calc(52px + (100% - 56px) * ' + (o.lane / o.n).toFixed(4) + ');width:calc((100% - 56px) / ' + o.n + ' - 4px)">' +
         '<div class="wk-bt">' + (b.status === 'done' ? icon('check', 's') : '') + esc(b.task) + '</div>' +
-        '<div class="wk-bm">' + hm(b.start) + '–' + hm(b.start + b.mins) + ' · ' + dur(b.mins) + (b.status === 'done' ? ' · +' + b.xp + ' XP' : b.status === 'skipped' ? ' · skipped' : '') + '</div>' +
+        '<div class="wk-bm">' + hm(b.start) + '–' + hm(b.start + b.mins) + ' · ' + dur(b.mins) + (b.target ? ' · ' + b.count + '/' + b.target : '') + (b.status === 'done' ? ' · +' + b.xp + ' XP' : b.status === 'skipped' ? ' · skipped' : '') + '</div>' +
+        (b.target ? '<i class="wk-bp" style="width:' + Math.min(100, Math.round(b.count / b.target * 100)) + '%"></i>' : '') +
         (b.status !== 'done' && b.status !== 'skipped' && w.today && b.start <= n + 15 ? '<button class="wk-tick" type="button" data-wk="done" data-id="' + b.id + '" aria-label="Done">' + icon('check', 's') + '</button>' : '') +
         (b.status !== 'done' ? '<div class="wk-rs" data-rs="' + b.id + '" aria-hidden="true"></div>' : '') + '</div>';
     });
@@ -2012,7 +2019,7 @@
     h += '<div class="wk-grid"><div class="wk-a">' + wkNowCard();
     h += '<section class="card"><form class="inline" id="wkForm" autocomplete="off"><input type="text" id="wkText" placeholder="Write the report 10-11:30, Emails 30m…" aria-label="Add a block"><button class="btn primary" type="submit">Add</button></form>' +
       '<div class="chips" style="margin-top:8px">' + ['Deep work 2h', 'Emails 30m', 'Standup 9:30 15m', 'Lunch 12:30-13:15'].map(function (x) { return '<button class="chip" type="button" data-wkex="' + esc(x) + '">' + esc(x) + '</button>'; }).join('') + '</div>' +
-      '<p class="tiny muted" style="margin:8px 0 0">Give it a time ("10-11:30", "at 3pm") and a length ("45m", "2h"), or leave the time off and it goes in the next free slot.</p></section></div>';
+      '<p class="tiny muted" style="margin:8px 0 0">Give it a time ("10-11:30", "at 3pm") and a length ("45m", "2h"), or a number to hit ("Queue 40 emails", "Edit 3 videos"). No time and it goes in the next free slot.</p></section>' + wkKitCard() + '</div>';
     h += '<section class="card wk-tlcard"><div class="between" style="margin-bottom:10px"><div class="seg" style="margin:0;flex:1">' + [['today', 'Today'], ['tomorrow', 'Tomorrow']].map(function (o) { return '<button type="button" data-wkday="' + o[0] + '" aria-pressed="' + (wkDay === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div></div>';
     if (wkDay !== 'today' && !wkOther) h += '<p class="empty">Loading…</p>';
     else h += (w.blocks.length ? '' : '<p class="small muted center" style="margin:0 0 8px">Nothing planned yet. Type above, tap an empty time, or ' + (wkDay === 'today' ? 'copy your last plan.' : 'plan tomorrow tonight.') + '</p>') + wkTimeline(w);
@@ -2022,6 +2029,7 @@
       '<div class="wk-stats"><div><b class="num">' + sw.done + '/' + sw.total + '</b><span>blocks</span></div><div><b class="num">' + dur(sw.doneMins) + '</b><span>done</span></div><div><b class="num">+' + sw.xp + '</b><span>XP from work</span></div></div>' +
       '<div class="bar" style="margin:10px 0 6px"><i style="width:' + (sw.total ? Math.round(sw.done / sw.total * 100) : 0) + '%"></i></div>' +
       '<p class="small" style="margin:0">' + (sw.clean ? '<b class="good">Clean sheet.</b> Every block done, +' + sw.cleanXp + ' XP banked.' : sw.total >= 3 ? 'Clean sheet: ' + (sw.total - sw.done) + ' more block' + (sw.total - sw.done === 1 ? '' : 's') + ' for <b>+' + sw.cleanXp + ' XP</b>.' : 'Plan at least 3 work blocks to play for a clean sheet (+' + sw.cleanXp + ' XP).') + '</p>' +
+      wkWeekLine(sw.week) +
       '<details class="wk-how"><summary class="small">How blocks pay</summary><ul class="small muted"><li>About 2 XP per 10 minutes (4 to 24). Deep work pays 1.5x, meetings half, a proper break 2.</li><li>+3 for starting within five minutes of its time.</li><li>+1 for each block already done today, up to +5.</li><li>Every work block done (3 or more): +' + sw.cleanXp + ' XP and your work streak goes up.</li><li>Every XP is cash for your empire too.</li></ul></details></section>';
     var unblocked = (S.deadlines || []).filter(function (d) { return !sw.blocks.some(function (b) { return b.task.toLowerCase() === d.task.toLowerCase(); }); });
     if (unblocked.length) h += '<section class="card"><div class="head"><h3>Deadlines without a block</h3></div>' + unblocked.slice(0, 5).map(function (d) {
@@ -2033,6 +2041,22 @@
       '<div class="grid2" style="margin-top:8px"><button class="btn soft" type="button" data-wk="copy">Copy last plan</button><button class="btn soft" type="button" data-wk="late" data-v="15">Running late +15</button></div>' +
       '<div class="divider"></div><div class="between wk-hours"><span class="small">Work day</span><span class="row" style="gap:6px;flex-wrap:wrap"><input type="time" id="wkHs" value="' + hm(sw.hours.start) + '" aria-label="Start"><span class="muted">to</span><input type="time" id="wkHe" value="' + hm(sw.hours.end) + '" aria-label="End"><button class="btn soft sm" type="button" data-wk="hours">Save</button></span></div></section></div>';
     sec.innerHTML = h + '</div>';
+  }
+  var wkKitEdit = false;
+  function wkWeekLine(wk) {
+    if (!wk) return '';
+    var bits = Object.keys(wk.units).sort(function (a, b) { return wk.units[b] - wk.units[a]; }).map(function (u) { return '<b>' + fmt(wk.units[u]) + '</b> ' + esc(u); });
+    var mins = Object.keys(wk.kinds).reduce(function (a, k) { return a + (k === 'break' ? 0 : wk.kinds[k]); }, 0);
+    if (mins) bits.push('<b>' + dur(mins) + '</b> of work blocks');
+    return bits.length ? '<p class="small" style="margin:8px 0 0">This week: ' + bits.join(' · ') + '</p>' : '';
+  }
+  function wkKitCard() {
+    var kit = S.work.kit || [];
+    var h = '<section class="card"><div class="head"><h3>Your job kit</h3><button class="btn line sm" type="button" data-wk="kitedit">' + (wkKitEdit ? 'Done' : 'Edit') + '</button></div>';
+    h += '<p class="tiny muted" style="margin:-4px 0 8px">' + (wkKitEdit ? 'Remove what you don\'t do, add what you do. Counts and times work: "Queue 40 emails", "Edit 2h".' : 'The things your job is made of. Tap one to drop it into your next free slot.') + '</p>';
+    h += '<div class="chips">' + kit.map(function (x, i) { return wkKitEdit ? '<button class="chip" type="button" data-wkkitdel="' + i + '">' + esc(x) + ' ' + icon('x', 's') + '</button>' : '<button class="chip lilac" type="button" data-wkkit="' + esc(x) + '">' + icon('plus', 's') + esc(x) + '</button>'; }).join('') + '</div>';
+    if (wkKitEdit) h += '<form class="inline" id="wkKitForm" autocomplete="off" style="margin-top:10px"><input type="text" id="wkKitText" placeholder="Edit 3 videos, Queue 40 emails…" aria-label="Add to your kit" maxlength="60"><button class="btn primary" type="submit">Add</button></form>';
+    return h + '</section>';
   }
   function blockSheet(id) {
     var w = W(), b = w.blocks.filter(function (x) { return x.id === id; })[0]; if (!b) return;
@@ -2075,6 +2099,9 @@
     if (ev.target.id === 'wkForm') {
       ev.preventDefault(); var v = el('wkText').value.trim(); if (!v) return toast('Type a block first, like "Emails 30m"');
       wkCall('addBlock', [v, wkDate()], function (res) { el('wkText') && (el('wkText').value = ''); var a = res.added; toast(a.task + ': ' + hm(a.start) + '–' + hm(a.start + a.mins) + (a.placed ? ' (next free slot)' : '')); });
+    } else if (ev.target.id === 'wkKitForm') {
+      ev.preventDefault(); var kv = el('wkKitText').value.trim(); if (!kv) return toast('Type something your job involves, like "Edit 2h"');
+      call('setPrefs', [{ workKit: (S.work.kit || []).concat([kv]) }], function (res) { apply(res, 'Added to your kit'); });
     } else if (ev.target.id === 'wkAtForm') {
       ev.preventDefault(); var t = el('wkAtText').value.trim(); if (!t) return toast('Type what the block is for');
       wkCall('addBlock', [t, wkDate(), +ev.target.dataset.min], function () { closeSheet(); });
@@ -2082,7 +2109,7 @@
   });
   document.addEventListener('click', function (ev) {
     if (!S) return;
-    var t = ev.target.closest('[data-wk], [data-wkday], [data-wkex], [data-wkdl], [data-bk], [data-bkmins], [data-bkkind]');
+    var t = ev.target.closest('[data-wk], [data-wkday], [data-wkex], [data-wkdl], [data-bk], [data-bkmins], [data-bkkind], [data-wkc], [data-wkkit], [data-wkkitdel]');
     if (!t) {
       var tl = ev.target.closest('#wkTl');
       if (tl && !ev.target.closest('.wk-b') && !wkDrag) {
@@ -2094,6 +2121,13 @@
     var d = t.dataset;
     if (d.wkday) { wkDay = d.wkday; if (wkDay !== 'today') { wkOther = null; rpc('workState', [wkDate()]).then(function (w) { wkOther = w; renderWork(); }, function (e) { toast(e.message, true); }); } return renderWork(); }
     if (d.wkex) { var i = el('wkText'); if (i) { i.value = d.wkex; i.focus(); } return; }
+    if (d.wkc) {
+      var cb = W().blocks.filter(function (x) { return x.id === d.id; })[0];
+      if (cb) { cb.count = Math.max(0, cb.count + +d.wkc); if (cb.status === 'planned') cb.status = 'active'; renderWork(); }
+      return wkCall('countBlock', [d.id, +d.wkc], function (res) { if (res.hit) { chime([659, 784, 1047]); confetti(!!res.clean); toast('Target hit. +' + res.xp + ' XP' + (res.clean ? '. Clean sheet! +' + res.clean : '')); } });
+    }
+    if (d.wkkit) return wkCall('addBlock', [d.wkkit, wkDate()], function (res) { var a = res.added; toast(a.task + ': ' + hm(a.start) + '–' + hm(a.start + a.mins)); });
+    if (d.wkkitdel !== undefined) { var kit = S.work.kit.slice(); kit.splice(+d.wkkitdel, 1); return call('setPrefs', [{ workKit: kit }], function (res) { apply(res); }); }
     if (d.wkdl) return wkCall('addBlock', [d.wkdl + ' 30m', ''], function (res) { toast('Blocked ' + hm(res.added.start) + '–' + hm(res.added.start + 30) + ' for ' + res.added.task); });
     if (d.bkmins) { bkEdit.mins = +d.bkmins; document.querySelectorAll('[data-bkmins]').forEach(function (b) { b.setAttribute('aria-pressed', b === t); b.classList.toggle('lilac', b === t); }); return; }
     if (d.bkkind) { bkEdit.kind = d.bkkind; document.querySelectorAll('[data-bkkind]').forEach(function (b) { b.setAttribute('aria-pressed', b === t); }); return; }
@@ -2106,6 +2140,7 @@
     if (a === 'done') return wkDone(d.id);
     if (a === 'start') return wkCall('blockAction', [d.id, 'start'], function () { closeSheet(); toast('Go. Phone face down.'); chime([523, 784]); });
     if (a === 'skip' || a === 'reopen' || a === 'delete') return wkCall('blockAction', [d.id, a], function () { closeSheet(); toast(a === 'skip' ? 'Skipped' : a === 'reopen' ? 'Back on the plan' : 'Deleted'); });
+    if (a === 'kitedit') { wkKitEdit = !wkKitEdit; return renderWork(); }
     if (a === 'late') return wkCall('shiftBlocks', [+d.v], function (res) { toast(res.moved ? 'Pushed the rest of your day back ' + d.v + ' minutes' : 'Nothing left to move today'); });
     if (a === 'copy') return wkCall('copyPlan', [wkDate()], function (res) { toast(res.added ? 'Copied ' + res.added + ' block' + (res.added === 1 ? '' : 's') : 'Already there'); });
     if (a === 'plan') { var v = (el('wkPlan') || {}).value || ''; if (!v.trim()) return toast('Add one task per line first'); return wkCall('planDay', [v, wkDate()], function (res) { el('wkPlan').value = ''; toast('Planned ' + res.added + ' block' + (res.added === 1 ? '' : 's')); }); }

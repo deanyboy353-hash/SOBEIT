@@ -30,7 +30,7 @@ function rpcTable_() {
     healthDay: healthDay, healthInsight: healthInsight, importHealth: importHealth, setPrefs: setPrefs,
     addDeadline: addDeadline, deadlineAction: deadlineAction, buyItem: buyItem, upgradeItem: upgradeItem, sellItem: sellItem, setFavourite: setFavourite, saveWeekPlan: saveWeekPlan, submitMix: submitMix, submitSet: submitSet,
     workState: workState, addBlock: addBlock, planDay: planDay, updateBlock: updateBlock, blockAction: blockAction, shiftBlocks: shiftBlocks, copyPlan: copyPlan,
-    buyWear: buyWear, setLook3d: setLook3d, testPush: testPush
+    buyWear: buyWear, setLook3d: setLook3d, testPush: testPush, countBlock: countBlock
   };
 }
 

@@ -18,7 +18,7 @@ const mine = g => g.state.pushes.filter(p => p.token === 'me-phone-token-0123456
 
 test('parseBlock: everyday ways of writing a block', () => {
   const { g } = ready();
-  const p = t => { const r = plain(g.ctx.parseBlock(t)); delete r.tomorrow; return r; };
+  const p = t => { const r = plain(g.ctx.parseBlock(t)); delete r.tomorrow; if (!r.target) { delete r.target; delete r.unit; } return r; };
   assert.deepStrictEqual(p('Write the report 10-11:30'), { task: 'Write the report', start: 600, mins: 90, kind: 'focus' });
   assert.deepStrictEqual(p('Emails 30m'), { task: 'Emails', start: null, mins: 30, kind: 'admin' });
   assert.deepStrictEqual(p('Call Sam at 3pm for 45 min'), { task: 'Call Sam', start: 900, mins: 45, kind: 'meet' });
@@ -29,6 +29,10 @@ test('parseBlock: everyday ways of writing a block', () => {
   assert.deepStrictEqual(p('Budget 9am 1h30'), { task: 'Budget', start: 540, mins: 90, kind: 'focus' });
   assert.deepStrictEqual(p('Lunch 12:30-13:15'), { task: 'Lunch', start: 750, mins: 45, kind: 'break' });
   assert.strictEqual(g.ctx.parseBlock('Standup tomorrow 9:30').tomorrow, true);
+  assert.deepStrictEqual(p('Queue 40 emails'), { task: 'Queue 40 emails', start: null, mins: 60, kind: 'admin', target: 40, unit: 'emails' });
+  assert.deepStrictEqual(p('Edit 3 videos'), { task: 'Edit 3 videos', start: null, mins: 135, kind: 'focus', target: 3, unit: 'videos' });
+  assert.deepStrictEqual(p('Edit 2h'), { task: 'Edit', start: null, mins: 120, kind: 'focus' });
+  assert.deepStrictEqual(p('Reply to 25 messages 10-11'), { task: 'Reply to 25 messages', start: 600, mins: 60, kind: 'admin', target: 25, unit: 'messages' });
   assert.strictEqual(g.ctx.parseBlock(''), null);
   assert.strictEqual(g.ctx.placeBlock([{ start: 600, mins: 60 }, { start: 690, mins: 30 }], 45, 540), 540);
   assert.strictEqual(g.ctx.placeBlock([{ start: 600, mins: 60 }, { start: 690, mins: 30 }], 45, 580), 720, 'skips past both');
@@ -189,4 +193,34 @@ test('Push: the test goes to your own phone; a rejected message keeps the phone;
   assert.strictEqual(r.status.devices, 2);
   assert.ok(!r.status.phones.some(p => p.label === 'Old phone'));
   assert.strictEqual(g.ctx.appState(partner).push.devices, 1);
+});
+
+test('Work: counted blocks ("Queue 40 emails"): progress, hitting the target pays, partial pay, weekly totals, job kit', () => {
+  const { g, me } = ready();
+  let r = g.ctx.addBlock(me, 'Queue 40 emails 9-10');
+  const id = r.added.id;
+  r = g.ctx.countBlock(me, id, 10);
+  let b = r.work.blocks.find(x => x.id === id);
+  assert.deepStrictEqual([b.count, b.target, b.unit, b.status], [10, 40, 'emails', 'active']);
+  r = g.ctx.countBlock(me, id, -15);
+  assert.strictEqual(r.work.blocks.find(x => x.id === id).count, 0, 'never below zero');
+  r = g.ctx.countBlock(me, id, 25); r = g.ctx.countBlock(me, id, 15);
+  assert.strictEqual(r.hit, true, 'hitting 40 ticks it off');
+  assert.ok(r.xp >= 6);
+  assert.strictEqual(r.work.blocks.find(x => x.id === id).status, 'done');
+  assert.strictEqual(g.ctx.countBlock(me, id, 5).xp, 0, 'paid once');
+  // stopping early pays a share
+  r = g.ctx.addBlock(me, 'Edit 4 videos 10-12');
+  const v = r.added.id;
+  g.ctx.countBlock(me, v, 1);
+  r = g.ctx.blockAction(me, v, 'done');
+  assert.strictEqual(r.part, 0.25);
+  assert.throws(() => g.ctx.countBlock(me, r.work.blocks.find(x => x.task === 'Edit 4 videos').id, 1e6), /didn't count/);
+  r = g.ctx.addBlock(me, 'Deep work 1h');
+  assert.throws(() => g.ctx.countBlock(me, r.added.id, 1), /no count/);
+  const w = g.ctx.workState(me);
+  assert.deepStrictEqual(plain(w.week.units), { emails: 40, videos: 1 });
+  assert.ok(w.kit.includes('Queue 40 emails'));
+  g.ctx.setPrefs(me, { workKit: ['Edit 2h', '  ', 'Queue 60 emails'] });
+  assert.deepStrictEqual(plain(g.ctx.workState(me).kit), ['Edit 2h', 'Queue 60 emails']);
 });

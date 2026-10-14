@@ -49,7 +49,7 @@ var HEADERS = {
   health: ['Date', 'Who', 'Steps', 'Distance (km)', 'Active kcal', 'Resting HR', 'HRV (ms)', 'SpO2 (%)', 'Breathing (rpm)', 'Sleep (min)', 'Deep (min)',
     'Light (min)', 'REM (min)', 'Awake (min)', 'Sleep score', 'Readiness', 'Bedtime', 'Wake', 'Updated', 'Detail'],
   deadlines: ['Date', 'ID', 'Who', 'Task', 'Due', 'Due (ms)', 'Status', 'Nags', 'Last nag (ms)', 'Finished', 'XP'],
-  blocks: ['Date', 'ID', 'Who', 'Task', 'Kind', 'Start (min)', 'Mins', 'Status', 'Started (ms)', 'Done (ms)', 'XP', 'Pings'],
+  blocks: ['Date', 'ID', 'Who', 'Task', 'Kind', 'Start (min)', 'Mins', 'Status', 'Started (ms)', 'Done (ms)', 'XP', 'Pings', 'Target', 'Count', 'Unit'],
   cash: ['Date', 'Time', 'Who', 'What', 'Amount', 'Kind'],
   inbox: ['Received at', 'Source', 'Body'],
   log: ['Time', 'Level', 'Message']

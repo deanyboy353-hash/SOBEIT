@@ -393,6 +393,7 @@ function setPrefs(key, p) {
     if (p.accent !== undefined) cur.accent = ['', 'pink', 'green', 'teal', 'orange', 'blue'].indexOf(p.accent) !== -1 ? p.accent : '';
     if (p.text !== undefined) cur.text = p.text === 'large' ? 'large' : 'normal';
     if (p.nag !== undefined) cur.nag = NAG_LEVELS[p.nag] ? p.nag : '';
+    if (Array.isArray(p.workKit)) cur.workKit = p.workKit.map(function (x) { return String(x || '').trim().slice(0, 60); }).filter(Boolean).slice(0, 12);
     if (p.workStart !== undefined || p.workEnd !== undefined) {
       var ws = Math.round(Number(p.workStart !== undefined ? p.workStart : workHours_(who).start)), we = Math.round(Number(p.workEnd !== undefined ? p.workEnd : workHours_(who).end));
       if (!(ws >= 0 && we <= 1440 && we - ws >= 60)) throw new Error('Your work day needs to be at least an hour long.');

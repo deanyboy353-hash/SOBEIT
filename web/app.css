@@ -831,3 +831,10 @@ body.dress-open { overflow: hidden; }
 .pushwarn .i { color: var(--pink); flex: none; margin-top: 2px; }
 .pushinfo { display: flex; flex-direction: column; gap: 3px; margin: -4px 0 12px; line-height: 1.45; }
 .pushinfo .bad, .pushwarn .bad { color: var(--warn); }
+.wk-count { background: var(--raised); border-radius: 14px; padding: 10px 12px; margin: 0 0 10px; }
+.wk-count-n { display: flex; align-items: baseline; gap: 6px; }
+.wk-count-n b { font-size: 30px; line-height: 1; }
+.wk-count-n span { color: var(--muted); font-size: 14px; }
+.wk-count-bar { margin: 8px 0; }
+.wk-count-btns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.wk-bp { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--k); border-radius: 0 3px 3px 0; }

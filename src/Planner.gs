@@ -619,11 +619,16 @@ function setPoints(acc, mixes) {
 
 var BLOCK_KINDS = { focus: 'Deep work', admin: 'Admin', meet: 'Meeting', learn: 'Learning', break: 'Break' };
 
+/** Rough minutes per item, to size a block like "Queue 40 emails" when no time is given. */
+var UNIT_MINS = { emails: 1.5, email: 1.5, messages: 2, dms: 2, replies: 2, posts: 10, post: 10, videos: 45, video: 45, clips: 10, reels: 20, thumbnails: 15, edits: 20,
+  calls: 15, tickets: 8, pages: 20, articles: 45, invoices: 5, leads: 3, tasks: 10, items: 5, orders: 4, reviews: 10, designs: 30, photos: 3, images: 3, slides: 6, words: 0.03 };
+
 /** What kind of block a task sounds like. */
 function guessBlockKind(task) {
   var t = ' ' + String(task || '').toLowerCase() + ' ';
   if (/\b(lunch|break|walk|coffee|tea|stretch|nap|rest|gym)\b/.test(t)) return 'break';
   if (/\b(meeting|meet|call|calls|standup|stand-up|sync|1:1|one to one|interview|catch ?up|zoom|teams|huddle)\b/.test(t)) return 'meet';
+  if (/\b(queue|schedule)\b/.test(t) && /\b(emails?|posts?|messages?)\b/.test(t)) return 'admin';
   if (/\b(email|emails|inbox|admin|invoice|invoices|expenses|slack|messages|paperwork|timesheet|booking|bills?)\b/.test(t)) return 'admin';
   if (/\b(learn|learning|course|study|read|reading|tutorial|training|practice)\b/.test(t)) return 'learn';
   return 'focus';
@@ -655,27 +660,30 @@ function parseBlock(text) {
     if (start !== null && end !== null) { if (end <= start) end += 12 * 60; if (end - start <= 12 * 60) { mins = end - start; t = t.replace(m[0], ' '); } else { start = null; end = null; } }
     else { start = null; end = null; }
   }
-  if (mins === null) {
-    m = t.match(/\s(?:for\s+)?(\d+(?:\.\d+)?)\s*(?:h|hr|hrs|hour|hours)(?:\s*(\d{1,2})\s*(?:m|min|mins|minutes)?)?(?=\s)/i);
-    if (m) { mins = Math.round(Number(m[1]) * 60) + Number(m[2] || 0); t = t.replace(m[0], ' '); }
-    else {
-      m = t.match(/\s(?:for\s+)?(\d{1,3})\s*(?:m|min|mins|minute|minutes)(?=\s)/i);
-      if (m) { mins = Number(m[1]); t = t.replace(m[0], ' '); }
-    }
+  // a length ("2h", "45 min"): used unless a range already set it, and always taken out of the name
+  m = t.match(/\s(?:for\s+)?(\d+(?:\.\d+)?)\s*(?:h|hr|hrs|hour|hours)(?:\s*(\d{1,2})\s*(?:m|min|mins|minutes)?)?(?=\s)/i);
+  if (m) { if (mins === null) mins = Math.round(Number(m[1]) * 60) + Number(m[2] || 0); t = t.replace(m[0], ' '); }
+  else {
+    m = t.match(/\s(?:for\s+)?(\d{1,3})\s*(?:m|min|mins|minute|minutes)(?=\s)/i);
+    if (m) { if (mins === null) mins = Number(m[1]); t = t.replace(m[0], ' '); }
   }
   if (start === null) {
     m = t.match(new RegExp('\\s(?:at|@|from)\\s+' + CL + '(?=\\s)', 'i')) || t.match(/\s(\d{1,2})[:.](\d{2})\s*(am|pm)?(?=\s)/i) || t.match(/\s(\d{1,2})()\s*(am|pm)(?=\s)/i);
     if (m) { var st = toMin(m[1], m[2], m[3]); if (st !== null) { start = st; t = t.replace(m[0], ' '); } }
   }
+  var target = 0, unit = '';
+  m = t.match(new RegExp('\\s(\\d{1,4})\\s+(' + Object.keys(UNIT_MINS).join('|') + ')(?=\\s)', 'i'));
+  if (m && Number(m[1]) > 0) { target = Number(m[1]); unit = m[2].toLowerCase(); }
   var task = t.replace(/\s(for|at|from|on|@|,|-)\s*$/i, ' ').replace(/^\s*(-|,)\s*/, '').replace(/\s+/g, ' ').trim();
   task = task.replace(/\s(for|at|from)$/i, '').trim();
   if (!task) task = 'Focus block';
   task = task.charAt(0).toUpperCase() + task.slice(1);
   var kind = guessBlockKind(task);
+  if (mins === null && target) { var per = UNIT_MINS[unit] || UNIT_MINS[unit.replace(/s$/, '')] || 3; mins = Math.max(15, Math.min(240, Math.round(target * per / 5) * 5)); }
   if (mins === null) mins = kind === 'focus' || kind === 'learn' ? 60 : 30;
   mins = Math.max(5, Math.min(600, mins));
   if (start !== null) start = Math.max(0, Math.min(1435, start));
-  return { task: task.slice(0, 100), start: start, mins: mins, kind: kind, tomorrow: tomorrow };
+  return { task: task.slice(0, 100), start: start, mins: mins, kind: kind, tomorrow: tomorrow, target: Math.min(target, 9999), unit: unit };
 }
 
 /** First free start (minutes) for a block of `mins`, not before `from`, around the blocks already there. */

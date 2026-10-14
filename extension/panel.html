@@ -5,8 +5,10 @@
 <title>Life Quest</title>
 <style>
   html, body { margin: 0; height: 100%; font: 15px system-ui, sans-serif; background: #fbf8fb; color: #1f1a24; }
-  #root { height: 100%; display: flex; flex-direction: column; }
-  iframe { border: 0; width: 100%; flex: 1; min-height: 0; display: block; }
+  #root { height: 100%; }
+  iframe { border: 0; position: fixed; left: 0; right: 0; bottom: 0; top: 34px; width: 100%; height: calc(100vh - 34px); display: block; }
+  .top { position: fixed; top: 0; left: 0; right: 0; height: 34px; box-sizing: border-box; align-items: center; }
+  .top .v { margin-right: auto; color: #a596b8; font-size: 11px; }
   .top { flex: none; display: flex; justify-content: flex-end; gap: 8px; padding: 4px 8px; background: #120d18; }
   .top button { width: auto; padding: 4px 10px; font-size: 12px; border-radius: 8px; background: rgba(255,255,255,.12); }
   .setup { padding: 22px; }

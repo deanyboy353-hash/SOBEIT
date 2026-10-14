@@ -1,14 +1,18 @@
 /* Life Quest for Chrome: menu, badge and desktop nags. */
+chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false }).catch(function () {});   // clicking the icon opens the full website
 importScripts('config.js', 'shared.js');
 
 chrome.runtime.onInstalled.addListener(function () {
-  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(function () {});
+  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false }).catch(function () {});
   chrome.contextMenus.removeAll(function () {
     chrome.contextMenus.create({ id: 'deadline', title: 'Life Quest: add "%s" as a deadline', contexts: ['selection'] });
     chrome.contextMenus.create({ id: 'block', title: 'Life Quest: time-block "%s"', contexts: ['selection'] });
     chrome.contextMenus.create({ id: 'shop', title: 'Life Quest: add "%s" to shopping', contexts: ['selection'] });
     chrome.contextMenus.create({ id: 'park', title: 'Life Quest: save "%s" for later', contexts: ['selection'] });
     chrome.contextMenus.create({ id: 'page', title: 'Life Quest: add this page as a deadline', contexts: ['page'] });
+    chrome.contextMenus.create({ id: 'panel', title: 'Open in the side panel', contexts: ['action'] });
+    chrome.contextMenus.create({ id: 'go-work', title: 'Open Work', contexts: ['action'] });
+    chrome.contextMenus.create({ id: 'go-djset', title: 'Open DJ Set', contexts: ['action'] });
   });
   chrome.alarms.create('check', { periodInMinutes: 1 });
   LQ.get().then(function (k) { if (!k) chrome.runtime.openOptionsPage(); });
@@ -21,7 +25,23 @@ function note(title, message) {
 function ask(text) {
   chrome.windows.create({ url: 'deadline.html?text=' + encodeURIComponent(text.slice(0, 140)), type: 'popup', width: 420, height: 340 });
 }
+// The icon opens the full website in a tab (or switches to it if it's already open).
+function openSite(hash) {
+  LQ.get().then(function (key) {
+    if (!key) return chrome.runtime.openOptionsPage();
+    var base = self.LQ_EXT.app, url = base + '?key=' + encodeURIComponent(key) + '#' + (hash || 'home');
+    chrome.tabs.query({ url: base + '*' }, function (tabs) {
+      var t = tabs && tabs[0];
+      if (t) { chrome.tabs.update(t.id, hash ? { active: true, url: url } : { active: true }); chrome.windows.update(t.windowId, { focused: true }); }
+      else chrome.tabs.create({ url: url });
+    });
+  });
+}
+chrome.action.onClicked.addListener(function () { openSite(''); });
 chrome.contextMenus.onClicked.addListener(function (info, tab) {
+  if (info.menuItemId === 'panel') { chrome.sidePanel.open({ windowId: tab ? tab.windowId : chrome.windows.WINDOW_ID_CURRENT }).catch(function () { chrome.windows.getLastFocused(function (w) { chrome.sidePanel.open({ windowId: w.id }); }); }); return; }
+  if (info.menuItemId === 'go-work') return openSite('work');
+  if (info.menuItemId === 'go-djset') return openSite('djset');
   var text = (info.selectionText || '').trim();
   if (info.menuItemId === 'page') return ask((tab && tab.title ? tab.title : 'This page') + ' ');
   if (!text) return;
@@ -71,6 +91,4 @@ chrome.notifications.onButtonClicked.addListener(function (id, i) {
     delete nagged[dl]; check();
   }, function (e) { note('Couldn\'t do that', e.message); });
 });
-chrome.notifications.onClicked.addListener(function () {
-  chrome.windows.getLastFocused(function (w) { if (w) chrome.sidePanel.open({ windowId: w.id }).catch(function () {}); });
-});
+chrome.notifications.onClicked.addListener(function () { openSite('home'); });

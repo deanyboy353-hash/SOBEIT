@@ -22,7 +22,8 @@ function blockRows_(who, ymd) {
     .filter(function (r) { return r['Who'] === who && r['Status'] !== 'deleted'; })
     .map(function (r) {
       return { id: String(r['ID']), task: String(r['Task']), kind: BLOCK_KINDS[r['Kind']] ? String(r['Kind']) : 'focus', start: Number(r['Start (min)']) || 0, mins: Number(r['Mins']) || 30,
-        status: String(r['Status'] || 'planned'), startedAt: Number(r['Started (ms)']) || 0, doneAt: Number(r['Done (ms)']) || 0, xp: Number(r['XP']) || 0, pings: Number(r['Pings']) || 0 };
+        status: String(r['Status'] || 'planned'), startedAt: Number(r['Started (ms)']) || 0, doneAt: Number(r['Done (ms)']) || 0, xp: Number(r['XP']) || 0, pings: Number(r['Pings']) || 0,
+        target: Number(r['Target']) || 0, count: Number(r['Count']) || 0, unit: String(r['Unit'] || '') };
     })
     .sort(function (a, b) { return a.start - b.start || (a.id < b.id ? -1 : 1); });
 }
@@ -51,14 +52,30 @@ function workState_(who, ymd) {
   return {
     date: ymd, today: ymd === todayYmd_(), blocks: b, hours: workHours_(who), kinds: BLOCK_KINDS,
     planned: sum(work), doneMins: sum(done), done: done.length, total: work.length,
-    clean: cleanDays_(who).indexOf(ymd) !== -1, cleanXp: CLEAN_SHEET_XP, xp: b.reduce(function (s, x) { return s + x.xp; }, 0), streak: workStreak_(who)
+    clean: cleanDays_(who).indexOf(ymd) !== -1, cleanXp: CLEAN_SHEET_XP, xp: b.reduce(function (s, x) { return s + x.xp; }, 0), streak: workStreak_(who),
+    week: workWeek_(who), kit: workKit_(who)
   };
 }
 
+var WORK_KIT_DEFAULT = ['Queue 40 emails', 'Edit 2h', 'Inbox zero 30m', 'Calls 45m', 'Plan tomorrow 15m'];
+function workKit_(who) { var k = prefs_(who).workKit; return Array.isArray(k) ? k : WORK_KIT_DEFAULT.slice(); }
+
+/** The last 7 days: how many of each thing (emails, videos...) and how long on each kind of work. */
+function workWeek_(who) {
+  var today = todayYmd_(), units = {}, kinds = {}, blocks = 0;
+  rowsBetween_('blocks', addDays_(today, -6), today).forEach(function (r) {
+    if (r['Who'] !== who || r['Status'] === 'deleted' || r['Status'] === 'skipped') return;
+    var c = Number(r['Count']) || 0, u = String(r['Unit'] || '');
+    if (u && c) units[u] = (units[u] || 0) + c;
+    if (r['Status'] === 'done') { kinds[r['Kind']] = (kinds[r['Kind']] || 0) + (Number(r['Mins']) || 0); blocks++; }
+  });
+  return { units: units, kinds: kinds, blocks: blocks };
+}
+
 function addBlock_(who, ymd, p) {
-  if (!('ID' in headerMap_('blocks'))) ensureTab_('blocks');   // first block ever: set up the Work blocks tab now
+  if (!('Target' in headerMap_('blocks'))) ensureTab_('blocks');   // first block ever: set up the Work blocks tab now
   var id = Utilities.getUuid().replace(/-/g, '').slice(0, 10);
-  appendRow_('blocks', { 'Date': ymd, 'ID': id, 'Who': who, 'Task': p.task, 'Kind': p.kind, 'Start (min)': p.start, 'Mins': p.mins, 'Status': 'planned', 'Started (ms)': '', 'Done (ms)': '', 'XP': '', 'Pings': 0 });
+  appendRow_('blocks', { 'Date': ymd, 'ID': id, 'Who': who, 'Task': p.task, 'Kind': p.kind, 'Start (min)': p.start, 'Mins': p.mins, 'Status': 'planned', 'Started (ms)': '', 'Done (ms)': '', 'XP': '', 'Pings': 0, 'Target': p.target || '', 'Count': p.target ? 0 : '', 'Unit': p.unit || '' });
   return id;
 }
 
@@ -147,6 +164,38 @@ function updateBlock(key, id, ch) {
   });
 }
 
+function finishBlock_(who, r, b, ymd) {
+  var now = new Date().getTime(), startMs = atTime_(ymd, b.start).getTime(), onTime = !!b.startedAt && Math.abs(b.startedAt - startMs) <= 5 * 60000;
+  var combo = blockRows_(who, ymd).filter(function (x) { return x.status === 'done' && x.kind !== 'break'; }).length;
+  var xp = blockXp(b.kind, b.mins, onTime, combo), part = b.target ? Math.max(0.25, Math.min(1, b.count / b.target)) : 1;
+  if (b.target && b.count > b.target) xp += 3;                       // went past the target
+  xp = Math.max(1, Math.round(xp * part));
+  addXp_(who, (b.kind === 'break' ? 'Took a break: ' : 'Work block: ') + b.task + (b.target ? ' (' + b.count + '/' + b.target + ' ' + b.unit + ')' : '') + (onTime ? ' (on time)' : ''), xp, 'work');
+  updateRow_('blocks', r, { 'Status': 'done', 'Done (ms)': now, 'XP': xp, 'Started (ms)': b.startedAt || now });
+  return { xp: xp, onTime: onTime, combo: Math.min(5, combo), clean: checkCleanSheet_(who, ymd), part: part };
+}
+
+/** Progress on a counted block ("Queue 40 emails"): +1, +5, -1... Hitting the target ticks it off. */
+function countBlock(key, id, delta) {
+  var who = who_(key);
+  delta = Math.round(Number(delta));
+  if (!delta || Math.abs(delta) > 500) throw new Error('That didn\'t count.');
+  return withLock_(function () {
+    var r = blockRow_(id), row = r ? readRow_('blocks', r) : null;
+    if (!row || row['Who'] !== who || row['Status'] === 'deleted') throw new Error('That block has gone.');
+    var ymd = String(row['Date']), b = blockRows_(who, ymd).filter(function (x) { return x.id === id; })[0];
+    if (!b.target) throw new Error('That block has no count.');
+    if (b.status === 'done') return workResult_(who, ymd, { xp: 0, count: b.count });
+    var was = b.count;
+    b.count = Math.max(0, Math.min(b.target * 3, b.count + delta));
+    var up = { 'Count': b.count };
+    if (b.status === 'planned' || b.status === 'skipped') { up['Status'] = 'active'; if (!b.startedAt) up['Started (ms)'] = new Date().getTime(); b.startedAt = b.startedAt || up['Started (ms)']; }
+    updateRow_('blocks', r, up);
+    if (was < b.target && b.count >= b.target) return workResult_(who, ymd, Object.assign({ hit: true, count: b.count }, finishBlock_(who, r, b, ymd)));
+    return workResult_(who, ymd, { xp: 0, count: b.count });
+  });
+}
+
 /** start, done, skip, delete or reopen. */
 function blockAction(key, id, action) {
   var who = who_(key);
@@ -154,18 +203,12 @@ function blockAction(key, id, action) {
   return withLock_(function () {
     var r = blockRow_(id), row = r ? readRow_('blocks', r) : null;
     if (!row || row['Who'] !== who || row['Status'] === 'deleted') throw new Error('That block has gone.');
-    var ymd = String(row['Date']), b = blockRows_(who, ymd).filter(function (x) { return x.id === id; })[0], now = new Date().getTime(), xp = 0, bonus = 0;
+    var ymd = String(row['Date']), b = blockRows_(who, ymd).filter(function (x) { return x.id === id; })[0], now = new Date().getTime();
     if (action === 'start') {
       if (b.status === 'planned' || b.status === 'skipped') updateRow_('blocks', r, { 'Status': 'active', 'Started (ms)': now });
     } else if (action === 'done') {
       if (b.status === 'done') return workResult_(who, ymd, { xp: 0 });
-      var startMs = atTime_(ymd, b.start).getTime(), onTime = !!b.startedAt && Math.abs(b.startedAt - startMs) <= 5 * 60000;
-      var combo = blockRows_(who, ymd).filter(function (x) { return x.status === 'done' && x.kind !== 'break'; }).length;
-      xp = blockXp(b.kind, b.mins, onTime, combo);
-      addXp_(who, (b.kind === 'break' ? 'Took a break: ' : 'Work block: ') + b.task + (onTime ? ' (on time)' : ''), xp, 'work');
-      updateRow_('blocks', r, { 'Status': 'done', 'Done (ms)': now, 'XP': xp, 'Started (ms)': b.startedAt || now });
-      bonus = checkCleanSheet_(who, ymd);
-      return workResult_(who, ymd, { xp: xp, onTime: onTime, combo: Math.min(5, combo), clean: bonus });
+      return workResult_(who, ymd, finishBlock_(who, r, b, ymd));
     } else if (action === 'skip') {
       if (b.status !== 'done') updateRow_('blocks', r, { 'Status': 'skipped' });
     } else if (action === 'reopen') {
@@ -205,7 +248,7 @@ function copyPlan(key, ymd) {
     var n = 0;
     src.forEach(function (b) {
       if (b.status === 'skipped' || have.some(function (x) { return x.task === b.task && x.start === b.start; })) return;
-      addBlock_(who, day, { task: b.task, kind: b.kind, start: b.start, mins: b.mins }); n++;
+      addBlock_(who, day, { task: b.task, kind: b.kind, start: b.start, mins: b.mins, target: b.target, unit: b.unit }); n++;
     });
     return workResult_(who, day, { added: n });
   });
