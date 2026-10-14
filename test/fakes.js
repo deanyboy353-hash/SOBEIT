@@ -38,6 +38,11 @@ const Utilities = {
     return new RealDate(guess);
   },
   getUuid: () => 'uuid-' + Math.random().toString(16).slice(2, 14),
+  newBlob: (data, type) => { const buf = Buffer.isBuffer(data) ? data : typeof data === 'string' ? Buffer.from(data, 'utf8') : Buffer.from(Uint8Array.from(data)); return { getBytes: () => Array.from(buf), getDataAsString: () => buf.toString('utf8'), _buf: buf }; },
+  gzip: blob => { const z = require('zlib').gzipSync(blob._buf); return { getBytes: () => Array.from(z), _buf: z }; },
+  ungzip: blob => { const u = require('zlib').gunzipSync(blob._buf); return { getBytes: () => Array.from(u), getDataAsString: () => u.toString('utf8'), _buf: u }; },
+  base64Encode: x => Buffer.from(Uint8Array.from(x)).toString('base64'),
+  base64Decode: s => Array.from(Buffer.from(s, 'base64')),
   base64EncodeWebSafe: x => Buffer.from(typeof x === 'string' ? x : Uint8Array.from(x)).toString('base64').replace(/\+/g, '-').replace(/\//g, '_'),
   computeRsaSha256Signature: (text, key) => Array.from(Buffer.from('sig:' + text.length))
 };
@@ -63,8 +68,10 @@ class FakeRange {
       this.sheet.data[ri] = this.sheet.data[ri] || [];
       this.sheet.data[ri][this.c - 1 + j] = typeof v === 'string' && v[0] === "'" ? v.slice(1) : v; // like Sheets: ' forces text
     }));
+    if (this.sheet.ss && this.sheet.ss.onEdit) this.sheet.ss.onEdit({ range: this });   // a hand edit fires onEdit (script writes don't)
     return this;
   }
+  getSheet() { return this.sheet; }
   setValue(v) { return this.setValues([[v]]); }
   setNumberFormat() { return this; }
   clearContent() { return this.setValues(Array.from({ length: this.nr }, () => Array(this.nc).fill(''))); }
@@ -98,7 +105,7 @@ class FakeSpreadsheet {
   constructor() { this.sheets = [new FakeSheet('Sheet1')]; }
   getId() { return 'sheet-id'; }
   getSheetByName(n) { return this.sheets.find(s => s.name === n) || null; }
-  insertSheet(n) { const s = new FakeSheet(n); this.sheets.push(s); return s; }
+  insertSheet(n) { const s = new FakeSheet(n); s.ss = this; this.sheets.push(s); return s; }
   getSheets() { return this.sheets; }
   deleteSheet(s) { this.sheets = this.sheets.filter(x => x !== s); }
   setSpreadsheetTimeZone() {}
@@ -184,7 +191,9 @@ function loadProject(opts = {}) {
     },
     CacheService: { getScriptCache: () => ({
       get: k => (k in state.cache ? state.cache[k] : null),
+      getAll: ks => { const o = {}; ks.forEach(k => { if (k in state.cache) o[k] = state.cache[k]; }); return o; },
       put: (k, v) => { if (v.length > 100000) throw new Error('Argument too large'); state.cache[k] = v; },
+      putAll: o => { Object.keys(o).forEach(k => { if (String(o[k]).length > 100000) throw new Error('Argument too large'); }); Object.assign(state.cache, o); },
       removeAll: ks => ks.forEach(k => { delete state.cache[k]; })
     }) },
     LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock() {} }) },
@@ -258,6 +267,9 @@ function loadProject(opts = {}) {
       try { return f.apply(this, arguments); } finally { depth--; }
     };
   });
+  // Hand edits (a test writing straight into a tab) fire the onEdit simple trigger, like the real Sheet.
+  ss.sheets.forEach(s => { s.ss = ss; });
+  ss.onEdit = e => { if (depth === 0 && ctx.onEdit) ctx.onEdit(e); };
   return { ctx, state, ss, calendar, tasks, tab: name => ss.getSheetByName(name) };
 }
 

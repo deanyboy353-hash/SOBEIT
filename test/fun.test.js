@@ -224,7 +224,9 @@ test('speed: the app\'s refresh is served from cache until something changes', (
   const { g, me, partner } = ready();
   const first = g.ctx.appState(me);
   assert.ok(g.state.cache.STATE_me);
-  g.state.cache.STATE_me = g.state.cache.STATE_me.replace('"nick":"Deany"', '"nick":"Cached"');
+  // put a marked copy in the cache: the next refresh must come from it, not the Sheet
+  const marked = JSON.parse(JSON.stringify(first)); marked.fun.nick = 'Cached';
+  g.ctx.putCachedState_(g.ctx.CacheService.getScriptCache(), 'me', marked);
   assert.strictEqual(g.ctx.appState(me).fun.nick, 'Cached');
   g.ctx.addShopping(partner, 'Milk'); // any change by either of you clears it
   assert.strictEqual(g.state.cache.STATE_me, undefined);

@@ -68,7 +68,7 @@ var ss_ = null, sheets_ = {}, vals = {}, props_ = null, configCache_ = null, cho
 
 /** Forget everything read so far (start of a run, or after taking the lock). */
 function resetRun_() {
-  sheets_ = {}; vals = {}; props_ = null; configCache_ = null; choresCache_ = null; xpCache_ = null;
+  sheets_ = {}; vals = {}; props_ = null; configCache_ = null; choresCache_ = null; xpCache_ = null; tabVers_ = null; dirtyTabs_ = {};
 }
 
 function prop_(k) {
@@ -114,13 +114,117 @@ function sheet_(key) {
   var ss = db_();
   var sh = ss.getSheetByName(TABS[key]);
   if (!sh) sh = ss.insertSheet(TABS[key]);
-  return (sheets_[key] = sh);
+  return (sheets_[key] = watchWrites_(sh, key));
 }
 
-/** Every value on a tab (row 1 = headers), read once per run. */
+/** Every value on a tab (row 1 = headers): from this run's memory, then the shared tab cache, then the Sheet. */
 function vals_(key) {
-  if (!vals[key]) vals[key] = sheet_(key).getDataRange().getValues();
+  if (vals[key]) return vals[key];
+  var hit = tabCacheGet_(key);
+  if (hit) return (vals[key] = hit);
+  var ver = tabVersion_(key);
+  vals[key] = sheet_(key).getDataRange().getValues();
+  tabCachePut_(key, ver, vals[key]);
   return vals[key];
+}
+
+// ---------- shared tab cache ----------
+// Reading a tab from Google is the slow part of every tap (there are ~24). Each tab's values are
+// kept compressed in the script cache under a version. ANY write to a tab (through sheet_) gives it
+// a new version at once, so a stale copy can never be served. Tabs you edit by hand in the Sheet
+// also expire quickly (and onEdit bumps them). If anything goes wrong the cache switches itself off.
+var TAB_TTL = 600, TAB_TTL_HAND = 90, TAB_PART = 90000;
+var HAND_EDITED = { config: 1, sessions: 1, chores: 1, rewards: 1, routines: 1, presets: 1, lifts: 1, programme: 1 };
+var WRITE_METHODS = { setValue: 1, setValues: 1, setFormula: 1, setFormulas: 1, setRichTextValue: 1, setRichTextValues: 1, appendRow: 1, deleteRow: 1, deleteRows: 1, insertRowAfter: 1, insertRowBefore: 1, insertRowsAfter: 1, insertRowsBefore: 1, insertRows: 1, deleteColumn: 1, deleteColumns: 1, insertColumnAfter: 1, insertColumnBefore: 1, insertColumnsAfter: 1, insertColumnsBefore: 1, clear: 1, clearContent: 1, clearContents: 1, sort: 1, moveTo: 1, copyTo: 1, randomize: 1, trimWhitespace: 1, removeDuplicates: 1, insertCheckboxes: 1, check: 1, uncheck: 1 };
+var tabVers_ = null, tabOff_ = false, dirtyTabs_ = {}, tabTokN_ = 0;
+// version labels: time + a counter (writes happen under the script lock, so they can't collide)
+function tabToken_() { return new Date().getTime().toString(36) + '.' + (++tabTokN_).toString(36); }
+function tabCacheOn_() { if (tabOff_ || prop_('TABCACHE_OFF')) return null; try { return CacheService.getScriptCache(); } catch (e) { tabOff_ = true; return null; } }
+function tabVersion_(key) {
+  var c = tabCacheOn_(); if (!c) return '';
+  if (!tabVers_) { try { var ks = Object.keys(TABS).map(function (k) { return 'TV:' + k; }), got = c.getAll(ks); tabVers_ = {}; Object.keys(TABS).forEach(function (k) { tabVers_[k] = got['TV:' + k] || ''; }); } catch (e) { tabOff_ = true; return ''; } }
+  if (!tabVers_[key]) { tabVers_[key] = tabToken_(); try { c.put('TV:' + key, tabVers_[key], 21600); } catch (e) { tabOff_ = true; } }
+  return tabVers_[key];
+}
+/** A tab changed: forget it here and give it a new version everywhere. */
+function bumpTab_(key) {
+  forget_(key); dirtyTabs_[key] = true;
+  var c = tabCacheOn_(); if (!c) return;
+  if (!tabVers_) tabVersion_(key);
+  tabVers_[key] = tabToken_();
+  try { c.put('TV:' + key, tabVers_[key], 21600); } catch (e) { tabOff_ = true; }
+}
+function packVals_(rows) {
+  var json = JSON.stringify(rows.map(function (r) { return r.map(function (v) { return v instanceof Date ? { $d: v.getTime() } : v; }); }));
+  return Utilities.base64Encode(Utilities.gzip(Utilities.newBlob(json, 'application/json')).getBytes());
+}
+function unpackVals_(s) {
+  var rows = JSON.parse(Utilities.ungzip(Utilities.newBlob(Utilities.base64Decode(s), 'application/x-gzip')).getDataAsString());
+  return rows.map(function (r) { return r.map(function (v) { return v && typeof v === 'object' && '$d' in v ? new Date(v.$d) : v; }); });
+}
+function tabCachePut_(key, ver, rows) {
+  var c = tabCacheOn_(); if (!c || !ver || dirtyTabs_[key] || ver !== tabVersion_(key)) return;
+  try {
+    var packed = packVals_(rows), parts = [], o = {};
+    for (var i = 0; i < packed.length; i += TAB_PART) parts.push(packed.slice(i, i + TAB_PART));
+    if (parts.length > 20) return;
+    parts.forEach(function (p, k) { o['T:' + key + ':' + ver + ':' + k] = p; });
+    o['T:' + key + ':' + ver] = String(parts.length);
+    c.putAll(o, HAND_EDITED[key] ? TAB_TTL_HAND : TAB_TTL);
+  } catch (e) { /* too big or the cache is busy: just read the Sheet next time */ }
+}
+function tabCacheGet_(key) {
+  var c = tabCacheOn_(); if (!c || dirtyTabs_[key]) return null;
+  try {
+    var ver = tabVersion_(key), n = Number(c.get('T:' + key + ':' + ver)); if (!n) return null;
+    var keys = []; for (var i = 0; i < n; i++) keys.push('T:' + key + ':' + ver + ':' + i);
+    var got = c.getAll(keys), s = '';
+    for (i = 0; i < n; i++) { if (got[keys[i]] == null) return null; s += got[keys[i]]; }
+    return unpackVals_(s);
+  } catch (e) { return null; }
+}
+/** Fetch many tabs from the cache in 3 round trips (versions, sizes, parts) instead of one Sheet read each. */
+function prefetchTabs_(keys) {
+  var c = tabCacheOn_(); if (!c) return;
+  try {
+    keys = keys.filter(function (k) { return !vals[k] && !dirtyTabs_[k]; });
+    var vers = {}; keys.forEach(function (k) { vers[k] = tabVersion_(k); });
+    var metaKeys = keys.map(function (k) { return 'T:' + k + ':' + vers[k]; }), metas = c.getAll(metaKeys), partKeys = [];
+    keys.forEach(function (k) { var n = Number(metas['T:' + k + ':' + vers[k]]); for (var i = 0; i < n; i++) partKeys.push('T:' + k + ':' + vers[k] + ':' + i); });
+    var parts = partKeys.length ? c.getAll(partKeys) : {};
+    keys.forEach(function (k) {
+      var n = Number(metas['T:' + k + ':' + vers[k]]), s = ''; if (!n) return;
+      for (var i = 0; i < n; i++) { var p = parts['T:' + k + ':' + vers[k] + ':' + i]; if (p == null) return; s += p; }
+      try { vals[k] = unpackVals_(s); } catch (e) {}
+    });
+  } catch (e) {}
+}
+/** Wrap a sheet so every write through it retires that tab's cached copy. Falls back to the plain sheet. */
+function watchWrites_(sh, key) {
+  if (typeof Proxy === 'undefined') { tabOff_ = true; return sh; }
+  var raw = typeof WeakMap !== 'undefined' ? watchWrites_.raw || (watchWrites_.raw = new WeakMap()) : null;
+  function unwrap(x) { return raw && x && typeof x === 'object' && raw.has(x) ? raw.get(x) : x; }
+  function wrap(obj) {
+    if (!obj || typeof obj !== 'object') return obj;
+    var p = new Proxy(obj, { get: function (t, name) {
+      var v = t[name];
+      if (typeof v !== 'function') return v;
+      return function () {
+        var args = Array.prototype.map.call(arguments, unwrap), out = v.apply(t, args);
+        if (WRITE_METHODS[name]) bumpTab_(key);
+        if (out === t) return p;                                                   // chained calls (setNumberFormat(...).setValues(...)) stay watched
+        return /^(getRange|getDataRange|getRangeList|offset|getCell|getRanges|getSheet)$/.test(String(name)) ? (Array.isArray(out) ? out.map(wrap) : wrap(out)) : out;
+      };
+    } });
+    if (raw) raw.set(p, obj);
+    return p;
+  }
+  // self-check on Google's side: a wrapped sheet must answer and hand back a wrapped range, or we use the plain sheet and no cache
+  try { var w = wrap(sh); if (w.getName() !== sh.getName()) throw new Error('proxy'); var rg = w.getRange(1, 1); if (!rg || typeof rg.getValues !== 'function') throw new Error('proxy'); return w; } catch (e) { tabOff_ = true; return sh; }
+}
+/** Hand edits in the Sheet (simple trigger): retire that tab's cached copy too. */
+function onEdit(e) {
+  try { var name = e && e.range && e.range.getSheet().getName(); Object.keys(TABS).forEach(function (k) { if (TABS[k] === name) bumpTab_(k); }); } catch (x) {}
 }
 
 /** Create the tab if needed and make sure its header row is complete. */

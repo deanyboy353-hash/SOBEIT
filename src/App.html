@@ -2620,9 +2620,11 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
       spot.visible = looks.length === 1;
       frameCam();
     }
+    var lastW = 0, lastH = 0;
     function frameCam() {
-      var w = host.clientWidth || 300, h = host.clientHeight || 300;
-      r.setSize(w, h, false); el.style.width = w + 'px'; el.style.height = h + 'px';
+      var w = host.clientWidth, h = host.clientHeight;
+      if (!w || !h) { if (lastW) return; w = 300; h = 300; }        // hidden (another tab is showing): don't resize, it's slow
+      if (w !== lastW || h !== lastH) { r.setSize(w, h, false); el.style.width = w + 'px'; el.style.height = h + 'px'; lastW = w; lastH = h; }
       cam.aspect = w / h;
       // fit 2.3 m of height (tall wigs and crowns) and both figures' width
       var tan = Math.tan(cam.fov * Math.PI / 360), halfW = figs.length > 1 ? 1.15 : 0.62, dist = Math.max(1.2 / tan, halfW / (tan * cam.aspect)) + 0.5;

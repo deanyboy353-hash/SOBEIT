@@ -102,6 +102,7 @@ function doGet(e) {
 }
 
 function appState_(who) {
+  prefetchTabs_(Object.keys(TABS).filter(function (k) { return k !== 'inbox' && k !== 'log'; }));
   var brief = JSON.parse(prop_('BRIEF_' + who) || 'null');
   var s = {
     who: who, now: new Date().getTime(), names: names_(), game: gameState_(who), quests: questsState_(who), chores: choresState_(who),
@@ -128,20 +129,41 @@ function appState_(who) {
 
 /**
  * Everything for the app at once (used to refresh after coming back to it).
- * Kept for a minute in the script cache: any change by either of you clears
- * it (withLock_), so the app's background refreshes are near-instant.
+ * Kept for 5 minutes in the script cache, compressed (the full state is too big
+ * for one cache entry, which silently made every refresh slow). Any change by
+ * either of you clears it (withLock_), so refreshes are near-instant and never stale.
  */
+var STATE_TTL = 300, STATE_PART = 90000;
 function appState(key) {
   var who = who_(key);
-  var cache = stateCache_(), hit = cache && cache.get('STATE_' + who);
-  if (hit) {
-    var s = JSON.parse(hit);
-    s.now = new Date().getTime();
-    return s;
-  }
+  var cache = stateCache_(), hit = cache && getCachedState_(cache, who);
+  if (hit) { hit.now = new Date().getTime(); return hit; }
   var state = withLock_(function () { if (!prop_('TRANSPORT_V1')) { try { ensureTransport_(); } catch (e) { log_('WARN', 'Transport setup: ' + e); } } if (!prop_('PRESETS_V1')) { try { ensurePresets_(); } catch (e) { log_('WARN', 'Presets: ' + e); } } return appState_(who); });
-  if (cache) { try { cache.put('STATE_' + who, JSON.stringify(state), 60); } catch (e) { /* too big to cache: fine */ } }
+  if (cache) putCachedState_(cache, who, state);
   return state;
+}
+
+function putCachedState_(cache, who, state) {
+  try {
+    var json = JSON.stringify(state), packed;
+    try { packed = 'Z' + Utilities.base64Encode(Utilities.gzip(Utilities.newBlob(json, 'application/json')).getBytes()); } catch (e) { packed = 'J' + json; }
+    var parts = []; for (var i = 0; i < packed.length; i += STATE_PART) parts.push(packed.slice(i, i + STATE_PART));
+    if (parts.length > 10) return;
+    var o = {}; parts.forEach(function (p, k) { o['STATE_' + who + '_' + k] = p; });
+    o['STATE_' + who] = String(parts.length);
+    cache.putAll(o, STATE_TTL);
+  } catch (e) { log_('WARN', 'State cache: ' + e); }
+}
+
+function getCachedState_(cache, who) {
+  try {
+    var n = Number(cache.get('STATE_' + who)); if (!n) return null;
+    var keys = []; for (var i = 0; i < n; i++) keys.push('STATE_' + who + '_' + i);
+    var got = cache.getAll(keys), packed = '';
+    for (i = 0; i < n; i++) { if (got[keys[i]] === undefined || got[keys[i]] === null) return null; packed += got[keys[i]]; }
+    var json = packed.charAt(0) === 'Z' ? Utilities.ungzip(Utilities.newBlob(Utilities.base64Decode(packed.slice(1)), 'application/x-gzip')).getDataAsString() : packed.slice(1);
+    return JSON.parse(json);
+  } catch (e) { return null; }
 }
 
 function stateCache_() {

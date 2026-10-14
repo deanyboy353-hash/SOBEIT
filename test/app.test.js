@@ -212,3 +212,54 @@ test('built Google page has no emojis and no leftover template tags', () => {
   assert.doesNotMatch(html, /<\?/);
   assert.doesNotMatch(html, /\p{Extended_Pictographic}/u);
 });
+
+test('App state cache: the full state is compressed into the cache, refreshes come from it, and any change clears it', () => {
+  const { loadProject } = require('./fakes');
+  const g = loadProject({ now: new Date('2026-10-14T08:00:00Z') });
+  g.ctx.setup();
+  const me = g.state.props.WEBAPP_KEY;
+  // make the state big, like a real month of use (over the 100 KB a single cache entry can hold)
+  for (let i = 0; i < 60; i++) g.ctx.saveWorkout(me, 'Upper A', [{ exercise: 'Bench press ' + i, tier: 'Acc', set: 1, weight: 50 + i, reps: 8, target: '8-12' }]);
+  const first = JSON.parse(JSON.stringify(g.ctx.appState(me)));
+  const n = Number(g.state.cache.STATE_me);
+  assert.ok(n >= 1, 'state was cached');
+  assert.ok(String(g.state.cache.STATE_me_0).startsWith('Z'), 'compressed');
+  let sheetReads = 0; const R = Object.getPrototypeOf(g.ctx.sheet_('xp').getRange(1, 1, 1, 1)), gv = R.getValues; R.getValues = function () { sheetReads++; return gv.apply(this, arguments); };
+  const again = JSON.parse(JSON.stringify(g.ctx.appState(me)));
+  assert.strictEqual(sheetReads, 0, 'a refresh reads nothing from the Sheet');
+  delete again.now; delete first.now;
+  assert.deepStrictEqual(again, first);
+  g.ctx.addWater(me, 1);
+  assert.ok(!g.state.cache.STATE_me, 'a change clears the cache');
+  R.getValues = gv;
+});
+
+test('Tab cache: a day of actions gives exactly the same results with and without it, and reads far less', () => {
+  const { loadProject } = require('./fakes');
+  function run(cacheOn) {
+    const g = loadProject({ now: new Date('2026-10-14T07:00:00Z') });
+    // the same "random" choices in both runs (chore schedule, ids), so only the cache can make them differ
+    let seed = 42; g.ctx.Math.random = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    let n = 0; const U = g.ctx.Utilities, realUuid = U.getUuid; U.getUuid = () => 'id-' + (++n).toString(16).padStart(8, '0') + '-0000';
+    g.ctx.setup(); g.ctx.dailyRun();
+    if (!cacheOn) g.state.props.TABCACHE_OFF = '1';
+    const me = g.state.props.WEBAPP_KEY, partner = g.state.props.PARTNER_KEY, C = g.ctx;
+    let reads = 0; const R = Object.getPrototypeOf(C.sheet_('xp').getRange(1, 1, 1, 1)), gv = R.getValues; R.getValues = function () { reads++; return gv.apply(this, arguments); };
+    const snaps = [], strip = s => { s = JSON.parse(JSON.stringify(s)); delete s.now; return s; };
+    const steps = [
+      () => C.appState(me), () => C.addWater(me, 1), () => C.appState(partner), () => C.addShopping(partner, 'Oat milk'),
+      () => C.quickAddFood ? C.appState(me) : C.appState(me),
+      () => C.saveWorkout(me, 'Upper A', [{ exercise: 'Bench press', tier: 'T1', set: 1, weight: 80, reps: 6, target: '5' }]),
+      () => C.questDone(partner, C.appState(partner).quests.board.filter(q => q.who !== 'me')[0].name),
+      () => C.addDeadline(me, 'Send the invoice by 4pm'), () => C.saveRoutine(me, 'Morning', { name: 'Morning', time: '08:00', steps: ['Water', 'Meds'] }),
+      () => C.routineStep(me, 'Morning', 0), () => C.setPrefs(me, { waterGoal: 9 }), () => C.appState(me), () => C.appState(partner)
+    ];
+    steps.forEach(f => { const out = f(); snaps.push(strip(out && out.state ? out.state : out)); });
+    R.getValues = gv; U.getUuid = realUuid;
+    return { snaps, reads };
+  }
+  const off = run(false), on = run(true);
+  on.snaps.forEach((s, i) => assert.deepStrictEqual(s, off.snaps[i], 'step ' + i + ' differs with the cache on'));
+  console.log('Sheet reads over the day: ' + off.reads + ' without the tab cache, ' + on.reads + ' with it');
+  assert.ok(on.reads < off.reads / 2, 'reads with cache ' + on.reads + ' vs without ' + off.reads);
+});
