@@ -845,7 +845,7 @@
     setTimeout(function () { if (!tempo) return; tempo.phase = 'tap'; tempoMsg('Now you: keep it going. Tap 8 times.'); }, 250 + 8 * iv * 1000 - iv * 500);
   }
   function tempoTap() {
-    if (!tempo || tempo.phase !== 'tap') return;
+    if (!tempo || tempo.phase !== 'tap') { if (!tempo) toast('Tap Play the beat first'); else if (tempo.phase === 'listen') toast('Listen first, then keep it going'); return; }
     pulse(); buzz(10);
     tempo.taps.push(performance.now());
     var left = 9 - tempo.taps.length;
@@ -910,6 +910,7 @@
     if (!story) return;
     story.i = Math.max(0, Math.min(story.slides.length - 1, i));
     var s = story.slides[story.i];
+    if (!el('story')) { clearTimeout(story.timer); story = null; return; }
     el('story').className = 'story g' + s[0];
     el('storyBars').innerHTML = story.slides.map(function (x, j) { return '<i class="' + (j < story.i ? 'done' : j === story.i ? 'on' : '') + '"></i>'; }).join('');
     el('storyBody').innerHTML = '<div class="slide">' + s[1] + '</div>';
@@ -1418,7 +1419,7 @@
   document.addEventListener('submit', function (ev) {
     if (ev.target.id !== 'dlForm' || !S) return;
     var v = el('dlText').value.trim();
-    if (!v) return;
+    if (!v) { toast('Type a job with a time, like "Send the invoice by 3pm"'); el('dlText').focus(); return; }
     call('addDeadline', [v], function (r) { el('dlText').value = ''; apply(r.state, r.added.task + ': due ' + (r.added.inMin < 60 ? 'in ' + r.added.inMin + ' min' : 'at ' + r.added.dueText.slice(-5) + (r.added.inMin > 1440 - 60 * new Date(now()).getHours() ? ' tomorrow' : '')) + '. I\'ll keep reminding you.'); });
   });
   document.addEventListener('click', function (ev) {
@@ -1786,7 +1787,7 @@
     if (ds.num) { target.expr += (target.expr && /\d$/.test(target.expr) ? ' ' : '') + ds.num; return renderPlay(); }
     if (ds.op) { target.expr += ' ' + ds.op + ' '; target.expr = target.expr.replace(/\s+/g, ' ').replace(/\( /g, '(').replace(/ \)/g, ')'); return renderPlay(); }
     if (t.id === 'tClear') { target.expr = ''; return renderPlay(); }
-    if (t.id === 'tCheck') { if (!target.expr.trim()) return; return call('submitTarget', [target.expr, false], function (g) { var before = S.games.target.mine; S.games = g; renderPlay(); var m = g.target.mine; toast(m && m.final ? 'Bang on. Locked in.' : 'Best so far: ' + m.best + ' (' + Math.abs(m.best - g.target.target) + ' away)'); if (m && m.final) { confetti(true); refreshQuiet(); } }); }
+    if (t.id === 'tCheck') { if (!target.expr.trim()) { toast('Tap some numbers and signs first'); return; } return call('submitTarget', [target.expr, false], function (g) { var before = S.games.target.mine; S.games = g; renderPlay(); var m = g.target.mine; toast(m && m.final ? 'Bang on. Locked in.' : 'Best so far: ' + m.best + ' (' + Math.abs(m.best - g.target.target) + ' away)'); if (m && m.final) { confetti(true); refreshQuiet(); } }); }
     if (t.id === 'tLock') return call('submitTarget', ['', true], function (g) { S.games = g; renderPlay(); toast('Locked in.'); refreshQuiet(); });
     if (t.id === 'recallStart') { recallGame = { on: true, seq: [], pos: 0, input: false, msg: '' }; return recallRound(); }
     if (ds.pad !== undefined && recallGame && recallGame.on && recallGame.input) {
@@ -1800,6 +1801,7 @@
       if (g2.pos >= g2.seq.length) { g2.input = false; g2.msg = 'Nice. Next round…'; var m2 = el('recallMsg'); if (m2) m2.textContent = g2.msg; setTimeout(recallRound, 700); }
       return;
     }
+    if (ds.pad !== undefined && !(recallGame && recallGame.on && recallGame.input)) { toast(recallGame && recallGame.on ? 'Watch first, then copy it' : 'Tap Start, then copy the pattern'); return; }
     // train
     if (ds.tsel) { tsel = ds.tsel; save('tsel-' + S.today.date, tsel); return renderTrain(); }
     if (ds.setsession !== undefined) {
@@ -1885,20 +1887,20 @@
     ev.preventDefault();
     var f = ev.target;
     if (busy || !S) return;
-    if (f.id === 'custom') { var tx = el('customText').value.trim(); if (!tx) return; toast(S.hasClaudeKey ? 'Working out how long that takes…' : 'Set the time, then start.'); return call('planChore', [tx], function (p) { plan = p; renderAll(); }); }
-    if (f.id === 'park') { var v = el('parkText').value.trim(); if (!v) return; var task = mySession().task; return call('parkThing', [v], function (res) { parking = false; apply(res, 'Saved for later. Back to ' + task + '.'); }); }
-    if (f.id === 'weighForm') { var wv = el('weighText').value.trim(); if (!wv) return; return call('logWeightNow', [wv], function (t) { S.today = t; addXpLocal(10); renderAll(); toast('Logged ' + t.lastWeight.kg + ' kg'); refreshQuiet(); }); }
-    if (f.id === 'shopForm') { var it = el('shopText').value.trim(); if (!it) return; el('shopText').value = ''; return call('addShopping', [it], function (res) { apply(res, 'Added'); }); }
+    if (f.id === 'custom') { var tx = el('customText').value.trim(); if (!tx) { toast('Type the job first'); return; } toast(S.hasClaudeKey ? 'Working out how long that takes…' : 'Set the time, then start.'); return call('planChore', [tx], function (p) { plan = p; renderAll(); }); }
+    if (f.id === 'park') { var v = el('parkText').value.trim(); if (!v) { toast('Type what popped into your head'); return; } var task = mySession().task; return call('parkThing', [v], function (res) { parking = false; apply(res, 'Saved for later. Back to ' + task + '.'); }); }
+    if (f.id === 'weighForm') { var wv = el('weighText').value.trim(); if (!wv) { toast('Type your weight first, like 82.4'); el('weighText').focus(); return; } return call('logWeightNow', [wv], function (t) { S.today = t; addXpLocal(10); renderAll(); toast('Logged ' + t.lastWeight.kg + ' kg'); refreshQuiet(); }); }
+    if (f.id === 'shopForm') { var it = el('shopText').value.trim(); if (!it) { toast('Type what you need first'); el('shopText').focus(); return; } el('shopText').value = ''; return call('addShopping', [it], function (res) { apply(res, 'Added'); }); }
     if (f.dataset.tm) { var ins = f.querySelectorAll('input'); return call('setTrainingMax', [f.dataset.tm, +ins[0].value, +ins[1].value], function (t) { S.train = t; renderTrain(); toast('Training max set.'); }); }
     if (f.id === 'quick') {
-      var text = el('quickText').value.trim(); if (!text) return;
+      var text = el('quickText').value.trim(); if (!text) { toast('Type what you ate, like "2 eggs on toast"'); return; }
       el('quickBtn').disabled = true; el('quickNote').textContent = 'Working it out…';
       return call('quickAdd', [text], function (res) { el('quickText').value = ''; S.food = res.state; renderFood(); toast('Logged ' + itemsText(res.added)); }, function () { renderFood(); });
     }
-    if (f.id === 'keyForm') { var val = el('keyText').value.trim(); if (!val) return; return call('saveClaudeKey', [val], function (s) { el('keyText').value = ''; S.food = s; S.hasClaudeKey = true; renderAll(); toast('Claude key saved.'); }); }
-    if (f.id === 'nudgeForm') { var nt = el('nudgeText').value.trim(); if (!nt) return; return call('sendNudge', [nt], function (r) { closeSheet(); toast(r.delivered ? 'Sent' : 'Couldn\'t reach them right now'); }); }
+    if (f.id === 'keyForm') { var val = el('keyText').value.trim(); if (!val) { toast('Paste your Claude key first'); return; } return call('saveClaudeKey', [val], function (s) { el('keyText').value = ''; S.food = s; S.hasClaudeKey = true; renderAll(); toast('Claude key saved.'); }); }
+    if (f.id === 'nudgeForm') { var nt = el('nudgeText').value.trim(); if (!nt) { toast('Type a message, or tap one above'); return; } return call('sendNudge', [nt], function (r) { closeSheet(); toast(r.delivered ? 'Sent' : 'Couldn\'t reach them right now'); }); }
     if (f.id === 'askForm') {
-      var q = el('askText').value.trim(); if (!q) return;
+      var q = el('askText').value.trim(); if (!q) { toast('Type something to ask'); return; }
       chat.push({ r: 'me', t: q }); chat.push({ r: 'ai', t: '…' }); askSheet();
       return call('ask', [q], function (res) {
         chat.pop(); chat.push({ r: 'ai', t: res.reply });
