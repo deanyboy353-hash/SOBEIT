@@ -4296,9 +4296,14 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     var hash = location.hash.replace('#', '');
     showTab(['home', 'chores', 'play', 'train', 'food', 'health', 'you', 'custom', 'empire'].indexOf(hash) !== -1 ? hash : (window.LQ_TAB || load('tab') || 'home'));
     lastBoost = !!boostLeft();
+    if (hash === 'djset') {   // straight to the DJ game (the Chrome add-on's "DJ Set in a tab")
+      playView = 'mix'; save('playView', 'mix'); showTab('play');
+      history.replaceState(null, '', location.pathname + location.search + '#play');
+      setTimeout(openSet, 300);
+    }
     var na = location.hash.match(/dl=(\w+):(\w+)/);
     if (na) { history.replaceState(null, '', location.pathname + location.search + '#home'); setTimeout(function () { handleNoteAction(na[1], na[2]); }, 400); }
-    setTimeout(intro, 250);
+    if (hash !== 'djset') setTimeout(intro, 250);
     if (!S.brief && S.hasClaudeKey) rpc('getBrief', []).then(function (b) { if (b) { S.brief = b; renderHome(); } }, function () {});
   }
   if (!KEY) {

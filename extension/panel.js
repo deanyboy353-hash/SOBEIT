@@ -2,7 +2,11 @@
 (function () {
   var root = document.getElementById('root');
   function showApp(key) {
-    root.innerHTML = '<iframe src="' + self.LQ_EXT.app + '?key=' + encodeURIComponent(key) + '#home" allow="autoplay; clipboard-write; screen-wake-lock" title="Life Quest"></iframe>';
+    var url = self.LQ_EXT.app + '?key=' + encodeURIComponent(key);
+    root.innerHTML = '<div class="top"><button type="button" id="djTab">DJ Set in a tab</button><button type="button" id="fullTab">Open in a tab</button></div>' +
+      '<iframe src="' + url + '#home" allow="autoplay; clipboard-write; screen-wake-lock; midi" title="Life Quest"></iframe>';
+    document.getElementById('fullTab').addEventListener('click', function () { chrome.tabs.create({ url: url + '#home' }); });
+    document.getElementById('djTab').addEventListener('click', function () { chrome.tabs.create({ url: url + '#djset' }); });
   }
   function showSetup(msg) {
     root.innerHTML = '<div class="setup"><h1>Life Quest</h1><p>Paste your app link once. It\'s in the Config tab of your Google Sheet (Your app link, or Partner app link).</p>' +
