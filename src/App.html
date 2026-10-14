@@ -845,6 +845,8 @@ body.dress-open { overflow: hidden; }
 .wk-count-bar { margin: 8px 0; }
 .wk-count-btns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .wk-bp { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--k); border-radius: 0 3px 3px 0; }
+.stat.cashrow { min-height: 32px; width: 100%; }
+@media (min-width: 960px) { nav.tabs .navinstall[hidden] { display: none; } nav.tabs .djnav { margin-top: auto; } nav.tabs .navinstall { margin-top: auto; } nav.tabs .navinstall:not([hidden]) + .djnav { margin-top: 6px; } }
 
 </style>
 </head>
@@ -873,6 +875,7 @@ body.dress-open { overflow: hidden; }
   <button type="button" class="desk" data-tab="you"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0"/></svg>You</button>
   <button type="button" class="desk" data-tab="empire"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V9l8-5 8 5v12M9 21v-6h6v6M3 21h18"/></svg>Empire</button>
   <button type="button" class="desk" data-tab="custom"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>Customise</button>
+  <button type="button" class="desk navinstall" id="navInstall" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Install app</button>
   <button type="button" class="desk djnav" data-mix="set"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/></svg>DJ Set</button>
 </nav>
 <div class="sheetbg" id="sheetbg" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
@@ -3337,7 +3340,8 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
 
   // ---------- YOU (profile, lists, rewards, settings) ----------
   var deferredInstall = null;
-  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferredInstall = e; if (current === 'you') renderYou(); });
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferredInstall = e; var ni = el('navInstall'); if (ni) ni.hidden = false; if (current === 'you') renderYou(); });
+  window.addEventListener('appinstalled', function () { deferredInstall = null; var ni = el('navInstall'); if (ni) ni.hidden = true; toast('Installed. Open Life Quest from your apps.'); });
   function standalone() { return window.matchMedia && matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; }
   function renderYou() {
     var g = S.game, n = names(), th = document.documentElement.getAttribute('data-theme'), h = '';
@@ -4657,7 +4661,6 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     h += '<div class="top"><div><h1>Work</h1><div class="sub">' + (sw.total ? sw.done + ' of ' + sw.total + ' blocks done · ' + dur(sw.doneMins) + ' of ' + dur(sw.planned) : 'Time-block your day, get paid for sticking to it') + '</div></div>' + meButton() + '</div>';
     h += '<div class="wk-grid"><div class="wk-a">' + wkNowCard();
     h += '<section class="card"><form class="inline" id="wkForm" autocomplete="off"><input type="text" id="wkText" placeholder="Write the report 10-11:30, Emails 30m…" aria-label="Add a block"><button class="btn primary" type="submit">Add</button></form>' +
-      '<div class="chips" style="margin-top:8px">' + ['Deep work 2h', 'Emails 30m', 'Standup 9:30 15m', 'Lunch 12:30-13:15'].map(function (x) { return '<button class="chip" type="button" data-wkex="' + esc(x) + '">' + esc(x) + '</button>'; }).join('') + '</div>' +
       '<p class="tiny muted" style="margin:8px 0 0">Give it a time ("10-11:30", "at 3pm") and a length ("45m", "2h"), or a number to hit ("Queue 40 emails", "Edit 3 videos"). No time and it goes in the next free slot.</p></section>' + wkKitCard() + '</div>';
     h += '<section class="card wk-tlcard"><div class="between" style="margin-bottom:10px"><div class="seg" style="margin:0;flex:1">' + [['today', 'Today'], ['tomorrow', 'Tomorrow']].map(function (o) { return '<button type="button" data-wkday="' + o[0] + '" aria-pressed="' + (wkDay === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div></div>';
     if (wkDay !== 'today' && !wkOther) h += '<p class="empty">Loading…</p>';
@@ -5109,7 +5112,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     if (ds.reward) return call('redeemReward', [ds.reward], function (res) { confetti(true); apply(res, 'Enjoy: ' + ds.reward); });
     if (ds.addshop) return call('addShopping', [ds.addshop], function (res) { apply(res, 'Added ' + ds.addshop); });
     if (t.id === 'pushOn') return Notification.permission === 'granted' && S.push.devices ? testPush() : enablePush();
-    if (t.id === 'install' && deferredInstall) { deferredInstall.prompt(); deferredInstall = null; return; }
+    if ((t.id === 'install' || t.id === 'navInstall') && deferredInstall) { deferredInstall.prompt(); deferredInstall = null; var ni = el('navInstall'); if (ni) ni.hidden = true; return; }
   });
 
   function wordKey(k) {

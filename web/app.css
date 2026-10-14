@@ -838,3 +838,5 @@ body.dress-open { overflow: hidden; }
 .wk-count-bar { margin: 8px 0; }
 .wk-count-btns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .wk-bp { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--k); border-radius: 0 3px 3px 0; }
+.stat.cashrow { min-height: 32px; width: 100%; }
+@media (min-width: 960px) { nav.tabs .navinstall[hidden] { display: none; } nav.tabs .djnav { margin-top: auto; } nav.tabs .navinstall { margin-top: auto; } nav.tabs .navinstall:not([hidden]) + .djnav { margin-top: 6px; } }

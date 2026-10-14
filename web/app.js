@@ -698,7 +698,8 @@
 
   // ---------- YOU (profile, lists, rewards, settings) ----------
   var deferredInstall = null;
-  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferredInstall = e; if (current === 'you') renderYou(); });
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferredInstall = e; var ni = el('navInstall'); if (ni) ni.hidden = false; if (current === 'you') renderYou(); });
+  window.addEventListener('appinstalled', function () { deferredInstall = null; var ni = el('navInstall'); if (ni) ni.hidden = true; toast('Installed. Open Life Quest from your apps.'); });
   function standalone() { return window.matchMedia && matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; }
   function renderYou() {
     var g = S.game, n = names(), th = document.documentElement.getAttribute('data-theme'), h = '';
@@ -2018,7 +2019,6 @@
     h += '<div class="top"><div><h1>Work</h1><div class="sub">' + (sw.total ? sw.done + ' of ' + sw.total + ' blocks done · ' + dur(sw.doneMins) + ' of ' + dur(sw.planned) : 'Time-block your day, get paid for sticking to it') + '</div></div>' + meButton() + '</div>';
     h += '<div class="wk-grid"><div class="wk-a">' + wkNowCard();
     h += '<section class="card"><form class="inline" id="wkForm" autocomplete="off"><input type="text" id="wkText" placeholder="Write the report 10-11:30, Emails 30m…" aria-label="Add a block"><button class="btn primary" type="submit">Add</button></form>' +
-      '<div class="chips" style="margin-top:8px">' + ['Deep work 2h', 'Emails 30m', 'Standup 9:30 15m', 'Lunch 12:30-13:15'].map(function (x) { return '<button class="chip" type="button" data-wkex="' + esc(x) + '">' + esc(x) + '</button>'; }).join('') + '</div>' +
       '<p class="tiny muted" style="margin:8px 0 0">Give it a time ("10-11:30", "at 3pm") and a length ("45m", "2h"), or a number to hit ("Queue 40 emails", "Edit 3 videos"). No time and it goes in the next free slot.</p></section>' + wkKitCard() + '</div>';
     h += '<section class="card wk-tlcard"><div class="between" style="margin-bottom:10px"><div class="seg" style="margin:0;flex:1">' + [['today', 'Today'], ['tomorrow', 'Tomorrow']].map(function (o) { return '<button type="button" data-wkday="' + o[0] + '" aria-pressed="' + (wkDay === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div></div>';
     if (wkDay !== 'today' && !wkOther) h += '<p class="empty">Loading…</p>';
@@ -2470,7 +2470,7 @@
     if (ds.reward) return call('redeemReward', [ds.reward], function (res) { confetti(true); apply(res, 'Enjoy: ' + ds.reward); });
     if (ds.addshop) return call('addShopping', [ds.addshop], function (res) { apply(res, 'Added ' + ds.addshop); });
     if (t.id === 'pushOn') return Notification.permission === 'granted' && S.push.devices ? testPush() : enablePush();
-    if (t.id === 'install' && deferredInstall) { deferredInstall.prompt(); deferredInstall = null; return; }
+    if ((t.id === 'install' || t.id === 'navInstall') && deferredInstall) { deferredInstall.prompt(); deferredInstall = null; var ni = el('navInstall'); if (ni) ni.hidden = true; return; }
   });
 
   function wordKey(k) {
