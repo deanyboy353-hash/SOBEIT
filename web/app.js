@@ -226,7 +226,7 @@
     h += '<div class="top"><div><h1>' + greeting() + (n.me ? ', ' + esc(n.me) : '') + '</h1><div class="sub">' +
       d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) + (S.fun && S.fun.era ? ' · ' + esc(S.fun.era) : '') + '</div></div>' + meButton() + '</div>';
     if (MODE === 'gas' && S.fun && S.fun.appBase) h += '<a class="getapp" target="_top" href="' + esc(S.fun.appBase + '?key=' + KEY) + '">' + icon('download') + '<span class="grow"><b>Get the app</b><br><span class="small muted">Notifications, live games, faster</span></span>' + icon('chevron', 's') + '</a>';
-    if (MODE === 'web' && S.push && S.push.configured && 'Notification' in window && 'serviceWorker' in navigator && (Notification.permission !== 'granted' || !S.push.devices)) {
+    if (MODE === 'web' && S.push && S.push.configured && 'Notification' in window && 'serviceWorker' in navigator && (Notification.permission !== 'granted' || !S.push.devices || (load('pushErr') && !load('pushTok')))) {
       h += '<section class="card pushwarn"><div class="row" style="gap:10px;align-items:flex-start">' + icon('bell') + '<div class="grow"><b>Notifications are off on this ' + (/Android|iPhone|iPad/.test(navigator.userAgent) ? 'phone' : 'device') + '</b><div class="small">' +
         (Notification.permission === 'denied' ? 'They\'re blocked. Open your phone\'s Settings, then Apps, Life Quest (or Chrome), Notifications, and allow them. Then come back and tap Turn on.' : 'Your reminders, deadline nags and work pings can\'t reach you until you turn them on.') +
         '</div></div></div><button class="btn primary wide" type="button" id="pushOn" style="margin-top:10px">' + icon('bell', 's') + 'Turn on notifications</button></section>';
@@ -2634,7 +2634,7 @@
     // you
     if (ds.reward) return call('redeemReward', [ds.reward], function (res) { confetti(true); apply(res, 'Enjoy: ' + ds.reward); });
     if (ds.addshop) return call('addShopping', [ds.addshop], function (res) { apply(res, 'Added ' + ds.addshop); });
-    if (t.id === 'pushOn') return Notification.permission === 'granted' && S.push.devices ? testPush() : enablePush();
+    if (t.id === 'pushOn') return Notification.permission === 'granted' && S.push.devices && load('pushTok') ? testPush() : enablePush();
     if ((t.id === 'install' || t.id === 'navInstall') && deferredInstall) { deferredInstall.prompt(); deferredInstall = null; var ni = el('navInstall'); if (ni) ni.hidden = true; return; }
   });
 
@@ -2758,20 +2758,36 @@
       if (perm !== 'granted') { if (!silent) toast('Notifications are off. You can turn them on in your phone settings.', true); throw null; }
       return (swReg ? Promise.resolve(swReg) : navigator.serviceWorker.ready).then(function (reg) { swReg = reg; return firebase.messaging().getToken({ serviceWorkerRegistration: reg, vapidKey: CFG.vapidKey || undefined }); });
     }).then(function (token) {
+      if (!token) throw new Error('Google gave this phone no push address');
+      save('pushTok', String(token).slice(0, 12));
       return rpc('registerDevice', [token, navigator.userAgent.slice(0, 60)]);
     }).then(function () {
-      S.push.devices = Math.max(1, S.push.devices || 0); save('pushReg', now());
+      S.push.devices = Math.max(1, S.push.devices || 0); save('pushReg', now()); save('pushErr', null);
       if (!silent) { renderAll(); testPush(); }
       firebase.messaging().onMessage(function (p) { var n = p.notification || p.data || {}; toast((n.title || '') + (n.body ? ': ' + n.body : '')); chime([880, 1175]); refreshQuiet(); });
-    }).catch(function (e) { if (e && !silent) toast('Couldn\'t turn on notifications: ' + (e.message || e), true); });
+    }).catch(function (e) {
+      if (!e) return;
+      var why = (e.code ? e.code + ': ' : '') + (e.message || e);
+      save('pushErr', { at: now(), why: String(why).slice(0, 200) });
+      if (!silent) toast('Couldn\'t turn on notifications: ' + why, true);
+    });
   }
   function pushDetails() {
     var p = S.push, t = function (ms) { var d = new Date(ms); return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ' ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); };
     return '<div class="pushinfo small">' +
       '<div>' + (p.devices ? p.devices + ' phone' + (p.devices === 1 ? '' : 's') + ' registered' : '<b class="bad">No phone registered yet</b>') + (p.phones && p.phones.length ? ' · ' + p.phones.map(function (x) { return esc(/iPhone|iPad/.test(x.label) ? 'iPhone' : /Android/.test(x.label) ? 'Android' : /Windows|Macintosh|CrOS/.test(x.label) ? 'Computer' : 'Phone'); }).join(', ') : '') + '</div>' +
+      thisPhoneLine(p) +
       (p.lastOk ? '<div>Last delivered: ' + t(p.lastOk) + '</div>' : '<div class="muted">Nothing delivered yet</div>') +
       (p.lastError ? '<div class="bad">Last problem (' + t(p.lastError.at) + '): ' + esc(p.lastError.error) + '</div>' : '') +
       '<div class="muted">On a Pixel: install the app (Chrome menu, Install app), open it from the home screen, tap Turn on. Then in Android Settings, Apps, Life Quest, Notifications, make sure they\'re allowed.</div></div>';
+  }
+  // Is THIS phone one of the registered ones? (Your computer counts as a device too, so "1 registered" can mean the wrong one.)
+  function thisPhoneLine(p) {
+    var mine = load('pushTok'), err = load('pushErr'), on = mine && (p.phones || []).some(function (x) { return x.tok === mine; });
+    if (!('Notification' in window)) return '';
+    if (Notification.permission === 'denied') return '<div class="bad">This phone: notifications are blocked in settings</div>';
+    if (on) return '<div style="color:var(--good)">This phone: registered</div>';
+    return '<div class="bad">This phone: not registered' + (err && err.why ? ' (' + esc(err.why) + ')' : Notification.permission === 'granted' ? '' : '. Tap Turn on') + '</div>';
   }
   function testPush() {
     toast('Sending a test to this phone…');

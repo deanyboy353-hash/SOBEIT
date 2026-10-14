@@ -154,7 +154,7 @@ function pushStatus_(who) {
   var ok = log.filter(function (x) { return x.code === 200; })[0], bad = log.filter(function (x) { return x.code !== 200; })[0];
   return { configured: !!fcmServiceAccount_(), devices: (devices_()[who] || []).length, otherDevices: (devices_()[who === 'me' ? 'partner' : 'me'] || []).length,
     lastOk: ok ? ok.at : 0, lastError: bad && (!ok || bad.at > ok.at) ? { at: bad.at, error: bad.error } : null,
-    phones: (devices_()[who] || []).map(function (d) { return { label: d.label, at: d.at }; }) };
+    phones: (devices_()[who] || []).map(function (d) { return { label: d.label, at: d.at, tok: String(d.token).slice(0, 12) }; }) };
 }
 
 /** The last 30 sends (both of you), for the Notifications check in the app. */
