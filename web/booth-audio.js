@@ -135,6 +135,8 @@
     this.stop(); this.track = track; this.buffer = buffer;
     this.hot = (track.hot || []).slice(); this.cuePos = track.first || 0; this.pos = this.cuePos; this.nudge = 0; this.jogVel = 0; this.ended = false;
     this.loop = null; this.loopIn = null; this.shadow = null; this.loopSize = 4;
+    // a new track starts at the tempo the pitch fader shows
+    this.pitchOffset = 0; this.pitch = this.faderRaw || 0; this.picked = true;
   };
   D.baseRate = function () {
     var o = this.e.other(this);
@@ -281,9 +283,10 @@
   D.startAtPitch = function (p) {
     this.sync = false; this.pitchOffset = p - (this.faderRaw || 0); this.pitch = p; this.faderPitch = p; this.picked = true; this.applyRate();
   };
-  D.clearOffset = function () { if (this.pitchOffset) { this.pitchOffset = 0; this.picked = false; } };
+  D.clearOffset = function () { if (this.pitchOffset) { this.pitchOffset = 0; this.pitch = this.faderRaw || 0; this.picked = true; this.applyRate(); } };
+  /** SYNC off: keep the tempo it had, and let the pitch fader move it from wherever the fader sits (no jump, no pick-up needed). */
   D.setSync = function (on) {
-    if (!on && this.sync) { this.pitch = this.baseRate() - 1; this.picked = this.faderPitch !== null && Math.abs(this.faderPitch - this.pitch) < 0.0015; }
+    if (!on && this.sync) { this.pitch = this.baseRate() - 1; this.pitchOffset = this.pitch - (this.faderRaw || 0); this.picked = true; }
     this.sync = on; this.applyRate();
   };
   /** Jog: turning the wheel while playing bends the tempo briefly (a nudge); while stopped it moves the playhead. 720 ticks a turn. */
