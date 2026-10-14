@@ -56,6 +56,7 @@ function workState_(who, ymd) {
 }
 
 function addBlock_(who, ymd, p) {
+  if (!('ID' in headerMap_('blocks'))) ensureTab_('blocks');   // first block ever: set up the Work blocks tab now
   var id = Utilities.getUuid().replace(/-/g, '').slice(0, 10);
   appendRow_('blocks', { 'Date': ymd, 'ID': id, 'Who': who, 'Task': p.task, 'Kind': p.kind, 'Start (min)': p.start, 'Mins': p.mins, 'Status': 'planned', 'Started (ms)': '', 'Done (ms)': '', 'XP': '', 'Pings': 0 });
   return id;

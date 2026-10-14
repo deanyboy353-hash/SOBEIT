@@ -131,3 +131,12 @@ test('Work reminders: up next, not started, time\'s up; quiet at night', () => {
   g.ctx.nagRun();
   assert.strictEqual(mine(g).length, n, 'quiet hours');
 });
+
+test('Work: the Work blocks tab sets itself up on first use (before the daily run adds it)', () => {
+  const { g, me } = ready();
+  g.ctx.db_().deleteSheet(g.ctx.db_().getSheetByName('Work blocks'));
+  g.ctx.resetRun_();
+  const r = g.ctx.addBlock(me, 'Emails 9:30 30m');
+  assert.strictEqual(r.work.blocks.length, 1);
+  assert.strictEqual(r.work.blocks[0].task, 'Emails');
+});
