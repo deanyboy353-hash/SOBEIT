@@ -167,3 +167,38 @@ test('Must-dos are everyday house jobs, not a yearly admin job that happens to b
   assert.deepStrictEqual(p.me.must.map(j => j.name), ['Make the bed', 'Wipe hob']);
   assert.ok(p.me.bonus.some(j => j.name === 'Book the boiler service'));
 });
+
+test('bins every 3 weeks: on the right Fridays only, and named that way', () => {
+  const { loadProject } = require('./fakes');
+  const g = loadProject({ now: new Date('2026-10-13T09:00:00Z') });
+  const c = { days: [4], weeks: 3, anchor: '2026-10-15' };   // the Thursday evening before a Friday collection
+  const on = [];
+  for (let i = 0; i < 60; i++) { const d = g.ctx.cpAdd('2026-10-13', i); if (g.ctx.cpOnDay(c, d)) on.push(d); }
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(on)), ['2026-10-15', '2026-11-05', '2026-11-26']);
+  assert.strictEqual(g.ctx.parseEvery('3 weeks Thu').weeks, 3);
+  assert.strictEqual(g.ctx.nextAfterDone('3 weeks Thu', '2026-10-15', '2026-10-15'), '2026-11-05');
+  assert.match(g.ctx.rhythmLabel('3 weeks Thu'), /Every 3 weeks on Thursday/);
+});
+
+test("Dean and Yaz's bin calendar is filled in once: 3-weekly general waste, fortnightly food and garden; old bin jobs archived not deleted", () => {
+  const { loadProject } = require('./fakes');
+  const g = loadProject({ now: new Date('2026-10-13T09:00:00Z') });
+  g.ctx.setup();
+  const before = g.tab('Chores').rows().length;
+  const s = g.ctx.appState(g.state.props.WEBAPP_KEY);
+  const rows = g.tab('Chores').rows(), head = rows[0], col = n => head.indexOf(n);
+  const get = name => rows.find(r => r[0] === name);
+  const gw = get('Bins out: General waste');
+  assert.ok(gw, 'general waste job');
+  assert.strictEqual(gw[col('Every')], '3 weeks Thu');
+  assert.strictEqual(gw[col('Next due')], '2026-10-15');
+  assert.strictEqual(get('Bins out: Food and garden')[col('Every')], '2 weeks Thu');
+  assert.strictEqual(get('Bins out: Food and garden')[col('Next due')], '2026-10-22');
+  assert.strictEqual(get('Bins out: Blue-lidded recycling')[col('Next due')], '2026-10-29');
+  const old = get('Take the bins out');
+  assert.ok(old, 'old job kept');
+  assert.strictEqual(old[col('Archived')], 'yes');
+  assert.ok(rows.length >= before, 'nothing deleted');
+  assert.strictEqual(JSON.parse(g.state.props.HOUSE).bins.length, 4);
+  assert.ok(s.quests);
+});

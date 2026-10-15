@@ -201,7 +201,7 @@ function loadProject(opts = {}) {
       putAll: o => { Object.keys(o).forEach(k => { if (String(o[k]).length > 100000) throw new Error('Argument too large'); }); Object.assign(state.cache, o); },
       removeAll: ks => ks.forEach(k => { delete state.cache[k]; })
     }) },
-    LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock() {} }) },
+    LockService: { getScriptLock: () => ({ tryLock: () => true, waitLock() {}, releaseLock() {} }) },
     CalendarApp: { getDefaultCalendar: () => calendar, EventColor: { GREEN: '10', BLUE: '9', YELLOW: '5', ORANGE: '6', PALE_BLUE: '1', GRAY: '8', MAUVE: '3' } },
     Tasks: { Tasks: tasks },
     UrlFetchApp: {

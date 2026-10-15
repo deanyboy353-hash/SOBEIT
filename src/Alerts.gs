@@ -47,6 +47,7 @@ function alertsHeartbeat_(ymd, m, sent) {
       PEOPLE.forEach(function (w) { c.bins[w] = plan[w].must.concat(plan[w].bonus).filter(function (id) { return /^Bins out/i.test(name[id] || '') && !st.done[ymd + '|' + id]; }).map(function (id) { return name[id]; }); });
     }
   } catch (e) { /* no chore plan yet */ }
+  try { if (!health_('me').on) { c.gym = null; c.weighDay = false; c.food = null; } } catch (e) { /* setup not loaded */ }
   dueAlerts(c).forEach(function (a) {
     if (sent[a.who].indexOf(a.id) !== -1) return;
     sent[a.who].push(a.id);

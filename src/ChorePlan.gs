@@ -55,16 +55,16 @@ function cpEveryText(days) {
   return 'Every ' + days + ' days';
 }
 var CP_DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-function cpFreqText(c, ymd) { return c.days ? (c.weeks === 2 ? 'Every other ' : '') + c.days.map(function (d) { return CP_DAY_NAMES[d]; }).join(' & ') : cpEveryText(cpEvery(c, ymd)); }
+function cpFreqText(c, ymd) { return c.days ? (c.weeks === 2 ? 'Every other ' : c.weeks > 2 ? 'Every ' + c.weeks + ' weeks on ' : '') + c.days.map(function (d) { return CP_DAY_NAMES[d]; }).join(' & ') : cpEveryText(cpEvery(c, ymd)); }
 
 /** Is a fixed-day chore on for this date (weekday match, and the right week if every other week)? */
 function cpOnDay(c, ymd) {
   if (!c.days || c.days.indexOf(cpDow(ymd)) === -1) return false;
-  if (c.weeks === 2 && c.anchor) return Math.floor(Math.abs(cpDiff(ymd, c.anchor)) / 7) % 2 === 0;
+  if (c.weeks > 1 && c.anchor) return Math.floor(Math.abs(cpDiff(ymd, c.anchor)) / 7) % c.weeks === 0;
   return true;
 }
 /** The next date on or after `from` that a fixed-day chore runs. */
-function cpNextOn(c, from) { for (var i = 0; i < 28; i++) { var d = cpAdd(from, i); if (cpOnDay(c, d)) return d; } return null; }
+function cpNextOn(c, from) { for (var i = 0; i < 7 * Math.max(4, (c.weeks || 1) + 1); i++) { var d = cpAdd(from, i); if (cpOnDay(c, d)) return d; } return null; }
 
 // ---------- capacity (how much a person can take on a day) ----------
 var CP_BASE_MINS = { '1-2': 20, '3-4': 40, '5+': 65 };
@@ -342,7 +342,7 @@ function cpBuildChores(h, today) {
   var binF = freq('bins', 'weekly');
   (h.bins || []).forEach(function (b) {
     var day = (Number(b.day) + 6) % 7;
-    add({ key: 'bins', name: 'Bins out: ' + b.name, area: 'Outside', minutes: 5, tod: 'evening', days: [day], weeks: Number(b.weeks) === 2 ? 2 : 1, anchor: b.anchor ? cpAdd(b.anchor, -1) : '' }, { assign: binF.assign });
+    add({ key: 'bins', name: 'Bins out: ' + b.name, area: 'Outside', minutes: 5, tod: 'evening', days: [day], weeks: [2, 3, 4].indexOf(Number(b.weeks)) !== -1 ? Number(b.weeks) : 1, anchor: b.anchor ? cpAdd(b.anchor, -1) : '' }, { assign: binF.assign });
   });
   add({ key: 'tidy_bedroom', name: 'Tidy bedroom and put clothes away', area: 'Bedroom', minutes: 10 }, freq('tidy_bedroom', 'few'));
   var mf = freq('mop', 'biweekly');

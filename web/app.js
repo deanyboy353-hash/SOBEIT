@@ -3247,7 +3247,10 @@
     }
     var na = location.hash.match(/dl=(\w+):(\w+)/);
     if (na) { history.replaceState(null, '', location.pathname + location.search + '#home'); setTimeout(function () { handleNoteAction(na[1], na[2]); }, 400); }
-    if (sub) setTimeout(function () { shortcut(hash, sub); }, 350);
+    // setup comes first: anyone who hasn't finished it gets the wizard before anything else
+    var needSetup = S.setup && !S.setup.done && window.NudgeSetup;
+    if (needSetup) setTimeout(function () { if (!NudgeSetup.isOpen()) NudgeSetup.open({ required: true }); }, 200);
+    else if (sub) setTimeout(function () { shortcut(hash, sub); }, 350);
     else if (hash !== 'djset') setTimeout(intro, 250);
     maybeBrief();
     try { if (JSON.parse(localStorage.getItem('booth-mastered') || '""') && S.wardrobe && !(S.wardrobe.ach || {}).booth1) rpc('unlockAch', ['booth1']).then(function (res) { apply(res); toast('Unlocked: Gold DJ headphones'); }, function () {}); } catch (e) {}

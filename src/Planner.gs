@@ -275,8 +275,8 @@ function parseEvery(text) {
   if (m) return { kind: 'monthly', day: Math.min(31, Math.max(1, Number(m[1]))) };
   m = s.match(/^weekly\s+(?:on\s+)?([a-z ,]+)$/);
   if (m && parseDays(m[1]).length) return { kind: 'weekdays', days: parseDays(m[1]) };
-  m = s.match(/^(?:2 weeks|fortnightly|biweekly|every 2 weeks)\s+(?:on\s+)?([a-z]+)$/);
-  if (m && parseDays(m[1]).length) return { kind: 'biweekly', day: parseDays(m[1])[0] };
+  m = s.match(/^(?:(2|3|4) weeks|fortnightly|biweekly|every (2|3|4) weeks)\s+(?:on\s+)?([a-z]+)$/);
+  if (m && parseDays(m[3]).length) return { kind: 'biweekly', day: parseDays(m[3])[0], weeks: Number(m[1] || m[2] || 2) };
   if (/^(daily|every ?day)$/.test(s)) return { kind: 'days', days: 1 };
   if (/^weekly$/.test(s)) return { kind: 'days', days: 7 };
   if (/^fortnightly$/.test(s)) return { kind: 'days', days: 14 };
@@ -362,8 +362,9 @@ function nextOccurrence(every, afterYmd, anchorYmd) {
   if (e.kind === 'biweekly') {
     if (anchorYmd) {
       n = ymdToDays(anchorYmd);
-      while (n <= after) n += 14;
-      while (n - 14 > after) n -= 14;
+      var step = 7 * (e.weeks || 2);
+      while (n <= after) n += step;
+      while (n - step > after) n -= step;
       return daysToYmd(n);
     }
     n = after + 1;
@@ -391,7 +392,7 @@ function nextAfterDone(every, todayYmd, nextDueYmd) {
   var n = nextOccurrence(e, todayYmd, nextDueYmd);
   if (!n) return '';
   var gap = ymdToDays(n) - ymdToDays(todayYmd);
-  if (e.kind === 'biweekly' && gap < 7) n = daysToYmd(ymdToDays(n) + 14);
+  if (e.kind === 'biweekly' && gap < 7) n = daysToYmd(ymdToDays(n) + 7 * (e.weeks || 2));
   if (e.kind === 'monthly' && gap < 14) n = nextOccurrence(e, n, '');
   return n;
 }
@@ -416,7 +417,7 @@ function rhythmLabel(every) {
   if (/^2\.5 days$/.test(String(every || '').trim())) return 'A few times a week';
   if (e.kind === 'days') return e.days === 1 ? 'Every day' : e.days === 7 ? 'Weekly' : e.days === 30 ? 'Monthly' : e.days % 7 === 0 ? 'Every ' + (e.days / 7) + ' weeks' : 'Every ' + e.days + ' days';
   if (e.kind === 'weekdays') return e.days.map(function (d) { return full[d]; }).join(' and ');
-  if (e.kind === 'biweekly') return 'Every other ' + full[e.day].replace(/s$/, '');
+  if (e.kind === 'biweekly') return (e.weeks > 2 ? 'Every ' + e.weeks + ' weeks on ' : 'Every other ') + full[e.day].replace(/s$/, '');
   if (e.kind === 'monthly') return 'Monthly on the ' + e.day + (['th', 'st', 'nd', 'rd'][(e.day % 100 > 10 && e.day % 100 < 14) ? 0 : Math.min(e.day % 10, 4) % 4] || 'th');
   return 'When needed';
 }

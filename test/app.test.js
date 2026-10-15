@@ -24,7 +24,8 @@ test('every chore gets a rhythm and a sensible next date', () => {
   sched.filter(q => q.rhythm in limit).forEach(q => {
     assert.match(q.next, /^\d{4}-\d{2}-\d{2}$/, q.name);
     const d = daysBetween('2026-10-13', q.next);
-    assert.ok(d >= 0 && d <= limit[q.rhythm], q.name + ' (' + q.every + ') next ' + q.next);
+    const wk = /^(\d) weeks/.exec(q.every);
+    assert.ok(d >= 0 && d <= (wk ? 7 * wk[1] - 1 : limit[q.rhythm]), q.name + ' (' + q.every + ') next ' + q.next);
   });
 });
 

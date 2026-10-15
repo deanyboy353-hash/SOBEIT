@@ -3007,14 +3007,15 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
   var DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], WEEK = [1, 2, 3, 4, 5, 6, 0];
   var FREQS = [['daily', 'Daily'], ['few', 'A few times a week'], ['weekly', 'Weekly'], ['biweekly', 'Every 2 weeks'], ['monthly', 'Monthly'], ['rarely', 'Rarely']];
   var ROOMS = { downstairs: ['Kitchen', 'Living room', 'Dining room', 'Hallway', 'Toilet', 'Utility room'], upstairs: ['Bedroom', 'Bedroom 2', 'Study', 'Bathroom', 'En-suite', 'Stairs and landing'], one: ['Kitchen', 'Living room', 'Bedroom', 'Bedroom 2', 'Study', 'Bathroom', 'Hallway'] };
-  var BINS = ['General waste', 'Recycling', 'Garden waste', 'Food waste', 'Glass'];
+  var BINS = ['General waste', 'Recycling', 'Blue-lidded recycling', 'Glass, metals, plastics and cartons', 'Food and garden', 'Garden waste', 'Food waste', 'Glass'];
   function esc(s) { return N.esc(s); }
   function el(id) { return document.getElementById(id); }
   function clone(o) { return JSON.parse(JSON.stringify(o || {})); }
   function hm(m) { m = Math.round(m); return ('0' + Math.floor(m / 60) % 24).slice(-2) + ':' + ('0' + m % 60).slice(-2); }
   function mins(t) { var p = String(t || '').split(':'); return p.length === 2 ? +p[0] * 60 + +p[1] : null; }
   function who() { return N.S().who; }
-  function other() { return N.names().other || 'Yaz'; }
+  function solo() { return !!(N.S() && N.S().solo); }
+  function other() { return solo() ? '' : N.names().other || 'your partner'; }
   function personLabel(w) { return w === 'me' ? (who() === 'me' ? 'Me' : other()) : w === 'yaz' || w === 'partner' ? (who() === 'partner' ? 'Me' : other()) : w; }
 
   // ---------- small building blocks ----------
@@ -3058,7 +3059,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
       html: function () { return chips('profile.minimum', [[1, '1'], [2, '2'], [3, '3'], [4, '4']], d.profile.minimum); }, save: function () { return { minimum: +d.profile.minimum }; } });
     var choreOpts = function () { return W.setup.presets.filter(function (p) { return p.needs !== 'upstairs' || two; }).map(function (p) { return [p.key, p.ask]; }); };
     add({ id: 'likes', sec: 'profile', q: 'Chores you don\'t mind doing', help: 'Tap all that apply.', opt: true, html: function () { return chips('profile.likes', choreOpts(), d.profile.likes, true); }, save: function () { return { likes: d.profile.likes || [] }; } });
-    add({ id: 'hates', sec: 'profile', q: 'Chores you hate', help: 'You\'ll get these less often where the other person doesn\'t mind them.', opt: true, html: function () { return chips('profile.hates', choreOpts(), d.profile.hates, true); }, save: function () { return { hates: d.profile.hates || [] }; } });
+    add({ id: 'hates', sec: 'profile', q: 'Chores you hate', help: solo() ? 'You\'ll get these less often.' : 'You\'ll get these less often where the other person doesn\'t mind them.', opt: true, html: function () { return chips('profile.hates', choreOpts(), d.profile.hates, true); }, save: function () { return { hates: d.profile.hates || [] }; } });
     add({ id: 'motivation', sec: 'profile', q: 'What keeps you going?', html: function () { return chips('profile.motivation', [['streaks', 'Streaks'], ['xp', 'XP and unlocks'], ['compete', 'Friendly competition with ' + other()], ['calm', 'Just a calm list']], d.profile.motivation); }, save: function () { return { motivation: d.profile.motivation }; } });
     add({ id: 'reminder', sec: 'profile', q: 'How should reminders sound?', html: function () { return chips('profile.reminder', [['gentle', 'Gentle: "your 2 small jobs and today counts"'], ['direct', 'Direct: "your streak needs you"']], d.profile.reminder); }, save: function () { return { reminder: d.profile.reminder }; } });
     add({ id: 'quiet', sec: 'profile', q: 'Quiet hours: no notifications between…', html: function () {
@@ -3068,14 +3069,15 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     // health: Dean's is on and pre-filled; Yaz never sees these unless she switched the module on in Settings
     var hOn = function () { return !!d.health.on; };
     if (me || d.health.on) {
-      add({ id: 'healthOn', sec: 'health', q: 'Health and fitness', help: 'Weight, training and food targets. Private: ' + other() + ' can\'t see your weight or body data unless you switch sharing on.', html: function () { return chips('health.on', [['true', 'On'], ['false', 'Off']], String(!!d.health.on)); }, save: function () { return { on: !!d.health.on }; } });
+      add({ id: 'healthOn', sec: 'health', q: 'Track health and fitness?', help: 'Weight, training and food targets. ' + (solo() ? 'Private to you.' : 'Private: ' + other() + ' can\'t see your weight or body data unless you switch sharing on.') + ' You can switch it on later in Settings.', html: function () { return chips('health.on', [['true', 'Yes, track it'], ['false', 'No thanks']], d.health.on === undefined ? '' : String(!!d.health.on)); }, save: function () { return { on: !!d.health.on }; } });
       add({ id: 'body', sec: 'health', q: 'Height and weight', opt: true, show: hOn, html: function () { return '<div class="wz-grid"><label>Height (cm)<input type="number" class="wz-text" data-wzi="health.height" value="' + (d.health.height || '') + '" inputmode="decimal"></label><label>Weight now (kg)<input type="number" class="wz-text" data-wzi="health.weight" value="' + (d.health.weight || '') + '" step="0.1" inputmode="decimal"></label><label>Goal weight (kg)<input type="number" class="wz-text" data-wzi="health.goal" value="' + (d.health.goal || '') + '" step="0.1" inputmode="decimal"></label></div>'; }, save: function () { return { height: +d.health.height || null, weight: +d.health.weight || null, goal: +d.health.goal || null }; } });
       add({ id: 'pace', sec: 'health', q: 'By when, or how fast?', opt: true, show: hOn, html: function () { return chips('health.pace', [['0.25', '¼ kg a week (easy)'], ['0.5', '½ kg a week'], ['0.75', '¾ kg a week'], ['1', '1 kg a week (hard)']], d.health.pace) + '<label class="wz-or">or by a date <input type="date" data-wzi="health.goalDate" value="' + esc(d.health.goalDate || '') + '"></label>'; }, save: function () { return { pace: d.health.pace, goalDate: d.health.goalDate || '' }; } });
-      add({ id: 'train', sec: 'health', q: 'Training days a week', show: hOn, html: function () { return '<div class="small muted">Target</div>' + chips('health.trainDays', [[2, '2'], [3, '3'], [4, '4'], [5, '5'], [6, '6']], d.health.trainDays) + '<div class="small muted" style="margin-top:10px">Stretch goal</div>' + chips('health.stretchDays', [[3, '3'], [4, '4'], [5, '5'], [6, '6']], d.health.stretchDays); }, save: function () { return { trainDays: +d.health.trainDays, stretchDays: +d.health.stretchDays }; } });
-      add({ id: 'split', sec: 'health', q: 'Your training split', show: hOn, html: function () { return chips('health.split', [['Push / Pull / Shoulders-Arms', 'Push / Pull / Shoulders-Arms'], ['Upper / Lower', 'Upper / Lower'], ['Full body', 'Full body']], d.health.split) + chips('health.noHinge', [['true', 'No hip-hinge exercises'], ['false', 'Hip hinges are fine']], String(!!d.health.noHinge)); }, save: function () { return { split: d.health.split, noHinge: d.health.noHinge === true || d.health.noHinge === 'true' }; } });
-      add({ id: 'food', sec: 'health', q: 'Daily food targets', show: hOn, html: function () { var p = d.health.protein || [130, 160]; return '<div class="wz-grid"><label>Calories<input type="number" class="wz-text" data-wzi="health.kcal" value="' + (d.health.kcal || '') + '" inputmode="numeric"></label><label>Protein from (g)<input type="number" class="wz-text" data-wzi="health.protein.0" value="' + p[0] + '" inputmode="numeric"></label><label>to (g)<input type="number" class="wz-text" data-wzi="health.protein.1" value="' + p[1] + '" inputmode="numeric"></label></div>'; }, save: function () { return { kcal: +d.health.kcal || 1800, protein: [+d.health.protein[0] || 130, +d.health.protein[1] || 160] }; } });
-      add({ id: 'weigh', sec: 'health', q: 'Weigh-in days', help: 'Fasted, first thing. You get a reminder on these mornings.', show: hOn, html: function () { return chips('health.weighDays', WEEK.map(function (i) { return [i, DAYS[i]]; }), d.health.weighDays, true); }, save: function () { return { weighDays: (d.health.weighDays || []).map(Number), fasted: true }; } });
-      add({ id: 'share', sec: 'health', q: 'Share your progress with ' + other() + '?', help: 'Off: ' + other() + ' sees nothing about your weight or body. On: your current and goal weight show on their screen.', show: hOn, html: function () { return chips('health.share', [['false', 'Keep it private'], ['true', 'Share it']], String(!!d.health.share)); }, save: function () { return { share: d.health.share === true || d.health.share === 'true' }; } });
+      var trains = function () { return hOn() && +d.health.trainDays > 0; };
+      add({ id: 'train', sec: 'health', q: 'How often do you go to the gym?', show: hOn, html: function () { return chips('health.trainDays', [[0, 'I don\'t go'], [1, '1 day'], [2, '2'], [3, '3'], [4, '4'], [5, '5'], [6, '6']], d.health.trainDays) + (+d.health.trainDays > 0 ? '<div class="small muted" style="margin-top:10px">Which days?</div>' + chips('health.gymDays', WEEK.map(function (i) { return [i, DAYS[i]]; }), d.health.gymDays || [], true) + '<div class="small muted" style="margin-top:10px">Stretch goal (optional)</div>' + chips('health.stretchDays', [[0, 'None'], [3, '3'], [4, '4'], [5, '5'], [6, '6']], d.health.stretchDays) : ''); }, save: function () { var t = +d.health.trainDays || 0; return { trainDays: t, stretchDays: t ? +d.health.stretchDays || 0 : 0, gymDays: t ? (d.health.gymDays || []).map(Number) : [] }; } });
+      add({ id: 'split', sec: 'health', q: 'Your training split', show: trains, opt: true, html: function () { return chips('health.split', [['Push / Pull / Shoulders-Arms', 'Push / Pull / Shoulders-Arms'], ['Upper / Lower', 'Upper / Lower'], ['Full body', 'Full body']], d.health.split) + chips('health.noHinge', [['true', 'No hip-hinge exercises'], ['false', 'Hip hinges are fine']], String(!!d.health.noHinge)); }, save: function () { return { split: d.health.split, noHinge: d.health.noHinge === true || d.health.noHinge === 'true' }; } });
+      add({ id: 'food', sec: 'health', q: 'Daily food targets', help: 'Skip if you don\'t want to count calories.', opt: true, show: hOn, html: function () { var p = d.health.protein || [130, 160]; return '<div class="wz-grid"><label>Calories<input type="number" class="wz-text" data-wzi="health.kcal" value="' + (d.health.kcal || '') + '" inputmode="numeric"></label><label>Protein from (g)<input type="number" class="wz-text" data-wzi="health.protein.0" value="' + p[0] + '" inputmode="numeric"></label><label>to (g)<input type="number" class="wz-text" data-wzi="health.protein.1" value="' + p[1] + '" inputmode="numeric"></label></div>'; }, save: function () { return { kcal: +d.health.kcal || 1800, protein: [+d.health.protein[0] || 130, +d.health.protein[1] || 160] }; } });
+      add({ id: 'weigh', sec: 'health', q: 'Weigh-in days', help: 'Fasted, first thing. You get a reminder on these mornings. Pick none if you don\'t weigh yourself.', show: hOn, html: function () { return chips('health.weighDays', WEEK.map(function (i) { return [i, DAYS[i]]; }), d.health.weighDays, true) + '<button type="button" class="wz-chip' + ((d.health.weighDays || []).length ? '' : ' on') + '" data-wzclear="health.weighDays" style="margin-top:8px">I don\'t weigh myself</button>'; }, save: function () { return { weighDays: (d.health.weighDays || []).map(Number), fasted: true }; } });
+      add({ id: 'share', sec: 'health', q: 'Share your progress with ' + other() + '?', help: 'Off: ' + other() + ' sees nothing about your weight or body. On: your current and goal weight show on their screen.', show: function () { return hOn() && !solo(); }, html: function () { return chips('health.share', [['false', 'Keep it private'], ['true', 'Share it']], String(!!d.health.share)); }, save: function () { return { share: d.health.share === true || d.health.share === 'true' }; } });
     }
     // household (shared)
     var otherDid = W.setup.house.by && W.setup.house.by !== who() && (W.setup.house.rooms || []).length;
@@ -3091,15 +3093,15 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
           '<form class="wz-add" data-wzaddroom="' + fl + '"><input type="text" placeholder="Another room' + (fl ? ' ' + fl : '') + '" maxlength="30" aria-label="Another room"><button type="submit" class="btn soft sm">Add</button></form>';
       }).join('');
     }, save: function () { return { rooms: d.house.rooms || [] }; } });
-    add({ id: 'others', sec: 'house', q: 'Does anyone else in the house share chores?', opt: true, show: doHouse, html: function () { return chips('house.others', [[0, 'No, just us'], [1, 'Yes, 1 more'], [2, 'Yes, 2 more'], [3, '3 or more']], d.house.others || 0); }, save: function () { return { others: +d.house.others || 0 }; } });
+    add({ id: 'others', sec: 'house', q: 'Does anyone else in the house share chores?', opt: true, show: doHouse, html: function () { return chips('house.others', [[0, solo() ? 'No, just me' : 'No, just us'], [1, 'Yes, 1 more'], [2, 'Yes, 2 more'], [3, '3 or more']], d.house.others || 0); }, save: function () { return { others: +d.house.others || 0 }; } });
     add({ id: 'bins', sec: 'house', q: 'Bin collections', help: 'Tap each bin you have, then its collection day. "Bins out" goes on your list the evening before.', show: doHouse, html: function () {
       var bins = d.house.bins || [], h = '<div class="wz-chips">' + BINS.map(function (n) { var on = bins.some(function (b) { return b.name === n; }); return '<button type="button" class="wz-chip' + (on ? ' on' : '') + '" data-wzbin="' + esc(n) + '" aria-pressed="' + on + '">' + esc(n) + '</button>'; }).join('') + '</div>';
       bins.forEach(function (b, i) {
-        h += '<div class="wz-bin"><b>' + esc(b.name) + '</b>' + chips('house.bins.' + i + '.day', WEEK.map(function (k) { return [k, DAYS[k]]; }), b.day) + chips('house.bins.' + i + '.weeks', [[1, 'Every week'], [2, 'Every 2 weeks']], b.weeks || 1) +
-          (+b.weeks === 2 ? '<div class="small muted">Next collection:</div>' + chips('house.bins.' + i + '.which', [['this', 'This week'], ['next', 'Next week']], b.which || 'this') : '') + '</div>';
+        h += '<div class="wz-bin"><b>' + esc(b.name) + '</b>' + chips('house.bins.' + i + '.day', WEEK.map(function (k) { return [k, DAYS[k]]; }), b.day) + chips('house.bins.' + i + '.weeks', [[1, 'Every week'], [2, 'Every 2 weeks'], [3, 'Every 3 weeks']], b.weeks || 1) +
+          (+b.weeks > 1 && b.day !== '' && b.day !== undefined ? '<label class="wz-or">Next collection <input type="date" data-wzi="house.bins.' + i + '.anchor" value="' + esc(b.anchor || nextOn(+b.day, 0)) + '"></label>' : '') + '</div>';
       });
       return h;
-    }, save: function () { return { bins: (d.house.bins || []).filter(function (b) { return b.day !== undefined && b.day !== ''; }).map(function (b) { var o = { name: b.name, day: +b.day, weeks: +b.weeks || 1 }; if (o.weeks === 2) o.anchor = nextOn(o.day, b.which === 'next' ? 7 : 0); o.which = b.which; return o; }) }; } });
+    }, save: function () { return { bins: (d.house.bins || []).filter(function (b) { return b.day !== undefined && b.day !== ''; }).map(function (b) { var o = { name: b.name, day: +b.day, weeks: [2, 3].indexOf(+b.weeks) !== -1 ? +b.weeks : 1 }; if (o.weeks > 1) o.anchor = /^\d{4}-\d\d-\d\d$/.test(b.anchor || '') ? b.anchor : nextOn(o.day, 0); return o; }) }; } });
     add({ id: 'laundry', sec: 'house', q: 'Best day for laundry?', opt: true, show: doHouse, html: function () { return chips('house.laundryDay', WEEK.map(function (k) { return [k, DAYS[k]]; }).concat([['', 'No set day']]), d.house.laundryDay); }, save: function () { return { laundryDay: d.house.laundryDay === '' || d.house.laundryDay === undefined ? '' : +d.house.laundryDay }; } });
     add({ id: 'pets', sec: 'house', q: 'Any pets?', show: doHouse, html: function () { return chips('house.pets', [['true', 'Yes'], ['false', 'No']], String(!!d.house.pets)); }, save: function () { return { pets: d.house.pets === true || d.house.pets === 'true' }; } });
     // the 12 common chores: how often now, how often you'd like, who does it
@@ -3151,7 +3153,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
   function open(opts) {
     opts = opts || {};
     N.rpc('setupState', []).then(function (st) {
-      W = { setup: st, d: { profile: clone(st.profile), health: clone(st.health), house: clone(st.house) }, i: 0, mode: opts.only ? 'one' : 'full', only: opts.only || '', houseCheck: '', rebuild: opts.start === 'review' ? 'yes' : 'no' };
+      W = { setup: st, d: { profile: clone(st.profile), health: clone(st.health), house: clone(st.house) }, i: 0, mode: opts.only ? 'one' : 'full', required: !!opts.required, only: opts.only || '', houseCheck: '', rebuild: opts.start === 'review' ? 'yes' : 'no' };
       W.list = steps();
       if (opts.only) { W.list = W.list.filter(function (s) { return s.id === opts.only; }); if (!W.list.length) { W = null; return N.toast('That question isn\'t in your setup.'); } }
       if (opts.start) { var k = W.list.map(function (s) { return s.id; }).indexOf(opts.start); if (k >= 0) W.i = k; }
@@ -3168,10 +3170,10 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     var s = cur(), n = W.list.length, last = W.i === n - 1, one = W.mode === 'one';
     var next = one ? 'Save' : s.id === 'review' ? (!rebuilding() ? 'Finish setup' : W.setup.built ? 'Rebuild the chore list' : 'Make our chore list') : s.id === 'houseDone' && W.houseCheck !== 'change' ? 'Keep it and carry on' : 'Next';
     el('wizard').innerHTML = '<div class="wz"><div class="wz-top">' +
-      '<button type="button" class="iconbtn" data-wzgo="back" aria-label="' + (one || !W.i ? 'Close setup' : 'Back to the last question') + '">' + (one || !W.i ? '×' : '‹') + '</button>' +
+      (W.required && !W.i ? '<span style="width:40px"></span>' : '<button type="button" class="iconbtn" data-wzgo="back" aria-label="' + (one || !W.i ? 'Close setup' : 'Back to the last question') + '">' + (one || !W.i ? '×' : '‹') + '</button>') +
       (one ? '<span class="grow small muted">Change one answer</span>' : '<div class="wz-bar grow" role="progressbar" aria-valuemin="0" aria-valuemax="' + n + '" aria-valuenow="' + (W.i + 1) + '"><i style="width:' + Math.round((W.i + 1) / n * 100) + '%"></i></div><span class="small muted num">' + (W.i + 1) + '/' + n + '</span>') +
-      (!one ? '<button type="button" class="btn ghost sm" data-wzgo="later" title="Your answers so far are saved">Finish later</button>' : '') + '</div>' +
-      '<div class="wz-body"><div class="eyebrow">' + ({ profile: 'About you', health: 'Health and fitness (private)', house: 'Your home (shared with ' + esc(other()) + ')', none: '' })[s.sec] + '</div><h2>' + esc(s.q) + '</h2>' + (s.help ? '<p class="small muted">' + esc(s.help) + '</p>' : '') + s.html() + '</div>' +
+      (!one && !W.required ? '<button type="button" class="btn ghost sm" data-wzgo="later" title="Your answers so far are saved">Finish later</button>' : '') + '</div>' +
+      '<div class="wz-body"><div class="eyebrow">' + ({ profile: 'About you', health: 'Health and fitness (private)', house: solo() ? 'Your home' : 'Your home (shared with ' + esc(other()) + ')', none: '' })[s.sec] + '</div><h2>' + esc(s.q) + '</h2>' + (s.help ? '<p class="small muted">' + esc(s.help) + '</p>' : '') + s.html() + '</div>' +
       '<div class="wz-foot">' + (s.opt && !one ? '<button type="button" class="btn ghost" data-wzgo="skip">Skip for now</button>' : '<span></span>') + '<button type="button" class="btn primary big" data-wzgo="next"' + (s.id === 'review' && rebuilding() && !W.preview ? ' disabled' : '') + '>' + esc(next) + '</button></div></div>';
     var f = el('wizard').querySelector('input.wz-text, #wzExName'); if (f && s.id === 'name') setTimeout(function () { f.focus(); }, 60);
   }
@@ -3183,7 +3185,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
   }
   function go(dir) {
     var s = cur();
-    if (dir === 'back') { if (W.mode === 'one' || W.i === 0) return close(); W.i--; return draw(); }
+    if (dir === 'back') { if (W.required && W.i === 0) return; if (W.mode === 'one' || W.i === 0) return close(); W.i--; return draw(); }
     if (dir === 'later') { saveStep(s); N.toast('Saved. Carry on any time from You, Settings, Setup.'); return close(); }
     if (dir === 'skip') { W.i++; return draw(); }
     // next
@@ -3207,7 +3209,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     var q = N.S().quests, must = (q.board || []).filter(function (x) { return x.must; });
     el('wizard').innerHTML = '<div class="wz"><div class="wz-body center"><div class="wz-tick">✓</div><h2>All set</h2><p>' + r.built + ' chores made from your answers, ' + r.kept + ' of your own kept.</p>' +
       (q.planned ? '<p><b>Today: ' + q.minimum + ' small job' + (q.minimum === 1 ? '' : 's') + ' to win the day</b>' + (must.length ? '<br>' + must.map(function (x) { return esc(x.name); }).join(', ') : '') + '</p>' : '') +
-      (!N.S().setup.partnerDone ? '<p class="small muted">' + esc(other()) + ' can do their part from their own phone: You, Settings, Setup. The house answers are already shared.</p>' : '') +
+      (!N.S().setup.partnerDone && !solo() ? '<p class="small muted">' + esc(other()) + ' can do their part from their own phone: You, Settings, Setup. The house answers are already shared.</p>' : '') +
       '<p class="small muted">Change any chore in Chores, Schedule. Change any answer in You, Settings, Setup.</p></div><div class="wz-foot"><span></span><button type="button" class="btn primary big" data-wzgo="close">See today\'s chores</button></div></div>';
   }
 
@@ -3226,13 +3228,14 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
       if (f === 'exWho') { W.exWho = v; return draw(); }
       if (f === 'workPreset') { var p = v.split('-').map(Number), w = W.d.profile.work || {}; Object.keys(w).forEach(function (k) { if (w[k]) w[k] = p.slice(); }); return draw(); }
       if (f === 'house.floorsN') { W.d.house.floors = v === '2' ? ['downstairs', 'upstairs'] : ['one']; if (v !== '2') (W.d.house.rooms || []).forEach(function (r) { r.floor = ''; }); W.preview = null; return draw(); }
-      if (ds.multi) { var a = (get(f) || []).map(String), i = a.indexOf(v); if (i === -1) a.push(v); else a.splice(i, 1); set(f, /weighDays/.test(f) ? a.map(Number) : a); }
+      if (ds.multi) { var a = (get(f) || []).map(String), i = a.indexOf(v); if (i === -1) a.push(v); else a.splice(i, 1); set(f, /weighDays|gymDays/.test(f) ? a.map(Number) : a); }
       else { var num = /minimum|trainDays|stretchDays|others|\.day$|\.weeks$|wake|bed|quiet|laundryDay/.test(f) && v !== '' && !isNaN(+v); set(f, num ? +v : v === 'true' ? true : v === 'false' ? false : v); }
       if (/^house\.chores\.[a-z_]+\.now$/.test(f) && !get(f.replace(/now$/, 'goal'))) set(f.replace(/now$/, 'goal'), v === 'never' ? '' : v);
       W.preview = null; return draw();
     }
     if (ds.wzday !== undefined) { var wk = W.d.profile.work = W.d.profile.work || {}, dd = ds.wzday; if (wk[dd]) delete wk[dd]; else wk[dd] = (Object.keys(wk).map(function (k) { return wk[k]; })[0] || [540, 1020]).slice(); return draw(); }
     if (ds.wzroom) { var rs = W.d.house.rooms = W.d.house.rooms || [], ix = rs.map(function (r) { return r.name + '|' + (r.floor || ''); }).indexOf(ds.wzroom + '|' + ds.floor); if (ix === -1) rs.push({ name: ds.wzroom, floor: ds.floor }); else rs.splice(ix, 1); W.preview = null; return draw(); }
+    if (ds.wzclear) { set(ds.wzclear, []); return draw(); }
     if (ds.wzbin) { var bs = W.d.house.bins = W.d.house.bins || [], bi = bs.map(function (b) { return b.name; }).indexOf(ds.wzbin); if (bi === -1) bs.push({ name: ds.wzbin, day: '', weeks: 1 }); else bs.splice(bi, 1); return draw(); }
     if (ds.wzexdel !== undefined) { W.d.house.extras.splice(+ds.wzexdel, 1); return draw(); }
   });
@@ -3300,7 +3303,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
   var EFREQ = FREQS.concat([['days', 'On set days'], ['asneeded', 'Only when needed']]);
   function freqKey(q) {
     var e = String(q.every || '').toLowerCase();
-    if (/^weekly [a-z]|^2 weeks [a-z]/.test(e)) return 'days';
+    if (/^weekly [a-z]|^[234] weeks [a-z]/.test(e)) return 'days';
     if (/as needed|^$/.test(e)) return 'asneeded';
     if (e === 'daily' || e === '1 days') return 'daily';
     if (/^2\.5 days|^2 days|^3 days/.test(e)) return 'few';
@@ -3325,7 +3328,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
       '<label class="f">Room or area</label>' + edChips('area', areas.map(function (a) { return [a, a]; }), e.area) +
       '<label class="f">How often</label>' + edChips('freq', EFREQ, e.freq) +
       (e.ramp ? '<p class="small muted">Building up gently from how often you did it to your goal. Picking a new "how often" sets it straight away.</p>' : '') +
-      (e.freq === 'days' ? '<label class="f">Which days</label>' + edChips('days', WEEK.map(function (i) { return [i, DAYS[i]]; }), e.days, true) + edChips('weeks', [[1, 'Every week'], [2, 'Every other week']], e.weeks) : '') +
+      (e.freq === 'days' ? '<label class="f">Which days</label>' + edChips('days', WEEK.map(function (i) { return [i, DAYS[i]]; }), e.days, true) + edChips('weeks', [[1, 'Every week'], [2, 'Every 2 weeks'], [3, 'Every 3 weeks']], e.weeks) : '') +
       '<label class="f">Minutes it takes</label>' + edChips('minutes', [[5, '5'], [10, '10'], [15, '15'], [20, '20'], [30, '30'], [45, '45'], [60, '60']], e.minutes) +
       '<label class="f">Who does it</label>' + edChips('who', [['me', personLabel('me')], ['partner', personLabel('partner')], ['together', 'Together (2× XP)'], ['rotate', 'Take turns'], ['anyone', 'Whoever has time']], e.who) +
       '<label class="f">Best time of day</label>' + edChips('tod', [['morning', 'Morning'], ['afternoon', 'Afternoon'], ['evening', 'Evening'], ['any', 'Any time']], e.tod) +
@@ -6644,7 +6647,10 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     }
     var na = location.hash.match(/dl=(\w+):(\w+)/);
     if (na) { history.replaceState(null, '', location.pathname + location.search + '#home'); setTimeout(function () { handleNoteAction(na[1], na[2]); }, 400); }
-    if (sub) setTimeout(function () { shortcut(hash, sub); }, 350);
+    // setup comes first: anyone who hasn't finished it gets the wizard before anything else
+    var needSetup = S.setup && !S.setup.done && window.NudgeSetup;
+    if (needSetup) setTimeout(function () { if (!NudgeSetup.isOpen()) NudgeSetup.open({ required: true }); }, 200);
+    else if (sub) setTimeout(function () { shortcut(hash, sub); }, 350);
     else if (hash !== 'djset') setTimeout(intro, 250);
     maybeBrief();
     try { if (JSON.parse(localStorage.getItem('booth-mastered') || '""') && S.wardrobe && !(S.wardrobe.ach || {}).booth1) rpc('unlockAch', ['booth1']).then(function (res) { apply(res); toast('Unlocked: Gold DJ headphones'); }, function () {}); } catch (e) {}

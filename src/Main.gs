@@ -41,6 +41,17 @@ var WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyGglsy-_DOdaCn7DFhNyD
  */
 function instance_() { return typeof INSTANCE !== 'undefined' && INSTANCE ? INSTANCE : null; }
 function webappUrl_() { var i = instance_(); return (i && i.url) || WEBAPP_URL; }
+/** A separate copy sets itself up the first time its own link is used (no need to run setup() by hand). */
+function ensureInstance_(key) {
+  var i = instance_();
+  if (!i || !i.key || key !== i.key || PROPS.getProperty('WEBAPP_KEY')) return;
+  var lock = LockService.getScriptLock(); lock.waitLock(60000);
+  try {
+    if (PROPS.getProperty('WEBAPP_KEY')) return;
+    if (i.sheet && !PROPS.getProperty('SPREADSHEET_ID')) PROPS.setProperty('SPREADSHEET_ID', i.sheet);
+    setup();
+  } finally { lock.releaseLock(); }
+}
 /** One person on their own: no partner anywhere (no partner pushes, chores, head-to-head or team). */
 function solo_() { return prop_('SOLO') === '1'; }
 
@@ -90,6 +101,8 @@ function prepareSheet_() {
     props.setProperty('SOLO', '1');
     setSetting_('Your name', inst.name || 'You'); setSetting_('Your nickname', inst.nick || inst.name || 'You');
     setSetting_('Partner name', '-'); setSetting_('Partner nickname', '-'); setSetting_('Team name', inst.nick || inst.name || 'You');
+    setGymDays_([]);   // a fresh copy starts with no gym days or weigh-ins: setup asks
+    setSetting_('Weigh-in days', 'None');
   }
   if (!props.getProperty('WEBAPP_KEY')) props.setProperty('WEBAPP_KEY', Utilities.getUuid().replace(/-/g, ''));
   if (!props.getProperty('PARTNER_KEY')) props.setProperty('PARTNER_KEY', Utilities.getUuid().replace(/-/g, ''));

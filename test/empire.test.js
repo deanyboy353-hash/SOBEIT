@@ -218,6 +218,7 @@ test('empire: buy, upgrade, ride, income, sell, and Yaz sees it', () => {
 
 test('plan the week: pair jobs with people; together jobs pay both double XP', () => {
   const { g, me, partner } = ready();
+  g.state.props.BINS_V2 = '1';   // keep the original seeded bins job for this test
   let s = g.ctx.appState(me);
   const bed = s.plan.find(q => q.name === 'Make the bed');
   assert.strictEqual(bed.who, 'together', 'a daily together job is added');

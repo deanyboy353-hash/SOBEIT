@@ -17,7 +17,7 @@ function profileDefaults_(who) {
   var n = names_();
   var p = { done: false, name: who === 'me' ? n.me : n.partner, avatar: '', work: {}, wake: 450, bed: 1380, energy: 'morning', manageable: '3-4', minimum: 2,
     likes: [], hates: [], motivation: 'streaks', reminder: 'gentle', quiet: [1350, 450] };
-  if (who === 'me') {
+  if (who === 'me' && !instance_()) {   // the main app's owner: his usual week; a fresh copy starts blank
     var h = workHours_('me');
     p.work = { 1: [540, 900], 2: [540, 900], 3: [540, 900], 4: [540, 960] };     // Mon-Wed 9-3, Thu 9-4, Fri-Sun off
     if (h.start !== 540 || h.end !== 1050) [1, 2, 3, 4].forEach(function (d) { p.work[d] = [h.start, p.work[d][1]]; });
@@ -32,12 +32,13 @@ function profile_(who) {
 // ---------- health (opt-in, private) ----------
 function healthDefaults_(who) {
   if (who !== 'me') return { on: false, share: false };   // never pre-filled or asked for Yaz
+  if (instance_()) return { on: false, share: false, trainDays: 0, stretchDays: 0, gymDays: [], weighDays: [], protein: [100, 140], kcal: 2000, pace: '0.5', split: 'Full body', noHinge: false, fasted: true };   // a fresh copy: nothing assumed
   var s = readConfig_().settings, last = null;
   try { var w = rowsBetween_('weight', addDays_(todayYmd_(), -60), todayYmd_()); if (w.length) last = Number(w[w.length - 1]['Weight (kg)']) || null; } catch (e) { /* no weights yet */ }
   var weigh = String(s['Weigh-in days'] || 'Mon, Wed').split(/[,\s]+/).map(function (x) { return DAYS3.indexOf(x.slice(0, 3)); }).filter(function (d) { return d >= 0; });
   return { on: true, share: false, height: null, weight: last, goal: null, goalDate: '', pace: '0.5', trainDays: 4, stretchDays: 5,
     split: 'Push / Pull / Shoulders-Arms', noHinge: true, kcal: Number(s['Daily kcal target']) || 1800,
-    protein: [Number(s['Protein min (g)']) || 130, Number(s['Protein max (g)']) || 160], weighDays: weigh.length ? weigh : [1, 3], fasted: true };
+    protein: [Number(s['Protein min (g)']) || 130, Number(s['Protein max (g)']) || 160], weighDays: /none/i.test(String(s['Weigh-in days'])) ? [] : weigh.length ? weigh : [1, 3], fasted: true };
 }
 function health_(who) {
   var saved = JSON.parse(prop_('HEALTH_' + who) || 'null');
@@ -84,12 +85,13 @@ function saveSetup(key, section, data) {
       }
       setProp_('SETUP_' + who, JSON.stringify(p));
     } else if (section === 'health') {
-      var h = Object.assign(health_(who), pick_(data, ['on', 'share', 'height', 'weight', 'goal', 'goalDate', 'pace', 'trainDays', 'stretchDays', 'split', 'noHinge', 'kcal', 'protein', 'weighDays', 'fasted']));
+      var h = Object.assign(health_(who), pick_(data, ['on', 'share', 'height', 'weight', 'goal', 'goalDate', 'pace', 'trainDays', 'stretchDays', 'split', 'noHinge', 'kcal', 'protein', 'weighDays', 'fasted', 'gymDays']));
       setProp_('HEALTH_' + who, JSON.stringify(h));
+      if (who === 'me' && (Array.isArray(data.gymDays) || data.trainDays === 0 || data.on === false)) setGymDays_(h.on && h.trainDays ? (h.gymDays || []) : []);
       if (who === 'me' && h.on) {   // the food page and weigh-in alerts read these
         if (h.kcal) setSetting_('Daily kcal target', String(h.kcal));
         if (h.protein && h.protein.length === 2) { setSetting_('Protein min (g)', String(h.protein[0])); setSetting_('Protein max (g)', String(h.protein[1])); }
-        if (h.weighDays && h.weighDays.length) setSetting_('Weigh-in days', h.weighDays.map(function (d) { return DAYS3[d]; }).join(', '));
+        if (h.weighDays) setSetting_('Weigh-in days', h.weighDays.length ? h.weighDays.map(function (d) { return DAYS3[d]; }).join(', ') : 'None');
       }
     } else if (section === 'house') {
       var hs = Object.assign(house_(), pick_(data, ['floors', 'rooms', 'others', 'bins', 'laundryDay', 'pets', 'chores', 'extras']));
@@ -119,7 +121,7 @@ function cpChoreOf_(q, today) {
   var rule = parseEvery(q.every), c = { id: q.name, key: q.key, name: q.name, minutes: q.minutes, assign: solo_() ? 'me' : CP_WHO_COL[q.who] ? q.who : 'anyone', tod: q.tod || 'any', xp: q.xp,
     archived: q.archived || rule.kind === 'none', order: q.order, last: q.lastDone, lastBy: q.lastBy, after: q.after || '', area: q.area, notes: q.notes };
   if (rule.kind === 'weekdays') c.days = rule.days.slice();
-  else if (rule.kind === 'biweekly') { c.days = [rule.day]; c.weeks = 2; c.anchor = q.nextDue || today; }
+  else if (rule.kind === 'biweekly') { c.days = [rule.day]; c.weeks = rule.weeks || 2; c.anchor = q.nextDue || today; }
   else {
     var every = rule.kind === 'monthly' ? 30 : rule.days || 7;
     c.now = q.nowDays || every; c.goal = q.goalDays || every; c.rampFrom = q.rampFrom || '';
@@ -130,7 +132,7 @@ function cpChoreOf_(q, today) {
 }
 /** "Every" text for a planner chore, in the Chores tab's own words. */
 function everyText_(c, ymd) {
-  if (c.days) return c.weeks === 2 ? '2 weeks ' + DAYS3[c.days[0]] : 'weekly ' + c.days.map(function (d) { return DAYS3[d]; }).join(', ');
+  if (c.days) return c.weeks > 1 ? c.weeks + ' weeks ' + DAYS3[c.days[0]] : 'weekly ' + c.days.map(function (d) { return DAYS3[d]; }).join(', ');
   var e = cpEvery(c, ymd);
   return e <= 1 ? 'daily' : e === 2.5 ? '2.5 days' : e % 7 === 0 ? (e === 7 ? 'weekly' : e / 7 + ' weeks') : e >= 28 && e <= 31 ? 'monthly' : e + ' days';
 }
@@ -291,9 +293,10 @@ function saveChore(key, name, f) {
       if (f.freq === 'days') {
         var days = (f.days || []).map(Number).filter(function (d) { return d >= 0 && d <= 6; });
         if (!days.length) throw new Error('Pick at least one day.');
-        up['Every'] = Number(f.weeks) === 2 ? '2 weeks ' + DAYS3[days[0]] : 'weekly ' + days.map(function (d) { return DAYS3[d]; }).join(', ');
+        var wk = [2, 3, 4].indexOf(Number(f.weeks)) !== -1 ? Number(f.weeks) : 1;
+        up['Every'] = wk > 1 ? wk + ' weeks ' + DAYS3[days[0]] : 'weekly ' + days.map(function (d) { return DAYS3[d]; }).join(', ');
         up['Now (days)'] = ''; up['Goal (days)'] = ''; up['Ramp from'] = '';
-        up['Next due'] = cpNextOn({ days: days, weeks: Number(f.weeks) === 2 ? 2 : 1, anchor: today }, today) || '';
+        up['Next due'] = cpNextOn({ days: days, weeks: wk, anchor: f.anchor && /^\d{4}-\d\d-\d\d$/.test(f.anchor) ? f.anchor : today }, today) || '';
       } else if (f.freq === 'asneeded') { up['Every'] = 'as needed'; up['Next due'] = ''; }
       else {
         var every = CP_FREQ[f.freq]; if (!every) throw new Error('Pick how often.');
@@ -328,4 +331,48 @@ function choreAction(key, name, action) {
     delProp_('BOARD'); delProp_('CPDAY'); forget_('chores'); choresCache_ = null;
     return appState_(who);
   });
+}
+
+/** Which weekdays are gym days (0 = Sun): the Config tab's weekly plan, kept in step with setup. Empty = no gym. */
+function setGymDays_(days) {
+  days = (days || []).map(Number);
+  var sh = sheet_('config'), v = sh.getDataRange().getValues();
+  for (var r = 0; r < v.length; r++) {
+    var d = DAYS3.indexOf(String(v[r][0]).trim());
+    if (d === -1 || (v[r][1] !== true && v[r][1] !== false && !/^(true|false|yes|no|)$/i.test(String(v[r][1])))) continue;
+    var on = days.indexOf(d) !== -1;
+    sh.getRange(r + 1, 2, 1, 2).setValues([[on, on ? (String(v[r][2]).trim() || 'Rotation') : '']]);
+  }
+  forget_('config'); configCache_ = null; delProp_('GYM_TODAY');
+}
+
+/**
+ * Once, in the main app: Dean and Yaz's bin collections (from the council's calendar, Oct 2026).
+ * Every collection is a Friday, so "Bins out" is the Thursday evening before. Old bin jobs are archived, not deleted.
+ */
+var HOME_BINS = [
+  { name: 'General waste', day: 5, weeks: 3, anchor: '2026-10-16' },
+  { name: 'Food and garden', day: 5, weeks: 2, anchor: '2026-10-23' },
+  { name: 'Glass, metals, plastics and cartons', day: 5, weeks: 3, anchor: '2026-10-23' },
+  { name: 'Blue-lidded recycling', day: 5, weeks: 3, anchor: '2026-10-30' }
+];
+function ensureHomeBins_() {
+  if (instance_() || prop_('BINS_V2')) return;
+  var h = house_(); h.bins = HOME_BINS.map(function (b) { return Object.assign({}, b); }); setProp_('HOUSE', JSON.stringify(h));
+  var today = todayYmd_(), want = {}, chores = readChores_();
+  HOME_BINS.forEach(function (b) { want['Bins out: ' + b.name] = b; });
+  var assign = chores.filter(function (q) { return /^bins out|^take the bins out/i.test(q.name); }).map(function (q) { return q.who; })[0] || 'anyone';
+  chores.forEach(function (q) {
+    if ((/^bins out/i.test(q.name) || /^take the bins out$/i.test(q.name)) && !want[q.name] && !q.archived) updateRow_('chores', q.row, { 'Archived': 'yes', 'Notes': (q.notes ? q.notes + ' · ' : '') + 'Replaced by the new bin calendar' });
+  });
+  Object.keys(want).forEach(function (name) {
+    var b = want[name], night = addDays_(b.anchor, -1);
+    while (night < today) night = addDays_(night, 7 * b.weeks);
+    var f = { 'Minutes': '5', 'Every': b.weeks + ' weeks Thu', 'Who': CP_WHO_COL[assign] || 'Anyone', 'XP': '5', 'Area': 'Outside', 'Time of day': 'evening', 'Archived': '', 'Key': 'bins', 'Next due': night, 'Energy': 'Low', 'Now (days)': '', 'Goal (days)': '', 'Ramp from': '' };
+    var have = chores.filter(function (q) { return q.name === name; })[0];
+    if (have) updateRow_('chores', have.row, f);
+    else { var row = { 'Job': name }; Object.keys(f).forEach(function (k) { row[k] = f[k]; }); appendChore_(row); }
+  });
+  delProp_('BOARD'); delProp_('CPDAY'); forget_('chores'); choresCache_ = null;
+  setProp_('BINS_V2', '1');
 }

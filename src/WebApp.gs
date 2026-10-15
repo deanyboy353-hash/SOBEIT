@@ -36,6 +36,7 @@ function rpcTable_() {
 
 /** {fn, key, args} from the installable app → {ok, result} or {ok: false, error}. */
 function rpc_(body) {
+  try { ensureInstance_(body.key); } catch (e) { return json_({ ok: false, error: 'Setting up your app failed: ' + e.message }); }
   var fn = rpcTable_()[body.fn];
   if (!fn) return json_({ ok: false, error: 'Unknown action.' });
   try {
@@ -85,6 +86,7 @@ function doPost(e) {
  */
 function doGet(e) {
   var params = (e && e.parameter) || {};
+  try { ensureInstance_(params.key); } catch (err) { log_('WARN', 'Instance setup: ' + err); }
   var who = null;
   try { who = who_(params.key); } catch (err) { /* no valid key */ }
   if (!who || params.status) {
@@ -142,7 +144,7 @@ function appState(key) {
   var cache = stateCache_(), hit = cache && getCachedState_(cache, who);
   var stamp = todayYmd_() + '|' + dayPart(minutesNow_());          // never serve yesterday's (or this morning's) screen after midnight / the next part of the day
   if (hit && hit.cacheStamp === stamp) { hit.now = new Date().getTime(); return hit; }
-  var state = withLock_(function () { if (!prop_('TRANSPORT_V1')) { try { ensureTransport_(); } catch (e) { log_('WARN', 'Transport setup: ' + e); } } if (!prop_('PRESETS_V1')) { try { ensurePresets_(); } catch (e) { log_('WARN', 'Presets: ' + e); } } if (!prop_('TRAIN_V2')) { try { ensureRotation_(); } catch (e) { log_('WARN', 'Training rotation: ' + e); } } return appState_(who); });
+  var state = withLock_(function () { if (!prop_('BINS_V2') && !instance_()) { try { ensureHomeBins_(); } catch (e) { log_('WARN', 'Bins: ' + e); } } if (!prop_('TRANSPORT_V1')) { try { ensureTransport_(); } catch (e) { log_('WARN', 'Transport setup: ' + e); } } if (!prop_('PRESETS_V1')) { try { ensurePresets_(); } catch (e) { log_('WARN', 'Presets: ' + e); } } if (!prop_('TRAIN_V2')) { try { ensureRotation_(); } catch (e) { log_('WARN', 'Training rotation: ' + e); } } return appState_(who); });
   state.cacheStamp = stamp;
   if (cache) putCachedState_(cache, who, state);
   return state;
