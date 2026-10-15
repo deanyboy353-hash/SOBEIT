@@ -12,7 +12,8 @@ function todaySession_(ymd, cfg) {
   var o = JSON.parse(prop_('GYM_TODAY') || 'null');
   if (o && o.date === ymd) return o.session;
   var day = (cfg || readConfig_()).schedule[dayOfWeek_(ymd)];
-  return day && day.train ? day.session : '';
+  if (!day || !day.train) return '';
+  return rotationDoneOn_(ymd) || (ROTATION.indexOf(day.session) !== -1 || day.session === 'Rotation' || !day.session || /^(Upper|Lower) [AB]$/.test(day.session) ? rotationNext_(ymd) : day.session);
 }
 
 function planGymDay_(ymd, cfg) {
@@ -79,9 +80,10 @@ function planGymDay_(ymd, cfg) {
 
 function onGymTaskDone_(task, info) {
   var r = findRow_('gym', 'Date', info.date);
-  var before = r ? readRow_('gym', r) : {};
-  if (!/^Done/.test(String(before['Status'] || ''))) addXp_('me', 'Gym: ' + (before['Session'] || 'session done'), 50, 'gym');
+  var before = r ? readRow_('gym', r) : {}, session = String(before['Session'] || '') || todaySession_(info.date) || '';
+  if (!/^Done/.test(String(before['Status'] || ''))) addXp_('me', 'Gym: ' + (session || 'session done'), 50, 'gym');
   var update = { 'Status': 'Done', 'Ticked at': completedAt_(task) };
+  if (session && !before['Session']) update['Session'] = session;     // so the rotation knows what was done
   if (r) updateRow_('gym', r, update);
   else appendRow_('gym', Object.assign({ 'Date': info.date, 'Day': DAY_NAMES[dayOfWeek_(info.date)] }, update));
   return false;

@@ -919,3 +919,8 @@ body.wizopen { overflow: hidden; }
 #setupCard .grid2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 #setupAnswers .item { box-sizing: border-box; min-width: 0; }
 #setupAnswers .item .grow { min-width: 0; overflow-wrap: anywhere; }
+.rotstrip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 12px; }
+.rotstrip .rot { padding: 6px 12px; border-radius: 999px; background: var(--raised); color: var(--muted); font-weight: 650; font-size: 14px; }
+.rotstrip .rot.on { background: var(--lilac-soft); color: var(--lilac); box-shadow: inset 0 0 0 1.5px var(--lilac); }
+.rotstrip .rotarr { color: var(--faint); }
+.rotstrip .rotnote { flex-basis: 100%; }

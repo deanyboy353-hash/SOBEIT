@@ -452,7 +452,7 @@ function readConfig_() {
   for (var i = 1; i < srows.length; i++) {
     var r = srows[i];
     var name = String(r[h.indexOf('session')]).trim();
-    if (!name) continue;
+    if (!name || /^Old: /.test(name)) continue;   // the retired Upper/Lower programme stays in the Sheet, unused
     (sessions[name] = sessions[name] || []).push({
       exercise: r[h.indexOf('exercise')], sets: r[h.indexOf('sets')], reps: r[h.indexOf('reps')],
       rpe: r[h.indexOf('rpe')], rest: r[h.indexOf('rest')], notes: h.indexOf('notes') >= 0 ? r[h.indexOf('notes')] : ''

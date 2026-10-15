@@ -108,32 +108,30 @@ test('today\'s workout can change: the plan, calendar event and gym task follow'
   const me = g.state.props.WEBAPP_KEY;
   let s = g.ctx.appState(me);
   const planned = s.today.gym.session;
-  assert.match(planned, /Lower/);
-  s = g.ctx.setTodaySession(me, 'Upper A');
-  assert.strictEqual(s.today.gym.session, 'Upper A');
-  assert.strictEqual(s.train.today, 'Upper A');
+  assert.strictEqual(planned, 'Push');            // the rotation starts at Push
+  s = g.ctx.setTodaySession(me, 'Pull');
+  assert.strictEqual(s.today.gym.session, 'Pull');
+  assert.strictEqual(s.train.today, 'Pull');
   assert.strictEqual(s.train.planned, planned);
   assert.ok(s.train.changed);
   const gymEvents = g.calendar.events.filter(e => !e.deleted && e.tags && e.tags.sobeit === 'gym');
   assert.strictEqual(gymEvents.length, 1);
-  assert.match(gymEvents[0].title, /^Upper A/);
-  assert.ok(Object.values(g.tasks.store).some(t => t.title === 'Gym done: Upper A'));
+  assert.match(gymEvents[0].title, /^Pull/);
+  assert.ok(Object.values(g.tasks.store).some(t => t.title === 'Gym done: Pull'));
   assert.ok(!Object.values(g.tasks.store).some(t => t.title === 'Gym done: ' + planned));
   // a rest day instead
   s = g.ctx.setTodaySession(me, '');
   assert.strictEqual(s.today.gym, null);
   assert.strictEqual(g.calendar.events.filter(e => !e.deleted && e.tags && e.tags.sobeit === 'gym').length, 0);
   assert.throws(() => g.ctx.setTodaySession(me, 'Arms forever'), /No session/);
-  assert.throws(() => g.ctx.setTodaySession(g.state.props.PARTNER_KEY, 'Upper A'), /out of date/);
+  assert.throws(() => g.ctx.setTodaySession(g.state.props.PARTNER_KEY, 'Pull'), /out of date/);
   // logging a different session switches today to it
-  g.ctx.setTodaySession(me, 'Upper A');
-  const plan = g.ctx.trainState(me).plans['Upper B'];
-  const sets = plan.main[0].sets.slice(0, 2).map((x, i) => ({ exercise: plan.main[0].exercise, tier: plan.main[0].tier, set: i + 1, weight: x.weight || 40, reps: 5, target: x.reps }));
-  s = g.ctx.saveWorkout(me, 'Upper B', sets).state;
-  assert.strictEqual(s.today.gym.session, 'Upper B');
+  g.ctx.setTodaySession(me, 'Pull');
+  s = g.ctx.saveWorkout(me, 'Shoulders & Arms', [{ exercise: 'Cable lateral raise', set: 1, weight: 10, reps: 15, target: '12-15' }, { exercise: 'EZ-bar curl', set: 1, weight: 30, reps: 10, target: '10-12' }]).state;
+  assert.strictEqual(s.today.gym.session, 'Shoulders & Arms');
   assert.ok(s.today.gym.done);
-  assert.throws(() => g.ctx.setTodaySession(me, 'Lower B'), /already logged/);
-  assert.strictEqual(g.ctx.trainState(me).next, '');
+  assert.throws(() => g.ctx.setTodaySession(me, 'Push'), /already logged/);
+  assert.strictEqual(g.ctx.trainState(me).rotationNext, 'Push', 'nothing done before today: the rotation still starts at Push');
 });
 
 test('HC Webhook test syncs are ignored, and a history import rebuilds whole days', () => {

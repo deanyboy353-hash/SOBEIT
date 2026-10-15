@@ -140,7 +140,7 @@ function appState(key) {
   var who = who_(key);
   var cache = stateCache_(), hit = cache && getCachedState_(cache, who);
   if (hit) { hit.now = new Date().getTime(); return hit; }
-  var state = withLock_(function () { if (!prop_('TRANSPORT_V1')) { try { ensureTransport_(); } catch (e) { log_('WARN', 'Transport setup: ' + e); } } if (!prop_('PRESETS_V1')) { try { ensurePresets_(); } catch (e) { log_('WARN', 'Presets: ' + e); } } return appState_(who); });
+  var state = withLock_(function () { if (!prop_('TRANSPORT_V1')) { try { ensureTransport_(); } catch (e) { log_('WARN', 'Transport setup: ' + e); } } if (!prop_('PRESETS_V1')) { try { ensurePresets_(); } catch (e) { log_('WARN', 'Presets: ' + e); } } if (!prop_('TRAIN_V2')) { try { ensureRotation_(); } catch (e) { log_('WARN', 'Training rotation: ' + e); } } return appState_(who); });
   if (cache) putCachedState_(cache, who, state);
   return state;
 }

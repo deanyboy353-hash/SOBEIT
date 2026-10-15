@@ -11,12 +11,12 @@ function ready(iso) {
 test('Today on a training day: session, leave time, exercises; Gym done logs it and ticks the task', () => {
   const { g, key } = ready('2026-10-13T05:05:00Z'); // Tue
   let s = g.ctx.todayState(key);
-  assert.strictEqual(s.gym.session, 'Upper A');
+  assert.strictEqual(s.gym.session, 'Push');
   assert.strictEqual(s.gym.travel, 'Bus');
   assert.strictEqual(s.gym.leaveAt, '14:59');
   assert.strictEqual(s.gym.homeBy, '17:26');
   assert.match(s.gym.plan, /bus 3 at 15:01/);
-  assert.strictEqual(s.gym.exercises[0].exercise, 'Barbell row');
+  assert.strictEqual(s.gym.exercises[0].exercise, 'Barbell bench press');
   assert.strictEqual(s.gym.done, false);
   s = g.ctx.gymDone(key);
   assert.strictEqual(s.gym.done, true);

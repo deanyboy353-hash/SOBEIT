@@ -735,7 +735,8 @@
     var t = S.train;
     if (!tsel || !t.plans[tsel]) tsel = load('tsel-' + S.today.date) || t.today || t.sessions[0];
     if (!t.plans[tsel]) tsel = t.sessions[0];
-    var d = draft(), h = '<div class="top"><div><h1>Train</h1><div class="sub">' + (t.today ? 'Today: ' + esc(t.today) : 'Rest day. Train any session you like.') + '</div></div>' + meButton() + '</div>';
+    var d = draft(), h = '<div class="top"><div><h1>Train</h1><div class="sub">' + (t.today ? 'Today: ' + esc(t.today) : 'Rest day. Next up: ' + esc(t.rotationNext || '') + '. Train any session you like.') + '</div></div>' + meButton() + '</div>';
+    if (t.rotation) h += '<div class="rotstrip" aria-label="Your training rotation">' + t.rotation.map(function (r) { var cur = r === (t.today || t.rotationNext); return '<span class="rot' + (cur ? ' on' : '') + '">' + esc(r) + '</span>'; }).join('<span class="rotarr">→</span>') + '<span class="tiny muted rotnote">Moves on when you finish a session</span></div>';
     h += '<div id="restSlot"></div>';
     h += '<div class="chips" style="margin-bottom:14px">' + t.sessions.map(function (s) { return '<button class="chip" type="button" data-tsel="' + esc(s) + '" aria-pressed="' + (s === tsel) + '" style="padding:8px 14px;font-size:14px">' + esc(s) + '</button>'; }).join('') + '</div>';
     if (t.doneToday) h += '<div class="note">Today\'s workout is logged. Great work. You can log another below.</div>';
@@ -743,7 +744,7 @@
       if (tsel !== t.today) h += '<div class="swap"><div class="grow"><b>Doing ' + esc(tsel) + ' today?</b><div class="tiny muted">' + (t.today ? 'Planned: ' + esc(t.today) : 'Today is a rest day') + '. Switching moves your calendar and gym task too.</div></div><button class="btn primary sm" type="button" data-setsession="' + esc(tsel) + '">Switch</button></div>';
       else if (t.changed) h += '<div class="swap"><div class="grow small">Changed from ' + (t.planned ? esc(t.planned) : 'a rest day') + '.</div><button class="btn line sm" type="button" data-setsession="' + esc(t.planned) + '" data-undo="1">Undo</button></div>';
       var hints = [];
-      if (t.next && t.next !== tsel) hints.push('<button class="chip lilac" type="button" data-tsel="' + esc(t.next) + '">Next in order: ' + esc(t.next) + '</button>');
+      if (t.rotationNext && t.rotationNext !== tsel && !t.today) hints.push('<button class="chip lilac" type="button" data-tsel="' + esc(t.rotationNext) + '">Next in the rotation: ' + esc(t.rotationNext) + '</button>');
       if (t.today) hints.push('<button class="chip" type="button" data-setsession="" data-rest="1">Make today a rest day</button>');
       if (S.health && S.health.readiness) hints.unshift('<span class="chip ' + (S.health.readiness.score >= 80 ? 'good' : S.health.readiness.score >= 60 ? 'lilac' : 'pink') + '">' + icon('bolt', 's') + 'Readiness ' + S.health.readiness.score + '</span>');
       if (hints.length) h += '<div class="chips" style="margin:-4px 0 14px">' + hints.join('') + '</div>';

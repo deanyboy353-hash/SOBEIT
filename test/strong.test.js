@@ -41,7 +41,7 @@ test('Presets: Arms & Shoulders Pump and friends land in the Sessions tab once a
   const t = g.ctx.trainState(me);
   ['Arms & Shoulders Pump', 'Push', 'Pull', 'Full Body Express'].forEach(n => assert.ok(t.sessions.includes(n), n));
   assert.strictEqual(t.kinds['Arms & Shoulders Pump'], 'preset');
-  assert.strictEqual(t.kinds['Upper A'], 'programme');
+  assert.strictEqual(t.kinds['Push'], 'programme');
   assert.strictEqual(t.plans['Arms & Shoulders Pump'].accessories.length, 8);
   const n = g.tab('Sessions').rows().length;
   g.ctx.ensurePresets_();
@@ -59,7 +59,7 @@ test('Templates: save, replace and delete your own; programme days are protected
   assert.deepStrictEqual(plain(t.plans['Beach Day'].accessories.map(a => a.exercise)), ['Hammer curl']);
   t = g.ctx.deleteTemplate(me, 'Beach Day');
   assert.ok(!t.sessions.includes('Beach Day'));
-  assert.throws(() => g.ctx.deleteTemplate(me, 'Upper A'), /Programme days/);
+  assert.throws(() => g.ctx.deleteTemplate(me, 'Push'), /Programme days/);
   assert.throws(() => g.ctx.saveTemplate(me, '', [{ exercise: 'x' }]), /name/);
 });
 
@@ -109,12 +109,13 @@ test('Training max: changing it can be undone (lift and TM history put back)', (
   const { g, me } = ready();
   const C = g.ctx;
   C.setTrainingMax(me, 'Bench press', 55, 5);
-  const before = plain(C.appState(me).train.plans['Upper A'].main[0].tm);
+  const tmOf = st => st.train.progress.lifts.find(l => l.lift === 'Bench press').tm;
+  const before = plain(tmOf(C.appState(me)));
   const histN = C.vals_('tmHistory').length;
   const t = plain(C.setTrainingMax(me, 'Bench press', 80, 10));
   assert.strictEqual(t.tmSet.to, 95);
   assert.ok(t.undo && /Bench/.test(t.undo.label));
   const res = plain(C.undoAction(me));
-  assert.strictEqual(res.state.train.plans['Upper A'].main[0].tm, before);
+  assert.strictEqual(tmOf(res.state), before);
   assert.strictEqual(C.vals_('tmHistory').length, histN);
 });

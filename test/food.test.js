@@ -36,7 +36,7 @@ test('an older Config tab gets the new settings without losing edits', () => {
   assert.strictEqual(after.find(r => r[0] === 'Daily kcal target')[1], '1800');
   // still inside the SETTINGS block, before the weekly plan
   assert.ok(after.findIndex(r => r[0] === 'Your app link') < after.findIndex(r => r[0] === 'WEEKLY PLAN'));
-  assert.strictEqual(after.find(r => r[0] === 'Tue')[2], 'Upper A');
+  assert.strictEqual(after.find(r => r[0] === 'Tue')[2], 'Rotation');
 });
 
 test('page needs the key; with it, it renders today\'s state', () => {
@@ -161,5 +161,5 @@ test('Sunday summary includes daily food averages, gym, weight and the week ahea
   assert.match(d, /1 of 2 sessions done \(Wed Lower A\)/);
   assert.match(d, /83\.5 → 83\.1 kg \(-0\.4\)/);
   assert.match(d, /CHORES\nDean: 2 jobs, 32 min · Yaz: 1 job, 14 min/);
-  assert.match(d, /Mon: weigh-in\nTue: Upper A\nWed: Lower A · weigh-in/);
+  assert.match(d, /Mon: weigh-in\nTue: Push\nWed: Pull · weigh-in\nFri: Shoulders & Arms\nSat: Push/);
 });

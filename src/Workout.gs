@@ -26,7 +26,7 @@ function readProgramme_() {
   var out = {};
   vals_('programme').slice(1).forEach(function (r) {
     var s = String(r[0]).trim();
-    if (s) out[s] = { t1: String(r[1]).trim(), t1Sets: String(r[2]), t2: String(r[3]).trim(), t2Of: String(r[4] || r[3]).trim(), t2Sets: String(r[5]) };
+    if (s && !/^Old: /.test(s)) out[s] = { t1: String(r[1]).trim(), t1Sets: String(r[2]), t2: String(r[3]).trim(), t2Of: String(r[4] || r[3]).trim(), t2Sets: String(r[5]) };
   });
   return out;
 }
@@ -89,12 +89,12 @@ function trainState_() {
   // What comes next if you just go in order (handy when the week went sideways).
   var logged = rowsBetween_('workoutLog', addDays_(today, -60), addDays_(today, -1));
   var last = logged.length ? String(logged[logged.length - 1]['Session']) : '';
-  var order = sessions.filter(function (s) { return readProgramme_()[s]; });
-  var next = last && order.indexOf(last) !== -1 ? order[(order.indexOf(last) + 1) % order.length] : '';
+  var next = rotationNext_(today), planned = day && day.train ? (rotationDoneOn_(today) || next) : '';
+  sessions = ROTATION.filter(function (s) { return cfg.sessions[s]; }).concat(sessions.filter(function (s) { return ROTATION.indexOf(s) === -1; }));
   return {
     today: todaySession,
-    planned: day && day.train ? day.session : '',
-    changed: todaySession !== (day && day.train ? day.session : ''),
+    planned: planned, rotation: ROTATION, rotationNext: next, trainDays: Object.keys(cfg.schedule).filter(function (d) { return cfg.schedule[d].train; }).map(Number),
+    changed: todaySession !== planned,
     last: last, next: next,
     sessions: sessions,
     plans: sessions.reduce(function (o, s) { o[s] = workoutPlan_(s); return o; }, {}),
@@ -104,7 +104,7 @@ function trainState_() {
     cardio: cardioState_(),
     prev: previousSets_(),
     records: records_(),
-    kinds: sessions.reduce(function (o, s) { o[s] = readProgramme_()[s] ? 'programme' : PRESET_NAMES.indexOf(s) !== -1 ? 'preset' : 'custom'; return o; }, {})
+    kinds: sessions.reduce(function (o, s) { o[s] = ROTATION.indexOf(s) !== -1 || readProgramme_()[s] ? 'programme' : PRESET_NAMES.indexOf(s) !== -1 ? 'preset' : 'custom'; return o; }, {})
   };
 }
 
@@ -351,7 +351,7 @@ function saveTemplate(key, name, exercises) {
   var list = (exercises || []).filter(function (e) { return String(e.exercise || '').trim(); }).slice(0, 20);
   if (!list.length) throw new Error('Add at least one exercise.');
   return withLock_(function () {
-    if (readProgramme_()[name] && !readConfig_().sessions[name]) throw new Error('"' + name + '" is a programme day; pick another name.');
+    if ((readProgramme_()[name] || ROTATION.indexOf(name) !== -1) && !readConfig_().sessions[name]) throw new Error('"' + name + '" is a programme day; pick another name.');
     deleteTemplateRows_(name);
     var rows = list.map(function (e) { return [name, String(e.exercise).trim().slice(0, 60), String(Math.max(1, Math.min(10, Math.round(Number(e.sets) || 3)))), String(e.reps || '8-12').slice(0, 20), String(e.rpe || ''), String(e.rest || '90 sec').slice(0, 12), String(e.notes || '').slice(0, 120)]; });
     var sh = sheet_('sessions');
@@ -364,7 +364,7 @@ function saveTemplate(key, name, exercises) {
 function deleteTemplate(key, name) {
   requireKey_(key);
   return withLock_(function () {
-    if (readProgramme_()[name]) throw new Error('Programme days can\'t be deleted here; edit them in the Sessions tab.');
+    if (readProgramme_()[name] || ROTATION.indexOf(name) !== -1) throw new Error('Programme days can\'t be deleted here; edit them in the Sessions tab.');
     deleteTemplateRows_(String(name));
     return trainState_();
   });
