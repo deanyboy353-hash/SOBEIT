@@ -89,6 +89,7 @@
   function greeting() { var hr = new Date(now()).getHours(); return hr < 5 ? 'Late one' : hr < 12 ? 'Morning' : hr < 18 ? 'Afternoon' : 'Evening'; }
 
   var ICONS = {
+    camera: 'M4 8h3l2-3h6l2 3h3v11H4zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z',
     home: 'M3 10.5 12 3l9 7.5M5 9.5V21h5v-6h4v6h5V9.5', brief: 'M4 8h16v11H4zM9 8V5h6v3M4 13h16', list: 'M10 6h10M10 12h10M10 18h10M4 6l1.2 1.2L7.5 5M4 12l1.2 1.2L7.5 11M4 18l1.2 1.2L7.5 17',
     grid: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z', dumbbell: 'M6.5 6.5v11M17.5 6.5v11M3.5 9.5v5M20.5 9.5v5M6.5 12h11',
     food: 'M7 3v8a2 2 0 0 0 4 0V3M9 11v10M17 3c-1.7 1.3-2.5 3.5-2.5 6.5V13H17v8', user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0',
@@ -870,6 +871,7 @@
       '<div class="bar" style="margin-top:8px"><i style="width:' + Math.min(100, prot / scale * 100) + '%"></i><span class="zone" style="left:' + (t.proteinMin / scale * 100) + '%;width:' + ((t.proteinMax - t.proteinMin) / scale * 100) + '%"></span></div></section>';
     h += '<section class="card"><form class="inline" id="quick" autocomplete="off"><input type="text" id="quickText" placeholder="2 protein weetabix and 200ml milk" aria-label="What did you eat?"' + (F.hasClaudeKey ? '' : ' disabled') + '><button class="btn primary" id="quickBtn" type="submit"' + (F.hasClaudeKey ? '' : ' disabled') + '>Add</button></form>' +
       '<p class="small muted" style="margin:8px 0 0" id="quickNote">' + (F.hasClaudeKey ? 'Describe it, Claude works out the numbers.' : 'Add your Claude API key in You, Settings to describe food in words.') + '</p>' +
+      (F.hasClaudeKey ? '<label class="btn soft wide" style="margin-top:10px">' + icon('camera', 's') + 'Snap or share a photo<input type="file" accept="image/*" capture="environment" id="foodPhoto" hidden></label>' : '') +
       (F.hasClaudeKey ? '<button class="btn soft wide" type="button" id="ideas" style="margin-top:10px">' + icon('sparkles', 's') + 'What could I eat?</button>' : '') + '</section>';
     if (ideas) h += '<section class="card tint"><div class="head"><h3>Ideas that fit today</h3><button class="iconbtn" type="button" id="ideasClose" aria-label="Close ideas">' + icon('x', 's') + '</button></div>' + ideas.map(function (i, k) {
       return '<div class="item"><div class="grow"><div class="t">' + esc(i.name) + '</div><div class="m">' + i.kcal + ' kcal · ' + i.protein + 'g · ' + esc(i.why) + '</div></div><button class="btn primary sm" type="button" data-idea="' + k + '">Log</button></div>';
@@ -2003,6 +2005,42 @@
     if (t.dataset.station) { stopOwn(); stopWeb(); return startMusic(t.dataset.station); }
   });
   function openSpotify(q) { window.open('https://open.spotify.com/search/' + encodeURIComponent(q), '_blank'); }
+  // Food photo -> shrink on the phone (fast upload) -> Claude estimates it -> logged with undo.
+  function shrinkPhoto(blob, done) {
+    var url = URL.createObjectURL(blob), img = new Image();
+    img.onload = function () {
+      var k = Math.min(1, 1280 / Math.max(img.width, img.height)), c = document.createElement('canvas');
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      done(c.toDataURL('image/jpeg', 0.8).split(',')[1]);
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); toast('Couldn\'t open that photo', true); };
+    img.src = url;
+  }
+  function photoFood(blob, note) {
+    if (!S.food || !S.food.hasClaudeKey) { toast('Add your Claude API key in You, Settings first', true); return; }
+    toast('Looking at your photo…');
+    shrinkPhoto(blob, function (b64) {
+      call('quickAddPhoto', [b64, 'image/jpeg', note || ''], function (res) { S.food = res.state; renderFood(); buzz(20); offerUndo(res.undo, 'Logged ' + itemsText(res.added)); });
+    });
+  }
+  /** Something shared to Nudge from another app (the service worker parked it in a cache). */
+  function takeShare() {
+    if (!window.caches) return;
+    caches.open('nudge-share').then(function (c) {
+      return Promise.all([c.match('share-text'), c.match('share-photo')]).then(function (r) {
+        var tp = r[0] ? r[0].text() : Promise.resolve(''), pp = r[1] ? r[1].blob() : Promise.resolve(null);
+        return Promise.all([tp, pp]).then(function (v) {
+          c.delete('share-text'); c.delete('share-photo');
+          var text = String(v[0] || '').trim(), photo = v[1];
+          showTab('food');
+          if (photo && photo.size) photoFood(photo, text);
+          else if (text) { var q = el('quickText'); if (q) { q.value = text.slice(0, 200); q.focus(); } toast('Check it, then tap Add'); }
+        });
+      });
+    }).catch(function () {});
+  }
+  document.addEventListener('change', function (ev) { if (ev.target.id === 'foodPhoto' && ev.target.files.length) { photoFood(ev.target.files[0]); ev.target.value = ''; } });
   document.addEventListener('change', function (ev) { if (ev.target.id === 'ownFiles' && ev.target.files.length) playOwn([].slice.call(ev.target.files)); });
   document.addEventListener('submit', function (ev) { if (ev.target.id !== 'spotForm') return; ev.preventDefault(); var q = el('spotText').value.trim(); if (q) openSpotify(q); else toast('Type an album, artist or playlist'); });
 
@@ -3010,6 +3048,13 @@
     if (t.id === 'navMore') return moreSheet();
     closeSheet(); showTab(t.dataset.moretab);
   });
+  /** Home-screen shortcuts and share-to-Nudge land here: #food:log, #food:share, #home:weigh, #train:start. */
+  function shortcut(tab, what) {
+    if (what === 'share') return takeShare();
+    if (what === 'log') { var q = el('quickText'); if (q && !q.disabled) q.focus(); else toast('Add your Claude API key in You, Settings to describe food'); return; }
+    if (what === 'weigh') { var w = el('weighText'); if (w) { w.scrollIntoView({ block: 'center' }); w.focus(); } else toast('Weight is already in for today'); return; }
+    if (what === 'start') { var st = document.querySelector('#tab-train [data-wk="start"], #tab-train .btn.primary'); if (st) st.scrollIntoView({ block: 'center' }); }
+  }
   function boot() {
     if (!S) return;
     ME = S.who === 'me';
@@ -3017,7 +3062,9 @@
     setupNav();
     if (!load('badges-' + S.who)) save('badges-' + S.who, S.game.badges.filter(function (b) { return b.earned; }).map(function (b) { return b.id; }));
     renderAll();
-    var hash = location.hash.replace('#', '');
+    var hash = location.hash.replace('#', ''), sub = '';
+    if (hash.indexOf(':') > 0) { sub = hash.split(':')[1]; hash = hash.split(':')[0]; history.replaceState(null, '', location.pathname + location.search + '#' + hash); }
+    if (!ME && /^(food|train)$/.test(hash)) hash = 'home';
     showTab(['home', 'chores', 'work', 'play', 'train', 'food', 'health', 'you', 'custom', 'empire'].indexOf(hash) !== -1 ? hash : (window.LQ_TAB || load('tab') || 'home'));
     lastBoost = !!boostLeft();
     if (hash === 'djset') {   // straight to the DJ game (the Chrome add-on's "DJ Set in a tab")
@@ -3027,7 +3074,8 @@
     }
     var na = location.hash.match(/dl=(\w+):(\w+)/);
     if (na) { history.replaceState(null, '', location.pathname + location.search + '#home'); setTimeout(function () { handleNoteAction(na[1], na[2]); }, 400); }
-    if (hash !== 'djset') setTimeout(intro, 250);
+    if (sub) setTimeout(function () { shortcut(hash, sub); }, 350);
+    else if (hash !== 'djset') setTimeout(intro, 250);
     maybeBrief();
   }
   if (!KEY) {

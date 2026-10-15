@@ -49,6 +49,20 @@ function estimateFood_(text, presets, model) {
   });
 }
 
+/** A photo of food (base64 JPEG/PNG/WebP) -> the same [{name, kcal, protein}] as estimateFood_. */
+function estimateFoodPhoto_(b64, mime, note, presets, model) {
+  var presetLines = presets.map(function (p) { return '- ' + p.name + ': ' + p.kcal + ' kcal, ' + p.protein + ' g protein'; }).join('\n');
+  var system = 'You estimate calories and protein from a photo of food for a UK food diary. Name each food you can see, ' +
+    'judge the portion from the plate and packaging, and assume UK products and portion sizes. If a label shows nutrition, use it. ' +
+    'When a food matches one of the saved foods below, use those numbers. Round kcal to the nearest 5 and protein to the nearest gram. ' +
+    'If there is no food in the photo, return no items.\n\nSaved foods (per serving):\n' + (presetLines || '(none)');
+  var content = [{ type: 'image', source: { type: 'base64', media_type: mime, data: b64 } }, { type: 'text', text: note ? 'Note: ' + String(note).slice(0, 300) : 'What is in this photo?' }];
+  var items = callClaudeJson_(system, content, FOOD_SCHEMA, model).items || [];
+  return items.filter(function (i) { return i.name; }).map(function (i) {
+    return { name: String(i.name), kcal: Math.round(Number(i.kcal) || 0), protein: Math.round(Number(i.protein_g) || 0) };
+  });
+}
+
 /**
  * One Claude API call that must answer with JSON matching `schema` (structured output).
  * Turns API failures into plain-English errors for the page to show.
@@ -71,7 +85,7 @@ function callClaudeJson_(system, userText, schema, model, maxChars) {
       fallbacks: 'default',
       output_config: { effort: 'low', format: { type: 'json_schema', schema: schema } },
       system: system,
-      messages: [{ role: 'user', content: String(userText).slice(0, maxChars || 500) }]
+      messages: [{ role: 'user', content: Array.isArray(userText) ? userText : String(userText).slice(0, maxChars || 500) }]
     })
   });
 

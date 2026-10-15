@@ -163,3 +163,20 @@ test('Sunday summary includes daily food averages, gym, weight and the week ahea
   assert.match(d, /CHORES\nDean: 2 jobs, 32 min · Yaz: 1 job, 14 min/);
   assert.match(d, /Mon: weigh-in\nTue: Push\nWed: Pull · weigh-in\nFri: Shoulders & Arms\nSat: Push/);
 });
+
+test('photo food: sends the image to Claude, logs what it saw, rejects non-photos and empty plates', () => {
+  const { g, key } = ready();
+  g.ctx.saveClaudeKey(key, 'sk-ant-api03-' + 'x'.repeat(40));
+  assert.throws(() => g.ctx.quickAddPhoto(key, 'abc', 'application/pdf'), /isn't a photo/);
+  const res = g.ctx.quickAddPhoto(key, 'QUJD', 'image/jpeg', 'lunch at work');
+  assert.ok(res.added.length >= 1);
+  const req = g.state.claudeRequests[g.state.claudeRequests.length - 1];
+  const content = req.body.messages[0].content;
+  assert.strictEqual(content[0].type, 'image');
+  assert.strictEqual(content[0].source.media_type, 'image/jpeg');
+  assert.strictEqual(content[0].source.data, 'QUJD');
+  assert.match(content[1].text, /lunch at work/);
+  assert.match(g.tab('Food').rows().slice(-1)[0][5], /^photo: lunch at work/);
+  g.state.claudeReply = { body: { stop_reason: 'end_turn', content: [{ type: 'text', text: '{"items":[]}' }] } };
+  assert.throws(() => g.ctx.quickAddPhoto(key, 'QUJD', 'image/png'), /Couldn't spot any food/);
+});

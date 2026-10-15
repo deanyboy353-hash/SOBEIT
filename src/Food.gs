@@ -81,6 +81,21 @@ function quickAdd(key, text) {
   });
 }
 
+/** A shared or snapped photo of food -> estimated and logged (with undo). */
+function quickAddPhoto(key, b64, mime, note) {
+  requireKey_(key);
+  mime = String(mime || 'image/jpeg');
+  if (!/^image\/(jpeg|png|webp|gif)$/.test(mime)) throw new Error('That file isn\'t a photo Claude can read. Try a JPEG or PNG.');
+  b64 = String(b64 || '');
+  if (!b64 || b64.length > 6e6) throw new Error('That photo is too big. Try a smaller one.');
+  var items = estimateFoodPhoto_(b64, mime, note, readPresets_(), claudeModel_());
+  if (!items.length) throw new Error("Couldn't spot any food in that photo. Type it instead.");
+  return withLock_(function () {
+    undoable_('me', 'Photo: ' + items[0].name.slice(0, 30), function () { addFood_(items, 'photo' + (note ? ': ' + String(note).slice(0, 60) : '')); });
+    return { state: foodState_(), added: items, undo: undoInfo_('me') };
+  });
+}
+
 /** Remove one food item from today (the n-th row of that entry with that name). */
 function removeFood(key, entry, item) {
   requireKey_(key);
