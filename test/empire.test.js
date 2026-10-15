@@ -174,14 +174,14 @@ test('empire: buy, upgrade, ride, income, sell, and Yaz sees it', () => {
   giveCash(g, 'me', 200000);
   let s = g.ctx.buyItem(me, 'ganton');
   assert.strictEqual(s.empire.cash, 195000);
-  assert.strictEqual(s.empire.homeName, 'Grove Street house');
+  assert.strictEqual(s.empire.homeName, 'Corner terrace house');
   assert.throws(() => g.ctx.buyItem(me, 'ganton'), /already own/);
   assert.throws(() => g.ctx.buyItem(me, 'jetpack'), /isn't for sale/);
   s = g.ctx.buyItem(me, 'savanna');
-  assert.strictEqual(s.empire.rideName, 'Savanna');
+  assert.strictEqual(s.empire.rideName, 'Lowrider');
   s = g.ctx.buyItem(me, 'malibu');
   assert.strictEqual(s.empire.income, 600);
-  assert.strictEqual(g.state.pushes.filter(p => p.token === 'yaz-phone-token-0123456789').at(-1).title, 'Deany just bought The Malibu Club');
+  assert.strictEqual(g.state.pushes.filter(p => p.token === 'yaz-phone-token-0123456789').at(-1).title, 'Deany just bought the Beach club');
   // upgrades: a studio adds 15% income and costs 30% of the price
   s = g.ctx.upgradeItem(me, 'malibu', 'studio');
   const club = s.empire.owned.find(o => o.id === 'malibu');
@@ -199,7 +199,7 @@ test('empire: buy, upgrade, ride, income, sell, and Yaz sees it', () => {
   assert.strictEqual(Number(cashTab[0][4]), 690);
   // Yaz sees your empire
   const y = g.ctx.appState(partner).empire;
-  assert.strictEqual(y.other.rideName, 'Savanna');
+  assert.strictEqual(y.other.rideName, 'Lowrider');
   assert.strictEqual(y.other.count, 3);
   assert.ok(y.other.worth > 170000);
   assert.strictEqual(y.cash, 0);
@@ -210,7 +210,7 @@ test('empire: buy, upgrade, ride, income, sell, and Yaz sees it', () => {
   assert.strictEqual(s.empire.rideName, '');
   assert.throws(() => g.ctx.sellItem(me, 'savanna'), /don't own/);
   s = g.ctx.setFavourite(me, 'malibu');
-  assert.strictEqual(s.empire.homeName, 'The Malibu Club');
+  assert.strictEqual(s.empire.homeName, 'Beach club');
   assert.strictEqual(s.catalog.length, 30);
 });
 

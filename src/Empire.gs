@@ -1,8 +1,8 @@
 /**
  * Empire.gs: cash, and the things you buy with it.
  *
- * Every XP you earn also pays cash (£10 per XP). Spend it on San Andreas and
- * Vice City properties and businesses, and on cars, bikes, boats and aircraft.
+ * Every XP you earn also pays cash (£10 per XP). Spend it on homes and businesses in two
+ * made-up places, Sunset Coast and Neon Quay, and on cars, bikes, boats and aircraft.
  * Businesses pay you every morning; upgrades raise what a place pays (or what
  * it's worth). Sell anything back for 60% of what you put in.
  * The Cash tab is the ledger; what you own lives in Script Properties (EMPIRE_<who>).
@@ -13,36 +13,36 @@ var SELL_BACK = 0.6;
 
 // [id, name, area, game, type, price, daily income]
 var EMPIRE_ITEMS = [
-  ['ganton', 'Grove Street house', 'Ganton, Los Santos', 'sa', 'home', 5000, 0],
-  ['mulholland', 'Mulholland safehouse', 'Mulholland, Los Santos', 'sa', 'home', 40000, 0],
-  ['doherty', 'Doherty garage', 'Doherty, San Fierro', 'sa', 'business', 30000, 150],
-  ['bluffs', 'Verdant Bluffs safehouse', 'Verdant Bluffs, Los Santos', 'sa', 'home', 20000, 0],
-  ['zeroshop', 'Zero RC shop', 'Garcia, San Fierro', 'sa', 'business', 25000, 120],
-  ['pricklepine', 'Prickle Pine mansion', 'Prickle Pine, Las Venturas', 'sa', 'home', 150000, 0],
-  ['fourdragons', 'Four Dragons Casino share', 'The Strip, Las Venturas', 'sa', 'business', 200000, 1100],
-  ['maddogg', 'Madd Dogg\'s mansion', 'Mulholland, Los Santos', 'sa', 'home', 300000, 0],
-  ['oceanview', 'Ocean View Hotel room', 'Ocean Beach, Vice City', 'vc', 'home', 8000, 0],
-  ['hyman', 'Hyman Condo', 'Downtown, Vice City', 'vc', 'home', 45000, 0],
-  ['icecream', 'Cherry Popper ice cream factory', 'Little Havana, Vice City', 'vc', 'business', 35000, 180],
-  ['poleposition', 'Pole Position Club', 'Ocean Beach, Vice City', 'vc', 'business', 40000, 200],
-  ['kaufman', 'Kaufman Cabs', 'Little Haiti, Vice City', 'vc', 'business', 60000, 300],
-  ['sunshine', 'Sunshine Autos', 'Little Havana, Vice City', 'vc', 'business', 80000, 400],
-  ['interglobal', 'InterGlobal Films studio', 'Prawn Island, Vice City', 'vc', 'business', 100000, 500],
-  ['malibu', 'The Malibu Club', 'Washington Beach, Vice City', 'vc', 'business', 120000, 600],
-  ['vercetti', 'Vercetti Estate', 'Starfish Island, Vice City', 'vc', 'home', 250000, 0],
+  ['ganton', 'Corner terrace house', 'Saltmarsh, Sunset Coast', 'sa', 'home', 5000, 0],
+  ['mulholland', 'Hillside safehouse', 'Crestview Hills, Sunset Coast', 'sa', 'home', 40000, 0],
+  ['doherty', 'Backstreet garage', 'Dockside, Sunset Coast', 'sa', 'business', 30000, 150],
+  ['bluffs', 'Clifftop safehouse', 'Gull Point, Sunset Coast', 'sa', 'home', 20000, 0],
+  ['zeroshop', 'Model and hobby shop', 'Old Market, Sunset Coast', 'sa', 'business', 25000, 120],
+  ['pricklepine', 'Desert mansion', 'Dry Creek, Sunset Coast', 'sa', 'home', 150000, 0],
+  ['fourdragons', 'Casino share', 'The Lights Strip, Sunset Coast', 'sa', 'business', 200000, 1100],
+  ['maddogg', 'Hilltop mansion', 'Crestview Hills, Sunset Coast', 'sa', 'home', 300000, 0],
+  ['oceanview', 'Seafront hotel room', 'Shell Beach, Neon Quay', 'vc', 'home', 8000, 0],
+  ['hyman', 'Downtown condo', 'Midtown, Neon Quay', 'vc', 'home', 45000, 0],
+  ['icecream', 'Ice cream factory', 'Little Harbour, Neon Quay', 'vc', 'business', 35000, 180],
+  ['poleposition', 'Late-night club', 'Shell Beach, Neon Quay', 'vc', 'business', 40000, 200],
+  ['kaufman', 'Taxi firm', 'North Docks, Neon Quay', 'vc', 'business', 60000, 300],
+  ['sunshine', 'Car showroom', 'Little Harbour, Neon Quay', 'vc', 'business', 80000, 400],
+  ['interglobal', 'Film studio', 'Studio Island, Neon Quay', 'vc', 'business', 100000, 500],
+  ['malibu', 'Beach club', 'Coral Beach, Neon Quay', 'vc', 'business', 120000, 600],
+  ['vercetti', 'Island estate', 'Palm Island, Neon Quay', 'vc', 'home', 250000, 0],
   ['bmx', 'BMX', 'Bike', 'sa', 'bike', 500, 0],
-  ['faggio', 'Faggio', 'Scooter', 'vc', 'bike', 800, 0],
-  ['sanchez', 'Sanchez', 'Dirt bike', 'sa', 'bike', 3000, 0],
-  ['greenwood', 'Greenwood', 'Car', 'sa', 'car', 6000, 0],
-  ['savanna', 'Savanna', 'Lowrider', 'sa', 'car', 9000, 0],
-  ['pcj', 'PCJ-600', 'Sports bike', 'vc', 'bike', 12000, 0],
-  ['stallion', 'Stallion', 'Muscle car', 'vc', 'car', 15000, 0],
-  ['nrg', 'NRG-500', 'Superbike', 'sa', 'bike', 40000, 0],
-  ['cheetah', 'Cheetah', 'Sports car', 'vc', 'car', 60000, 0],
-  ['infernus', 'Infernus', 'Supercar', 'sa', 'car', 95000, 0],
-  ['squalo', 'Squalo', 'Speedboat', 'vc', 'boat', 70000, 0],
-  ['sparrow', 'Sparrow', 'Helicopter', 'vc', 'air', 120000, 0],
-  ['hydra', 'Hydra', 'Jump jet', 'sa', 'air', 500000, 0]
+  ['faggio', 'Retro scooter', 'Scooter', 'vc', 'bike', 800, 0],
+  ['sanchez', 'Trail bike', 'Dirt bike', 'sa', 'bike', 3000, 0],
+  ['greenwood', 'Old saloon', 'Car', 'sa', 'car', 6000, 0],
+  ['savanna', 'Lowrider', 'Lowrider', 'sa', 'car', 9000, 0],
+  ['pcj', 'Sports bike', 'Sports bike', 'vc', 'bike', 12000, 0],
+  ['stallion', 'Muscle car', 'Muscle car', 'vc', 'car', 15000, 0],
+  ['nrg', 'Superbike', 'Superbike', 'sa', 'bike', 40000, 0],
+  ['cheetah', 'Sports coupe', 'Sports car', 'vc', 'car', 60000, 0],
+  ['infernus', 'Supercar', 'Supercar', 'sa', 'car', 95000, 0],
+  ['squalo', 'Speedboat', 'Speedboat', 'vc', 'boat', 70000, 0],
+  ['sparrow', 'Little helicopter', 'Helicopter', 'vc', 'air', 120000, 0],
+  ['hydra', 'Jump jet', 'Jump jet', 'sa', 'air', 500000, 0]
 ];
 
 // [id, name, share of the price, extra income (share of base), for which types]
@@ -67,7 +67,7 @@ function empireItem_(id) {
   return null;
 }
 
-/** "the Savanna", but "The Malibu Club" (never "the The"). */
+/** "the Lowrider", but "The ..." names keep their own "The" (never "the The"). */
 function the_(name) {
   return /^The /.test(name) ? name : 'the ' + name;
 }

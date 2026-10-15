@@ -2,9 +2,9 @@
  * Wardrobe.gs: clothes, hair and glam for your 3D character.
  *
  * Everything costs cash (which you earn from XP), and the best pieces also
- * need chores done before they unlock: the Grove Street jersey after 5, the
+ * need chores done before they unlock: the number 7 jersey after 5, the
  * ball gown after 75, the winner's crown after 100. Basics are free.
- * Styles: San Andreas (sa), Vice City (vc), and drag race runway (drag).
+ * Styles (all original): street (sa), neon (vc) and runway glam (drag).
  */
 
 var ACH_TEXT = { streak7: 'Hit a 7-day streak', gym10: 'Log 10 gym sessions', booth1: 'Master your first Booth lesson (Solid or better)', pet30: 'Grow your pet to Legend (30 days you both win)' };
@@ -16,7 +16,7 @@ var WARDROBE = [
   ['ponytail', 'hair', 'High ponytail', 900, 0, 'basic'], ['buns', 'hair', 'Space buns', 1100, 0, 'basic'], ['mohawk', 'hair', 'Mohawk', 1400, 5, 'vc'],
   ['beehive', 'hair', 'Beehive', 3000, 15, 'drag'], ['volume', 'hair', 'Volume Queen wig', 6000, 40, 'drag'],
   // tops
-  ['tee', 'top', 'T-shirt', 0, 0, 'basic'], ['tank', 'top', 'Vest top', 0, 0, 'basic'], ['grove', 'top', 'Grove Street jersey', 1500, 5, 'sa'], ['tracktop', 'top', 'Tracksuit top', 1800, 0, 'sa'],
+  ['tee', 'top', 'T-shirt', 0, 0, 'basic'], ['tank', 'top', 'Vest top', 0, 0, 'basic'], ['grove', 'top', 'Number 7 jersey', 1500, 5, 'sa'], ['tracktop', 'top', 'Tracksuit top', 1800, 0, 'sa'],
   ['hawaiian', 'top', 'Hawaiian shirt', 1500, 0, 'vc'], ['vcsuit', 'top', 'Pastel suit jacket', 4000, 20, 'vc'], ['hoodie', 'top', 'Hoodie', 1200, 0, 'basic'],
   ['bomber', 'top', 'Bomber jacket', 2000, 0, 'basic'], ['leather', 'top', 'Leather jacket', 3500, 10, 'vc'], ['crop', 'top', 'Crop top', 1000, 0, 'basic'],
   ['corset', 'top', 'Corset', 4500, 25, 'drag'], ['bodice', 'top', 'Sequin bodice', 8000, 50, 'drag'], ['fur', 'top', 'Fur coat', 9000, 60, 'drag'],
@@ -34,7 +34,7 @@ var WARDROBE = [
   ['wings', 'acc', 'Runway wings', 15000, 80, 'drag'], ['crown', 'acc', 'Winner\'s crown', 20000, 100, 'drag'],
   // patterns (for tops and bottoms)
   ['solid', 'pattern', 'Plain', 0, 0, 'basic'], ['stripes', 'pattern', 'Stripes', 500, 0, 'basic'], ['plaid', 'pattern', 'Plaid', 900, 0, 'sa'], ['flames', 'pattern', 'Flames', 1500, 5, 'sa'],
-  ['floral', 'pattern', 'Vice City florals', 1200, 0, 'vc'], ['leopard', 'pattern', 'Leopard', 2500, 10, 'drag'], ['chrome', 'pattern', 'Chrome', 4000, 25, 'drag'], ['sequins', 'pattern', 'Sequins', 6000, 35, 'drag'],
+  ['floral', 'pattern', 'Tropical florals', 1200, 0, 'vc'], ['leopard', 'pattern', 'Leopard', 2500, 10, 'drag'], ['chrome', 'pattern', 'Chrome', 4000, 25, 'drag'], ['sequins', 'pattern', 'Sequins', 6000, 35, 'drag'],
   // glam
   ['glam', 'glam', 'Glam kit (lipstick and shadow)', 2000, 5, 'drag'],
   // earned, not bought: free the moment you hit the achievement
@@ -110,7 +110,7 @@ function buyWear(key, id) {
     mine.push(id);
     setProp_('WARDROBE_' + who, JSON.stringify(mine));
     addFeed_(who, 'Bought the ' + it.name, 'empire');
-    if (it.style === 'drag') push_(who === 'me' ? 'partner' : 'me', nicks_()[who] + ' bought the ' + it.name, 'Category is: Nudge realness.', 'home');
+    if (it.style === 'drag') push_(who === 'me' ? 'partner' : 'me', nicks_()[who] + ' bought the ' + it.name, 'Runway ready.', 'home');
     return appState_(who);
   });
 }

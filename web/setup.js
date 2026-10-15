@@ -41,7 +41,7 @@
     function add(s) { if (!s.show || s.show()) list.push(s); }
     // profile
     add({ id: 'name', sec: 'profile', q: 'What should we call you?', html: function () { return '<input type="text" class="wz-text" data-wzi="profile.name" value="' + esc(d.profile.name || '') + '" maxlength="30" placeholder="Your name">'; }, save: function () { return { name: d.profile.name }; } });
-    add({ id: 'avatar', sec: 'profile', q: 'Pick your character', help: 'It shows on your home screen and in the games. You can dress it up later in You, Dressing room.', opt: true,
+    if (N.chars().length) add({ id: 'avatar', sec: 'profile', q: 'Pick your character', help: 'It shows on your home screen and in the games. You can dress it up later in You, Dressing room.', opt: true,
       html: function () { return '<div class="wz-avs">' + N.chars().map(function (c) { return '<button type="button" class="wz-av' + (d.profile.avatar === c[0] ? ' on' : '') + '" data-wz="profile.avatar" data-v="' + esc(c[0]) + '">' + N.avatar(c[0], 54) + '<span>' + esc(c[2]) + '</span></button>'; }).join('') + '</div>'; },
       save: function () { if (d.profile.avatar) N.setChar(d.profile.avatar); return { avatar: d.profile.avatar || '' }; } });
     add({ id: 'work', sec: 'profile', q: 'Which days do you work, and when?', help: 'Tap a day to switch it on or off. Chores stay light on work days.',

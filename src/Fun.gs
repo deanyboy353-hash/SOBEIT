@@ -16,9 +16,8 @@
 
 var ERA_TITLES = {
   dj: ['Bedroom DJ', 'Warm-up set', 'Back to back', 'Peak time', 'Main room', 'Headliner', 'Closing set', 'Festival main stage', 'Residency', 'Legend'],
-  gta: ['Fresh off the bus', 'Corner hustler', 'Homie', 'Crew regular', 'Shot caller', 'Made', 'Kingpin', 'Runs the city', 'Untouchable', 'Legend of the state'],
-  ye: ['The College Dropout', 'Late Registration', 'Graduation', '808s & Heartbreak', 'My Beautiful Dark Twisted Fantasy',
-    'Watch the Throne', 'Yeezus', 'The Life of Pablo', 'ye', 'Donda']
+  glam: ['Fresh face', 'Lash apprentice', 'Rhinestone rookie', 'Spotlight seeker', 'Sequin specialist', 'Runway regular', 'Headline act', 'Crown in sight', 'Main stage', 'Icon'],
+  city: ['New in town', 'Local face', 'Block regular', 'Night owl', 'Neighbourhood name', 'Big deal', 'City fixture', 'Skyline', 'Landmark', 'Legend of the coast']
 };
 
 function settingOn_(name) {
@@ -41,7 +40,8 @@ function nicks_() {
 
 function eraTitle_(who, level) {
   var style = String(readConfig_().settings[who === 'me' ? 'Your level titles' : 'Partner level titles'] || '').trim().toLowerCase();
-  var list = ERA_TITLES[style === 'ye' || style === 'kanye' ? 'ye' : style === 'dj' ? 'dj' : style === 'gta' ? 'gta' : ''];
+  // older settings: 'Ye' became Glam, 'GTA' became City (original title sets)
+  var list = ERA_TITLES[style === 'ye' || style === 'kanye' || style === 'glam' ? 'glam' : style === 'dj' ? 'dj' : style === 'gta' || style === 'city' ? 'city' : ''];
   if (!list) return '';
   return level <= list.length ? list[level - 1] : list[list.length - 1] + ' ' + (level - list.length + 1);
 }
@@ -203,7 +203,7 @@ function heartbeat_() {
     PEOPLE.forEach(function (who) {
       var other = who === 'me' ? 'partner' : 'me';
       var xp = xpOn_(who, ymd), st = streakNow_(who, ymd, goal), behind = !st.todayDone, gentle = setupOn_() && profile_(who).reminder !== 'direct';
-      var oxp = xpOn_(other, ymd), cname = charName_(prefs_(who).char) || 'Tommy';
+      var oxp = xpOn_(other, ymd), cname = nicks_()[who] || 'You';
       var fill = function (s) { return s.replace('{n}', st.count).replace('{x}', Math.max(0, goal - xp)).replace('{other}', nk[other]).replace('{ox}', oxp).replace('{mx}', xp).replace('{char}', cname); };
       var calm = setupOn_() && profile_(who).motivation === 'calm';   // "just a calm list": the morning list only, no streak or race nags
       var pushy = nagLevel_(who) === 'aggressive' && !gentle && !calm;
@@ -431,7 +431,7 @@ function setPrefs(key, p) {
     var mine = who === 'me';
     if (p.nick !== undefined && String(p.nick).trim()) setSetting_(mine ? 'Your nickname' : 'Partner nickname', String(p.nick).trim().slice(0, 24));
     if (p.team !== undefined && String(p.team).trim()) setSetting_('Team name', String(p.team).trim().slice(0, 40));
-    if (p.titles !== undefined) setSetting_(mine ? 'Your level titles' : 'Partner level titles', ({ dj: 'DJ', ye: 'Ye', gta: 'GTA' })[p.titles] || 'None');
+    if (p.titles !== undefined) setSetting_(mine ? 'Your level titles' : 'Partner level titles', ({ dj: 'DJ', glam: 'Glam', city: 'City' })[p.titles] || 'None');
     return appState_(who);
   });
 }

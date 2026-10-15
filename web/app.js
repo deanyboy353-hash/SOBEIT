@@ -1554,45 +1554,7 @@
 
   // ---------- CHARACTERS and CUSTOMISE ----------
   // Original portraits (colours and initials), not game artwork.
-  var CHARS = [
-    ['sa-cj', 'CJ', 'Carl Johnson', 'Back home to put the family first', '#2e9e4f', '#0d3b1e'],
-    ['sa-smoke', 'BS', 'Big Smoke', 'Big appetite, bigger plans', '#3f8f3f', '#1b2a1b'],
-    ['sa-sweet', 'SW', 'Sweet', 'Holds the hood together', '#2f8a46', '#e9e2c8'],
-    ['sa-ryder', 'RY', 'Ryder', 'Short fuse, sharp hat', '#4a9b3a', '#2a2a2a'],
-    ['sa-kendl', 'KJ', 'Kendl', 'Smartest one in the family', '#2e9e4f', '#e0a33d'],
-    ['sa-cesar', 'CV', 'Cesar', 'Lowriders and loyalty', '#c46a2b', '#3a1f0f'],
-    ['sa-catalina', 'CA', 'Catalina', 'Chaos with a plan', '#b3402a', '#2a0f0a'],
-    ['sa-woozie', 'WZ', 'Woozie', 'Calm, lucky, unstoppable', '#b0202f', '#d9a441'],
-    ['sa-truth', 'TT', 'The Truth', 'Has all the answers, allegedly', '#7a9a2a', '#c9a35a'],
-    ['sa-toreno', 'MT', 'Mike Toreno', 'Every job is a secret', '#4b5563', '#111827'],
-    ['sa-maddogg', 'MD', 'Madd Dogg', 'Comeback king', '#7c3aed', '#1e1b4b'],
-    ['sa-ogloc', 'OG', 'OG Loc', 'Rhymes in progress', '#c9a227', '#3b2f0b'],
-    ['sa-zero', 'ZR', 'Zero', 'Small shop, big ideas', '#2563eb', '#0b1d4a'],
-    ['sa-tenpenny', 'FT', 'Tenpenny', 'Badge, attitude, no rules', '#334155', '#0f172a'],
-    ['sa-denise', 'DR', 'Denise Robinson', 'Ganton through and through', '#2e9e4f', '#141414'],
-    ['sa-millie', 'MP', 'Millie Perkins', 'Sweet smile, big secrets', '#f472b6', '#7c3aed'],
-    ['sa-helena', 'HW', 'Helena Wankstein', 'Country girl with a plan', '#8fbf5a', '#c9862b'],
-    ['sa-michelle', 'MC', 'Michelle Cannes', 'Fixes cars, drives faster', '#2563eb', '#1e1b4b'],
-    ['sa-katie', 'KZ', 'Katie Zhan', 'Calm hands, quick thinking', '#2a9d8f', '#0f3d3a'],
-    ['sa-barbara', 'BS', 'Barbara Schternvart', 'Off duty, on point', '#334155', '#d4af37'],
-    ['sa-lowrider', 'LR', 'Grove lowrider girl', 'Inspired by San Andreas', '#c46a2b', '#1f1f1f'],
-    ['sa-vinewood', 'VS', 'Vinewood starlet', 'Inspired by San Andreas', '#e11d48', '#f3dc8e'],
-    ['vc-tommy', 'TV', 'Tommy Vercetti', 'Building an empire in the sun', '#14b8a6', '#f472b6'],
-    ['vc-lance', 'LV', 'Lance Vance', 'Style first, plans later', '#f9a8d4', '#1e3a8a'],
-    ['vc-ken', 'KR', 'Ken Rosenberg', 'Nervous lawyer, big heart', '#e9c46a', '#264653'],
-    ['vc-mercedes', 'MC', 'Mercedes', 'Owns every party', '#ff4f9a', '#7c3aed'],
-    ['vc-umberto', 'UR', 'Umberto', 'Pride and strong coffee', '#2a9d8f', '#e76f51'],
-    ['vc-phil', 'PC', 'Phil Cassidy', 'Fearless, even short-handed', '#6b705c', '#ddbe8a'],
-    ['vc-kent', 'KP', 'Kent Paul', 'Knows everyone, does nothing', '#ffb703', '#023047'],
-    ['vc-diaz', 'RD', 'Ricardo Diaz', 'Loud, rich, paranoid', '#c1121f', '#fdf0d5'],
-    ['vc-avery', 'AC', 'Avery Carrington', 'Buys the skyline', '#b5838d', '#3d1f2b'],
-    ['vc-sonny', 'SF', 'Sonny Forelli', 'Wants his money back', '#3d3d3d', '#a3a3a3'],
-    ['vc-skater', 'OS', 'Ocean Beach skater', 'Inspired by Vice City', '#2fe0d6', '#ff5fae'],
-    ['vc-singer', 'MS', 'Malibu Club singer', 'Inspired by Vice City', '#a855f7', '#1e1b4b'],
-    ['vc-lifeguard', 'WL', 'Washington Beach lifeguard', 'Inspired by Vice City', '#e11d48', '#ffb703'],
-    ['vc-heiress', 'SH', 'Starfish Island heiress', 'Inspired by Vice City', '#f9a8d4', '#7c3aed'],
-    ['vc-aerobics', 'VA', 'Vice aerobics queen', 'Inspired by Vice City', '#ff4f9a', '#2fe0d6']
-  ];
+  var CHARS = [];   // the old game-inspired characters are retired: everyone is their own character now
   function charById(id) { for (var i = 0; i < CHARS.length; i++) if (CHARS[i][0] === id) return CHARS[i]; return null; }
   function charOf(who) { return S && S.fun && S.fun.chars ? S.fun.chars[who] : ''; }
   function lookOf(who) { return (S && S.fun && S.fun.looks && S.fun.looks[who]) || null; }
@@ -1794,13 +1756,6 @@
     h += '<div class="top"><div class="row"><button class="iconbtn" type="button" data-goto="you" aria-label="Back">' + icon('back') + '</button><h1>Customise</h1></div></div>';
     // character
     h += '<section class="card"><div class="head"><h3>Your look</h3></div><div class="row" style="gap:14px">' + avatarOf(S.who, 72) + '<p class="small muted grow" style="margin:0">Your face everywhere in the app comes from your character in the dressing room: skin, hair, clothes and extras.</p></div><button class="btn primary wide" type="button" data-dress="open" style="margin-top:12px">' + icon('sparkles', 's') + 'Open the dressing room</button></section>';
-    h += '<details class="card oldchars"><summary class="small muted">Classic characters (from the earlier version)</summary><section><div class="head"><h3>Classic character</h3>' + (cur ? '<button class="btn ghost sm" type="button" data-char="">Remove</button>' : '') + '</div>' +
-      '<p class="small muted" style="margin:0 0 10px">Shows on your Home screen, in Play and in ' + esc(n.other) + '\'s feed.</p>' +
-      '<div class="seg">' + [['sa', 'San Andreas'], ['vc', 'Vice City']].map(function (o) { return '<button type="button" data-cgame="' + o[0] + '" aria-pressed="' + (charGame === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>' +
-      '<div class="chars">' + CHARS.filter(function (c) { return c[0].slice(0, 2) === charGame; }).map(function (c) {
-        return '<button class="ch' + (c[0] === cur ? ' on' : '') + '" type="button" data-char="' + c[0] + '">' + avatar(c[0], 58, false, c[0] === cur ? lookOf(S.who) : null) + '<b>' + esc(c[2]) + '</b><span>' + esc(c[3]) + '</span></button>';
-      }).join('') + '</div></section></details>';
-    if (cur && window.LQPortrait) h += '<details class="card oldchars"><summary class="small muted">Classic character style</summary>' + lookEditor(cur) + '</details>';
     // look
     h += '<section class="card"><div class="head"><h3>Look</h3></div><div class="eyebrow" style="margin-bottom:6px">Theme</div>' +
       '<div class="themes">' + [['light', 'Light'], ['dark', 'Dark'], ['rave', 'Rave'], ['grove', 'Grove'], ['vice', 'Vice'], ['auto', 'Auto']].map(function (o) {
@@ -1816,8 +1771,8 @@
       '<label class="small muted">What the app calls you<input type="text" id="nickText" value="' + esc(n.me) + '" maxlength="24"></label>' +
       '<label class="small muted">The two of you<input type="text" id="teamText" value="' + esc(n.team) + '" maxlength="40"></label>' +
       '<button class="btn primary" type="submit">Save names</button></form>' +
-      '<div class="eyebrow" style="margin:14px 0 6px">Level titles</div><div class="seg">' + [['dj', 'DJ'], ['ye', 'Ye'], ['gta', 'GTA'], ['none', 'Plain']].map(function (o) {
-        return '<button type="button" data-titles="' + o[0] + '" aria-pressed="' + (String(S.fun.titles || 'none').toLowerCase() === o[0] || (o[0] === 'none' && !/^(dj|ye|gta)$/i.test(S.fun.titles || ''))) + '">' + o[1] + '</button>';
+      '<div class="eyebrow" style="margin:14px 0 6px">Level titles</div><div class="seg">' + [['dj', 'DJ'], ['glam', 'Glam'], ['city', 'City'], ['none', 'Plain']].map(function (o) {
+        return '<button type="button" data-titles="' + o[0] + '" aria-pressed="' + (String(S.fun.titles || 'none').toLowerCase() === o[0] || (o[0] === 'none' && !/^(dj|glam|city)$/i.test(S.fun.titles || ''))) + '">' + o[1] + '</button>';
       }).join('') + '</div><p class="tiny muted" style="margin:0">' + (S.fun.era ? 'Now: ' + esc(S.fun.era) + (S.fun.nextEra ? ' · next: ' + esc(S.fun.nextEra) : '') : 'Just "Level ' + S.game.level.level + '"') + '</p></section>';
     // home layout
     h += '<section class="card"><div class="head"><h3>Home screen</h3><button class="btn ghost sm" type="button" data-homereset="1">Reset</button></div><p class="small muted" style="margin:0 0 6px">Move things up or down, or hide them.</p>' +
@@ -1981,7 +1936,7 @@
     h += '<div class="small muted" style="margin:-4px 0 12px">' + esc(n.other) + ': worth ' + money(e.other.worth) + (e.other.rideName ? ' · rides a ' + esc(e.other.rideName) : '') + (e.other.homeName ? ' · lives at ' + esc(e.other.homeName) : '') + '</div>';
     h += '<div class="seg">' + [['owned', 'Yours'], ['property', 'Property'], ['vehicles', 'Vehicles']].map(function (o) { return '<button type="button" data-empview="' + o[0] + '" aria-pressed="' + (empView === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
     if (empView === 'owned') {
-      if (!e.owned.length) h += '<section class="card center"><p class="muted" style="margin:0 0 12px">You don\'t own anything yet. A Grove Street house is $5,000, a BMX is $500.</p><button class="btn primary" type="button" data-empview="property">Go shopping</button></section>';
+      if (!e.owned.length) h += '<section class="card center"><p class="muted" style="margin:0 0 12px">You don\'t own anything yet. A corner terrace house is ' + money(5000) + ', a BMX is ' + money(500) + '.</p><button class="btn primary" type="button" data-empview="property">Go shopping</button></section>';
       e.owned.forEach(function (o) {
         var fav = o.id === e.ride || o.id === e.home, isPlace = o.type === 'home' || o.type === 'business';
         h += '<section class="card owned"><div class="row" style="gap:12px;align-items:flex-start">' + itemArt(o, 52) + '<div class="grow"><b>' + esc(o.name) + '</b><div class="small muted">' + esc(o.area) + '</div>' +
@@ -1995,7 +1950,7 @@
           '<div class="right" style="margin-top:8px"><button class="btn ghost sm" type="button" data-sell="' + o.id + '">Sell for ' + money(o.worth * 0.6) + '</button></div></section>';
       });
     } else {
-      h += '<div class="chips" style="margin:-4px 0 12px">' + [['all', 'All'], ['sa', 'San Andreas'], ['vc', 'Vice City']].map(function (o) { return '<button class="chip" type="button" data-empgame="' + o[0] + '" aria-pressed="' + (empGame === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
+      h += '<div class="chips" style="margin:-4px 0 12px">' + [['all', 'All'], ['sa', 'Sunset Coast'], ['vc', 'Neon City']].map(function (o) { return '<button class="chip" type="button" data-empgame="' + o[0] + '" aria-pressed="' + (empGame === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
       var have = {};
       e.owned.forEach(function (o) { have[o.id] = 1; });
       var items = S.catalog.filter(function (it) { return (empView === 'property' ? (it.type === 'home' || it.type === 'business') : !(it.type === 'home' || it.type === 'business')) && (empGame === 'all' || it.game === empGame); });
@@ -2130,7 +2085,7 @@
       onlineSection() + '<div class="divider"></div><b>Your own music</b><p class="small muted" style="margin:4px 0 8px">Pick songs saved on this phone. They play in order and fade out when the timer ends. Nothing is uploaded.</p>' +
       '<label class="btn soft wide" style="cursor:pointer">' + icon('music', 's') + 'Choose songs<input type="file" id="ownFiles" accept="audio/*" multiple hidden></label>' +
       '<div class="divider"></div><b>Open in Spotify</b><p class="small muted" style="margin:4px 0 8px">Spotify can\'t follow the timer, but it\'s one tap away.</p>' +
-      '<div class="chips" style="margin-bottom:8px">' + ['My Beautiful Dark Twisted Fantasy', 'Kanye West', 'Lo-fi beats', 'House music'].map(function (q) { return '<button class="chip" type="button" data-spotify="' + esc(q) + '">' + esc(q) + '</button>'; }).join('') + '</div>' +
+      '<div class="chips" style="margin-bottom:8px">' + ['Lo-fi beats', 'House music', 'Drum and bass', 'Disco classics'].map(function (q) { return '<button class="chip" type="button" data-spotify="' + esc(q) + '">' + esc(q) + '</button>'; }).join('') + '</div>' +
       '<form class="inline" id="spotForm" autocomplete="off"><input type="text" id="spotText" placeholder="Album, artist or playlist" aria-label="Search Spotify"><button class="btn primary" type="submit">Open</button></form>';
     openSheet(h);
   }
@@ -2743,7 +2698,7 @@
 
   // ---------- 3D characters: home card, You card and the dressing room ----------
   var stages3d = {}, dress = null;
-  var STYLE_TAG = { sa: 'San Andreas', vc: 'Vice City', drag: 'Runway', basic: 'Basic', ach: 'Earned' };
+  var STYLE_TAG = { sa: 'Street', vc: 'Neon', drag: 'Glam', basic: 'Basic', ach: 'Earned' };
   var SWATCH = ['#111111', '#f4f1ea', '#ffffff', '#e63946', '#ff5fae', '#ffb703', '#2e9e4f', '#2fe0d6', '#1f4fd1', '#7c5cff', '#8d5a3b', '#c9a227'];
   var SKINS = ['#f3cfb3', '#e0a982', '#c68a62', '#a8714d', '#8d5a3b', '#6b4226', '#4a2c1a'];
   var HAIRC = ['#1c1410', '#3b2416', '#6b4423', '#b5793f', '#e8c37a', '#f2f0e6', '#c1121f', '#ff5fae', '#7c5cff', '#2fe0d6'];
@@ -2905,7 +2860,7 @@
       t.disabled = true;
       return rpc('buyWear', [d.dbuy]).then(function (res) {
         apply(res); renderDress();
-        if (item.style === 'drag') { confetti(true); toast('The ' + item.name + ' is yours. Shantay, you stay.'); } else { confetti(false); toast('Bought the ' + item.name); }
+        if (item.style === 'drag') { confetti(true); toast('The ' + item.name + ' is yours. Work it.'); } else { confetti(false); toast('Bought the ' + item.name); }
         chime([659, 784, 1047]);
       }, function (e) { t.disabled = false; toast(e.message, true); });
     }

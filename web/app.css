@@ -416,7 +416,7 @@ nav.tabs button { max-width: 92px; font-size: 11px; }
 .hook code { flex: 1; min-width: 0; font-size: 11.5px; overflow-wrap: anywhere; color: var(--ink); }
 .swap { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: var(--lilac-soft); margin-bottom: 12px; }
 
-/* Grove (San Andreas): green on near-black, desert orange */
+/* Grove: green on near-black, desert orange */
 :root[data-theme="grove"] {
   color-scheme: dark;
   --bg: #0b110d; --surface: #121b15; --raised: #1a261e; --ink: #eef6ef; --muted: #9fb5a4; --faint: #6b8271; --line: #223026;
@@ -429,7 +429,7 @@ nav.tabs button { max-width: 92px; font-size: 11px; }
 :root[data-theme="grove"] .btn.primary { color: #08140c; }
 :root[data-theme="grove"] h1 { letter-spacing: -.01em; text-transform: uppercase; font-weight: 800; }
 
-/* Vice (Vice City): neon pink and teal sunset */
+/* Vice: neon pink and teal sunset */
 :root[data-theme="vice"] {
   color-scheme: dark;
   --bg: #12091f; --surface: #1b1130; --raised: #26183f; --ink: #fff1fb; --muted: #c6aeda; --faint: #8a74a3; --line: #33224f;

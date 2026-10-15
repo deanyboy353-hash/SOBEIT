@@ -1,5 +1,5 @@
 /*
- * 3D characters for Nudge: low-poly, San Andreas / Vice City style, with
+ * 3D characters for Nudge: low-poly, original designs, with
  * runway glam. Built from simple shapes with three.js (loaded on demand), so
  * every hair style, outfit, pattern and extra is generated here, no model files.
  *   LQ3D.load() -> Promise
@@ -84,7 +84,7 @@
   function mat(col, extra) { return new T.MeshStandardMaterial(Object.assign({ color: col, roughness: 0.7 }, extra || {})); }
   var GOLD = { color: '#f2c14e', metalness: 0.9, roughness: 0.25 };
 
-  // ---------- the figure (smooth, Vice City proportions) ----------
+  // ---------- the figure (smooth, stylised proportions) ----------
   function mesh(geo, m, x, y, z) { var o = new T.Mesh(geo, m); o.position.set(x || 0, y || 0, z || 0); o.castShadow = true; return o; }
   function cyl(rt, rb, h, seg) { return new T.CylinderGeometry(rt, rb, h, seg || 20); }
   function ball(r, d) { return d === 0 ? new T.SphereGeometry(r, 12, 9) : new T.SphereGeometry(r, 20, 14); }

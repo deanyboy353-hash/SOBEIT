@@ -18,16 +18,16 @@ const withPush = g => {
 };
 const pushesTo = (g, token) => g.state.pushes.filter(p => p.token === token);
 
-test('names, team and level eras: Deany the bedroom DJ, Yazzy in her College Dropout era', () => {
+test('names, team and level eras: Deany the bedroom DJ, Yazzy the fresh face', () => {
   const { g, me, partner } = ready();
   const mine = g.ctx.appState(me).fun, hers = g.ctx.appState(partner).fun;
   assert.strictEqual(mine.nick, 'Deany');
   assert.strictEqual(mine.otherNick, 'Yazzy');
   assert.strictEqual(mine.team, 'Yazzy & Deany');
   assert.strictEqual(mine.era, 'Bedroom DJ');
-  assert.strictEqual(hers.era, 'The College Dropout');
-  assert.strictEqual(hers.nextEra, 'Late Registration');
-  assert.strictEqual(g.ctx.eraTitle_('partner', 3), 'Graduation');
+  assert.strictEqual(hers.era, 'Fresh face');
+  assert.strictEqual(hers.nextEra, 'Lash apprentice');
+  assert.strictEqual(g.ctx.eraTitle_('partner', 3), 'Rhinestone rookie');
   assert.strictEqual(g.ctx.eraTitle_('me', 12), 'Legend 3');
 });
 
@@ -240,17 +240,17 @@ test('speed: the app\'s refresh is served from cache until something changes', (
 
 test('customise: characters, look, names, titles and home layout are saved per person', () => {
   const { g, me, partner } = ready();
-  let s = g.ctx.setPrefs(me, { char: 'sa-cj', accent: 'green', text: 'large', sound: false, home: [{ id: 'feed' }, { id: 'us', hide: true }, { id: 'nope' }] });
-  assert.strictEqual(s.fun.chars.me, 'sa-cj');
+  let s = g.ctx.setPrefs(me, { char: 'sa-one', accent: 'green', text: 'large', sound: false, home: [{ id: 'feed' }, { id: 'us', hide: true }, { id: 'nope' }] });
+  assert.strictEqual(s.fun.chars.me, 'sa-one');
   assert.strictEqual(s.fun.prefs.accent, 'green');
   assert.strictEqual(s.fun.prefs.sound, false);
   assert.deepStrictEqual(plain(s.fun.prefs.home), [{ id: 'feed', hide: false }, { id: 'us', hide: true }]);
-  s = g.ctx.setPrefs(partner, { char: 'vc-mercedes', nick: 'Yaz', team: 'Deany & Yaz', titles: 'gta' });
-  assert.strictEqual(s.fun.chars.me, 'sa-cj', 'Yaz sees your character');
+  s = g.ctx.setPrefs(partner, { char: 'vc-two', nick: 'Yaz', team: 'Deany & Yaz', titles: 'city' });
+  assert.strictEqual(s.fun.chars.me, 'sa-one', 'Yaz sees your character');
   assert.strictEqual(s.fun.nick, 'Yaz');
   assert.strictEqual(s.fun.team, 'Deany & Yaz');
-  assert.strictEqual(s.fun.era, 'Fresh off the bus');
-  assert.strictEqual(g.ctx.appState(me).fun.chars.partner, 'vc-mercedes');
+  assert.strictEqual(s.fun.era, 'New in town');
+  assert.strictEqual(g.ctx.appState(me).fun.chars.partner, 'vc-two');
   assert.strictEqual(g.ctx.setPrefs(me, { char: '<script>' }).fun.chars.me, '');
   assert.throws(() => g.ctx.setTheme(me, 'hotdog'), /Unknown theme/);
   assert.strictEqual(g.ctx.setTheme(me, 'vice'), 'vice');
@@ -258,10 +258,10 @@ test('customise: characters, look, names, titles and home layout are saved per p
 
 test('your look: hair, clothes and colours are saved, and only real options are kept', () => {
   const { g, me, partner } = ready();
-  let s = g.ctx.setPrefs(me, { char: 'sa-cj', look: { hair: 'afro', hc: '#7c3aed', top: 'hawaii', head: '<b>', tc: 'red; drop', glow: 'x' } });
+  let s = g.ctx.setPrefs(me, { char: 'sa-one', look: { hair: 'afro', hc: '#7c3aed', top: 'hawaii', head: '<b>', tc: 'red; drop', glow: 'x' } });
   assert.deepStrictEqual(plain(s.fun.looks.me), { hair: 'afro', hc: '#7c3aed', top: 'hawaii' });
   assert.deepStrictEqual(plain(g.ctx.appState(partner).fun.looks.me), { hair: 'afro', hc: '#7c3aed', top: 'hawaii' }, 'Yaz sees your look');
-  s = g.ctx.setPrefs(me, { char: 'vc-tommy' });
+  s = g.ctx.setPrefs(me, { char: 'vc-three' });
   assert.deepStrictEqual(plain(s.fun.looks.me), {}, 'a new character starts from their own style');
   s = g.ctx.setPrefs(partner, { char: 'sa-denise' });
   assert.strictEqual(s.fun.chars.partner, 'sa-denise');
