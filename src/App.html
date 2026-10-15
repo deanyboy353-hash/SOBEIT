@@ -881,6 +881,52 @@ button.saving { opacity: .7; animation: savingPulse 1s ease-in-out infinite; }
 @keyframes savingPulse { 50% { opacity: .45; } }
 @media (prefers-reduced-motion: reduce) { button.saving { animation: none; } }
 
+/* ---------- setup wizard ---------- */
+#wizard { position: fixed; inset: 0; z-index: 60; background: var(--bg); overflow: hidden; }
+body.wizopen { overflow: hidden; }
+.wz { display: flex; flex-direction: column; height: 100%; max-width: 620px; margin: 0 auto; }
+.wz-top { display: flex; align-items: center; gap: 10px; padding: 12px 16px; padding-top: max(12px, env(safe-area-inset-top)); }
+.wz-top .iconbtn { font-size: 22px; line-height: 1; }
+.wz-bar { height: 8px; border-radius: 99px; background: var(--raised); overflow: hidden; }
+.wz-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--ring-a), var(--ring-b)); border-radius: 99px; transition: width .25s; }
+.wz-body { flex: 1; overflow-y: auto; padding: 8px 16px 24px; -webkit-overflow-scrolling: touch; }
+.wz-body h2 { font-size: 24px; line-height: 1.25; margin: 4px 0 8px; }
+.wz-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 16px; padding-bottom: max(12px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--surface); }
+.wz-foot .btn.big { min-width: 150px; }
+.wz-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.wz-chip { padding: 11px 15px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; min-height: 44px; }
+.wz-chip.on { background: var(--lilac-soft); border-color: var(--lilac); color: var(--lilac); }
+.wz-chip:focus-visible { outline: 3px solid var(--lilac-mid); outline-offset: 2px; }
+.wz-text { width: 100%; font-size: 18px; padding: 12px 14px; }
+.wz-or { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); margin: 4px 0 8px; }
+.wz-or input { width: auto; }
+.wz-sub { font-weight: 650; margin: 16px 0 0; }
+.wz-days { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.wz-days .wz-chip { padding: 10px 12px; min-width: 52px; }
+.wz-hours { display: grid; gap: 8px; margin: 10px 0; }
+.wz-hrow { display: flex; align-items: center; gap: 8px; }
+.wz-hrow b { width: 40px; }
+.wz-hrow input { width: auto; flex: 1; min-width: 0; }
+.wz-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.wz-grid label { display: grid; gap: 4px; font-size: 14px; color: var(--muted); }
+.wz-avs { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; margin-top: 10px; }
+.wz-av { display: grid; justify-items: center; gap: 4px; padding: 8px 4px; border-radius: 14px; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-size: 12px; cursor: pointer; }
+.wz-av.on { border-color: var(--lilac); background: var(--lilac-soft); }
+.wz-add { display: flex; gap: 8px; margin: 6px 0 4px; }
+.wz-add input { flex: 1; min-width: 0; }
+.wz-bin { border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; margin: 10px 0; }
+.wz-list { display: grid; gap: 6px; margin: 8px 0; }
+.wz-li { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.wz-tick { width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center; margin: 30px auto 10px; font-size: 38px; color: #fff; background: linear-gradient(135deg, var(--ring-a), var(--ring-b)); }
+.minbar { height: 8px; border-radius: 99px; background: var(--raised); overflow: hidden; margin: 2px 0 6px; }
+.minbar i { display: block; height: 100%; background: var(--good); border-radius: 99px; transition: width .3s; }
+#sheet .wz-chips { margin: 6px 0 2px; }
+#sheet .wz-chip { padding: 8px 12px; min-height: 38px; font-size: 14px; }
+#setupCard .btn { white-space: normal; min-width: 0; }
+#setupCard .grid2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+#setupAnswers .item { box-sizing: border-box; min-width: 0; }
+#setupAnswers .item .grow { min-width: 0; overflow-wrap: anywhere; }
+
 </style>
 </head>
 <body>
@@ -2797,9 +2843,10 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
         '<form class="wz-add" data-wzaddex="1"><input type="text" id="wzExName" placeholder="e.g. Water the plants" maxlength="60" aria-label="Chore name"><button type="submit" class="btn soft sm">Add</button></form>' +
         '<div class="wz-sub">How often</div>' + chips('exFreq', FREQS, W.exFreq || 'weekly') + '<div class="wz-sub">Who</div>' + chips('exWho', [['me', personLabel('me')], ['yaz', personLabel('partner')], ['shared', 'Shared'], ['whoever', 'Whoever']], W.exWho || 'whoever');
     }, save: function () { return { extras: d.house.extras || [] }; } });
-    add({ id: 'review', sec: 'none', q: W.setup.built ? 'Rebuild your chore list?' : 'Your chore list', help: 'Here\'s what I\'ll make from your answers. Your existing chores and their history are kept.', html: reviewHtml, save: function () { return null; } });
+    add({ id: 'review', sec: 'none', q: W.setup.built ? 'Rebuild your chore list?' : 'Your chore list', help: W.setup.built ? 'Only needed if your home or how often you want things done has changed. Nothing is lost either way.' : 'Here\'s what I\'ll make from your answers. Your existing chores and their history are kept.', html: reviewHtml, save: function () { return null; } });
     return list;
   }
+  function pickKeys(o, ks) { var r = {}; ks.forEach(function (k) { r[k] = o[k]; }); return r; }
   function nextOn(day, extra) { var t = new Date(N.now()), k = (day - t.getDay() + 7) % 7 + extra; t.setDate(t.getDate() + k); return t.getFullYear() + '-' + ('0' + (t.getMonth() + 1)).slice(-2) + '-' + ('0' + t.getDate()).slice(-2); }
   function freqName(k) { var f = FREQS.filter(function (x) { return x[0] === k; })[0]; return f ? f[1] : k || ''; }
   function houseSummary() {
@@ -2808,11 +2855,14 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
   }
 
   // ---------- review: what building the chore list will do ----------
+  function rebuilding() { return !W.setup.built || W.rebuild === 'yes'; }
   function reviewHtml() {
-    if (!W.preview) { loadPreview(); return '<p class="muted">Working it out…</p>'; }
+    var ask = W.setup.built ? chips('rebuild', [['no', 'No, keep our chores as they are'], ['yes', 'Yes, rebuild from the answers']], W.rebuild) : '';
+    if (!rebuilding()) return ask + '<p class="small muted">Your chores stay as they are. Your answers about you (work days, energy, your daily minimum, jobs you hate) shape your daily plan straight away.</p>';
+    if (!W.preview) { loadPreview(); return ask + '<p class="muted">Working it out…</p>'; }
     var p = W.preview, groups = [['update', 'Your chores, updated', 'Matched to your answers: name, timing and who. History kept.'], ['add', 'New chores', ''], ['keep', 'Kept as they are', 'Not in the setup questions. Change them any time in Chores, Schedule.']];
     var whoTxt = function (w) { return w === 'me' ? personLabel('me') : w === 'partner' ? personLabel('partner') : w === 'rotate' ? 'Take turns' : w === 'together' ? 'Together' : 'Whoever'; };
-    return groups.map(function (g) {
+    return ask + groups.map(function (g) {
       var l = p.filter(function (x) { return x.action === g[0]; }); if (!l.length) return '';
       return '<div class="wz-sub">' + g[1] + ' (' + l.length + ')</div>' + (g[2] ? '<div class="small muted">' + g[2] + '</div>' : '') + '<div class="wz-list">' + l.map(function (x) {
         return '<div class="wz-li"><span class="grow"><b>' + esc(x.name) + '</b>' + (x.was && x.was !== x.name ? ' <span class="muted">(was ' + esc(x.was) + ')</span>' : '') + '<br><span class="small muted">' + esc(x.every || '') + (x.goal && x.goal !== x.every ? ', building up to ' + esc(String(x.goal).toLowerCase()) : '') + ' · ' + x.minutes + ' min · ' + esc(whoTxt(x.who)) + '</span></span></div>';
@@ -2826,7 +2876,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
   function open(opts) {
     opts = opts || {};
     N.rpc('setupState', []).then(function (st) {
-      W = { setup: st, d: { profile: clone(st.profile), health: clone(st.health), house: clone(st.house) }, i: 0, mode: opts.only ? 'one' : 'full', only: opts.only || '', houseCheck: '' };
+      W = { setup: st, d: { profile: clone(st.profile), health: clone(st.health), house: clone(st.house) }, i: 0, mode: opts.only ? 'one' : 'full', only: opts.only || '', houseCheck: '', rebuild: opts.start === 'review' ? 'yes' : 'no' };
       W.list = steps();
       if (opts.only) { W.list = W.list.filter(function (s) { return s.id === opts.only; }); if (!W.list.length) { W = null; return N.toast('That question isn\'t in your setup.'); } }
       if (opts.start) { var k = W.list.map(function (s) { return s.id; }).indexOf(opts.start); if (k >= 0) W.i = k; }
@@ -2841,17 +2891,18 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     W.list = W.mode === 'one' ? W.list : steps();
     if (W.i >= W.list.length) W.i = W.list.length - 1;
     var s = cur(), n = W.list.length, last = W.i === n - 1, one = W.mode === 'one';
-    var next = one ? 'Save' : s.id === 'review' ? (W.setup.built ? 'Rebuild the chore list' : 'Make our chore list') : s.id === 'houseDone' && W.houseCheck !== 'change' ? 'Keep it and carry on' : 'Next';
+    var next = one ? 'Save' : s.id === 'review' ? (!rebuilding() ? 'Finish setup' : W.setup.built ? 'Rebuild the chore list' : 'Make our chore list') : s.id === 'houseDone' && W.houseCheck !== 'change' ? 'Keep it and carry on' : 'Next';
     el('wizard').innerHTML = '<div class="wz"><div class="wz-top">' +
       '<button type="button" class="iconbtn" data-wzgo="back" aria-label="' + (one || !W.i ? 'Close setup' : 'Back to the last question') + '">' + (one || !W.i ? '×' : '‹') + '</button>' +
       (one ? '<span class="grow small muted">Change one answer</span>' : '<div class="wz-bar grow" role="progressbar" aria-valuemin="0" aria-valuemax="' + n + '" aria-valuenow="' + (W.i + 1) + '"><i style="width:' + Math.round((W.i + 1) / n * 100) + '%"></i></div><span class="small muted num">' + (W.i + 1) + '/' + n + '</span>') +
       (!one ? '<button type="button" class="btn ghost sm" data-wzgo="later" title="Your answers so far are saved">Finish later</button>' : '') + '</div>' +
       '<div class="wz-body"><div class="eyebrow">' + ({ profile: 'About you', health: 'Health and fitness (private)', house: 'Your home (shared with ' + esc(other()) + ')', none: '' })[s.sec] + '</div><h2>' + esc(s.q) + '</h2>' + (s.help ? '<p class="small muted">' + esc(s.help) + '</p>' : '') + s.html() + '</div>' +
-      '<div class="wz-foot">' + (s.opt && !one ? '<button type="button" class="btn ghost" data-wzgo="skip">Skip for now</button>' : '<span></span>') + '<button type="button" class="btn primary big" data-wzgo="next"' + (s.id === 'review' && !W.preview ? ' disabled' : '') + '>' + esc(next) + '</button></div></div>';
+      '<div class="wz-foot">' + (s.opt && !one ? '<button type="button" class="btn ghost" data-wzgo="skip">Skip for now</button>' : '<span></span>') + '<button type="button" class="btn primary big" data-wzgo="next"' + (s.id === 'review' && rebuilding() && !W.preview ? ' disabled' : '') + '>' + esc(next) + '</button></div></div>';
     var f = el('wizard').querySelector('input.wz-text, #wzExName'); if (f && s.id === 'name') setTimeout(function () { f.focus(); }, 60);
   }
   function saveStep(s) {
     var data = s.save(); if (!data || s.sec === 'none') return;
+    if (s.sec === 'house' && W.setup.built && W.mode === 'full' && JSON.stringify(data) !== JSON.stringify(pickKeys(W.setup.house, Object.keys(data)))) W.rebuild = 'yes';
     if (s.sec === 'profile' && W.mode === 'full' && W.i === W.list.length - 1) data.done = true;
     N.send('saveSetup', [s.sec, data]).then(function (r) { if (W) { W.setup = r.setup; W.preview = null; } N.applyQuiet(r.state); }, function (e) { N.toast(e.message + ' (that answer wasn\'t saved: try again)', true); });
   }
@@ -2863,6 +2914,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     // next
     if (s.id === 'name' && !String(W.d.profile.name || '').trim()) return N.toast('Type a name first (it\'s how the app talks to you).');
     if (s.id === 'houseDone' && W.houseCheck !== 'change') { W.list = steps(); var r = W.list.map(function (x) { return x.id; }).indexOf('review'); W.i = r; return draw(); }
+    if (s.id === 'review' && !rebuilding()) { N.send('saveSetup', ['profile', { done: true }]).then(function (r) { N.applyQuiet(r.state); }, function (e) { N.toast(e.message, true); }); N.toast('Setup done. Your daily plan uses your answers from now on.'); return close(); }
     if (s.id === 'review') return build();
     saveStep(s);
     if (W.mode === 'one') { N.toast('Saved'); return close(); }
@@ -2893,7 +2945,8 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     if (ds.wzgo) return go(ds.wzgo);
     if (ds.wz) {
       var f = ds.wz, v = ds.v;
-      if (f === 'houseCheck') { W.houseCheck = v; return draw(); }
+      if (f === 'houseCheck') { W.houseCheck = v; if (v === 'change') W.rebuild = 'yes'; return draw(); }
+      if (f === 'rebuild') { W.rebuild = v; return draw(); }
       if (f === 'exFreq') { W.exFreq = v; return draw(); }
       if (f === 'exWho') { W.exWho = v; return draw(); }
       if (f === 'workPreset') { var p = v.split('-').map(Number), w = W.d.profile.work || {}; Object.keys(w).forEach(function (k) { if (w[k]) w[k] = p.slice(); }); return draw(); }
@@ -3274,6 +3327,14 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
       if (!inflight && !busy && res && res.game) { var hadUndo = S.undo; S = res; offset = res.now - Date.now(); save('state-' + KEY.slice(0, 6), S); renderAll(); if (res.undo && (!hadUndo || hadUndo.id !== res.undo.id)) offerUndo(res.undo, msg); }
     }, function (err) { inflight--; S = JSON.parse(before); renderAll(); toast(err.message || String(err), true); });
   }
+  if (window.NudgeSetup) NudgeSetup.init({
+    S: function () { return S; }, esc: esc, rpc: rpc, send: send, call: call, toast: toast, names: names, now: now, showTab: showTab,
+    apply: function (res, msg) { if (res && res.game) apply(res, msg); else if (msg) toast(msg); },
+    applyQuiet: function (res) { if (res && res.game && !inflight && nSaving <= 1) { S = res; save('state-' + KEY.slice(0, 6), S); renderAll(); } },
+    openSheet: function (h, kind) { openSheet(h); sheetKind = kind || ''; }, closeSheet: function () { closeSheet(); },
+    chars: function () { return CHARS; }, avatar: function (id, size) { return avatar(id, size); }, setChar: function (id) { savePrefs({ char: id }); },
+    renderChores: function () { renderChores(); }
+  });
   function addXpLocal(xp) {
     if (boostLeft()) xp *= 2;
     var prev = JSON.parse(JSON.stringify(S));
@@ -3376,9 +3437,13 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     }
 
     seg('gym');
-    var mine = S.quests.board.filter(function (q) { return q.who === 'anyone' || q.who === 'together' || q.who === S.who; });
+    if (S.setup && !S.setup.done) h += '<section class="card tint"><b>Set up your chores</b><p class="small" style="margin:4px 0 10px">A few quick taps about you and your home, and Nudge plans each day for you: a small must-do minimum, the rest a bonus. About 5 minutes.</p><button class="btn primary wide" type="button" data-setup="run">' + (S.setup.built ? 'Finish my part of setup' : 'Start setup') + '</button></section>';
+    var Q = S.quests, mine = Q.planned ? Q.board : Q.board.filter(function (q) { return q.who === 'anyone' || q.who === 'together' || q.who === S.who; });
     var open = mine.filter(function (q) { return !q.doneToday; });
-    h += '<section class="card"><div class="head"><h3>Today\'s chores <span class="muted num" style="font-weight:500">' + (mine.length - open.length) + '/' + mine.length + '</span></h3><button class="btn ghost sm" type="button" data-goto="chores">All' + icon('chevron', 's') + '</button></div>' +
+    if (Q.planned) h += '<section class="card"><div class="head"><h3>' + (Q.win ? 'Today counts ✓' : 'Win the day: ' + Math.min(Q.doneCount, Q.minimum) + ' of ' + Q.minimum) + '</h3><button class="btn ghost sm" type="button" data-goto="chores">All' + icon('chevron', 's') + '</button></div>' +
+      (Q.minimum ? '<div class="minbar"><i style="width:' + Math.round(Math.min(1, Q.doneCount / Q.minimum) * 100) + '%"></i></div>' : '') +
+      (open.length ? open.slice(0, 4).map(function (q) { return questRow(q); }).join('') : '<p class="empty">All done. Anything more is a bonus.</p>') + '</section>';
+    else h += '<section class="card"><div class="head"><h3>Today\'s chores <span class="muted num" style="font-weight:500">' + (mine.length - open.length) + '/' + mine.length + '</span></h3><button class="btn ghost sm" type="button" data-goto="chores">All' + icon('chevron', 's') + '</button></div>' +
       (open.length ? open.slice(0, 4).map(function (q) { return questRow(q); }).join('') : '<p class="empty">All done. Anything more is a bonus.</p>') + '</section>';
 
     seg('chores');
@@ -3462,12 +3527,19 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     if (plan) { el('tab-chores').innerHTML = h + readyView(); return; }
     if (S.chores.invite) h += '<div class="note">' + esc(n.other) + ' wants company. Start a job and do it together.</div>';
     h += '<div class="seg" role="tablist">' + [['today', 'Today'], ['schedule', 'Schedule'], ['plan', 'Plan']].map(function (o) { return '<button type="button" data-cview="' + o[0] + '" aria-pressed="' + (choresView === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
-    if (choresView === 'schedule') { el('tab-chores').innerHTML = h + scheduleView(); return; }
+    if (choresView === 'schedule') { el('tab-chores').innerHTML = h + (S.setup && S.setup.built && window.NudgeSetup ? NudgeSetup.choreList() : scheduleView()); return; }
     if (choresView === 'plan') { el('tab-chores').innerHTML = h + planView(); return; }
     if (!mySession()) h += musicBar();
+    if (q.planned) {
+      var mustL = q.board.filter(function (x) { return x.must; }), bonusL = q.board.filter(function (x) { return !x.must; });
+      h += '<section class="card"><div class="head"><h3>' + (q.win ? 'Today counts ✓' : 'Your minimum: ' + Math.min(q.doneCount, q.minimum) + ' of ' + q.minimum) + '</h3></div>' +
+        (q.minimum ? '<div class="minbar"><i style="width:' + Math.round(Math.min(1, q.doneCount / q.minimum) * 100) + '%"></i></div><p class="small muted" style="margin:6px 0 4px">Do ' + q.minimum + ' job' + (q.minimum === 1 ? '' : 's') + ' (any of them) and today is a win. These are quick ones:</p>' : '<p class="small muted">Nothing you have to do today. A free win.</p>') +
+        mustL.map(function (x) { return questRow(x, { claim: true }); }).join('') + '</section>';
+      h += '<section class="card"><div class="head"><h3>Bonus</h3><span class="muted small">only if you\'ve got energy' + (q.energy ? ' (yours peaks in the ' + esc(q.energy) + ')' : '') + '</span></div>' + (bonusL.length ? bonusL.map(function (x) { return questRow(x, { claim: true }); }).join('') : '<p class="empty">No bonus jobs today.</p>') + '</section>';
+    } else
     h += '<section class="card"><div class="head"><h3>Today</h3><span class="muted small num">' + q.board.filter(function (x) { return x.doneToday; }).length + '/' + q.board.length + '</span></div>' +
       (q.board.length ? q.board.map(function (x) { return questRow(x, { claim: true }); }).join('') : '<p class="empty">Nothing due today.</p>') + '</section>';
-    if (q.more.length) h += '<section class="card"><details><summary class="small muted" style="cursor:pointer">Also due (' + q.more.length + '), only if you feel like it</summary><div style="margin-top:8px">' + q.more.map(function (x) { return questRow(x, { claim: true }); }).join('') + '</div></details></section>';
+    if (q.more.length) h += '<section class="card"><details><summary class="small muted" style="cursor:pointer">' + (q.planned ? 'Other jobs (' + q.more.length + '): ' + esc(names().other) + '\'s, or coming up soon. Doing one counts.' : 'Also due (' + q.more.length + '), only if you feel like it') + '</summary><div style="margin-top:8px">' + q.more.map(function (x) { return questRow(x, { claim: true }); }).join('') + '</div></details></section>';
     if (q.doneExtra.length) h += '<section class="card"><div class="head"><h3>Bonus today</h3></div>' + q.doneExtra.map(function (x) { return questRow(x); }).join('') + '</section>';
     if (q.upcoming.length) h += '<section class="card"><div class="head"><h3>Coming up</h3></div>' + q.upcoming.slice(0, 8).map(function (x) {
       return '<div class="item"><div class="grow"><div class="t" style="font-weight:500">' + esc(x.name) + '</div></div><span class="small muted">' + dayLabel(x.next) + '</span></div>';
@@ -3958,6 +4030,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
         '<a class="btn primary wide" href="' + esc(zipUrl) + '" download target="_top">' + icon('download', 's') + 'Download the add-on</a></section>';
     }
     // settings
+    if (window.NudgeSetup) h += NudgeSetup.settingsCard();
     h += '<section class="card"><div class="head"><h3>Settings</h3></div>';
     h += '<div class="eyebrow" style="margin-bottom:6px">Appearance</div><div class="seg">' + [['light', 'Light'], ['dark', 'Dark'], ['rave', 'Rave'], ['auto', 'Auto']].map(function (o) { return '<button type="button" data-theme="' + o[0] + '" aria-pressed="' + (th === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
     h += '<div class="eyebrow" style="margin:6px 0">Notifications</div>';
@@ -4874,11 +4947,11 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
 
   // ---------- PLAN THE WEEK (pair jobs with people, Duolingo style) ----------
   var planDraft = null, planPick = '';
-  function planWho() { var n = names(); return [['me', S.who === 'me' ? n.me || 'You' : n.other], ['partner', S.who === 'partner' ? n.me || 'You' : n.other], ['together', 'Together'], ['anyone', 'Either']]; }
+  function planWho() { var n = names(); return [['me', S.who === 'me' ? n.me || 'You' : n.other], ['partner', S.who === 'partner' ? n.me || 'You' : n.other], ['together', 'Together'], ['rotate', 'Take turns'], ['anyone', 'Either']]; }
   function planView() {
     var list = S.plan || [];
     if (!planDraft) { planDraft = {}; list.forEach(function (q) { planDraft[q.name] = q.who; }); }
-    var whos = planWho(), count = { me: 0, partner: 0, together: 0, anyone: 0 }, mins = { me: 0, partner: 0 };
+    var whos = planWho(), count = { me: 0, partner: 0, together: 0, rotate: 0, anyone: 0 }, mins = { me: 0, partner: 0 };
     list.forEach(function (q) { var w = planDraft[q.name]; count[w]++; if (w === 'me' || w === 'partner') mins[w] += q.minutes * (q.rhythm === 'daily' ? 7 : q.rhythm === 'weekly' ? 1 : 0.5); });
     var changed = list.some(function (q) { return planDraft[q.name] !== q.who; });
     var h = '<section class="card tint"><b>Plan your week</b><p class="small" style="margin:4px 0 0">Tap a job, then tap who does it. <b>Together</b> jobs earn you <b>both double XP</b>.</p></section>';
@@ -4886,10 +4959,10 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     h += '<div class="pcol">' + list.map(function (q) {
       var w = planDraft[q.name];
       return '<button type="button" class="pjob w-' + w + (planPick === q.name ? ' pick' : '') + '" data-pjob="' + esc(q.name) + '"><b>' + esc(q.name) + '</b><span>' + esc(q.label) + ' · ' + q.minutes + ' min</span>' +
-        '<em>' + (w === 'together' ? '2× XP together' : w === 'anyone' ? 'Either of you' : esc(whos.filter(function (x) { return x[0] === w; })[0][1])) + '</em></button>';
+        '<em>' + (w === 'together' ? '2× XP together' : w === 'anyone' ? 'Either of you' : w === 'rotate' ? 'Take turns' : esc((whos.filter(function (x) { return x[0] === w; })[0] || ['', 'Either of you'])[1])) + '</em></button>';
     }).join('') + '</div>';
     h += '<div class="pwho">' + whos.map(function (x) {
-      return '<button type="button" class="ppl w-' + x[0] + (planPick ? ' ready' : '') + '" data-pwho="' + x[0] + '">' + (x[0] === 'together' ? icon('heart', 's') : x[0] === 'anyone' ? icon('shuffle', 's') : avatarOf(x[0], 26)) + '<b>' + esc(x[1]) + '</b><span>' + count[x[0]] + ' job' + (count[x[0]] === 1 ? '' : 's') + (x[0] === 'together' ? ' · 2× XP' : '') + '</span></button>';
+      return '<button type="button" class="ppl w-' + x[0] + (planPick ? ' ready' : '') + '" data-pwho="' + x[0] + '">' + (x[0] === 'together' ? icon('heart', 's') : x[0] === 'anyone' || x[0] === 'rotate' ? icon('shuffle', 's') : avatarOf(x[0], 26)) + '<b>' + esc(x[1]) + '</b><span>' + count[x[0]] + ' job' + (count[x[0]] === 1 ? '' : 's') + (x[0] === 'together' ? ' · 2× XP' : '') + '</span></button>';
     }).join('') + '</div></div>';
     var n = names();
     h += '<p class="small muted center">About ' + Math.round(mins[S.who] / 60 * 10) / 10 + 'h of solo jobs for you this week, ' + Math.round(mins[S.who === 'me' ? 'partner' : 'me'] / 60 * 10) / 10 + 'h for ' + esc(n.other) + '.</p>';

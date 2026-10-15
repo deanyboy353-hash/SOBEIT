@@ -108,7 +108,7 @@ function cpPeople_() {
   var out = {}, gym = gymDays_();
   PEOPLE.forEach(function (w) {
     var p = profile_(w);
-    out[w] = { work: p.work || {}, gym: w === 'me' ? gym : [], manageable: p.manageable, minimum: p.minimum, hates: p.hates || [], energy: p.energy };
+    out[w] = { work: p.work || {}, gym: w === 'me' ? gym : [], manageable: p.manageable, minimum: p.minimum, hates: p.hates || [], likes: p.likes || [], energy: p.energy };
   });
   return out;
 }
@@ -195,16 +195,23 @@ function cpAfterDone_(name, ymd, by) {
 // ---------- building the chore list from the answers (merging what's there) ----------
 var CP_MATCH = {
   hoover_down: /hoover|vacuum/i, hoover_up: /(hoover|vacuum).*up|up.*(hoover|vacuum)/i, dishes: /dish/i, laundry: /wash on|laundry|put a wash/i,
-  laundry_away: /put.*(away|clothes)|hang|fold/i, sheets: /sheet|bedding|bed linen/i, bathroom: /bath|toilet|\bloo\b|shower/i, kitchen: /kitchen|hob|surface|worktop|counter/i,
+  laundry_away: /put.*(away|clothes)|\bhang|\bfold/i, sheets: /sheet|bedding|bed linen/i, bathroom: /bath|toilet|\bloo\b|shower/i, kitchen: /kitchen|hob|surface|worktop|counter/i,
   bins: /bin/i, tidy_bedroom: /tidy.*bed|bedroom|clothes away/i, mop: /mop/i, shop: /shop/i, dusting: /dust/i, pets: /pet|cat|dog|litter/i
 };
+/** Words two chore names share (4+ letters), so the closest existing chore is matched. */
+function cpLikeness_(a, b) {
+  var w = function (s) { return String(s).toLowerCase().match(/[a-z]{4,}/g) || []; }, A = w(a), n = 0;
+  w(b).forEach(function (x) { if (A.indexOf(x) !== -1) n++; });
+  return n;
+}
 /** What building would do, for the review screen: [{ action: 'update'|'add'|'keep', name, was, every, who, minutes, area }]. Nothing is changed. */
 function cpPreview_(who) {
   var house = house_(), today = todayYmd_(), gen = cpBuildChores(Object.assign({}, house, { people: cpPeople_() }), today);
   var existing = readChores_().filter(function (q) { return !q.archived; }), used = {}, out = [];
   gen.forEach(function (c) {
     var re = CP_MATCH[c.key], m = null;
-    if (re) m = existing.filter(function (q) { return !used[q.name] && (q.key === c.key || re.test(q.name)) && (c.key !== 'hoover_down' || !/up/i.test(q.name)) && (c.key !== 'tidy_bedroom' || !/sheet|bedding/i.test(q.name)); })[0];
+    if (re) m = existing.filter(function (q) { return !used[q.name] && (q.key === c.key || re.test(q.name)) && (c.key !== 'laundry' || !CP_MATCH.laundry_away.test(q.name)) && (c.key !== 'hoover_down' || !/up/i.test(q.name)) && (c.key !== 'tidy_bedroom' || !/sheet|bedding/i.test(q.name)); })
+      .sort(function (a, b) { return cpLikeness_(b.name, c.name) - cpLikeness_(a.name, c.name); })[0];   // "Clean the bathroom" goes with "Clean bathroom", not "Clean toilet"
     if (!m) m = existing.filter(function (q) { return !used[q.name] && q.name.toLowerCase() === c.name.toLowerCase(); })[0];
     if (m) used[m.name] = 1;
     out.push({ action: m ? 'update' : 'add', name: c.name, was: m ? m.name : '', every: cpFreqText(c, today), goal: c.days ? '' : cpEveryText(c.goal), who: c.assign, minutes: c.minutes, area: c.area, key: c.key, c: c });

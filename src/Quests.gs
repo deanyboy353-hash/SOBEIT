@@ -331,7 +331,7 @@ function planQuestsState_(who) {
   var listed = mine.must.concat(mine.bonus), done = choresDoneOn_(who, today);
   var other = plan[who === 'me' ? 'partner' : 'me'];
   return {
-    planned: true, minimum: mine.minimum, doneCount: done, win: cpIsWin(done, mine.minimum),
+    planned: true, minimum: mine.minimum, doneCount: done, win: cpIsWin(done, mine.minimum), energy: profile_(who).energy,
     board: mine.must.map(function (n) { return byName[n] && view(byName[n], 'must'); }).concat(mine.bonus.map(function (n) { return byName[n] && view(byName[n], 'bonus'); })).filter(Boolean),
     more: quests.filter(function (q) { return listed.indexOf(q.name) === -1 && (q.due || other.must.indexOf(q.name) !== -1 || other.bonus.indexOf(q.name) !== -1) && q.lastDone !== today; }).map(function (q) { return view(q); }),
     doneExtra: quests.filter(function (q) { return q.lastDone === today && listed.indexOf(q.name) === -1; }).map(function (q) { return view(q); }),

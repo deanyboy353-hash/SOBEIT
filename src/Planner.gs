@@ -413,7 +413,8 @@ function rhythmOf(every) {
 function rhythmLabel(every) {
   var e = typeof every === 'string' || !every ? parseEvery(every) : every;
   var full = ['Sundays', 'Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays'];
-  if (e.kind === 'days') return e.days === 1 ? 'Every day' : e.days % 7 === 0 ? 'Every ' + (e.days / 7) + ' weeks' : 'Every ' + e.days + ' days';
+  if (/^2\.5 days$/.test(String(every || '').trim())) return 'A few times a week';
+  if (e.kind === 'days') return e.days === 1 ? 'Every day' : e.days === 7 ? 'Weekly' : e.days === 30 ? 'Monthly' : e.days % 7 === 0 ? 'Every ' + (e.days / 7) + ' weeks' : 'Every ' + e.days + ' days';
   if (e.kind === 'weekdays') return e.days.map(function (d) { return full[d]; }).join(' and ');
   if (e.kind === 'biweekly') return 'Every other ' + full[e.day].replace(/s$/, '');
   if (e.kind === 'monthly') return 'Monthly on the ' + e.day + (['th', 'st', 'nd', 'rd'][(e.day % 100 > 10 && e.day % 100 < 14) ? 0 : Math.min(e.day % 10, 4) % 4] || 'th');

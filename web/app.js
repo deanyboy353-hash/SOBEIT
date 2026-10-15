@@ -205,6 +205,14 @@
       if (!inflight && !busy && res && res.game) { var hadUndo = S.undo; S = res; offset = res.now - Date.now(); save('state-' + KEY.slice(0, 6), S); renderAll(); if (res.undo && (!hadUndo || hadUndo.id !== res.undo.id)) offerUndo(res.undo, msg); }
     }, function (err) { inflight--; S = JSON.parse(before); renderAll(); toast(err.message || String(err), true); });
   }
+  if (window.NudgeSetup) NudgeSetup.init({
+    S: function () { return S; }, esc: esc, rpc: rpc, send: send, call: call, toast: toast, names: names, now: now, showTab: showTab,
+    apply: function (res, msg) { if (res && res.game) apply(res, msg); else if (msg) toast(msg); },
+    applyQuiet: function (res) { if (res && res.game && !inflight && nSaving <= 1) { S = res; save('state-' + KEY.slice(0, 6), S); renderAll(); } },
+    openSheet: function (h, kind) { openSheet(h); sheetKind = kind || ''; }, closeSheet: function () { closeSheet(); },
+    chars: function () { return CHARS; }, avatar: function (id, size) { return avatar(id, size); }, setChar: function (id) { savePrefs({ char: id }); },
+    renderChores: function () { renderChores(); }
+  });
   function addXpLocal(xp) {
     if (boostLeft()) xp *= 2;
     var prev = JSON.parse(JSON.stringify(S));
@@ -307,9 +315,13 @@
     }
 
     seg('gym');
-    var mine = S.quests.board.filter(function (q) { return q.who === 'anyone' || q.who === 'together' || q.who === S.who; });
+    if (S.setup && !S.setup.done) h += '<section class="card tint"><b>Set up your chores</b><p class="small" style="margin:4px 0 10px">A few quick taps about you and your home, and Nudge plans each day for you: a small must-do minimum, the rest a bonus. About 5 minutes.</p><button class="btn primary wide" type="button" data-setup="run">' + (S.setup.built ? 'Finish my part of setup' : 'Start setup') + '</button></section>';
+    var Q = S.quests, mine = Q.planned ? Q.board : Q.board.filter(function (q) { return q.who === 'anyone' || q.who === 'together' || q.who === S.who; });
     var open = mine.filter(function (q) { return !q.doneToday; });
-    h += '<section class="card"><div class="head"><h3>Today\'s chores <span class="muted num" style="font-weight:500">' + (mine.length - open.length) + '/' + mine.length + '</span></h3><button class="btn ghost sm" type="button" data-goto="chores">All' + icon('chevron', 's') + '</button></div>' +
+    if (Q.planned) h += '<section class="card"><div class="head"><h3>' + (Q.win ? 'Today counts ✓' : 'Win the day: ' + Math.min(Q.doneCount, Q.minimum) + ' of ' + Q.minimum) + '</h3><button class="btn ghost sm" type="button" data-goto="chores">All' + icon('chevron', 's') + '</button></div>' +
+      (Q.minimum ? '<div class="minbar"><i style="width:' + Math.round(Math.min(1, Q.doneCount / Q.minimum) * 100) + '%"></i></div>' : '') +
+      (open.length ? open.slice(0, 4).map(function (q) { return questRow(q); }).join('') : '<p class="empty">All done. Anything more is a bonus.</p>') + '</section>';
+    else h += '<section class="card"><div class="head"><h3>Today\'s chores <span class="muted num" style="font-weight:500">' + (mine.length - open.length) + '/' + mine.length + '</span></h3><button class="btn ghost sm" type="button" data-goto="chores">All' + icon('chevron', 's') + '</button></div>' +
       (open.length ? open.slice(0, 4).map(function (q) { return questRow(q); }).join('') : '<p class="empty">All done. Anything more is a bonus.</p>') + '</section>';
 
     seg('chores');
@@ -393,12 +405,19 @@
     if (plan) { el('tab-chores').innerHTML = h + readyView(); return; }
     if (S.chores.invite) h += '<div class="note">' + esc(n.other) + ' wants company. Start a job and do it together.</div>';
     h += '<div class="seg" role="tablist">' + [['today', 'Today'], ['schedule', 'Schedule'], ['plan', 'Plan']].map(function (o) { return '<button type="button" data-cview="' + o[0] + '" aria-pressed="' + (choresView === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
-    if (choresView === 'schedule') { el('tab-chores').innerHTML = h + scheduleView(); return; }
+    if (choresView === 'schedule') { el('tab-chores').innerHTML = h + (S.setup && S.setup.built && window.NudgeSetup ? NudgeSetup.choreList() : scheduleView()); return; }
     if (choresView === 'plan') { el('tab-chores').innerHTML = h + planView(); return; }
     if (!mySession()) h += musicBar();
+    if (q.planned) {
+      var mustL = q.board.filter(function (x) { return x.must; }), bonusL = q.board.filter(function (x) { return !x.must; });
+      h += '<section class="card"><div class="head"><h3>' + (q.win ? 'Today counts ✓' : 'Your minimum: ' + Math.min(q.doneCount, q.minimum) + ' of ' + q.minimum) + '</h3></div>' +
+        (q.minimum ? '<div class="minbar"><i style="width:' + Math.round(Math.min(1, q.doneCount / q.minimum) * 100) + '%"></i></div><p class="small muted" style="margin:6px 0 4px">Do ' + q.minimum + ' job' + (q.minimum === 1 ? '' : 's') + ' (any of them) and today is a win. These are quick ones:</p>' : '<p class="small muted">Nothing you have to do today. A free win.</p>') +
+        mustL.map(function (x) { return questRow(x, { claim: true }); }).join('') + '</section>';
+      h += '<section class="card"><div class="head"><h3>Bonus</h3><span class="muted small">only if you\'ve got energy' + (q.energy ? ' (yours peaks in the ' + esc(q.energy) + ')' : '') + '</span></div>' + (bonusL.length ? bonusL.map(function (x) { return questRow(x, { claim: true }); }).join('') : '<p class="empty">No bonus jobs today.</p>') + '</section>';
+    } else
     h += '<section class="card"><div class="head"><h3>Today</h3><span class="muted small num">' + q.board.filter(function (x) { return x.doneToday; }).length + '/' + q.board.length + '</span></div>' +
       (q.board.length ? q.board.map(function (x) { return questRow(x, { claim: true }); }).join('') : '<p class="empty">Nothing due today.</p>') + '</section>';
-    if (q.more.length) h += '<section class="card"><details><summary class="small muted" style="cursor:pointer">Also due (' + q.more.length + '), only if you feel like it</summary><div style="margin-top:8px">' + q.more.map(function (x) { return questRow(x, { claim: true }); }).join('') + '</div></details></section>';
+    if (q.more.length) h += '<section class="card"><details><summary class="small muted" style="cursor:pointer">' + (q.planned ? 'Other jobs (' + q.more.length + '): ' + esc(names().other) + '\'s, or coming up soon. Doing one counts.' : 'Also due (' + q.more.length + '), only if you feel like it') + '</summary><div style="margin-top:8px">' + q.more.map(function (x) { return questRow(x, { claim: true }); }).join('') + '</div></details></section>';
     if (q.doneExtra.length) h += '<section class="card"><div class="head"><h3>Bonus today</h3></div>' + q.doneExtra.map(function (x) { return questRow(x); }).join('') + '</section>';
     if (q.upcoming.length) h += '<section class="card"><div class="head"><h3>Coming up</h3></div>' + q.upcoming.slice(0, 8).map(function (x) {
       return '<div class="item"><div class="grow"><div class="t" style="font-weight:500">' + esc(x.name) + '</div></div><span class="small muted">' + dayLabel(x.next) + '</span></div>';
@@ -889,6 +908,7 @@
         '<a class="btn primary wide" href="' + esc(zipUrl) + '" download target="_top">' + icon('download', 's') + 'Download the add-on</a></section>';
     }
     // settings
+    if (window.NudgeSetup) h += NudgeSetup.settingsCard();
     h += '<section class="card"><div class="head"><h3>Settings</h3></div>';
     h += '<div class="eyebrow" style="margin-bottom:6px">Appearance</div><div class="seg">' + [['light', 'Light'], ['dark', 'Dark'], ['rave', 'Rave'], ['auto', 'Auto']].map(function (o) { return '<button type="button" data-theme="' + o[0] + '" aria-pressed="' + (th === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
     h += '<div class="eyebrow" style="margin:6px 0">Notifications</div>';
@@ -1805,11 +1825,11 @@
 
   // ---------- PLAN THE WEEK (pair jobs with people, Duolingo style) ----------
   var planDraft = null, planPick = '';
-  function planWho() { var n = names(); return [['me', S.who === 'me' ? n.me || 'You' : n.other], ['partner', S.who === 'partner' ? n.me || 'You' : n.other], ['together', 'Together'], ['anyone', 'Either']]; }
+  function planWho() { var n = names(); return [['me', S.who === 'me' ? n.me || 'You' : n.other], ['partner', S.who === 'partner' ? n.me || 'You' : n.other], ['together', 'Together'], ['rotate', 'Take turns'], ['anyone', 'Either']]; }
   function planView() {
     var list = S.plan || [];
     if (!planDraft) { planDraft = {}; list.forEach(function (q) { planDraft[q.name] = q.who; }); }
-    var whos = planWho(), count = { me: 0, partner: 0, together: 0, anyone: 0 }, mins = { me: 0, partner: 0 };
+    var whos = planWho(), count = { me: 0, partner: 0, together: 0, rotate: 0, anyone: 0 }, mins = { me: 0, partner: 0 };
     list.forEach(function (q) { var w = planDraft[q.name]; count[w]++; if (w === 'me' || w === 'partner') mins[w] += q.minutes * (q.rhythm === 'daily' ? 7 : q.rhythm === 'weekly' ? 1 : 0.5); });
     var changed = list.some(function (q) { return planDraft[q.name] !== q.who; });
     var h = '<section class="card tint"><b>Plan your week</b><p class="small" style="margin:4px 0 0">Tap a job, then tap who does it. <b>Together</b> jobs earn you <b>both double XP</b>.</p></section>';
@@ -1817,10 +1837,10 @@
     h += '<div class="pcol">' + list.map(function (q) {
       var w = planDraft[q.name];
       return '<button type="button" class="pjob w-' + w + (planPick === q.name ? ' pick' : '') + '" data-pjob="' + esc(q.name) + '"><b>' + esc(q.name) + '</b><span>' + esc(q.label) + ' · ' + q.minutes + ' min</span>' +
-        '<em>' + (w === 'together' ? '2× XP together' : w === 'anyone' ? 'Either of you' : esc(whos.filter(function (x) { return x[0] === w; })[0][1])) + '</em></button>';
+        '<em>' + (w === 'together' ? '2× XP together' : w === 'anyone' ? 'Either of you' : w === 'rotate' ? 'Take turns' : esc((whos.filter(function (x) { return x[0] === w; })[0] || ['', 'Either of you'])[1])) + '</em></button>';
     }).join('') + '</div>';
     h += '<div class="pwho">' + whos.map(function (x) {
-      return '<button type="button" class="ppl w-' + x[0] + (planPick ? ' ready' : '') + '" data-pwho="' + x[0] + '">' + (x[0] === 'together' ? icon('heart', 's') : x[0] === 'anyone' ? icon('shuffle', 's') : avatarOf(x[0], 26)) + '<b>' + esc(x[1]) + '</b><span>' + count[x[0]] + ' job' + (count[x[0]] === 1 ? '' : 's') + (x[0] === 'together' ? ' · 2× XP' : '') + '</span></button>';
+      return '<button type="button" class="ppl w-' + x[0] + (planPick ? ' ready' : '') + '" data-pwho="' + x[0] + '">' + (x[0] === 'together' ? icon('heart', 's') : x[0] === 'anyone' || x[0] === 'rotate' ? icon('shuffle', 's') : avatarOf(x[0], 26)) + '<b>' + esc(x[1]) + '</b><span>' + count[x[0]] + ' job' + (count[x[0]] === 1 ? '' : 's') + (x[0] === 'together' ? ' · 2× XP' : '') + '</span></button>';
     }).join('') + '</div></div>';
     var n = names();
     h += '<p class="small muted center">About ' + Math.round(mins[S.who] / 60 * 10) / 10 + 'h of solo jobs for you this week, ' + Math.round(mins[S.who === 'me' ? 'partner' : 'me'] / 60 * 10) / 10 + 'h for ' + esc(n.other) + '.</p>';

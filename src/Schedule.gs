@@ -219,14 +219,14 @@ function ensureTogether_() {
 
 /** The main jobs for the planner: everyday and weekly ones (not the once-a-month bits). */
 function planState_() {
-  return readChores_().filter(function (q) { return q.rhythm === 'daily' || q.rhythm === 'weekly' || q.rhythm === 'biweekly'; })
+  return readChores_().filter(function (q) { return !q.archived && (q.rhythm === 'daily' || q.rhythm === 'weekly' || q.rhythm === 'biweekly'); })
     .map(function (q) { return { name: q.name, who: q.who, rhythm: q.rhythm, label: q.label, minutes: q.minutes, xp: q.xp }; });
 }
 
 /** Save the week plan: {chore name: 'me' | 'partner' | 'together' | 'anyone'}. */
 function saveWeekPlan(key, plan) {
   var who = who_(key);
-  var col = { me: 'Me', partner: 'Partner', together: 'Together', anyone: 'Anyone' };
+  var col = { me: 'Me', partner: 'Partner', together: 'Together', anyone: 'Anyone', rotate: 'Rotate' };
   return withLock_(function () {
     var changed = 0;
     readChores_().forEach(function (q) {
@@ -236,7 +236,7 @@ function saveWeekPlan(key, plan) {
       changed++;
     });
     forget_('chores');
-    delProp_('BOARD');
+    delProp_('BOARD'); delProp_('CPDAY');
     if (changed) push_(who === 'me' ? 'partner' : 'me', nicks_()[who] + ' planned the week', 'See who\'s doing what in Chores.', 'chores');
     return appState_(who);
   });

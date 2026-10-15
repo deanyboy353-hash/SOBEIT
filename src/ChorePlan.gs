@@ -79,6 +79,7 @@ function cpCapacity(p, ymd) {
   return Math.round(base * f);
 }
 function cpMaxCount(p, ymd) { var n = CP_BASE_COUNT[(p && p.manageable) || '3-4'] || 4; return cpWorkMins(p, ymd) >= 360 ? Math.max(2, n - 1) : n; }
+function cpLikes(p, c) { return !!(p && p.likes && (p.likes.indexOf(c.key) !== -1 || p.likes.indexOf(c.id) !== -1)); }
 function cpHates(p, c) { return !!(p && p.hates && (p.hates.indexOf(c.key) !== -1 || p.hates.indexOf(c.id) !== -1)); }
 
 // ---------- who does it ----------
@@ -101,6 +102,8 @@ function cpWho(c, people, loads) {
   }
   if (hm && !hp) return 'partner';
   if (hp && !hm) return 'me';
+  var lm = cpLikes(people.me, c), lp = cpLikes(people.partner, c), gap = Math.abs((loads.partner || 0) - (loads.me || 0));
+  if (lm !== lp && gap < 0.3) return lm ? 'me' : 'partner';            // whoever doesn't mind it, unless their week is much fuller
   return (loads.partner || 0) < (loads.me || 0) ? 'partner' : 'me';
 }
 
@@ -150,12 +153,13 @@ function cpPlanDay(state, ymd) {
     var late = 0, keep = [];
     list.forEach(function (j) { if (j.overdue > 0 && !j.fixed && j.every >= 7) { if (late < CP_CARRY_CAP) { late++; keep.push(j); } else out[w].later.push(j); } else keep.push(j); });
     var minimum = p.minimum === undefined ? 2 : Math.max(0, Number(p.minimum) || 0);
-    var shorts = keep.filter(function (j) { return j.minutes <= CP_SHORT; }), must = shorts.slice(0, minimum);
+    // must-dos, in this order: short everyday house jobs due today; a short everyday job pulled forward from the next 3 days;
+    // then rare short jobs (a yearly "book the boiler service"); then the shortest of whatever's left
+    var isShort = function (j) { return j.minutes <= CP_SHORT; }, common = function (j) { return j.every <= 45; };
+    var must = keep.filter(function (j) { return isShort(j) && common(j); }).slice(0, minimum);
+    if (must.length < minimum) cpUpcoming(state, ymd, w, 3).filter(function (j) { return isShort(j) && common(j) && !must.some(function (m) { return m.id === j.id; }); }).slice(0, minimum - must.length).forEach(function (j) { j.early = true; must.push(j); });
+    if (must.length < minimum) must = must.concat(keep.filter(function (j) { return isShort(j) && must.indexOf(j) === -1; }).slice(0, minimum - must.length));
     if (must.length < minimum) must = must.concat(keep.filter(function (j) { return must.indexOf(j) === -1; }).sort(function (a, b) { return a.minutes - b.minutes; }).slice(0, minimum - must.length));
-    if (must.length < minimum) {
-      // pull a short job forward from the next 3 days, so there's something to win the day with
-      cpUpcoming(state, ymd, w, 3).filter(function (j) { return j.minutes <= CP_SHORT && !must.some(function (m) { return m.id === j.id; }); }).slice(0, minimum - must.length).forEach(function (j) { j.early = true; must.push(j); });
-    }
     var rest = keep.filter(function (j) { return must.indexOf(j) === -1; }), cap = cpCapacity(p, ymd), used = must.reduce(function (s, j) { return s + j.minutes; }, 0), maxN = cpMaxCount(p, ymd);
     rest.forEach(function (j) {
       var urgent = j.fixed || j.every < 7;
@@ -331,7 +335,7 @@ function cpBuildChores(h, today) {
   var bedrooms = (h.rooms || []).filter(function (r) { return /bed/i.test(r.name); });
   var sf = freq('sheets', 'biweekly');
   (bedrooms.length ? bedrooms : [{ name: 'Bedroom' }]).forEach(function (r, i) { add({ key: 'sheets', name: 'Change bedsheets' + (bedrooms.length > 1 ? ': ' + r.name : ''), area: r.name, floor: r.floor || '', minutes: 15 }, sf); });
-  var baths = (h.rooms || []).filter(function (r) { return /bath|toilet|wc|en.?suite|shower/i.test(r.name); }), bf = freq('bathroom', 'weekly');
+  var baths = (h.rooms || []).filter(function (r) { return /bath|toilet|wc|en.?suite|shower/i.test(r.name); }).sort(function (a, b) { return /toilet|wc/i.test(a.name) - /toilet|wc/i.test(b.name); }), bf = freq('bathroom', 'weekly');
   (baths.length ? baths : [{ name: 'Bathroom' }]).forEach(function (r) { add({ key: 'bathroom', name: 'Clean ' + r.name.charAt(0).toLowerCase() + r.name.slice(1), area: r.name, floor: r.floor || '', minutes: /toilet|wc/i.test(r.name) ? 10 : 20 }, bf); });
   add({ key: 'kitchen', name: 'Kitchen surfaces and hob', area: 'Kitchen', minutes: 10 }, freq('kitchen', 'few'));
   // bins: the evening before each collection

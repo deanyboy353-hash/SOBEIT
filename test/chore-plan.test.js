@@ -160,3 +160,10 @@ test('Together jobs land on both lists; laundry put-away follows the wash', () =
   p = plain(C.cpPlanDay(state, SUN));
   assert.ok(p.partner.must.concat(p.partner.bonus).some(j => j.name === 'Put away'));
 });
+
+test('Must-dos are everyday house jobs, not a yearly admin job that happens to be short', () => {
+  const chores = [job({ name: 'Book the boiler service', due: SAT, now: 365, goal: 365, minutes: 5 }), job({ name: 'Make the bed', due: SAT, now: 1, goal: 1, minutes: 3 }), job({ name: 'Wipe hob', due: SUN, now: 2.5, goal: 2.5, minutes: 10 })];
+  const p = plain(C.cpPlanDay({ chores, people: { me: dean, partner: yaz } }, SAT));
+  assert.deepStrictEqual(p.me.must.map(j => j.name), ['Make the bed', 'Wipe hob']);
+  assert.ok(p.me.bonus.some(j => j.name === 'Book the boiler service'));
+});

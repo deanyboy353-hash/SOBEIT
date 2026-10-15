@@ -204,10 +204,11 @@ function heartbeat_() {
       var xp = xpOn_(who, ymd), st = streakNow_(who, ymd, goal), behind = !st.todayDone, gentle = setupOn_() && profile_(who).reminder !== 'direct';
       var oxp = xpOn_(other, ymd), cname = charName_(prefs_(who).char) || 'Tommy';
       var fill = function (s) { return s.replace('{n}', st.count).replace('{x}', Math.max(0, goal - xp)).replace('{other}', nk[other]).replace('{ox}', oxp).replace('{mx}', xp).replace('{char}', cname); };
-      var pushy = nagLevel_(who) === 'aggressive' && !gentle;
+      var calm = setupOn_() && profile_(who).motivation === 'calm';   // "just a calm list": the morning list only, no streak or race nags
+      var pushy = nagLevel_(who) === 'aggressive' && !gentle && !calm;
       var small = setupOn_() ? (function () { var pl = cpToday_()[who]; return 'Your ' + (pl.minimum === 1 ? 'one small job' : pl.minimum + ' small jobs') + ' and today counts' + (pl.must.length ? ': ' + pl.must.join(', ') : '') + '.'; })() : 'Two small jobs and today counts.';
-      if (!pushy && m >= 19 * 60 + 30 && behind) once(who, 'streak', st.count ? 'Keep your streak' : 'Today still counts', gentle ? small : fill(st.count ? STREAK_LINES[Math.floor(r() * STREAK_LINES.length)] : small), 'chores');
-      if (!pushy && !gentle && m >= 21 * 60 + 30 && behind && st.count) once(who, 'late', 'Streak alert', fill(LATE_LINES[Math.floor(r() * LATE_LINES.length)]), 'chores');
+      if (!pushy && !calm && m >= 19 * 60 + 30 && behind) once(who, 'streak', st.count ? 'Keep your streak' : 'Today still counts', gentle ? small : fill(st.count ? STREAK_LINES[Math.floor(r() * STREAK_LINES.length)] : small), 'chores');
+      if (!pushy && !gentle && !calm && m >= 21 * 60 + 30 && behind && st.count) once(who, 'late', 'Streak alert', fill(LATE_LINES[Math.floor(r() * LATE_LINES.length)]), 'chores');
       // Duolingo level: from 6pm, every half hour until today's goal is hit.
       if (pushy && m >= 18 * 60 && behind) {
         var slot = Math.floor(m / 30), pool = PUSHY_LINES.filter(function (l) { return (st.count || l.indexOf('{n}') === -1) && (oxp > xp || l.indexOf('{ox}') === -1); });
@@ -216,7 +217,7 @@ function heartbeat_() {
           push_(who, st.count ? 'Your streak needs you' : 'Today still counts', fill(pool[slot % pool.length]), 'chores', false, { persist: true, tag: 'streak' });
         }
       }
-      if (m >= 17 * 60 && xpOn_(other, ymd) >= xp + 20) once(who, 'ahead', nk[other] + ' is ahead today', nk[other] + ' has ' + (xpOn_(other, ymd) - xp) + ' more XP than you today. Just saying.', 'home');
+      if (!calm && m >= 17 * 60 && xpOn_(other, ymd) >= xp + 20) once(who, 'ahead', nk[other] + ' is ahead today', nk[other] + ' has ' + (xpOn_(other, ymd) - xp) + ' more XP than you today. Just saying.', 'home');
       var theirs = g.word[other], mine = g.word[who];
       if (m >= 20 * 60 && theirs && theirs.done && !(mine && mine.done)) once(who, 'word', 'Your move', nk[other] + (theirs.won ? ' got the word in ' + theirs.guesses.length + '.' : ' missed today\'s word.') + ' Can you do better?', 'play');
     });

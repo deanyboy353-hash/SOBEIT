@@ -156,3 +156,26 @@ test('A week of real days: missed jobs roll on without piling up', () => {
     assert.ok(s.board.length <= 8, d + ': ' + s.board.length + ' jobs');
   }
 });
+
+test('Reminders: the day\'s list at wake time, the minimum in gentle words, nothing in quiet hours, calm means no nags', () => {
+  const { g, me, partner } = built();
+  delete g.state.props.EXTRAS_OFF;
+  g.state.props.FCM_SA = JSON.stringify({ client_email: 'sa@x.iam.gserviceaccount.com', private_key: 'k', project_id: 'life-quest' });
+  g.ctx.registerDevice(me, 'me-phone-token-0123456789', 'Pixel');
+  g.ctx.registerDevice(partner, 'yaz-phone-token-0123456789', 'iPhone');
+  g.ctx.saveSetup(me, 'profile', { wake: 450, reminder: 'gentle', quiet: [1260, 420], motivation: 'streaks' });
+  g.ctx.saveSetup(partner, 'profile', { wake: 480, motivation: 'calm', quiet: [1350, 450] });
+  const to = t => g.state.pushes.filter(p => p.token === t);
+  at(g, '2026-10-14T08:10:00Z'); g.ctx.heartbeat_();                   // 09:10: both are up
+  const list = to('me-phone-token-0123456789').find(p => /to win the day/.test(p.title));
+  assert.ok(list, JSON.stringify(to('me-phone-token-0123456789').map(p => p.title)));
+  assert.match(list.title, /Today: 2 to win the day/);
+  assert.ok(to('yaz-phone-token-0123456789').some(p => /Today/.test(p.title)));
+  at(g, '2026-10-14T18:40:00Z'); g.ctx.heartbeat_();                   // 19:40, Dean hasn't hit his minimum
+  const nag = to('me-phone-token-0123456789').find(p => /streak|counts/i.test(p.title));
+  assert.ok(nag && /small jobs and today counts/.test(nag.body), JSON.stringify(nag));
+  assert.ok(!to('yaz-phone-token-0123456789').some(p => /streak|counts|ahead/i.test(p.title)), 'calm: no nags for Yaz');
+  const n = to('me-phone-token-0123456789').length;
+  at(g, '2026-10-14T20:35:00Z'); g.ctx.heartbeat_();                   // 21:35, inside Dean's quiet hours
+  assert.strictEqual(to('me-phone-token-0123456789').length, n);
+});

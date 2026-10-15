@@ -120,9 +120,10 @@
         '<form class="wz-add" data-wzaddex="1"><input type="text" id="wzExName" placeholder="e.g. Water the plants" maxlength="60" aria-label="Chore name"><button type="submit" class="btn soft sm">Add</button></form>' +
         '<div class="wz-sub">How often</div>' + chips('exFreq', FREQS, W.exFreq || 'weekly') + '<div class="wz-sub">Who</div>' + chips('exWho', [['me', personLabel('me')], ['yaz', personLabel('partner')], ['shared', 'Shared'], ['whoever', 'Whoever']], W.exWho || 'whoever');
     }, save: function () { return { extras: d.house.extras || [] }; } });
-    add({ id: 'review', sec: 'none', q: W.setup.built ? 'Rebuild your chore list?' : 'Your chore list', help: 'Here\'s what I\'ll make from your answers. Your existing chores and their history are kept.', html: reviewHtml, save: function () { return null; } });
+    add({ id: 'review', sec: 'none', q: W.setup.built ? 'Rebuild your chore list?' : 'Your chore list', help: W.setup.built ? 'Only needed if your home or how often you want things done has changed. Nothing is lost either way.' : 'Here\'s what I\'ll make from your answers. Your existing chores and their history are kept.', html: reviewHtml, save: function () { return null; } });
     return list;
   }
+  function pickKeys(o, ks) { var r = {}; ks.forEach(function (k) { r[k] = o[k]; }); return r; }
   function nextOn(day, extra) { var t = new Date(N.now()), k = (day - t.getDay() + 7) % 7 + extra; t.setDate(t.getDate() + k); return t.getFullYear() + '-' + ('0' + (t.getMonth() + 1)).slice(-2) + '-' + ('0' + t.getDate()).slice(-2); }
   function freqName(k) { var f = FREQS.filter(function (x) { return x[0] === k; })[0]; return f ? f[1] : k || ''; }
   function houseSummary() {
@@ -131,11 +132,14 @@
   }
 
   // ---------- review: what building the chore list will do ----------
+  function rebuilding() { return !W.setup.built || W.rebuild === 'yes'; }
   function reviewHtml() {
-    if (!W.preview) { loadPreview(); return '<p class="muted">Working it out…</p>'; }
+    var ask = W.setup.built ? chips('rebuild', [['no', 'No, keep our chores as they are'], ['yes', 'Yes, rebuild from the answers']], W.rebuild) : '';
+    if (!rebuilding()) return ask + '<p class="small muted">Your chores stay as they are. Your answers about you (work days, energy, your daily minimum, jobs you hate) shape your daily plan straight away.</p>';
+    if (!W.preview) { loadPreview(); return ask + '<p class="muted">Working it out…</p>'; }
     var p = W.preview, groups = [['update', 'Your chores, updated', 'Matched to your answers: name, timing and who. History kept.'], ['add', 'New chores', ''], ['keep', 'Kept as they are', 'Not in the setup questions. Change them any time in Chores, Schedule.']];
     var whoTxt = function (w) { return w === 'me' ? personLabel('me') : w === 'partner' ? personLabel('partner') : w === 'rotate' ? 'Take turns' : w === 'together' ? 'Together' : 'Whoever'; };
-    return groups.map(function (g) {
+    return ask + groups.map(function (g) {
       var l = p.filter(function (x) { return x.action === g[0]; }); if (!l.length) return '';
       return '<div class="wz-sub">' + g[1] + ' (' + l.length + ')</div>' + (g[2] ? '<div class="small muted">' + g[2] + '</div>' : '') + '<div class="wz-list">' + l.map(function (x) {
         return '<div class="wz-li"><span class="grow"><b>' + esc(x.name) + '</b>' + (x.was && x.was !== x.name ? ' <span class="muted">(was ' + esc(x.was) + ')</span>' : '') + '<br><span class="small muted">' + esc(x.every || '') + (x.goal && x.goal !== x.every ? ', building up to ' + esc(String(x.goal).toLowerCase()) : '') + ' · ' + x.minutes + ' min · ' + esc(whoTxt(x.who)) + '</span></span></div>';
@@ -149,7 +153,7 @@
   function open(opts) {
     opts = opts || {};
     N.rpc('setupState', []).then(function (st) {
-      W = { setup: st, d: { profile: clone(st.profile), health: clone(st.health), house: clone(st.house) }, i: 0, mode: opts.only ? 'one' : 'full', only: opts.only || '', houseCheck: '' };
+      W = { setup: st, d: { profile: clone(st.profile), health: clone(st.health), house: clone(st.house) }, i: 0, mode: opts.only ? 'one' : 'full', only: opts.only || '', houseCheck: '', rebuild: opts.start === 'review' ? 'yes' : 'no' };
       W.list = steps();
       if (opts.only) { W.list = W.list.filter(function (s) { return s.id === opts.only; }); if (!W.list.length) { W = null; return N.toast('That question isn\'t in your setup.'); } }
       if (opts.start) { var k = W.list.map(function (s) { return s.id; }).indexOf(opts.start); if (k >= 0) W.i = k; }
@@ -164,17 +168,18 @@
     W.list = W.mode === 'one' ? W.list : steps();
     if (W.i >= W.list.length) W.i = W.list.length - 1;
     var s = cur(), n = W.list.length, last = W.i === n - 1, one = W.mode === 'one';
-    var next = one ? 'Save' : s.id === 'review' ? (W.setup.built ? 'Rebuild the chore list' : 'Make our chore list') : s.id === 'houseDone' && W.houseCheck !== 'change' ? 'Keep it and carry on' : 'Next';
+    var next = one ? 'Save' : s.id === 'review' ? (!rebuilding() ? 'Finish setup' : W.setup.built ? 'Rebuild the chore list' : 'Make our chore list') : s.id === 'houseDone' && W.houseCheck !== 'change' ? 'Keep it and carry on' : 'Next';
     el('wizard').innerHTML = '<div class="wz"><div class="wz-top">' +
       '<button type="button" class="iconbtn" data-wzgo="back" aria-label="' + (one || !W.i ? 'Close setup' : 'Back to the last question') + '">' + (one || !W.i ? '×' : '‹') + '</button>' +
       (one ? '<span class="grow small muted">Change one answer</span>' : '<div class="wz-bar grow" role="progressbar" aria-valuemin="0" aria-valuemax="' + n + '" aria-valuenow="' + (W.i + 1) + '"><i style="width:' + Math.round((W.i + 1) / n * 100) + '%"></i></div><span class="small muted num">' + (W.i + 1) + '/' + n + '</span>') +
       (!one ? '<button type="button" class="btn ghost sm" data-wzgo="later" title="Your answers so far are saved">Finish later</button>' : '') + '</div>' +
       '<div class="wz-body"><div class="eyebrow">' + ({ profile: 'About you', health: 'Health and fitness (private)', house: 'Your home (shared with ' + esc(other()) + ')', none: '' })[s.sec] + '</div><h2>' + esc(s.q) + '</h2>' + (s.help ? '<p class="small muted">' + esc(s.help) + '</p>' : '') + s.html() + '</div>' +
-      '<div class="wz-foot">' + (s.opt && !one ? '<button type="button" class="btn ghost" data-wzgo="skip">Skip for now</button>' : '<span></span>') + '<button type="button" class="btn primary big" data-wzgo="next"' + (s.id === 'review' && !W.preview ? ' disabled' : '') + '>' + esc(next) + '</button></div></div>';
+      '<div class="wz-foot">' + (s.opt && !one ? '<button type="button" class="btn ghost" data-wzgo="skip">Skip for now</button>' : '<span></span>') + '<button type="button" class="btn primary big" data-wzgo="next"' + (s.id === 'review' && rebuilding() && !W.preview ? ' disabled' : '') + '>' + esc(next) + '</button></div></div>';
     var f = el('wizard').querySelector('input.wz-text, #wzExName'); if (f && s.id === 'name') setTimeout(function () { f.focus(); }, 60);
   }
   function saveStep(s) {
     var data = s.save(); if (!data || s.sec === 'none') return;
+    if (s.sec === 'house' && W.setup.built && W.mode === 'full' && JSON.stringify(data) !== JSON.stringify(pickKeys(W.setup.house, Object.keys(data)))) W.rebuild = 'yes';
     if (s.sec === 'profile' && W.mode === 'full' && W.i === W.list.length - 1) data.done = true;
     N.send('saveSetup', [s.sec, data]).then(function (r) { if (W) { W.setup = r.setup; W.preview = null; } N.applyQuiet(r.state); }, function (e) { N.toast(e.message + ' (that answer wasn\'t saved: try again)', true); });
   }
@@ -186,6 +191,7 @@
     // next
     if (s.id === 'name' && !String(W.d.profile.name || '').trim()) return N.toast('Type a name first (it\'s how the app talks to you).');
     if (s.id === 'houseDone' && W.houseCheck !== 'change') { W.list = steps(); var r = W.list.map(function (x) { return x.id; }).indexOf('review'); W.i = r; return draw(); }
+    if (s.id === 'review' && !rebuilding()) { N.send('saveSetup', ['profile', { done: true }]).then(function (r) { N.applyQuiet(r.state); }, function (e) { N.toast(e.message, true); }); N.toast('Setup done. Your daily plan uses your answers from now on.'); return close(); }
     if (s.id === 'review') return build();
     saveStep(s);
     if (W.mode === 'one') { N.toast('Saved'); return close(); }
@@ -216,7 +222,8 @@
     if (ds.wzgo) return go(ds.wzgo);
     if (ds.wz) {
       var f = ds.wz, v = ds.v;
-      if (f === 'houseCheck') { W.houseCheck = v; return draw(); }
+      if (f === 'houseCheck') { W.houseCheck = v; if (v === 'change') W.rebuild = 'yes'; return draw(); }
+      if (f === 'rebuild') { W.rebuild = v; return draw(); }
       if (f === 'exFreq') { W.exFreq = v; return draw(); }
       if (f === 'exWho') { W.exWho = v; return draw(); }
       if (f === 'workPreset') { var p = v.split('-').map(Number), w = W.d.profile.work || {}; Object.keys(w).forEach(function (k) { if (w[k]) w[k] = p.slice(); }); return draw(); }
