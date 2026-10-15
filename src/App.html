@@ -1188,6 +1188,13 @@ section.tab:not([hidden]) { animation: tabIn .16s ease-out; }
 .card.spot.today .av3d.stage { border-radius: 20px; margin: 0 -4px 6px; }
 .card.spot.today .hero { padding-top: 6px; border-top: 1px solid var(--line); margin-top: 4px; }
 @media (max-width: 959px) { #whatNow { display: none; } }
+/* character creator canvas: PS2 mode renders small and scales up crunchy, with a light dither */
+.ps2-host { position: relative; }
+.ps2-canvas { display: block; width: 100%; height: 100%; touch-action: pan-y; }
+.ps2-canvas.crunchy { image-rendering: pixelated; image-rendering: crisp-edges; }
+.ps2-dither { position: absolute; inset: 0; pointer-events: none; opacity: .14; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='1' height='1' fill='%23fff'/%3E%3Crect x='2' y='2' width='1' height='1' fill='%23fff'/%3E%3Crect x='1' y='3' width='1' height='1' fill='%23000'/%3E%3Crect x='3' y='1' width='1' height='1' fill='%23000'/%3E%3C/svg%3E"); background-size: 4px 4px; }
+.ps2-dither[hidden] { display: none; }
 
 </style>
 </head>
