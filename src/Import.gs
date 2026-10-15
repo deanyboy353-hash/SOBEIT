@@ -1,8 +1,8 @@
 /**
- * Import.gs: bring in workouts from another app (Liftoff's CSV export; Strong-style columns work too),
- * logged exactly as if they'd been done in Nudge on the day: sets in the Workout log, a Workouts row,
- * the Gym log ticked Done, +50 XP for the session and +25 for its best PR (with the cash that XP earns),
- * all dated the day they happened. Safe to run twice: workouts already in the log are skipped.
+ * Import.gs: bring in workouts from another app (Liftoff or Strong CSV exports), logged as if they'd been
+ * done in Nudge on the day: sets in the Workout log, a Workouts row and the Gym log ticked Done, all dated
+ * the day they happened, so history, PRs, "last time" weights and the rotation all know about them.
+ * No XP or cash: those only come from things done in the app from now on. Safe to run twice.
  */
 
 var LB = 2.20462262;
@@ -104,12 +104,11 @@ function importWorkouts_(workouts, source) {
       if ((best[k] && est > best[k]) || (heavy[k] && s.weight > heavy[k])) { if (!top || est > top.e) top = { ex: s.exercise, w: s.weight, r: s.reps, e: est }; }
     });
     workoutRows.push({ 'Date': w.date, 'ID': wid, 'Session': session, 'Start': w.time, 'End': '', 'Minutes': w.minutes, 'Sets': w.sets.length, 'Volume (kg)': Math.round(volume), 'PRs': top ? 1 : 0, 'Notes': 'Imported from ' + source + (w.name ? ': ' + w.name : '') });
-    var xpAt = function (what, xp, kind) { xpRows.push({ 'Date': w.date, 'Time': w.time, 'Who': 'me', 'What': what, 'XP': xp, 'Kind': kind }); cashRows.push({ 'Date': w.date, 'Time': w.time, 'Who': 'me', 'What': what, 'Amount': xp * CASH_PER_XP, 'Kind': 'earned' }); };
-    if (!gymHave[w.date]) { xpAt('Gym: ' + session, 50, 'gym'); gymRows.push({ 'Date': w.date, 'Day': DAY_NAMES[dayOfWeek_(w.date)], 'Session': session, 'Status': 'Done', 'Ticked at': w.time, 'Notes': 'Imported from ' + source }); gymHave[w.date] = true; }
-    if (top) { xpAt('PR: ' + top.ex + ' ' + top.w + '×' + top.r, 25, 'pr'); prs++; }
+    if (!gymHave[w.date]) { gymRows.push({ 'Date': w.date, 'Day': DAY_NAMES[dayOfWeek_(w.date)], 'Session': session, 'Status': 'Done', 'Ticked at': w.time, 'Notes': 'Imported from ' + source }); gymHave[w.date] = true; }
+    if (top) prs++;
     added++;
   });
-  appendRows_('workoutLog', setRows); appendRows_('workouts', workoutRows); appendRows_('gym', gymRows); appendRows_('xp', xpRows); appendRows_('cash', cashRows);
+  appendRows_('workoutLog', setRows); appendRows_('workouts', workoutRows); appendRows_('gym', gymRows);
   xpCache_ = null; delProp_('GYM_TODAY');
   return { added: added, skipped: skipped, sets: sets, prs: prs };
 }
@@ -131,4 +130,29 @@ function ensureLiftoffImport_() {
   if (instance_()) return;
   if (!prop_('STRONG_V1') && typeof STRONG_CSV !== 'undefined') setProp_('STRONG_V1', JSON.stringify(importWorkouts_(parseWorkoutCsv(STRONG_CSV, 'kg'), 'Strong')));
   if (!prop_('LIFTOFF_V1') && typeof LIFTOFF_CSV !== 'undefined') setProp_('LIFTOFF_V1', JSON.stringify(importWorkouts_(parseWorkoutCsv(LIFTOFF_CSV, 'lb'), 'Liftoff')));
+  removeImportXp_();
+}
+
+/**
+ * Once: take back any XP and cash an earlier version of the import gave for old workouts (Dean asked for
+ * XP and cash only from things done in the app). Matches each imported workout's day and start time, so
+ * nothing earned in the app is touched.
+ */
+function removeImportXp_() {
+  if (prop_('IMPORT_XP_V2')) return 0;
+  var stamps = {};
+  rowsBetween_('workouts', '0000', '9999').forEach(function (r) { if (/^Imported from/.test(String(r['Notes'] || ''))) stamps[String(r['Date']) + '|' + String(r['Start'])] = 1; });
+  var removed = 0;
+  [['xp', function (r) { return /^(Gym: |PR: )/.test(String(r[3])) && /^(gym|pr)$/.test(String(r[5])); }], ['cash', function (r) { return /^(Gym: |PR: )/.test(String(r[3])) && String(r[5]) === 'earned'; }]].forEach(function (t) {
+    var sh = sheet_(t[0]), v = sh.getDataRange().getValues();
+    for (var i = v.length - 1; i >= 1; i--) {
+      var d = v[i][0] instanceof Date ? Utilities.formatDate(v[i][0], TZ, 'yyyy-MM-dd') : String(v[i][0]);
+      var tm = v[i][1] instanceof Date ? Utilities.formatDate(v[i][1], TZ, 'HH:mm') : String(v[i][1]);
+      if (v[i][2] === 'me' && stamps[d + '|' + tm] && t[1](v[i])) { sh.deleteRow(i + 1); removed++; }
+    }
+    forget_(t[0]);
+  });
+  xpCache_ = null;
+  setProp_('IMPORT_XP_V2', String(removed));
+  return removed;
 }

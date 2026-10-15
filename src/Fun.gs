@@ -391,7 +391,7 @@ function daysBetween_(a, b) {
 // ---------- customisation ----------
 
 var HOME_BLOCKS = ['deadlines', 'work', 'wardrobe', 'brief', 'ask', 'ring', 'pet', 'challenges', 'next', 'whatnow', 'routine', 'gym', 'chores', 'tiles', 'make', 'us', 'feed'];
-var PREF_DEFAULTS = { char: '', accent: '', text: 'normal', sound: false, haptics: true, confetti: true, motion: true, home: [], nag: '', look: {} };
+var PREF_DEFAULTS = { char: '', skin: '', mode: 'auto', accent: '', text: 'normal', sound: false, haptics: true, confetti: true, motion: true, home: [], nag: '', look: {} };
 // the style studio: the first choice is the default
 var STYLE_CHOICES = { bg: ['live', 'lasers', 'grid', 'stars', 'plain'], cards: ['soft', 'glass', 'neon', 'outline', 'flat'], font: ['default', 'rounded', 'mono', 'serif', 'condensed'], corners: ['round', 'sharp', 'pill'] };
 var LOOK_KEYS = { hair: 1, hc: 1, top: 1, tc: 1, head: 1, eyes: 1, face: 1, skin: 1, ear: 1 };
@@ -409,6 +409,8 @@ function setPrefs(key, p) {
     if (p.char !== undefined) cur.char = /^(sa|vc)-[a-z]+$/.test(String(p.char)) ? String(p.char) : '';
     if (p.char !== undefined && p.look === undefined) cur.look = {};
     if (p.accent !== undefined) cur.accent = ['', 'pink', 'green', 'teal', 'orange', 'blue', 'lime', 'red', 'gold'].indexOf(p.accent) !== -1 ? p.accent : '';
+    if (p.skin !== undefined) cur.skin = p.skin === 'glam' || p.skin === 'afterdark' ? p.skin : '';
+    if (p.mode !== undefined) cur.mode = p.mode === 'light' || p.mode === 'dark' ? p.mode : 'auto';
     Object.keys(STYLE_CHOICES).forEach(function (k) { if (p[k] !== undefined) cur[k] = STYLE_CHOICES[k].indexOf(p[k]) !== -1 ? p[k] : STYLE_CHOICES[k][0]; });
     if (p.text !== undefined) cur.text = p.text === 'large' ? 'large' : 'normal';
     if (p.nag !== undefined) cur.nag = NAG_LEVELS[p.nag] ? p.nag : '';

@@ -38,7 +38,7 @@ test('Strong CSV: semicolons, kg, warm-up sets marked, rest timers skipped', () 
   assert.deepStrictEqual(w[0].sets.map(s => s.type + s.weight), ['W40', '70']);
 });
 
-test('importing logs each workout on its own day as if done in the app: sets, Gym log Done, +50 XP and cash, PRs; twice adds nothing', () => {
+test('importing logs each workout on its own day: sets, Gym log Done and PRs, but no XP or cash; twice adds nothing', () => {
   const g = loadProject({ now: new Date('2026-10-15T08:00:00Z') });
   g.ctx.setup();
   const me = g.state.props.WEBAPP_KEY, xp0 = g.ctx.xpTotal_('me'), cash0 = g.ctx.cashOf_('me');
@@ -50,13 +50,28 @@ test('importing logs each workout on its own day as if done in the app: sets, Gy
   assert.ok(log.some(x => x[0] === '2025-01-06' && x[9] === 'W'));
   const gym = g.tab('Gym log').rows().filter(x => x[0] === '2025-01-08')[0];
   assert.strictEqual(gym[6], 'Done');
-  const xp = g.tab('XP log').rows().filter(x => x[0] === '2025-01-08');
-  assert.deepStrictEqual(xp.map(x => x[4]).sort(), [25, 50].map(String).sort().length ? xp.map(x => x[4]).sort() : []);
-  assert.strictEqual(g.ctx.xpTotal_('me') - xp0, 125);
-  assert.strictEqual(g.ctx.cashOf_('me') - cash0, 1250);
+  assert.strictEqual(g.tab('XP log').rows().filter(x => x[0] === '2025-01-08').length, 0);
+  assert.strictEqual(g.ctx.xpTotal_('me'), xp0, 'no XP for old workouts');
+  assert.strictEqual(g.ctx.cashOf_('me'), cash0, 'no cash either');
   assert.ok(!g.tab('XP log').rows().some(x => x[0] === '2026-10-15' && /Gym/.test(x[3])), 'nothing lands on today');
   const again = g.ctx.importWorkoutCsv(me, STRONG);
   assert.strictEqual(again.added, 0); assert.strictEqual(again.skipped, 2);
   g.ctx.importWorkoutCsv(me, LIFTOFF);
   assert.strictEqual(g.ctx.rotationNext_('2026-10-15'), 'Shoulders & Arms', 'Pull on the 1st, Push on the 3rd: Shoulders & Arms is next');
+});
+
+test('XP and cash an earlier import gave are taken back once; XP earned in the app is untouched', () => {
+  const g = loadProject({ now: new Date('2026-10-15T08:00:00Z') });
+  g.ctx.setup();
+  g.ctx.importWorkouts_(g.ctx.parseWorkoutCsv(STRONG, 'kg'), 'Strong');
+  // what the earlier version wrote for an imported workout, plus a real in-app session that day at another time
+  g.ctx.appendRow_('xp', { Date: '2025-01-06', Time: '10:00', Who: 'me', What: 'Gym: Push', XP: 50, Kind: 'gym' });
+  g.ctx.appendRow_('cash', { Date: '2025-01-06', Time: '10:00', Who: 'me', What: 'Gym: Push', Amount: 500, Kind: 'earned' });
+  g.ctx.appendRow_('xp', { Date: '2025-01-06', Time: '18:30', Who: 'me', What: 'Gym: Pull', XP: 50, Kind: 'gym' });
+  g.ctx.xpCache_ = null;
+  const before = g.ctx.xpTotal_('me');
+  assert.strictEqual(g.ctx.removeImportXp_(), 2);
+  assert.strictEqual(g.ctx.xpTotal_('me'), before - 50);
+  assert.ok(g.tab('XP log').rows().some(r => r[1] === '18:30'), 'the in-app session keeps its XP');
+  assert.strictEqual(g.ctx.removeImportXp_(), 0, 'only once');
 });
