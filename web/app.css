@@ -1030,7 +1030,7 @@ body { isolation: isolate; }
 .flame { flex: none; vertical-align: -3px; }
 .flame.lit { filter: drop-shadow(0 0 4px rgba(255, 95, 178, .45)); animation: flick 2.4s ease-in-out infinite; transform-origin: 50% 90%; }
 @keyframes flick { 0%, 100% { transform: scale(1) rotate(0); } 30% { transform: scale(1.04, .97) rotate(-2deg); } 60% { transform: scale(.97, 1.04) rotate(2deg); } }
-.burst { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; background: rgba(8, 4, 16, .62); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); animation: bIn .25s ease-out; color: #fff; text-align: center; cursor: pointer; }
+.burst { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; background: rgba(8, 4, 16, .62); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); animation: bIn .25s ease-out; color: #fff; text-align: center; pointer-events: none; }
 .burst.out { opacity: 0; transition: opacity .3s; }
 .burst-in { position: relative; animation: bPop .5s cubic-bezier(.2, 1.6, .4, 1); }
 .burst h2 { margin: 8px 0 2px; font-size: 30px; letter-spacing: -.01em; }

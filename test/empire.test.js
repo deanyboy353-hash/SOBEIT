@@ -294,3 +294,25 @@ test('DJ Set: grades and points; replayable, best score counts, XP once', () => 
   assert.strictEqual(s.set.other.score, 20000);
   assert.strictEqual(s.set.mine.grade, 'A');
 });
+
+test('earned outfits: shown with their requirement, unlock free on the achievement, never for sale', () => {
+  const { loadProject } = require('./fakes');
+  const g = loadProject({ now: new Date('2026-10-13T09:00:00Z') });
+  g.ctx.setup();
+  const me = g.state.props.WEBAPP_KEY;
+  let W = g.ctx.appState(me).wardrobe;
+  const hood = W.catalog.find(w => w.id === 'streakhoodie');
+  assert.strictEqual(hood.req, 'Hit a 7-day streak');
+  assert.ok(!W.owned.includes('streakhoodie'));
+  assert.throws(() => g.ctx.buyWear(me, 'streakhoodie'), /can't be bought/);
+  g.state.props.STREAK_me = JSON.stringify({ count: 7, freezes: 1, best: 7, through: '2026-10-12', frozeOn: '' });
+  g.state.cache = {};
+  W = g.ctx.appState(me).wardrobe;
+  assert.ok(W.owned.includes('streakhoodie'));
+  assert.ok(!W.owned.includes('goldphones'));
+  W = g.ctx.unlockAch(me, 'booth1').wardrobe;
+  assert.ok(W.owned.includes('goldphones'));
+  assert.throws(() => g.ctx.unlockAch(me, 'gym10'), /Unknown/);
+  g.ctx.setLook3d(me, { top: 'streakhoodie', acc: ['goldphones'] });
+  assert.strictEqual(g.ctx.appState(me).wardrobe.look.top, 'streakhoodie');
+});

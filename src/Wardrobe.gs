@@ -7,6 +7,7 @@
  * Styles: San Andreas (sa), Vice City (vc), and drag race runway (drag).
  */
 
+var ACH_TEXT = { streak7: 'Hit a 7-day streak', gym10: 'Log 10 gym sessions', booth1: 'Master your first Booth lesson (Solid or better)', pet30: 'Grow your pet to Legend (30 days you both win)' };
 var WARDROBE = [
   // hair
   ['fade', 'hair', 'Fade', 0, 0, 'basic'], ['buzz', 'hair', 'Buzz cut', 0, 0, 'basic'], ['bob', 'hair', 'Bob', 0, 0, 'basic'], ['bald', 'hair', 'Clean head', 0, 0, 'basic'],
@@ -35,8 +36,11 @@ var WARDROBE = [
   ['solid', 'pattern', 'Plain', 0, 0, 'basic'], ['stripes', 'pattern', 'Stripes', 500, 0, 'basic'], ['plaid', 'pattern', 'Plaid', 900, 0, 'sa'], ['flames', 'pattern', 'Flames', 1500, 5, 'sa'],
   ['floral', 'pattern', 'Vice City florals', 1200, 0, 'vc'], ['leopard', 'pattern', 'Leopard', 2500, 10, 'drag'], ['chrome', 'pattern', 'Chrome', 4000, 25, 'drag'], ['sequins', 'pattern', 'Sequins', 6000, 35, 'drag'],
   // glam
-  ['glam', 'glam', 'Glam kit (lipstick and shadow)', 2000, 5, 'drag']
-].map(function (r) { return { id: r[0], slot: r[1], name: r[2], price: r[3], chores: r[4], style: r[5] }; });
+  ['glam', 'glam', 'Glam kit (lipstick and shadow)', 2000, 5, 'drag'],
+  // earned, not bought: free the moment you hit the achievement
+  ['streakhoodie', 'top', 'Flame streak hoodie', 0, 0, 'ach', 'streak7'], ['stringer', 'top', 'Gym stringer vest', 0, 0, 'ach', 'gym10'],
+  ['goldphones', 'acc', 'Gold DJ headphones', 0, 0, 'ach', 'booth1'], ['petcrown', 'acc', 'Pet keeper\'s crown', 0, 0, 'ach', 'pet30']
+].map(function (r) { return { id: r[0], slot: r[1], name: r[2], price: r[3], chores: r[4], style: r[5], ach: r[6] || '', req: r[6] ? ACH_TEXT[r[6]] : '' }; });
 
 var LOOK3D_DEFAULT = {
   me: { body: 'm', skin: '#8d5a3b', hair: 'fade', hairC: '#1c1410', top: 'tee', topC: '#2e9e4f', topPat: 'solid', bottom: 'jeans', botC: '#2b3a67', botPat: 'solid', shoes: 'sneakers', shoeC: '#f2f2f2', acc: [], lips: '#9c4a52', shadow: '#5b44b8' },
@@ -45,9 +49,29 @@ var LOOK3D_DEFAULT = {
 
 function wardrobeItem_(id) { return WARDROBE.filter(function (w) { return w.id === id; })[0] || null; }
 
+/** Achievements someone has, for the earned outfits: { streak7, gym10, booth1, pet30 }. */
+function achievements_(who) {
+  var got = {}, today = todayYmd_(), goal = dailyGoal_();
+  try { if (streakNow_(who, today, goal).best >= 7) got.streak7 = true; } catch (e) {}
+  try { var team = streakNow_('team', today, goal); if (team.total >= 30) got.pet30 = true; } catch (e) {}
+  try { var days = {}; rotationDone_(today).forEach(function (x) { days[x.date] = 1; }); rowsBetween_('workoutLog', '0000', today).forEach(function (r) { days[String(r['Date'])] = 1; }); if (who === 'me' && Object.keys(days).length >= 10) got.gym10 = true; } catch (e) {}
+  JSON.parse(prop_('ACH_' + who) || '[]').forEach(function (k) { got[k] = true; });
+  return got;
+}
+/** The app tells us about achievements that live on the phone (Booth lessons). */
+function unlockAch(key, id) {
+  var who = who_(key);
+  if (['booth1'].indexOf(id) === -1) throw new Error('Unknown achievement.');
+  return withLock_(function () {
+    var a = JSON.parse(prop_('ACH_' + who) || '[]');
+    if (a.indexOf(id) === -1) { a.push(id); setProp_('ACH_' + who, JSON.stringify(a)); addFeed_(who, 'Unlocked the ' + wardrobeItem_('goldphones').name, 'empire'); }
+    return appState_(who);
+  });
+}
+
 function owned3d_(who) {
-  var mine = JSON.parse(prop_('WARDROBE_' + who) || '[]');
-  WARDROBE.forEach(function (w) { if (!w.price && mine.indexOf(w.id) === -1) mine.push(w.id); });
+  var mine = JSON.parse(prop_('WARDROBE_' + who) || '[]'), ach = achievements_(who);
+  WARDROBE.forEach(function (w) { if ((w.ach ? ach[w.ach] : !w.price) && mine.indexOf(w.id) === -1) mine.push(w.id); });
   if (who === 'partner' && mine.indexOf('waves') === -1) mine.push('waves');
   if (who === 'partner' && mine.indexOf('crop') === -1) mine.push('crop');
   return mine;
@@ -64,7 +88,7 @@ function choresDone_(who) {
 
 function wardrobeState_(who) {
   var other = who === 'me' ? 'partner' : 'me';
-  return { catalog: WARDROBE, owned: owned3d_(who), look: look3d_(who), other: look3d_(other), chores: choresDone_(who) };
+  return { catalog: WARDROBE, owned: owned3d_(who), ach: achievements_(who), look: look3d_(who), other: look3d_(other), chores: choresDone_(who) };
 }
 
 // ---- called from the app ----
@@ -76,6 +100,7 @@ function buyWear(key, id) {
     if (!it) throw new Error('That isn\'t in the shop.');
     var owned = owned3d_(who);
     if (owned.indexOf(id) !== -1) throw new Error('You already own the ' + it.name + '.');
+    if (it.ach) throw new Error('The ' + it.name + ' can\'t be bought. ' + it.req + ' and it\'s yours.');
     var done = choresDone_(who);
     if (done < it.chores) throw new Error('Do ' + (it.chores - done) + ' more chore' + (it.chores - done === 1 ? '' : 's') + ' to unlock the ' + it.name + '.');
     var cash = cashOf_(who);

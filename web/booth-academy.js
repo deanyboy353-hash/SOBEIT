@@ -224,7 +224,11 @@
 
   // ---------- storage ----------
   function progress() { return S.load('academy', {}) || {}; }
-  function record(id, a) { var p = progress(); (p[id] = p[id] || []).push(a); if (p[id].length > 30) p[id].splice(0, p[id].length - 30); S.save('academy', p); }
+  function record(id, a) {
+    var p = progress(); (p[id] = p[id] || []).push(a); if (p[id].length > 30) p[id].splice(0, p[id].length - 30); S.save('academy', p);
+    // the Nudge app unlocks an outfit for your first lesson at Solid or better
+    try { if (id.indexOf(':') === -1 && K.mastery(p[id]).level !== 'Learning' && !S.load('mastered', '')) S.save('mastered', id); } catch (e) {}
+  }
   function aids() { return S.load('aids', { phrase: true, waves: true, energy: true }); }
   function aidsOff() { var a = aids(); return a.phrase === false && a.waves === false && a.energy === false; }
   function latency() { return S.load('latency', null); }

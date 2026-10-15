@@ -157,7 +157,16 @@
     return head;
   }
   var fabricNoise = {};
+  // earned outfits are dressed-up versions of pieces the renderer already knows
+  function alias(L) {
+    var A = Object.assign({}, L);
+    if (A.top === 'streakhoodie') { A.top = 'hoodie'; if (!A.topPat || A.topPat === 'solid') A.topPat = 'flames'; }
+    if (A.top === 'stringer') A.top = 'tank';
+    A.acc = (A.acc || []).map(function (id) { return id === 'goldphones' ? 'headphones' : id === 'petcrown' ? 'crown' : id; });
+    return A;
+  }
   function buildFigure(L) {
+    L = alias(L);
     var f = L.body === 'f', root = new T.Group(), skin = mat(L.skin, { roughness: 0.55 });
     var top = fabric(L.topC, L.topPat), bot = fabric(L.botC, L.botPat, null, /jeans|baggy/.test(L.bottom) && L.botPat === 'solid' ? 'denim' : ''), shoe = mat(L.shoeC, { roughness: 0.45 }), hairM = mat(L.hairC, { roughness: 0.45, metalness: 0.05 });
     var parts = {};

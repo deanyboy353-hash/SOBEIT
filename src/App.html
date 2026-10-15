@@ -1037,7 +1037,7 @@ body { isolation: isolate; }
 .flame { flex: none; vertical-align: -3px; }
 .flame.lit { filter: drop-shadow(0 0 4px rgba(255, 95, 178, .45)); animation: flick 2.4s ease-in-out infinite; transform-origin: 50% 90%; }
 @keyframes flick { 0%, 100% { transform: scale(1) rotate(0); } 30% { transform: scale(1.04, .97) rotate(-2deg); } 60% { transform: scale(.97, 1.04) rotate(2deg); } }
-.burst { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; background: rgba(8, 4, 16, .62); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); animation: bIn .25s ease-out; color: #fff; text-align: center; cursor: pointer; }
+.burst { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; background: rgba(8, 4, 16, .62); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); animation: bIn .25s ease-out; color: #fff; text-align: center; pointer-events: none; }
 .burst.out { opacity: 0; transition: opacity .3s; }
 .burst-in { position: relative; animation: bPop .5s cubic-bezier(.2, 1.6, .4, 1); }
 .burst h2 { margin: 8px 0 2px; font-size: 30px; letter-spacing: -.01em; }
@@ -2640,7 +2640,16 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     return head;
   }
   var fabricNoise = {};
+  // earned outfits are dressed-up versions of pieces the renderer already knows
+  function alias(L) {
+    var A = Object.assign({}, L);
+    if (A.top === 'streakhoodie') { A.top = 'hoodie'; if (!A.topPat || A.topPat === 'solid') A.topPat = 'flames'; }
+    if (A.top === 'stringer') A.top = 'tank';
+    A.acc = (A.acc || []).map(function (id) { return id === 'goldphones' ? 'headphones' : id === 'petcrown' ? 'crown' : id; });
+    return A;
+  }
   function buildFigure(L) {
+    L = alias(L);
     var f = L.body === 'f', root = new T.Group(), skin = mat(L.skin, { roughness: 0.55 });
     var top = fabric(L.topC, L.topPat), bot = fabric(L.botC, L.botPat, null, /jeans|baggy/.test(L.bottom) && L.botPat === 'solid' ? 'denim' : ''), shoe = mat(L.shoeC, { roughness: 0.45 }), hairM = mat(L.hairC, { roughness: 0.45, metalness: 0.05 });
     var parts = {};
@@ -3561,11 +3570,11 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     b.badges.forEach(function (bd) { if (bd.earned && list.indexOf(bd.id) === -1) { list.push(bd.id); if (seen) toast('New badge: ' + bd.name); } });
     save('badges-' + S.who, list);
   }
-  // big moments: a full-screen burst, tap anywhere (or wait) to carry on; skipped when motion is off
+  // big moments: a full-screen burst that fades by itself and never blocks a tap
   function overlay(cls, html, ms) {
     var o = document.createElement('div'); o.className = 'burst ' + cls; o.innerHTML = html; o.setAttribute('role', 'status');
     var done = function () { if (o.parentNode) { o.classList.add('out'); setTimeout(function () { o.remove(); }, 300); } };
-    o.addEventListener('click', done); document.body.appendChild(o); setTimeout(done, ms || 2400);
+    document.body.appendChild(o); setTimeout(done, ms || 2400);
   }
   function minBurst(count) {
     overlay('minhit', '<div class="burst-in">' + flame(count, 56) + '<h2>Today counts</h2><p>Minimum hit · streak ' + count + ' day' + (count === 1 ? '' : 's') + '</p></div>', 2000);
@@ -6042,7 +6051,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
 
   // ---------- 3D characters: home card, You card and the dressing room ----------
   var stages3d = {}, dress = null;
-  var STYLE_TAG = { sa: 'San Andreas', vc: 'Vice City', drag: 'Runway', basic: 'Basic' };
+  var STYLE_TAG = { sa: 'San Andreas', vc: 'Vice City', drag: 'Runway', basic: 'Basic', ach: 'Earned' };
   var SWATCH = ['#111111', '#f4f1ea', '#ffffff', '#e63946', '#ff5fae', '#ffb703', '#2e9e4f', '#2fe0d6', '#1f4fd1', '#7c5cff', '#8d5a3b', '#c9a227'];
   var SKINS = ['#f3cfb3', '#e0a982', '#c68a62', '#a8714d', '#8d5a3b', '#6b4226', '#4a2c1a'];
   var HAIRC = ['#1c1410', '#3b2416', '#6b4423', '#b5793f', '#e8c37a', '#f2f0e6', '#c1121f', '#ff5fae', '#7c5cff', '#2fe0d6'];
@@ -6127,8 +6136,8 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     return h + '<div class="dress-items">' + items.map(itemCard).join('') + '</div>';
   }
   function itemCard(it) {
-    var W = S.wardrobe, L = dress.look, own = owns(it.id), locked = W.chores < it.chores, on = wearing(L, it);
-    var state = own ? (on ? 'Wearing' : 'Owned') : locked ? (it.chores - W.chores) + ' more chore' + (it.chores - W.chores === 1 ? '' : 's') : money(it.price);
+    var W = S.wardrobe, L = dress.look, own = owns(it.id), locked = W.chores < it.chores || (it.ach && !own), on = wearing(L, it);
+    var state = own ? (on ? 'Wearing' : 'Owned') : it.ach ? it.req : locked ? (it.chores - W.chores) + ' more chore' + (it.chores - W.chores === 1 ? '' : 's') : money(it.price);
     return '<div class="ditem' + (on ? ' on' : '') + (locked ? ' locked' : '') + ' st-' + it.style + '"><button type="button" class="ditem-main" data-dtry="' + it.id + '">' +
       '<span class="ditem-tag">' + STYLE_TAG[it.style] + '</span><b>' + esc(it.name) + '</b><span class="small' + (own ? '' : ' muted') + '">' + (locked ? icon('lock', 's') : '') + state + '</span></button>' +
       (!own && !locked ? '<button type="button" class="btn ' + (S.empire && S.empire.cash >= it.price ? 'primary' : 'line') + ' sm" data-dbuy="' + it.id + '">Buy</button>' : '') + '</div>';
@@ -6580,6 +6589,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     if (sub) setTimeout(function () { shortcut(hash, sub); }, 350);
     else if (hash !== 'djset') setTimeout(intro, 250);
     maybeBrief();
+    try { if (JSON.parse(localStorage.getItem('booth-mastered') || '""') && S.wardrobe && !(S.wardrobe.ach || {}).booth1) rpc('unlockAch', ['booth1']).then(function (res) { apply(res); toast('Unlocked: Gold DJ headphones'); }, function () {}); } catch (e) {}
   }
   if (!KEY) {
     el('tab-home').innerHTML = '<div class="loading"><h2>Open your app link</h2><p class="muted">Paste your link from the Config tab of your Google Sheet (Your app link, or Partner app link). It has your private key in it.</p>' +

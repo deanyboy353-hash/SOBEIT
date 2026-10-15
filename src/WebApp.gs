@@ -30,7 +30,7 @@ function rpcTable_() {
     healthDay: healthDay, healthInsight: healthInsight, importHealth: importHealth, setPrefs: setPrefs,
     addDeadline: addDeadline, deadlineAction: deadlineAction, buyItem: buyItem, upgradeItem: upgradeItem, sellItem: sellItem, setFavourite: setFavourite, saveWeekPlan: saveWeekPlan, submitMix: submitMix, submitSet: submitSet, submitBooth: submitBooth,
     workState: workState, addBlock: addBlock, planDay: planDay, updateBlock: updateBlock, blockAction: blockAction, shiftBlocks: shiftBlocks, copyPlan: copyPlan,
-    buyWear: buyWear, setLook3d: setLook3d, testPush: testPush, countBlock: countBlock, undoAction: undoAction, removeFood: removeFood, editFood: editFood, removeShopping: removeShopping, setTimer: setTimer, clearTimer: clearTimer, saveTemplate: saveTemplate, deleteTemplate: deleteTemplate, logCardio: logCardio, deleteCardio: deleteCardio
+    buyWear: buyWear, unlockAch: unlockAch, setLook3d: setLook3d, testPush: testPush, countBlock: countBlock, undoAction: undoAction, removeFood: removeFood, editFood: editFood, removeShopping: removeShopping, setTimer: setTimer, clearTimer: clearTimer, saveTemplate: saveTemplate, deleteTemplate: deleteTemplate, logCardio: logCardio, deleteCardio: deleteCardio
   };
 }
 

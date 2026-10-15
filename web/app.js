@@ -200,11 +200,11 @@
     b.badges.forEach(function (bd) { if (bd.earned && list.indexOf(bd.id) === -1) { list.push(bd.id); if (seen) toast('New badge: ' + bd.name); } });
     save('badges-' + S.who, list);
   }
-  // big moments: a full-screen burst, tap anywhere (or wait) to carry on; skipped when motion is off
+  // big moments: a full-screen burst that fades by itself and never blocks a tap
   function overlay(cls, html, ms) {
     var o = document.createElement('div'); o.className = 'burst ' + cls; o.innerHTML = html; o.setAttribute('role', 'status');
     var done = function () { if (o.parentNode) { o.classList.add('out'); setTimeout(function () { o.remove(); }, 300); } };
-    o.addEventListener('click', done); document.body.appendChild(o); setTimeout(done, ms || 2400);
+    document.body.appendChild(o); setTimeout(done, ms || 2400);
   }
   function minBurst(count) {
     overlay('minhit', '<div class="burst-in">' + flame(count, 56) + '<h2>Today counts</h2><p>Minimum hit · streak ' + count + ' day' + (count === 1 ? '' : 's') + '</p></div>', 2000);
@@ -2681,7 +2681,7 @@
 
   // ---------- 3D characters: home card, You card and the dressing room ----------
   var stages3d = {}, dress = null;
-  var STYLE_TAG = { sa: 'San Andreas', vc: 'Vice City', drag: 'Runway', basic: 'Basic' };
+  var STYLE_TAG = { sa: 'San Andreas', vc: 'Vice City', drag: 'Runway', basic: 'Basic', ach: 'Earned' };
   var SWATCH = ['#111111', '#f4f1ea', '#ffffff', '#e63946', '#ff5fae', '#ffb703', '#2e9e4f', '#2fe0d6', '#1f4fd1', '#7c5cff', '#8d5a3b', '#c9a227'];
   var SKINS = ['#f3cfb3', '#e0a982', '#c68a62', '#a8714d', '#8d5a3b', '#6b4226', '#4a2c1a'];
   var HAIRC = ['#1c1410', '#3b2416', '#6b4423', '#b5793f', '#e8c37a', '#f2f0e6', '#c1121f', '#ff5fae', '#7c5cff', '#2fe0d6'];
@@ -2766,8 +2766,8 @@
     return h + '<div class="dress-items">' + items.map(itemCard).join('') + '</div>';
   }
   function itemCard(it) {
-    var W = S.wardrobe, L = dress.look, own = owns(it.id), locked = W.chores < it.chores, on = wearing(L, it);
-    var state = own ? (on ? 'Wearing' : 'Owned') : locked ? (it.chores - W.chores) + ' more chore' + (it.chores - W.chores === 1 ? '' : 's') : money(it.price);
+    var W = S.wardrobe, L = dress.look, own = owns(it.id), locked = W.chores < it.chores || (it.ach && !own), on = wearing(L, it);
+    var state = own ? (on ? 'Wearing' : 'Owned') : it.ach ? it.req : locked ? (it.chores - W.chores) + ' more chore' + (it.chores - W.chores === 1 ? '' : 's') : money(it.price);
     return '<div class="ditem' + (on ? ' on' : '') + (locked ? ' locked' : '') + ' st-' + it.style + '"><button type="button" class="ditem-main" data-dtry="' + it.id + '">' +
       '<span class="ditem-tag">' + STYLE_TAG[it.style] + '</span><b>' + esc(it.name) + '</b><span class="small' + (own ? '' : ' muted') + '">' + (locked ? icon('lock', 's') : '') + state + '</span></button>' +
       (!own && !locked ? '<button type="button" class="btn ' + (S.empire && S.empire.cash >= it.price ? 'primary' : 'line') + ' sm" data-dbuy="' + it.id + '">Buy</button>' : '') + '</div>';
@@ -3219,6 +3219,7 @@
     if (sub) setTimeout(function () { shortcut(hash, sub); }, 350);
     else if (hash !== 'djset') setTimeout(intro, 250);
     maybeBrief();
+    try { if (JSON.parse(localStorage.getItem('booth-mastered') || '""') && S.wardrobe && !(S.wardrobe.ach || {}).booth1) rpc('unlockAch', ['booth1']).then(function (res) { apply(res); toast('Unlocked: Gold DJ headphones'); }, function () {}); } catch (e) {}
   }
   if (!KEY) {
     el('tab-home').innerHTML = '<div class="loading"><h2>Open your app link</h2><p class="muted">Paste your link from the Config tab of your Google Sheet (Your app link, or Partner app link). It has your private key in it.</p>' +
