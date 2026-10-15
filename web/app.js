@@ -2726,8 +2726,16 @@
     var base = S && S.fun && S.fun.appBase ? S.fun.appBase.replace(/[?#].*$/, '').replace(/\/?$/, '/') : '';
     return base ? base + 'three.min.js' : 'https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js';
   }
+  // 2D illustrated characters for now (the character creator's 3D ones replace these later; the 3D code below is kept)
   function mount3d(id, looks, opts) {
-    if (!window.LQ3D || !el(id)) return;
+    var host0 = el(id); if (!host0) return;
+    opts = opts || {};
+    if (window.NudgeFigure) {
+      host0.innerHTML = '<div class="figs">' + looks.map(function (L, i) { return '<div class="fig">' + NudgeFigure.svg(L, opts.h || 230, (opts.states || [])[i] || {}) + '</div>'; }).join('') + '</div>';
+      host0.classList.add('ready', 'flat');
+      return;
+    }
+    if (!window.LQ3D) return;
     window.LQ_THREE_URL = threeUrl();
     LQ3D.load().then(function () {
       var host = el(id); if (!host) return;
@@ -2770,8 +2778,8 @@
     else if (f.wear === 'dj') t = 'Headphones on after Booth.';
     return t ? '<p class="small center stage-line" style="margin:6px 0 0">' + t + '</p>' : '';
   }
-  function mountHome3d() { if (S && S.wardrobe && el('av3dHome')) mount3d('av3dHome', S.solo ? [S.wardrobe.look] : [S.wardrobe.look, S.wardrobe.other], { theme: 'vice' }); }
-  function mountYou3d() { if (S && S.wardrobe && el('av3dYou')) mount3d('av3dYou', [S.wardrobe.look], { theme: (charOf(S.who) || '').slice(0, 2) === 'sa' ? 'grove' : 'vice' }); }
+  function mountHome3d() { var o = S && S.who === 'me' ? 'partner' : 'me'; if (S && S.wardrobe && el('av3dHome')) mount3d('av3dHome', S.solo ? [S.wardrobe.look] : [S.wardrobe.look, S.wardrobe.other], { theme: 'vice', h: 236, states: [faceState(S.who), faceState(o)] }); }
+  function mountYou3d() { if (S && S.wardrobe && el('av3dYou')) mount3d('av3dYou', [S.wardrobe.look], { h: 300, states: [faceState(S.who)], theme: (charOf(S.who) || '').slice(0, 2) === 'sa' ? 'grove' : 'vice' }); }
   function owns(id) { return S.wardrobe.owned.indexOf(id) !== -1; }
   function wearing(L, it) {
     if (it.slot === 'acc') return (L.acc || []).indexOf(it.id) !== -1;
@@ -2833,6 +2841,7 @@
     el('dressSave').disabled = !!un.length;
   }
   function preview(spin) {
+    if (window.NudgeFigure) return mount3d('av3dDress', [dress.look], { h: 330 });
     var s = stages3d.av3dDress; if (!s) return;
     s.set([dress.look]); s.key = JSON.stringify([dress.look]);
     if (spin) s.sashay(0);
