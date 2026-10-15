@@ -924,3 +924,16 @@ body.wizopen { overflow: hidden; }
 .rotstrip .rot.on { background: var(--lilac-soft); color: var(--lilac); box-shadow: inset 0 0 0 1.5px var(--lilac); }
 .rotstrip .rotarr { color: var(--faint); }
 .rotstrip .rotnote { flex-basis: 100%; }
+.av.real { display: inline-block; border-radius: 50%; overflow: hidden; flex: none; box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--lilac-mid); }
+.av.real svg { display: block; }
+@keyframes faceBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6%); } }
+.face.bounce { animation: faceBounce 1.1s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .face.bounce { animation: none; } }
+/* phone tab bar: 5 at most (4 + More), the same on every screen */
+nav.tabs .phone { display: flex; }
+@media (max-width: 959px) { nav.tabs .moreonly { display: none; } }
+@media (min-width: 960px) { nav.tabs .phone { display: none; } }
+.moregrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.moreitem { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 6px; border-radius: 16px; background: var(--raised); color: var(--ink); font-weight: 600; font-size: 13.5px; text-decoration: none; border: 0; }
+.moreitem svg { width: 26px; height: 26px; color: var(--lilac); }
+.moreitem.on { box-shadow: inset 0 0 0 2px var(--lilac); }

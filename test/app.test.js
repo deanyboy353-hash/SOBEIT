@@ -329,3 +329,17 @@ test('The cached app state is never served after midnight (or into the next part
   assert.notStrictEqual(a.cacheStamp, b.cacheStamp);
   assert.match(b.cacheStamp, /^2026-10-15\|night/);
 });
+
+test('Real-look portraits: every hair style, mood and outfit draws; the tab bar has at most 5 on a phone', () => {
+  const F = require('../web/face.js'), hairs = ['fade', 'buzz', 'bob', 'bald', 'afro', 'cornrows', 'jheri', 'mullet', 'slick', 'waves', 'ponytail', 'buns', 'mohawk', 'beehive', 'volume'];
+  hairs.forEach(h => ['', 'happy', 'sleepy'].forEach(mood => ['', 'gym', 'rain', 'dj'].forEach(wear => {
+    const s = F.svg({ skin: '#8d5a3b', hair: h, hairC: '#1c1410', topC: '#2e9e4f', acc: ['shades', 'chain', 'crown'] }, 40, { mood, wear });
+    assert.match(s, /^<svg [^>]*viewBox="0 0 100 100"/); assert.match(s, /<\/svg>$/); assert.doesNotMatch(s, /undefined|NaN/);
+  })));
+  assert.match(F.svg({}, 30, { mood: 'sleepy' }), />z</);
+  assert.match(F.svg({}, 30, { wear: 'dj' }), /#ff3fb4/);
+  const app = require('fs').readFileSync(__dirname + '/../web/app.js', 'utf8');
+  const prim = JSON.parse(app.match(/var PRIMARY = (\{[^;]+\});/)[1].replace(/(\w+):/g, '"$1":').replace(/'/g, '"'));
+  Object.values(prim).forEach(l => assert.ok(l.length <= 4, 'four main tabs plus More'));
+  assert.match(app, /CREATE\[\+v\]\[0\] === 'mix'\) \{ location\.href = boothUrl/);
+});

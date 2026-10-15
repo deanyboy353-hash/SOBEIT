@@ -1155,6 +1155,7 @@
     if (f === 'usToggle') { usOpen = !usOpen; return renderHome(); }
     if (f === 'dice') { var d; do { d = DICE[Math.floor(Math.random() * DICE.length)]; } while (d === diceIdea && DICE.length > 1); diceIdea = d; buzz(15); return renderHome(); }
     if (f === 'tap') return tempoTap();
+    if (f === 'create' && CREATE[+v] && CREATE[+v][0] === 'mix') { location.href = boothUrl('menu'); return; }   // Mix practice is Booth
     if (f === 'create') { var c = CREATE[+v]; return startPlan({ name: c[1], minutes: c[2], steps: c[4].slice(), creative: c[0] }, c[1] + ' for ' + c[2] + ' minutes. Make something.'); }
     if (f === 'usLog') return call('logUs', [], function (res) { confetti(true); chime([523, 784, 1047]); apply(res, 'Logged. +20 XP each.'); });
     if (f === 'wink') return call('sendWink', ['wink'], function (res) { apply(res, 'Wink sent'); });
@@ -1509,7 +1510,25 @@
   function charById(id) { for (var i = 0; i < CHARS.length; i++) if (CHARS[i][0] === id) return CHARS[i]; return null; }
   function charOf(who) { return S && S.fun && S.fun.chars ? S.fun.chars[who] : ''; }
   function lookOf(who) { return (S && S.fun && S.fun.looks && S.fun.looks[who]) || null; }
-  function avatarOf(who, size, right) { return avatar(charOf(who), size, right, lookOf(who)); }
+  // your real look (the same as your character on Home), reacting to the day
+  function avatarOf(who, size, right) {
+    var w = S && S.wardrobe, look = w ? (who === S.who ? w.look : w.other) : null;
+    if (!look || !window.NudgeFace) return avatar(charOf(who), size, right, lookOf(who));
+    var f = faceState(who);
+    return '<span class="av real" style="width:' + size + 'px;height:' + size + 'px' + (right ? ';margin-left:auto' : '') + '" title="' + esc(who === S.who ? 'You' : names().other) + '">' + NudgeFace.svg(look, size, f) + '</span>';
+  }
+  function faceState(who) {
+    var hr = new Date(now()).getHours(), o = { mood: '', wear: '' };
+    if (hr < 5) o.mood = 'sleepy';
+    else if (S.game && S.game.team && S.game.team.todayDone) { o.mood = 'happy'; o.bounce = !reducedMotion(); }
+    if (who === 'me' && S.today && S.today.gym && !o.mood) o.wear = 'gym';
+    var wx = S.today && S.today.gym && S.today.gym.weather, rain = wx && /rain chance up to (\d+)%/.exec(wx);
+    if (rain && +rain[1] >= 60) o.wear = 'rain';
+    if (who === S.who) { try { var bs = JSON.parse(localStorage.getItem('booth-stats') || 'null'), k = ymdOf(new Date(now())); if (bs && bs.secs && bs.secs[k] >= 60) o.wear = o.wear || 'dj'; } catch (e) {} }
+    return o;
+  }
+  function reducedMotion() { return window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches || (S && S.fun && S.fun.prefs && S.fun.prefs.motion === false); }
+  function ymdOf(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
   function avatar(id, size, right, look) {
     var c = charById(id), s = size || 36;
     if (c && window.LQPortrait && LQPortrait.has(id)) return '<span class="av" style="width:' + s + 'px;height:' + s + 'px' + (right ? ';margin-left:auto' : '') + '" title="' + esc(c[2]) + '"><svg viewBox="0 0 100 100" aria-hidden="true">' + LQPortrait.draw(id, c[4], c[5], 'p' + id.replace(/\W/g, '') + s + Math.random().toString(36).slice(2, 6), look) + '</svg></span>';
@@ -2205,6 +2224,7 @@
     current = name;
     document.querySelectorAll('section.tab').forEach(function (s) { s.hidden = s.id !== 'tab-' + name; });
     el('nav').querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-current', b.dataset.tab === name ? 'page' : 'false'); });
+    var mb = el('navMore'); if (mb) mb.setAttribute('aria-current', S && (PRIMARY[S.who] || PRIMARY.partner).indexOf(name) === -1 ? 'page' : 'false');
     if (['you', 'custom', 'empire'].indexOf(name) === -1) save('tab', name);
     if (name !== 'play') mixStop();
     window.scrollTo(0, 0);
@@ -2966,10 +2986,33 @@
   }
   if (MODE === 'web' && 'serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', function (e) { if (e.data && e.data.tab && S) { showTab(e.data.tab); if (e.data.deadline && e.data.act) handleNoteAction(e.data.deadline, e.data.act); else refreshQuiet(); } });
   if (!ME) el('nav').querySelectorAll('[data-me]').forEach(function (b) { b.remove(); });
+  // the phone tab bar: four main tabs and More (the rest), the same on every screen; computers keep the full sidebar
+  var PRIMARY = { me: ['home', 'chores', 'train', 'food'], partner: ['home', 'chores', 'play', 'work'] };
+  function setupNav() {
+    var nav = el('nav'), prim = PRIMARY[S.who] || PRIMARY.partner;
+    nav.querySelectorAll('button[data-tab]').forEach(function (b) { b.classList.toggle('moreonly', prim.indexOf(b.dataset.tab) === -1 && !b.classList.contains('desk')); });
+    if (!el('navMore')) {
+      var m = document.createElement('button'); m.type = 'button'; m.id = 'navMore'; m.className = 'phone'; m.setAttribute('aria-haspopup', 'dialog');
+      m.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>More';
+      var sep = nav.querySelector('.navsep'); nav.insertBefore(m, sep || null);
+    }
+  }
+  function moreSheet() {
+    var prim = PRIMARY[S.who] || PRIMARY.partner, items = [];
+    el('nav').querySelectorAll('button[data-tab]').forEach(function (b) { if (prim.indexOf(b.dataset.tab) === -1) items.push('<button class="moreitem' + (current === b.dataset.tab ? ' on' : '') + '" type="button" data-moretab="' + b.dataset.tab + '">' + b.innerHTML.replace(/<span class="dot"[^>]*>.*?<\/span>/, '') + '</button>'); });
+    items.push('<a class="moreitem" href="' + esc(boothUrl('menu')) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/></svg>Booth (DJ)</a>');
+    openSheet('<h2 style="margin:0 0 12px">More</h2><div class="moregrid">' + items.join('') + '</div>');
+  }
+  document.addEventListener('click', function (ev) {
+    var t = ev.target.closest('#navMore, [data-moretab]'); if (!t || !S) return;
+    if (t.id === 'navMore') return moreSheet();
+    closeSheet(); showTab(t.dataset.moretab);
+  });
   function boot() {
     if (!S) return;
     ME = S.who === 'me';
     if (!ME) el('nav').querySelectorAll('[data-me]').forEach(function (b) { b.remove(); });
+    setupNav();
     if (!load('badges-' + S.who)) save('badges-' + S.who, S.game.badges.filter(function (b) { return b.earned; }).map(function (b) { return b.id; }));
     renderAll();
     var hash = location.hash.replace('#', '');
