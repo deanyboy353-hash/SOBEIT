@@ -470,7 +470,8 @@
   }
   function apiCall(fn, args) {
     var key = ''; try { key = JSON.parse(localStorage.getItem('lq-key') || '""'); } catch (e) {}
-    var api = window.LQ_CONFIG && LQ_CONFIG.api;
+    var api = ''; try { api = JSON.parse(localStorage.getItem('lq-api') || '""'); } catch (e) {}
+    api = api || (window.LQ_CONFIG && LQ_CONFIG.api);
     if (!key || !api) return Promise.reject(new Error('Open Nudge on this computer once (your app link) so Booth knows who you are.'));
     return fetch(api, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn: fn, key: key, args: args || [] }) }).then(function (r) { return r.json(); }).then(function (j) { if (!j.ok) throw new Error(j.error); return j.result; });
   }

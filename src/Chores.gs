@@ -28,7 +28,7 @@ var CHORE_SCHEMA = {
 function who_(key) {
   var props = PROPS;
   if (key && key === props.getProperty('WEBAPP_KEY')) return 'me';
-  if (key && key === props.getProperty('PARTNER_KEY')) return 'partner';
+  if (key && key === props.getProperty('PARTNER_KEY') && !solo_()) return 'partner';
   throw new Error('This link is out of date. Open the chores link from the Config tab again.');
 }
 

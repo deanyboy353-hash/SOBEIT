@@ -116,7 +116,7 @@ function cpPeople_() {
 // ---------- chore rows <-> planner chores ----------
 var CP_WHO_COL = { me: 'Me', partner: 'Partner', together: 'Together', anyone: 'Anyone', rotate: 'Rotate' };
 function cpChoreOf_(q, today) {
-  var rule = parseEvery(q.every), c = { id: q.name, key: q.key, name: q.name, minutes: q.minutes, assign: CP_WHO_COL[q.who] ? q.who : 'anyone', tod: q.tod || 'any', xp: q.xp,
+  var rule = parseEvery(q.every), c = { id: q.name, key: q.key, name: q.name, minutes: q.minutes, assign: solo_() ? 'me' : CP_WHO_COL[q.who] ? q.who : 'anyone', tod: q.tod || 'any', xp: q.xp,
     archived: q.archived || rule.kind === 'none', order: q.order, last: q.lastDone, lastBy: q.lastBy, after: q.after || '', area: q.area, notes: q.notes };
   if (rule.kind === 'weekdays') c.days = rule.days.slice();
   else if (rule.kind === 'biweekly') { c.days = [rule.day]; c.weeks = 2; c.anchor = q.nextDue || today; }

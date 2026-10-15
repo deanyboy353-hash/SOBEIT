@@ -287,7 +287,7 @@ function healthState_(who, ymd) {
   return {
     date: ymd, today: todayYmd_(), connected: !!sync || rows.length > 0 || !!contact, synced: sync, hasData: hasData, contact: contact,
     status: healthStatus(ymd === todayYmd_() ? '' : ymd, hasData, sync, contact, new Date().getTime()),
-    webhook: WEBAPP_URL + '?key=' + PROPS.getProperty(who === 'me' ? 'WEBAPP_KEY' : 'PARTNER_KEY') + '&source=health',
+    webhook: webappUrl_() + '?key=' + PROPS.getProperty(who === 'me' ? 'WEBAPP_KEY' : 'PARTNER_KEY') + '&source=health',
     goals: goals,
     steps: sm.steps, km: sm.km, active: sm.active, stepsByHour: hours.map(function (x) { return Math.round(x.steps); }), exercise: ex,
     heart: { rhr: sm.rhr, rhrBase: rhrBase ? Math.round(rhrBase) : null, hrv: sm.hrv, hrvBase: hrvBase ? Math.round(hrvBase) : null, o2: sm.o2, rr: sm.rr, skin: sm.skin, byHour: hrHours },

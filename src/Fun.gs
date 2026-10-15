@@ -35,6 +35,7 @@ function nicks_() {
   var s = readConfig_().settings, n = names_();
   var me = String(s['Your nickname'] || '').trim() || n.me;
   var partner = String(s['Partner nickname'] || '').trim() || n.partner;
+  if (solo_()) return { me: me, partner: '', team: me };
   return { me: me, partner: partner, team: String(s['Team name'] || '').trim() || partner + ' & ' + me };
 }
 

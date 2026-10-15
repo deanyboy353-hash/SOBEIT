@@ -296,7 +296,7 @@ function onPrepTaskDone_(task, info) {
 
 function partnerUrl_() {
   var k = PROPS.getProperty('PARTNER_KEY');
-  return k ? (appBaseUrl_() || WEBAPP_URL) + '?key=' + k : '';
+  return k ? (appBaseUrl_() || webappUrl_()) + '?key=' + k + (instance_() && appBaseUrl_() ? '&api=' + encodeURIComponent(webappUrl_()) : '') : '';
 }
 
 function emailPartner_(subject, body) {

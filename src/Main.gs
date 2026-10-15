@@ -34,6 +34,16 @@ function dailyJobs_() {
 // The published web app (deployment "Phase 1"). Not secret without the key.
 var WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyGglsy-_DOdaCn7DFhNyD8JH89jGapkUXUHdWp-JmdpuupiMPPEp6gm8e23x-yOVbsYQ/exec';
 
+/**
+ * A separate copy of the app (e.g. for a friend) has a private Instance.gs that is never committed:
+ *   var INSTANCE = { url: '<its own /exec URL>', key: '<its app key>', solo: true, name: 'Dylz', nick: 'Dylz' };
+ * Its data lives in its own spreadsheet and Script Properties, so nothing is shared with this one.
+ */
+function instance_() { return typeof INSTANCE !== 'undefined' && INSTANCE ? INSTANCE : null; }
+function webappUrl_() { var i = instance_(); return (i && i.url) || WEBAPP_URL; }
+/** One person on their own: no partner anywhere (no partner pushes, chores, head-to-head or team). */
+function solo_() { return prop_('SOLO') === '1'; }
+
 function setup() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   if (ss) PROPS.setProperty('SPREADSHEET_ID', ss.getId());
@@ -74,11 +84,18 @@ function prepareSheet_() {
 
   resetRun_(); // the seeding above wrote straight to the tabs
   var props = PROPS;
+  var inst = instance_();
+  if (inst && inst.key && !props.getProperty('WEBAPP_KEY')) props.setProperty('WEBAPP_KEY', inst.key);
+  if (inst && inst.solo && !props.getProperty('SOLO')) {
+    props.setProperty('SOLO', '1');
+    setSetting_('Your name', inst.name || 'You'); setSetting_('Your nickname', inst.nick || inst.name || 'You');
+    setSetting_('Partner name', '-'); setSetting_('Partner nickname', '-'); setSetting_('Team name', inst.nick || inst.name || 'You');
+  }
   if (!props.getProperty('WEBAPP_KEY')) props.setProperty('WEBAPP_KEY', Utilities.getUuid().replace(/-/g, ''));
   if (!props.getProperty('PARTNER_KEY')) props.setProperty('PARTNER_KEY', Utilities.getUuid().replace(/-/g, ''));
   var settings = readConfig_().settings;
   if (settings['Web app key'] !== props.getProperty('WEBAPP_KEY')) setSetting_('Web app key', props.getProperty('WEBAPP_KEY'));
-  if (settings['Web app URL'] !== WEBAPP_URL) setSetting_('Web app URL', WEBAPP_URL);
+  if (settings['Web app URL'] !== webappUrl_()) setSetting_('Web app URL', webappUrl_());
   var theirs = partnerUrl_();
   // Names arrived after setup for some: fill blanks once.
   if (!String(settings['Your name'] || '').trim()) setSetting_('Your name', 'Dean');

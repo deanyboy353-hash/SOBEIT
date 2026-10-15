@@ -54,6 +54,7 @@ function devices_() {
  */
 function push_(who, title, body, tab, urgent, extra) {
   var sent = 0;
+  if (who === 'partner' && solo_()) return 0;   // nobody there
   try {
     var sa = fcmServiceAccount_();
     var list = devices_()[who] || [];

@@ -7,8 +7,12 @@
   var mem = {};
   var CFG = window.LQ_CONFIG || {};
   var MODE = window.google && google.script && google.script.run ? 'gas' : 'web';
-  var KEY = window.LQ_KEY || new URLSearchParams(location.search).get('key') || load('key') || '';
+  var QS = new URLSearchParams(location.search);
+  var KEY = window.LQ_KEY || QS.get('key') || load('key') || '';
   if (KEY) save('key', KEY);
+  // A separate copy of the app (its own Sheet) has its own server: its link carries ?api=. A link without one means the main server.
+  if (QS.get('key')) { var apiQ = QS.get('api') || ''; save('api', /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(apiQ) ? apiQ : ''); }
+  if (load('api')) CFG = Object.assign({}, CFG, { api: load('api') });
   var S = window.LQ_BOOT || load('state-' + KEY.slice(0, 6)) || null;
   var ME = S ? S.who === 'me' : true;
   var offset = S && S.now ? S.now - Date.now() : 0;
@@ -304,7 +308,7 @@
   }
   function petCard() {
     var p = S.game && S.game.pet; if (!p) return '';
-    var nx = p.next ? p.next.left + ' more day' + (p.next.left === 1 ? '' : 's') + ' you both win → ' + p.next.name : 'Fully grown. Legendary.';
+    var nx = p.next ? p.next.left + ' more day' + (p.next.left === 1 ? '' : 's') + (S.solo ? ' you win → ' : ' you both win → ') + p.next.name : 'Fully grown. Legendary.';
     return '<section class="card petcard"><div class="row" style="gap:12px">' + petSvg(p, 96) + '<div class="grow"><div class="eyebrow">' + esc(names().team) + '\'s pet</div><h3 style="margin:2px 0">' + esc(p.name) + ' · ' + p.days + ' day' + (p.days === 1 ? '' : 's') + '</h3>' +
       '<p class="small muted" style="margin:0 0 6px">' + esc(p.line) + '</p><div class="tiny muted">' + esc(nx) + '</div></div></div></section>';
   }
@@ -354,8 +358,8 @@
     h += '<section class="card"><div class="hero"><div class="ring" style="width:104px;height:104px">' + ring(g.xpToday / g.goal, 104, 10) +
       '<div class="t"><div><div class="num" style="font-size:24px;font-weight:700">' + g.xpToday + '</div><div class="tiny muted">of ' + g.goal + ' XP</div></div></div></div><div class="grow">' +
       '<div class="stat"><span class="row" style="gap:6px">' + flame(g.streak.count, 16) + 'Streak</span><b>' + g.streak.count + ' day' + (g.streak.count === 1 ? '' : 's') + (g.streak.freezes ? ' · ' + g.streak.freezes + ' freeze' + (g.streak.freezes > 1 ? 's' : '') : '') + '</b></div>' +
-      '<div class="stat"><span class="row" style="gap:6px">' + icon('heart', 's') + esc(n.team) + '</span><b>' + g.team.count + ' day' + (g.team.count === 1 ? '' : 's') + '</b></div>' +
-      '<div class="stat"><span>' + esc(n.other) + ' today</span><b>' + g.otherXpToday + ' XP</b></div>' +
+      (S.solo ? '' : '<div class="stat"><span class="row" style="gap:6px">' + icon('heart', 's') + esc(n.team) + '</span><b>' + g.team.count + ' day' + (g.team.count === 1 ? '' : 's') + '</b></div>' +
+      '<div class="stat"><span>' + esc(n.other) + ' today</span><b>' + g.otherXpToday + ' XP</b></div>') +
       (S.empire ? '<button class="stat cashrow" type="button" data-goto="empire"><span class="row" style="gap:6px">' + icon('gift', 's') + 'Cash</span><b>' + money(S.empire.cash) + '</b></button>' : '') +
       '<div class="bar" style="margin-top:8px"><i style="width:' + Math.round(g.level.into / g.level.need * 100) + '%"></i></div><div class="tiny muted" style="margin-top:4px">Level ' + g.level.level + ' · ' + (g.level.need - g.level.into) + ' XP to the next</div>' +
       '</div></div></section>';
@@ -429,6 +433,7 @@
     }).join('') : '<p class="empty">Nothing yet today.</p>';
     h += '</section>';
     seg('feed');
+    if (S.solo) { parts.us = ''; parts.feed = ''; }
     if (homeEditing) h = parts.header + homeEditView(parts);
     else h = parts.header + homeOrder().filter(function (x) { return !x.hide; }).map(function (x) { return parts[x.id] || ''; }).join('') +
       '<p class="center" style="margin:6px 0 18px"><button class="btn line sm" type="button" id="homeEdit">' + icon('edit', 's') + 'Edit home screen</button></p>';
@@ -477,7 +482,7 @@
   }
   function renderChores() {
     var s = mySession(), q = S.quests, n = names(), h = '<div class="top"><div><h1>Chores</h1><div class="sub">One job at a time.</div></div>' + meButton() + '</div>';
-    h += '<section class="card"><div class="head"><h3>Together</h3><button class="btn ghost sm" type="button" id="askJoin">' + icon('send', 's') + 'Ask ' + esc(n.other) + ' to join</button></div><div class="duo" id="duo">' + duo() + '</div></section>';
+    if (!S.solo) h += '<section class="card"><div class="head"><h3>Together</h3><button class="btn ghost sm" type="button" id="askJoin">' + icon('send', 's') + 'Ask ' + esc(n.other) + ' to join</button></div><div class="duo" id="duo">' + duo() + '</div></section>';
     if (s) { el('tab-chores').innerHTML = h + focusView(s); return; }
     if (plan) { el('tab-chores').innerHTML = h + readyView(); return; }
     if (S.chores.invite) h += '<div class="note">' + esc(n.other) + ' wants company. Start a job and do it together.</div>';
@@ -1723,6 +1728,7 @@
   function prefs() { return (S && S.fun && S.fun.prefs) || {}; }
   function applyPrefs() {
     var p = prefs(), root = document.documentElement;
+    root.classList.toggle('solo', !!(S && S.solo));
     if (p.accent) root.setAttribute('data-accent', p.accent); else root.removeAttribute('data-accent');
     root.setAttribute('data-text', p.text === 'large' ? 'large' : 'normal');
     root.classList.toggle('calm', p.motion === false);
@@ -1818,7 +1824,7 @@
       '<div class="grid2"><button class="btn soft" type="button" data-backup="export">' + icon('undo', 's') + 'Export everything</button><label class="btn soft">Import backup<input type="file" accept=".json,application/json" id="backupFile" hidden></label></div>' +
       '<button class="btn ghost wide" type="button" data-backup="now" style="margin-top:8px">Back up now</button>' +
       '<p class="tiny muted" style="margin:8px 0 0">Importing never touches your live data: it rebuilds the backup as a new sheet so you can check it first.</p></section>';
-    h += '<p class="small muted center">Your choices follow you to any phone you open the app on. ' + esc(n.other) + ' has their own.</p>';
+    h += '<p class="small muted center">Your choices follow you to any phone you open the app on.' + (S.solo ? '' : ' ' + esc(n.other) + ' has their own.') + '</p>';
     el('tab-custom').innerHTML = h;
   }
 
@@ -2729,7 +2735,7 @@
     var nu = nextUnlock(), left = nu ? nu.chores - W.chores : 0;
     return '<section class="card av-card"><div class="head"><h3>' + esc(n.team) + '</h3><span class="small muted">' + (wide() ? 'Drag to spin' : 'Swipe to spin') + '</span></div>' +
       '<div class="av3d" id="av3dHome"><div class="av3d-msg small muted center">Loading your characters…</div></div>' +
-      '<div class="between av-names"><span>You</span><span>' + esc(n.other) + '</span></div>' + stageLine() +
+      (S.solo ? '' : '<div class="between av-names"><span>You</span><span>' + esc(n.other) + '</span></div>') + stageLine() +
       (nu ? '<p class="small center" style="margin:8px 0 10px"><b>' + left + ' more chore' + (left === 1 ? '' : 's') + '</b> unlocks the ' + esc(nu.name) + (nu.style === 'drag' ? ' (runway)' : '') + '</p>' : '<p class="small center" style="margin:8px 0 10px">Everything in the wardrobe is unlocked. Legendary.</p>') +
       '<button class="btn primary wide" type="button" data-dress="open">' + icon('sparkles', 's') + 'Dressing room</button></section>';
   }
@@ -2743,7 +2749,7 @@
     else if (f.wear === 'dj') t = 'Headphones on after Booth.';
     return t ? '<p class="small center stage-line" style="margin:6px 0 0">' + t + '</p>' : '';
   }
-  function mountHome3d() { if (S && S.wardrobe && el('av3dHome')) mount3d('av3dHome', [S.wardrobe.look, S.wardrobe.other], { theme: 'vice' }); }
+  function mountHome3d() { if (S && S.wardrobe && el('av3dHome')) mount3d('av3dHome', S.solo ? [S.wardrobe.look] : [S.wardrobe.look, S.wardrobe.other], { theme: 'vice' }); }
   function mountYou3d() { if (S && S.wardrobe && el('av3dYou')) mount3d('av3dYou', [S.wardrobe.look], { theme: (charOf(S.who) || '').slice(0, 2) === 'sa' ? 'grove' : 'vice' }); }
   function owns(id) { return S.wardrobe.owned.indexOf(id) !== -1; }
   function wearing(L, it) {

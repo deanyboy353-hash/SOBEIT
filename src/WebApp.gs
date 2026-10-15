@@ -106,7 +106,7 @@ function appState_(who) {
   prefetchTabs_(Object.keys(TABS).filter(function (k) { return k !== 'inbox' && k !== 'log'; }));
   var brief = JSON.parse(prop_('BRIEF_' + who) || 'null');
   var s = {
-    who: who, now: new Date().getTime(), names: names_(), game: gameState_(who), quests: questsState_(who), chores: choresState_(who),
+    who: who, solo: solo_(), now: new Date().getTime(), names: names_(), game: gameState_(who), quests: questsState_(who), chores: choresState_(who),
     routines: routinesState_(who), shopping: shoppingState_(), hasClaudeKey: !!claudeKey_(), schedule: scheduleState_(),
     games: gamesState_(who), push: pushStatus_(who), brief: brief && brief.date === todayYmd_() && brief.part === dayPart(minutesNow_()) ? brief : null,
     theme: String(prop_('THEME_' + who) || 'rave')
@@ -192,7 +192,7 @@ function setTheme(key, theme) {
 /** Your link: the installable app once it's published, otherwise the Google page. */
 function appUrl_() {
   var key = PROPS.getProperty('WEBAPP_KEY');
-  return key ? (appBaseUrl_() || WEBAPP_URL) + '?key=' + key : '';
+  return key ? (appBaseUrl_() || webappUrl_()) + '?key=' + key + (instance_() && appBaseUrl_() ? '&api=' + encodeURIComponent(webappUrl_()) : '') : '';
 }
 
 function validKey_(key) {
