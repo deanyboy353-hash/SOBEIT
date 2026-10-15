@@ -238,7 +238,7 @@
   function questRow(q, opts) {
     opts = opts || {};
     var meta = q.doneToday ? ['Done' + (q.doneBy ? ' by ' + (q.doneBy === S.who ? 'you' : names().other) : '')] : [q.minutes + ' min', q.xp + ' XP'];
-    if (!q.doneToday && q.overdue > 0) meta.push(q.overdue + (q.overdue === 1 ? ' day' : ' days') + ' over');
+    if (!q.doneToday && q.overdue > 0) meta.push(q.overdue <= 6 ? 'carried over from ' + new Date(now() - q.overdue * 864e5).toLocaleDateString('en-GB', { weekday: 'short' }) : 'been a little while');   // no guilt, just a note
     var theirs = q.who !== 'anyone' && q.who !== 'together' && q.who !== S.who;
     if (q.who === 'together' && !q.doneToday) meta.push('2× XP together');
     if (theirs && !q.doneToday) meta.unshift(names().other + '\'s, cover for bonus XP');
@@ -1554,13 +1554,14 @@
     return '<span class="wanted" title="Streak stars: 1, 3, 7, 14, 30 and 60 days">' + out + '</span>';
   }
   function charCard() {
-    var id = charOf(S.who), c = charById(id), g = S.game;
-    if (!c) return '<button class="charcard empty" type="button" data-goto="custom">' + avatar('', 56) + '<span class="grow"><b>Pick your character</b><br><span class="small muted">San Andreas or Vice City</span></span>' + icon('chevron', 's') + '</button>';
-    return '<button class="charcard" type="button" data-goto="custom" style="--c1:' + c[4] + ';--c2:' + c[5] + '">' + avatarOf(S.who, 64) + '<span class="grow"><span class="tiny">' + (id.slice(0, 2) === 'vc' ? 'Vice City' : 'San Andreas') + '</span><b>' + esc(c[2]) + '</b>' +
-      '<span class="small">Respect: level ' + g.level.level + (S.empire ? ' · worth ' + money(S.empire.worth + S.empire.cash) : '') + '</span>' +
+    // your look is your 3D character (the dressing room): the same face everywhere in the app
+    var g = S.game;
+    return '<button class="charcard" type="button" data-dress="open">' + avatarOf(S.who, 64) + '<span class="grow"><span class="tiny">Your look</span><b>' + esc(names().me || 'You') + '</b>' +
+      '<span class="small">Level ' + g.level.level + (S.empire ? ' · worth ' + money(S.empire.worth + S.empire.cash) : '') + '</span>' +
       (S.empire && (S.empire.rideName || S.empire.homeName) ? '<span class="tiny" style="opacity:.9">' + [S.empire.rideName ? 'Rides a ' + esc(S.empire.rideName) : '', S.empire.homeName ? 'Lives at ' + esc(S.empire.homeName) : ''].filter(Boolean).join(' · ') + '</span>' : '') +
-      wanted(g.streak.count) + '</span></button>';
+      wanted(g.streak.count) + '</span>' + icon('chevron', 's') + '</button>';
   }
+
 
   // ---------- editing Home in place: order, hide, routines, water ----------
   var homeEditing = false, rEd = null;
@@ -1673,13 +1674,14 @@
     var p = prefs(), th = document.documentElement.getAttribute('data-theme'), cur = charOf(S.who), n = names(), h = '';
     h += '<div class="top"><div class="row"><button class="iconbtn" type="button" data-goto="you" aria-label="Back">' + icon('back') + '</button><h1>Customise</h1></div></div>';
     // character
-    h += '<section class="card"><div class="head"><h3>Your character</h3>' + (cur ? '<button class="btn ghost sm" type="button" data-char="">Remove</button>' : '') + '</div>' +
+    h += '<section class="card"><div class="head"><h3>Your look</h3></div><div class="row" style="gap:14px">' + avatarOf(S.who, 72) + '<p class="small muted grow" style="margin:0">Your face everywhere in the app comes from your character in the dressing room: skin, hair, clothes and extras.</p></div><button class="btn primary wide" type="button" data-dress="open" style="margin-top:12px">' + icon('sparkles', 's') + 'Open the dressing room</button></section>';
+    h += '<details class="card oldchars"><summary class="small muted">Classic characters (from the earlier version)</summary><section><div class="head"><h3>Classic character</h3>' + (cur ? '<button class="btn ghost sm" type="button" data-char="">Remove</button>' : '') + '</div>' +
       '<p class="small muted" style="margin:0 0 10px">Shows on your Home screen, in Play and in ' + esc(n.other) + '\'s feed.</p>' +
       '<div class="seg">' + [['sa', 'San Andreas'], ['vc', 'Vice City']].map(function (o) { return '<button type="button" data-cgame="' + o[0] + '" aria-pressed="' + (charGame === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>' +
       '<div class="chars">' + CHARS.filter(function (c) { return c[0].slice(0, 2) === charGame; }).map(function (c) {
         return '<button class="ch' + (c[0] === cur ? ' on' : '') + '" type="button" data-char="' + c[0] + '">' + avatar(c[0], 58, false, c[0] === cur ? lookOf(S.who) : null) + '<b>' + esc(c[2]) + '</b><span>' + esc(c[3]) + '</span></button>';
-      }).join('') + '</div></section>';
-    if (cur && window.LQPortrait) h += lookEditor(cur);
+      }).join('') + '</div></section></details>';
+    if (cur && window.LQPortrait) h += '<details class="card oldchars"><summary class="small muted">Classic character style</summary>' + lookEditor(cur) + '</details>';
     // look
     h += '<section class="card"><div class="head"><h3>Look</h3></div><div class="eyebrow" style="margin-bottom:6px">Theme</div>' +
       '<div class="themes">' + [['light', 'Light'], ['dark', 'Dark'], ['rave', 'Rave'], ['grove', 'Grove'], ['vice', 'Vice'], ['auto', 'Auto']].map(function (o) {
@@ -2217,7 +2219,7 @@
     if (focused && el(focused)) el(focused).focus();
     keepAwake(!!mySession());
     tickTimer();
-    document.documentElement.setAttribute('data-theme', S.theme || 'light');
+    document.documentElement.setAttribute('data-theme', S.theme || 'rave');
   }
   function showTab(name) {
     if (!ME && (name === 'train' || name === 'food')) name = 'home';

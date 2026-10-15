@@ -92,7 +92,7 @@ function doGet(e) {
   }
   var page = HtmlService.createTemplateFromFile('App');
   page.key = params.key;
-  page.theme = String(prop_('THEME_' + who) || 'light');
+  page.theme = String(prop_('THEME_' + who) || 'rave');
   page.tab = ({ chores: 'chores', quests: 'chores', food: 'food', train: 'train', play: 'play', you: 'you', more: 'you' })[String(params.page || '')] || '';
   page.initialJson = JSON.stringify(appState_(who)).replace(/</g, '\\u003c');
   var out = page.evaluate()
@@ -109,7 +109,7 @@ function appState_(who) {
     who: who, now: new Date().getTime(), names: names_(), game: gameState_(who), quests: questsState_(who), chores: choresState_(who),
     routines: routinesState_(who), shopping: shoppingState_(), hasClaudeKey: !!claudeKey_(), schedule: scheduleState_(),
     games: gamesState_(who), push: pushStatus_(who), brief: brief && brief.date === todayYmd_() && brief.part === dayPart(minutesNow_()) ? brief : null,
-    theme: String(prop_('THEME_' + who) || 'light')
+    theme: String(prop_('THEME_' + who) || 'rave')
   };
   s.fun = funState_(who, s.game);
   s.health = healthState_(who);
