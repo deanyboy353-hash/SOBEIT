@@ -27,9 +27,25 @@
         .catch(function (e) { reject(e && e.message && !/fetch|network/i.test(e.message) ? e : new Error(navigator.onLine ? 'Couldn\'t reach your Sheet. Try again in a moment.' : 'You\'re offline.')); });
     });
   }
+  // Saves run one after another, in the order you tapped. Nothing you tap is thrown away: a second tap
+  // on the same thing while it's still saving is ignored (no double deletes), anything else waits its turn.
+  var line = Promise.resolve(), saving = {}, nSaving = 0, lastTap = null, gen = 0;
+  // a refresh only counts if nothing was changed while it was on its way (or it would bring back what you just deleted)
+  function fresh(fn) { var g0 = gen; return function (res) { if (g0 === gen && !busy && !inflight) fn(res); }; }
+  document.addEventListener('click', function (ev) { lastTap = ev.target.closest && ev.target.closest('button'); }, { capture: true });
+  function send(fn, args) {
+    var k = fn + JSON.stringify(args || []);
+    if (saving[k]) return null;
+    saving[k] = 1; nSaving++; busy = true; gen++;
+    var btn = lastTap; if (btn) btn.classList.add('saving');
+    var p = line.then(function () { return rpc(fn, args); });
+    line = p.catch(function () {});
+    var done = function () { delete saving[k]; nSaving--; busy = nSaving > 0; if (btn) btn.classList.remove('saving'); };
+    return p.then(function (r) { done(); return r; }, function (e) { done(); throw e; });
+  }
   function call(fn, args, ok, fail) {
-    busy = true;
-    rpc(fn, args).then(function (res) { busy = false; ok && ok(res); }, function (err) { busy = false; fail && fail(); toast(err.message || String(err), true); renderAll(); });
+    var p = send(fn, args); if (!p) return;
+    p.then(function (res) { ok && ok(res); }, function (err) { fail && fail(); toast(err.message || String(err), true); renderAll(); });
   }
 
   // ---------- helpers ----------
@@ -183,7 +199,7 @@
     change();
     renderAll();
     if (msg) toast(msg);
-    inflight++;
+    inflight++; gen++;
     rpc(fn, args).then(function (res) {
       inflight--;
       if (!inflight && !busy && res && res.game) { var hadUndo = S.undo; S = res; offset = res.now - Date.now(); save('state-' + KEY.slice(0, 6), S); renderAll(); if (res.undo && (!hadUndo || hadUndo.id !== res.undo.id)) offerUndo(res.undo, msg); }
@@ -1106,7 +1122,6 @@
     if (f === 'usToggle') { usOpen = !usOpen; return renderHome(); }
     if (f === 'dice') { var d; do { d = DICE[Math.floor(Math.random() * DICE.length)]; } while (d === diceIdea && DICE.length > 1); diceIdea = d; buzz(15); return renderHome(); }
     if (f === 'tap') return tempoTap();
-    if (busy) return;
     if (f === 'create') { var c = CREATE[+v]; return startPlan({ name: c[1], minutes: c[2], steps: c[4].slice(), creative: c[0] }, c[1] + ' for ' + c[2] + ' minutes. Make something.'); }
     if (f === 'usLog') return call('logUs', [], function (res) { confetti(true); chime([523, 784, 1047]); apply(res, 'Logged. +20 XP each.'); });
     if (f === 'wink') return call('sendWink', ['wink'], function (res) { apply(res, 'Wink sent'); });
@@ -1564,10 +1579,12 @@
 
   var HOME_NAMES = { deadlines: 'Deadlines', work: 'Work: now and next', wardrobe: 'Your 3D characters', brief: 'Morning brief', ask: 'Ask anything', ring: 'XP and streaks', challenges: 'Daily challenges', next: 'Next up', whatnow: 'What should I do now?', routine: 'Routines', gym: 'Gym today', chores: 'Today\'s chores', tiles: 'Weight and water', make: 'Make something', us: 'Us', feed: 'Partner feed' };
   var HOME_DEFAULT = ['deadlines', 'work', 'wardrobe', 'brief', 'ask', 'ring', 'challenges', 'next', 'whatnow', 'routine', 'gym', 'chores', 'tiles', 'make', 'us', 'feed'];
+  // a calmer start: these are one tap away under Edit home (Hidden, Show)
+  var HOME_QUIET = { next: 1, make: 1, feed: 1 };
   function homeOrder() {
     var saved = (S.fun && S.fun.prefs && S.fun.prefs.home) || [], seen = {}, out = [];
     saved.forEach(function (x) { if (HOME_NAMES[x.id] && !seen[x.id]) { seen[x.id] = 1; out.push({ id: x.id, hide: !!x.hide }); } });
-    HOME_DEFAULT.forEach(function (id) { if (!seen[id]) out.push({ id: id, hide: false }); });
+    HOME_DEFAULT.forEach(function (id) { if (!seen[id]) out.push({ id: id, hide: !!HOME_QUIET[id] }); });
     return out;
   }
   function prefs() { return (S && S.fun && S.fun.prefs) || {}; }
@@ -1721,7 +1738,7 @@
   });
   document.addEventListener('click', function (ev) {
     var t = ev.target.closest('[data-dl]');
-    if (t && S && !busy) deadlineAct(t.dataset.dl, t.dataset.act);
+    if (t && S) deadlineAct(t.dataset.dl, t.dataset.act);
   });
   // Buttons on a notification arrive here (open app) or in the address (app was closed).
   function handleNoteAction(id, act) { if (S && id && ['done', 'park', 'extend'].indexOf(act) !== -1) deadlineAct(id, act, true); }
@@ -1780,7 +1797,6 @@
     var d = t.dataset;
     if (d.empview) { empView = d.empview; save('empView', empView); return renderEmpire(); }
     if (d.empgame) { empGame = d.empgame; save('empGame', empGame); return renderEmpire(); }
-    if (busy) return;
     if (d.buy) { var it = catItem(d.buy); if (!confirm('Buy ' + theName(it.name) + ' for ' + money(it.price) + '?')) return; return call('buyItem', [d.buy], function (res) { confetti(true); chime([523, 659, 784, 1047]); buzz([40, 30, 80]); apply(res, 'It\'s yours: ' + it.name); }); }
     if (d.upg) return call('upgradeItem', [d.upg, d.u], function (res) { confetti(false); chime([659, 880]); apply(res, upName(d.u) + ': done'); });
     if (d.sell) { var o = catItem(d.sell); if (!confirm('Sell ' + theName(o.name) + '? You get 60% of what you put in.')) return; return call('sellItem', [d.sell], function (res) { apply(res, 'Sold ' + theName(o.name)); }); }
@@ -2172,9 +2188,18 @@
     apply(res.state, msg);
   }
   function wkCall(fn, args, ok) {
-    busy = true;
-    rpc(fn, args).then(function (res) { busy = false; wkApply(res); if (ok) ok(res); }, function (err) { busy = false; toast(err.message || String(err), true); renderWork(); });
+    var p = send(fn, args); if (!p) return;
+    p.then(function (res) { wkApply(res); if (ok) ok(res); }, function (err) { toast(err.message || String(err), true); renderWork(); });
   }
+  // Instant: change the plan on screen now, save in the background, put it back if the save fails.
+  function wkQuick(change, fn, args, msg, ok) {
+    var w = W(), before = JSON.stringify(w), mine = w === S.work;
+    change(w); closeSheet(); renderWork(); if (msg) toast(msg);
+    var p = send(fn, args); if (!p) return;
+    p.then(function (res) { if (!busy) wkApply(res); else if (res.work && !res.work.today) wkOther = res.work; if (ok) ok(res); },
+      function (err) { var back = JSON.parse(before); if (mine) S.work = back; else wkOther = back; renderWork(); toast((err.message || String(err)) + ' Put it back as it was.', true); });
+  }
+  function blockOf(w, id) { return w.blocks.filter(function (x) { return x.id === id; })[0] || {}; }
   function wkDate() { return wkDay === 'today' ? '' : ymdLocal(new Date(now() + 864e5)); }
   function ymdLocal(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
 
@@ -2267,6 +2292,7 @@
     h += '<section class="card"><div class="head"><h3>Plan faster</h3></div>' +
       '<textarea id="wkPlan" rows="4" placeholder="One per line:&#10;Write the report 2h&#10;Emails 30m&#10;Call Sam at 3pm 30m"></textarea>' +
       '<button class="btn primary wide" type="button" data-wk="plan" style="margin-top:8px">Fill my ' + (wkDay === 'today' ? 'day' : 'tomorrow') + '</button>' +
+      (wkDay === 'today' && S.hasClaudeKey ? '<button class="btn soft wide" type="button" id="openAsk" style="margin-top:8px">' + icon('sparkles', 's') + 'Change it by asking ("move lunch to 1:30", "clear my afternoon")</button>' : '') +
       '<div class="grid2" style="margin-top:8px"><button class="btn soft" type="button" data-wk="copy">Copy last plan</button><button class="btn soft" type="button" data-wk="late" data-v="15">Running late +15</button></div>' +
       '<div class="divider"></div><div class="between wk-hours"><span class="small">Work day</span><span class="row" style="gap:6px;flex-wrap:wrap"><input type="time" id="wkHs" value="' + hm(sw.hours.start) + '" aria-label="Start"><span class="muted">to</span><input type="time" id="wkHe" value="' + hm(sw.hours.end) + '" aria-label="End"><button class="btn soft sm" type="button" data-wk="hours">Save</button></span></div></section></div>';
     sec.innerHTML = h + '</div>';
@@ -2363,12 +2389,14 @@
     if (d.bk === 'save') {
       var st = el('bkStart').value.split(':'), ch = { task: el('bkTask').value, mins: bkEdit.mins, kind: bkEdit.kind };
       if (st.length === 2) ch.start = +st[0] * 60 + +st[1];
-      return wkCall('updateBlock', [d.id, ch], function () { closeSheet(); toast('Saved'); });
+      return wkQuick(function (w) { var b = blockOf(w, d.id); if (ch.task) b.task = ch.task; b.mins = ch.mins; b.kind = ch.kind; if (ch.start !== undefined) b.start = ch.start; }, 'updateBlock', [d.id, ch], 'Saved');
     }
     var a = d.wk;
     if (a === 'done') return wkDone(d.id);
-    if (a === 'start') return wkCall('blockAction', [d.id, 'start'], function () { closeSheet(); toast('Go. Phone face down.'); chime([523, 784]); });
-    if (a === 'skip' || a === 'reopen' || a === 'delete') return wkCall('blockAction', [d.id, a], function () { closeSheet(); toast(a === 'skip' ? 'Skipped' : a === 'reopen' ? 'Back on the plan' : 'Deleted'); });
+    if (a === 'start') { chime([523, 784]); return wkQuick(function (w) { var b = blockOf(w, d.id); b.status = 'active'; b.startedAt = now(); }, 'blockAction', [d.id, 'start'], 'Go. Phone face down.'); }
+    if (a === 'skip') return wkQuick(function (w) { blockOf(w, d.id).status = 'skipped'; }, 'blockAction', [d.id, a], 'Skipped');
+    if (a === 'reopen') return wkQuick(function (w) { blockOf(w, d.id).status = 'planned'; }, 'blockAction', [d.id, a], 'Back on the plan');
+    if (a === 'delete') return wkQuick(function (w) { w.blocks = w.blocks.filter(function (x) { return x.id !== d.id; }); }, 'blockAction', [d.id, a], null, function (res) { offerUndo(res.state && res.state.undo, 'Deleted'); });
     if (a === 'kitedit') { wkKitEdit = !wkKitEdit; return renderWork(); }
     if (a === 'late') return wkCall('shiftBlocks', [+d.v], function (res) { toast(res.moved ? 'Pushed the rest of your day back ' + d.v + ' minutes' : 'Nothing left to move today'); });
     if (a === 'copy') return wkCall('copyPlan', [wkDate()], function (res) { toast(res.added ? 'Copied ' + res.added + ' block' + (res.added === 1 ? '' : 's') : 'Already there'); });
@@ -2395,10 +2423,11 @@
     else { g.v = Math.max(0, Math.min(1435, g.b.start + steps)); g.el.style.top = (g.top0 + (g.v - g.b.start) * ppm()) + 'px'; g.el.querySelector('.wk-bm').textContent = hm(g.v) + '–' + hm(g.v + g.b.mins) + ' · ' + dur(g.b.mins); }
     g.el.classList.add('drag');
   });
-  document.addEventListener('pointerup', function () {
+  document.addEventListener('pointercancel', function () { if (wkDrag) { if (wkDrag.moved) renderWork(); wkDrag = null; } });   // the phone took over (a scroll): not a tap, not a drag
+  document.addEventListener('pointerup', function (ev) {
     var g = wkDrag; if (!g) return;
     setTimeout(function () { wkDrag = null; }, 0);
-    if (!g.moved) return blockSheet(g.b.id);
+    if (!g.moved) { if (ev.target.closest && ev.target.closest('.wk-b') === g.el) blockSheet(g.b.id); return; }
     if (g.v === null || g.v === (g.resize ? g.b.mins : g.b.start)) return renderWork();
     var ch = g.resize ? { mins: g.v } : { start: g.v };
     g.b[g.resize ? 'mins' : 'start'] = g.v;
@@ -2597,7 +2626,6 @@
     if (ds.shop) return quick(function () { S.shopping.forEach(function (it) { if (it.id === ds.shop) it.got = !it.got; }); }, 'toggleShopping', [ds.shop]);
     if (ds.clear) return quick(function () { S.chores.later = S.chores.later.filter(function (l) { return l.id !== ds.clear; }); }, 'clearLater', [ds.clear]);
     if (ds.theme) { S.theme = ds.theme; save('theme', ds.theme); document.documentElement.setAttribute('data-theme', ds.theme); renderYou(); renderCustom(); rpc('setTheme', [ds.theme]).catch(function () {}); return; }
-    if (busy) return;
     // home
     if (t.id === 'whatNow') { wn.skip = []; wn.pick = undefined; return whatNowSheet(); }
     if (ds.wn) { wn[ds.wn] = ds.wn === 'minutes' ? +ds.v : ds.v; save(ds.wn === 'minutes' ? 'wnMinutes' : 'wnEnergy', wn[ds.wn]); wn.skip = []; return whatNowSheet(); }
@@ -2765,7 +2793,7 @@
   document.addEventListener('submit', function (ev) {
     ev.preventDefault();
     var f = ev.target;
-    if (busy || !S) return;
+    if (!S) return;
     if (f.id === 'custom') { var tx = el('customText').value.trim(); if (!tx) { toast('Type the job first'); return; } toast(S.hasClaudeKey ? 'Working out how long that takes…' : 'Set the time, then start.'); return call('planChore', [tx], function (p) { plan = p; renderAll(); }); }
     if (f.id === 'park') { var v = el('parkText').value.trim(); if (!v) { toast('Type what popped into your head'); return; } var task = mySession().task; return call('parkThing', [v], function (res) { parking = false; apply(res, 'Saved for later. Back to ' + task + '.'); }); }
     if (f.id === 'weighForm') { var wv = el('weighText').value.trim(); if (!wv) { toast('Type your weight first, like 82.4'); el('weighText').focus(); return; } return call('logWeightNow', [wv], function (t) { S.today = t; addXpLocal(10); renderAll(); toast('Logged ' + t.lastWeight.kg + ' kg'); refreshQuiet(); }); }
@@ -2812,9 +2840,9 @@
     if (!S || busy || inflight || parking || !el('sheetbg').hidden || document.visibilityState !== 'visible') return;
     if (document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
     if (current === 'train' || current === 'food' || (current === 'play' && (recallGame || (mix && mix.on) || tempo))) return;
-    rpc('appState', []).then(function (res) { if (!busy && !inflight) apply(res); }, function () {});
+    rpc('appState', []).then(fresh(apply), function () {});
   }
-  function refreshQuiet() { rpc('appState', []).then(function (res) { if (!busy && !inflight) apply(res); }, function () {}); }
+  function refreshQuiet() { rpc('appState', []).then(fresh(apply), function () {}); }
   setInterval(refresh, 30000);
   // While you're on the word game and your partner is mid-game, watch them live.
   function pollGames() {

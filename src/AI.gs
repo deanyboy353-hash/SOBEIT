@@ -28,6 +28,7 @@ function dayContext_(who) {
   var g = gameState_(who);
   var lines = ['Date: ' + todayYmd_() + ' (' + DAY_NAMES[dayOfWeek_(todayYmd_())] + ')',
     'Streak: ' + g.streak.count + ' days. XP today ' + g.xpToday + ' of ' + g.goal + '.',
+    'Today\'s work plan: ' + (blockRows_(who, todayYmd_()).map(function (b) { return '[' + b.id + '] ' + clockMin_(b.start) + '-' + clockMin_(b.start + b.mins) + ' ' + b.task + ' (' + b.status + ')'; }).join('; ') || 'empty'),
     'Today\'s chores: ' + (q.board.map(function (x) { return x.name + (x.doneToday ? ' (done)' : '') + ' ~' + x.minutes + 'min'; }).join('; ') || 'none')];
   try {
     var hs = healthState_(who);
@@ -70,6 +71,9 @@ function planBriefs_(ymd, cfg) {
   return 'briefs written';
 }
 
+/** 615 -> "10:15" */
+function clockMin_(m) { m = ((Math.round(m) % 1440) + 1440) % 1440; return ('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + m % 60).slice(-2); }
+
 // ---- Ask ----
 
 var ASK_SCHEMA = {
@@ -82,12 +86,14 @@ var ASK_SCHEMA = {
       items: {
         type: 'object',
         properties: {
-          type: { type: 'string', enum: ['add_shopping', 'add_todo', 'add_deadline', 'add_chore', 'park', 'start_job', 'log_food'] },
-          text: { type: 'string', description: 'The item, to-do, chore name, note, job, or food eaten. For add_deadline: the task with its time, like "Send the invoice by 3pm"' },
+          type: { type: 'string', enum: ['add_shopping', 'add_todo', 'add_deadline', 'add_chore', 'park', 'start_job', 'log_food', 'add_block', 'remove_block', 'move_block'] },
+          text: { type: 'string', description: 'The item, to-do, chore name, note, job, or food eaten. For add_deadline: the task with its time, like "Send the invoice by 3pm". For add_block: the work block with its time and length if known, like "Emails 3pm 30m". For remove_block and move_block: the block\'s name' },
+          block_id: { type: 'string', description: 'For remove_block and move_block: the [id] of the block from today\'s work plan. Empty otherwise' },
+          start: { type: 'string', description: 'For move_block: the new start time as HH:MM (24h). Empty to keep it' },
           rhythm: { type: 'string', enum: ['daily', 'weekly', 'biweekly', 'monthly', 'none'], description: 'For add_chore' },
-          minutes: { type: 'integer', description: 'For add_chore or start_job: realistic minutes' }
+          minutes: { type: 'integer', description: 'For add_chore or start_job: realistic minutes. For move_block: a new length in minutes, or 0 to keep it' }
         },
-        required: ['type', 'text', 'rhythm', 'minutes'],
+        required: ['type', 'text', 'rhythm', 'minutes', 'block_id', 'start'],
         additionalProperties: false
       }
     }
@@ -105,6 +111,7 @@ function ask(key, text) {
   var convo = history.map(function (h) { return (h.role === 'user' ? 'They said: ' : 'You said: ') + h.text; }).join('\n');
   var res = callClaudeJson_(AI_VOICE +
     'You can act in the app with actions: add_shopping (one per item), add_todo (a one-off task with no time), add_deadline (a task with a time it must be done by: the app will nag until it is done), add_chore (a repeating household job; pick a rhythm), ' +
+    'add_block, remove_block and move_block (change today\'s work plan: "clear my afternoon", "move lunch to 1:30", "add emails at 3 for half an hour"; use the [id] from the plan), ' +
     'park (a note or worry for later), start_job (suggest one job to start now on a timer), log_food (only for ' + (who === 'me' ? 'food they say they ate' : 'nothing: never use it') + '). ' +
     'Only act when they ask or clearly want it. If they are overwhelmed, pick ONE small thing and offer start_job.',
     'Today:\n' + dayContext_(who) + (convo ? '\n\nEarlier:\n' + convo : '') + '\n\nNow they say: ' + text, ASK_SCHEMA, claudeModel_(), 12000);
@@ -133,6 +140,20 @@ function ask(key, text) {
       } else if (a.type === 'start_job') {
         var known = readChores_().filter(function (q) { return q.name.toLowerCase() === t.toLowerCase(); })[0];
         startJob = known ? { name: known.name, minutes: known.minutes, steps: known.steps } : { name: t, minutes: Math.max(5, Number(a.minutes) || 10), steps: [] };
+      } else if (a.type === 'add_block') {
+        try { var ab = addBlockText_(who, t); done.push('Planned ' + ab.task + ' ' + clockMin_(ab.start) + '–' + clockMin_(ab.start + ab.mins)); } catch (e) { done.push('Couldn\'t plan that: ' + e.message); }
+      } else if (a.type === 'remove_block' || a.type === 'move_block') {
+        var bl = findTodayBlock_(who, a.block_id, t);
+        if (!bl) done.push('Couldn\'t find "' + t + '" in today\'s plan');
+        else if (bl.status === 'done') done.push(bl.task + ' is done already, so it stays');
+        else if (a.type === 'remove_block') { updateRow_('blocks', blockRow_(bl.id), { 'Status': 'deleted' }); done.push('Took ' + bl.task + ' off the plan'); }
+        else {
+          var up = {}, m = /^(\d{1,2}):(\d{2})$/.exec(String(a.start || '').trim());
+          if (m) up['Start (min)'] = Math.min(1435, Number(m[1]) * 60 + Math.round(Number(m[2]) / 5) * 5);
+          if (Number(a.minutes) > 0) up['Mins'] = Math.max(5, Math.min(600, Math.round(Number(a.minutes) / 5) * 5));
+          if (up['Start (min)'] !== undefined) up['Pings'] = 0;
+          if (Object.keys(up).length) { updateRow_('blocks', blockRow_(bl.id), up); var ns = up['Start (min)'] !== undefined ? up['Start (min)'] : bl.start, nm = up['Mins'] || bl.mins; done.push('Moved ' + bl.task + ' to ' + clockMin_(ns) + '–' + clockMin_(ns + nm)); }
+        }
       } else if (a.type === 'log_food' && who === 'me') {
         try { var items = estimateFood_(t, readPresets_(), claudeModel_()); addFood_(items, 'ask: ' + t); done.push('Logged ' + items.map(function (i) { return i.name; }).join(', ')); } catch (e) { done.push('Couldn\'t log that food: ' + e.message); }
       }

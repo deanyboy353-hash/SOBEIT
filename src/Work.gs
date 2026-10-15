@@ -114,20 +114,35 @@ function workState(key, ymd) {
 /** "Write the report 10-11:30". startMin (optional) places it where you tapped on the timeline. */
 function addBlock(key, text, ymd, startMin) {
   var who = who_(key);
+  if (!parseBlock(text)) throw new Error('Type what you\'re working on, like "Write the report 10-11:30" or "Emails 30m".');
+  return withLock_(function () {
+    var a = addBlockText_(who, text, ymd, startMin);
+    var u = JSON.parse(prop_('UNDO_' + who)); u.restore = { block: { id: a.id, values: { 'Status': 'deleted' } } }; setProp_('UNDO_' + who, JSON.stringify(u));
+    return workResult_(who, a.date, { added: a });
+  });
+}
+
+/** Parse, place in the next free slot if no time was given, and save (inside a lock). */
+function addBlockText_(who, text, ymd, startMin) {
   var p = parseBlock(text);
   if (!p) throw new Error('Type what you\'re working on, like "Write the report 10-11:30" or "Emails 30m".');
-  return withLock_(function () {
-    var today = todayYmd_(), day = validDay_(ymd) || (p.tomorrow ? addDays_(today, 1) : today);
-    if (isFinite(startMin) && startMin !== null && startMin !== '') p.start = Math.max(0, Math.min(1435, Math.round(Number(startMin) / 5) * 5));
-    var hours = workHours_(who), placed = p.start === null;
-    if (placed) {
-      var from = day === today ? Math.max(hours.start, minutesNow_()) : hours.start;
-      p.start = placeBlock(blockRows_(who, day).filter(function (x) { return x.status !== 'skipped'; }), p.mins, from);
-    }
-    var id = undoable_(who, 'Added: ' + p.task, function () { return addBlock_(who, day, p); });
-    var u = JSON.parse(prop_('UNDO_' + who)); u.restore = { block: { id: id, values: { 'Status': 'deleted' } } }; setProp_('UNDO_' + who, JSON.stringify(u));
-    return workResult_(who, day, { added: { id: id, task: p.task, start: p.start, mins: p.mins, kind: p.kind, placed: placed, date: day } });
-  });
+  var today = todayYmd_(), day = validDay_(ymd) || (p.tomorrow ? addDays_(today, 1) : today);
+  if (isFinite(startMin) && startMin !== null && startMin !== '' && startMin !== undefined) p.start = Math.max(0, Math.min(1435, Math.round(Number(startMin) / 5) * 5));
+  var hours = workHours_(who), placed = p.start === null;
+  if (placed) {
+    var from = day === today ? Math.max(hours.start, minutesNow_()) : hours.start;
+    p.start = placeBlock(blockRows_(who, day).filter(function (x) { return x.status !== 'skipped'; }), p.mins, from);
+  }
+  var id = undoable_(who, 'Added: ' + p.task, function () { return addBlock_(who, day, p); });
+  return { id: id, task: p.task, start: p.start, mins: p.mins, kind: p.kind, placed: placed, date: day };
+}
+
+/** Today's block by its id, or else by name (for Ask). */
+function findTodayBlock_(who, id, name) {
+  var list = blockRows_(who, todayYmd_()), n = String(name || '').toLowerCase().trim();
+  return list.filter(function (b) { return id && b.id === String(id); })[0] ||
+    list.filter(function (b) { return n && b.task.toLowerCase() === n; })[0] ||
+    list.filter(function (b) { return n && (b.task.toLowerCase().indexOf(n) !== -1 || n.indexOf(b.task.toLowerCase()) !== -1); })[0] || null;
 }
 
 /** Lots at once (one per line): each goes into the next free slot, in order. */
@@ -183,6 +198,7 @@ function countBlock(key, id, delta) {
   if (!delta || Math.abs(delta) > 500) throw new Error('That didn\'t count.');
   return withLock_(function () {
     var r = blockRow_(id), row = r ? readRow_('blocks', r) : null;
+    if (row && row['Who'] === who && row['Status'] === 'deleted' && action === 'delete') return workResult_(who, String(row['Date']), { xp: 0 });   // a second tap: already gone, that's fine
     if (!row || row['Who'] !== who || row['Status'] === 'deleted') throw new Error('That block has gone.');
     var ymd = String(row['Date']), b = blockRows_(who, ymd).filter(function (x) { return x.id === id; })[0];
     if (!b.target) throw new Error('That block has no count.');
@@ -206,6 +222,7 @@ function blockAction(key, id, action) {
   if (['start', 'done', 'skip', 'delete', 'reopen'].indexOf(action) === -1) throw new Error('Unknown action.');
   return withLock_(function () {
     var r = blockRow_(id), row = r ? readRow_('blocks', r) : null;
+    if (row && row['Who'] === who && row['Status'] === 'deleted' && action === 'delete') return workResult_(who, String(row['Date']), { xp: 0 });   // a second tap: already gone, that's fine
     if (!row || row['Who'] !== who || row['Status'] === 'deleted') throw new Error('That block has gone.');
     var ymd = String(row['Date']), b = blockRows_(who, ymd).filter(function (x) { return x.id === id; })[0], now = new Date().getTime();
     if (action === 'start') {
@@ -220,7 +237,7 @@ function blockAction(key, id, action) {
       if (b.status === 'skipped') updateRow_('blocks', r, { 'Status': 'planned' });
     } else if (action === 'delete') {
       if (b.status === 'done') throw new Error('That one\'s done and paid. It stays.');
-      updateRow_('blocks', r, { 'Status': 'deleted' });
+      return workResult_(who, ymd, undoable_(who, b.task + ' (deleted)', function () { updateRow_('blocks', r, { 'Status': 'deleted' }); return { xp: 0 }; }, { block: { id: b.id, values: { 'Status': b.status } } }));
     }
     return workResult_(who, ymd, { xp: 0 });
   });

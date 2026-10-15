@@ -263,3 +263,23 @@ test('Tab cache: a day of actions gives exactly the same results with and withou
   console.log('Sheet reads over the day: ' + off.reads + ' without the tab cache, ' + on.reads + ' with it');
   assert.ok(on.reads < off.reads / 2, 'reads with cache ' + on.reads + ' vs without ' + off.reads);
 });
+
+test('ask: changes today\'s work plan (add, move, remove)', () => {
+  const { g, me } = ready();
+  g.state.props.ANTHROPIC_API_KEY = 'sk-ant-test';
+  g.ctx.planDay(me, 'Emails 10-11\nLunch 13-13:45\nReport 14-16');
+  const ws = () => g.ctx.workState(me).blocks;
+  const lunch = ws().find(b => b.task === 'Lunch'), report = ws().find(b => b.task === 'Report');
+  claudeSays(g, { reply: 'Done.', actions: [
+    { type: 'move_block', text: 'Lunch', block_id: lunch.id, start: '13:30', rhythm: 'none', minutes: 0 },
+    { type: 'remove_block', text: 'Report', block_id: '', start: '', rhythm: 'none', minutes: 0 },
+    { type: 'add_block', text: 'Call Sam 16:00 30m', block_id: '', start: '', rhythm: 'none', minutes: 0 },
+    { type: 'remove_block', text: 'Gym', block_id: 'nope', start: '', rhythm: 'none', minutes: 0 }
+  ] });
+  const r = g.ctx.ask(me, 'move lunch to half one, drop the report and add a call with Sam at 4');
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(r.done)), ['Moved Lunch to 13:30–14:15', 'Took Report off the plan', 'Planned Call Sam 16:00–16:30', 'Couldn\'t find "Gym" in today\'s plan']);
+  assert.strictEqual(ws().find(b => b.id === lunch.id).start, 810);
+  assert.ok(!ws().some(b => b.id === report.id));
+  assert.ok(ws().some(b => b.task === 'Call Sam' && b.start === 960));
+  assert.match(g.state.claudeRequests.at(-1).body.messages[0].content, new RegExp('\\[' + lunch.id + '\\] 13:00-13:45 Lunch'));
+});

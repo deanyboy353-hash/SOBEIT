@@ -311,3 +311,16 @@ test('Undo after adding: a deadline or a work block added by mistake just disapp
   s = g.ctx.removeShopping(me, id);
   assert.deepStrictEqual(plain(s.shopping.map(x => x.item)), ['Milk']);
 });
+
+test('Deleting a block: a second tap is harmless, and Undo brings it back', () => {
+  const { g, me } = ready();
+  g.ctx.planDay(me, 'Emails 10-11\nLunch 13-13:45');
+  const lunch = g.ctx.workState(me).blocks.find(b => b.task === 'Lunch');
+  const r = plain(g.ctx.blockAction(me, lunch.id, 'delete'));
+  assert.ok(!r.work.blocks.some(b => b.id === lunch.id));
+  assert.ok(r.state.undo && /Lunch/.test(r.state.undo.label), JSON.stringify(r.state.undo));
+  assert.doesNotThrow(() => g.ctx.blockAction(me, lunch.id, 'delete'));        // tapped twice: no error
+  g.ctx.undoAction(me);
+  const back = g.ctx.workState(me).blocks.find(b => b.id === lunch.id);
+  assert.strictEqual(back && back.status, 'planned');
+});

@@ -868,3 +868,8 @@ body.dress-open { overflow: hidden; }
 .rstep input { flex: 1; min-width: 0; }
 .rstep .iconbtn { width: 36px; height: 36px; flex: none; }
 #rTime, #rName { display: block; width: 100%; margin-top: 4px; }
+
+/* a button whose save is on its way: it answers straight away, then pulses until the Sheet has it */
+button.saving { opacity: .7; animation: savingPulse 1s ease-in-out infinite; }
+@keyframes savingPulse { 50% { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) { button.saving { animation: none; } }
