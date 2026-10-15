@@ -175,12 +175,12 @@ function quietFor_(who, m) {
 }
 
 function heartbeat_() {
-  if (!extrasOn_('Reminders') && !extrasOn_('Double XP')) return;
   var ymd = todayYmd_(), m = minutesNow_();
-  if (m < 9 * 60 || m >= 22 * 60 + 30) return;
   var sent = JSON.parse(prop_('REMINDED') || 'null');
   if (!sent || sent.date !== ymd) sent = { date: ymd, me: [], partner: [] };
   var before = JSON.stringify(sent);
+  try { alertsHeartbeat_(ymd, m, sent); } catch (e) { log_('WARN', 'Alerts: ' + e); }
+  if ((!extrasOn_('Reminders') && !extrasOn_('Double XP')) || m < 9 * 60 || m >= 22 * 60 + 30) { if (JSON.stringify(sent) !== before) setProp_('REMINDED', JSON.stringify(sent)); return; }
   var nk = nicks_(), goal = dailyGoal_(), r = seededRandom('lines' + ymd);
   function once(who, id, title, body, tab) {
     if (sent[who].indexOf(id) !== -1 || quietFor_(who, m)) return;

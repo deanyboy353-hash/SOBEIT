@@ -100,10 +100,12 @@ test('evening reminders (normal level): streak saver at 19:30, last call at 21:3
   mine = pushesTo(g, 'me-phone-token-0123456789');
   assert.strictEqual(mine.length, 2);
   assert.strictEqual(mine[1].title, 'Streak alert');
-  at(g, '2026-10-13T22:00:00Z'); // 23:00: quiet
+  at(g, '2026-10-13T22:00:00Z'); // 23:00: no streak nags, only the food check you asked for
   const before = g.state.pushes.length;
   g.ctx.nagRun();
-  assert.strictEqual(g.state.pushes.length, before);
+  const late = g.state.pushes.slice(before);
+  assert.strictEqual(late.length, 1);
+  assert.strictEqual(late[0].tab, 'food');
   g.ctx.questDone(me, g.ctx.appState(me).quests.board[0].name);
 });
 
