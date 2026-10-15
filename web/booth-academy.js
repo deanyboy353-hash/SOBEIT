@@ -309,8 +309,10 @@
       var v = P.view; v.hideBpm = {}; v.hideWaves = aids().waves === false || !!t.aidsOff; v.helper = !t.aidsOff; v.guide = t.aidsOff ? 'off' : 'auto'; v.guideDeck = ''; v.onLoad = null; v.onControl = onControl; v.frame = frame;
       L = { t: t, id: id, phase: phase, state: 'loading', E: [], S: [], feed: [], warm: opts.warm || null, steps: phase === 'speed' && t.speed ? speedSteps(t) : t.steps || [] };
       if (location.hash.indexOf('#play') !== 0) location.hash = 'play';
+      var keepY = location.hash.indexOf('#play') === 0 ? window.scrollY : 0;   // Try again / Next lesson keep the decks where they are
       S.el('screen').innerHTML = playHtml(t.name, ({ explain: 'Academy', demo: 'Demo', practice: 'Practice', test: 'Test', speed: 'Speed challenge', warm: 'Warm-up' })[phase] + ' · ' + modName(t.mod));
       P.sizeCanvases(); if (G && G.sizeClub) G.sizeClub(); P.dirty();
+      if (keepY) window.scrollTo(0, keepY);
       if (phase === 'explain') return explain();
       if (t.kind === 'quiz') return quizStart();
       load();
@@ -479,13 +481,13 @@
     if (res.good.length) h += '<ul class="notes good">' + res.good.map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('') + '</ul>';
     if (phase === 'test' && !aidsOff() && m.level === 'Solid') h += '<p class="small">To lock it in, turn the ear-training aids off (Academy page) and pass the test 3 more times.</p>';
     h += '<p class="small"><b>On other gear:</b> ' + esc(t.gear) + '</p>';
-    h += '<div class="row wrap">' + (phase === 'practice' ? '<button type="button" class="bbtn primary" data-ac="phase" data-p="test">Take the test</button><button type="button" class="bbtn" data-ac="phase" data-p="practice">Practise again</button>' :
-      '<button type="button" class="bbtn primary" data-ac="phase" data-p="' + phase + '">Again</button><button type="button" class="bbtn" data-ac="phase" data-p="practice">Practise</button>') +
-      (t.speed && phase !== 'speed' ? '<button type="button" class="bbtn" data-ac="phase" data-p="speed">Speed challenge</button>' : '') +
-      (nextT && res.total >= 60 ? '<button type="button" class="bbtn" data-ac="open" data-t="' + nextT.id + '">Next: ' + esc(nextT.name) + '</button>' : '') +
+    h += '<div class="row wrap">' + (phase === 'practice' ? '<button type="button" class="bbtn primary" data-ac="phase" data-p="practice">Try again</button><button type="button" class="bbtn" data-ac="phase" data-p="test">Take the test</button>' :
+      '<button type="button" class="bbtn primary" data-ac="phase" data-p="' + phase + '">Try again</button>') +
+      (nextT ? '<button type="button" class="bbtn" data-ac="open" data-t="' + nextT.id + '">Next lesson: ' + esc(nextT.name) + '</button>' : '') +
+      '<button type="button" class="bbtn" data-keep="1">Keep playing</button>' +
+      (t.speed && phase !== 'speed' ? '<button type="button" class="bbtn ghost" data-ac="phase" data-p="speed">Speed challenge</button>' : '') +
       '<button type="button" class="bbtn ghost" data-ac="hub">All techniques</button></div></div>';
-    el('resultSlot').innerHTML = h;
-    el('resultSlot').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el('resultSlot').innerHTML = h;   // a panel docked over the decks: the page doesn't move
   }
 
   // ---------- ghost lines for knob and fader moves ----------

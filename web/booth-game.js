@@ -141,9 +141,11 @@
   function redrawDecks() { if (S.screen() !== 'play') return; var d = el('decks3'); if (!d) return; d.innerHTML = P.deckPanel('A') + P.mixerPanel() + P.deckPanel('B'); P.dirty(); }
   function openPlay(title, sub) {
     result = null;
-    if (location.hash.indexOf('#play') !== 0) location.hash = 'play';
+    var keepY = location.hash.indexOf('#play') === 0 ? window.scrollY : 0;   // Try again / Next lesson: the decks stay where they are
+    if (!keepY) location.hash = 'play';
     S.el('screen').innerHTML = playHtml(title, sub);
     P.sizeCanvases(); sizeLanes(); sizeClub(); P.dirty();
+    if (keepY) window.scrollTo(0, keepY);
   }
   function setStep(text, ids, sub, warn) {
     var s = el('hudStep'); if (s && s.textContent !== text) { s.textContent = text; s.classList.remove('pop'); void s.offsetWidth; s.classList.add('pop'); }
@@ -286,15 +288,15 @@
     slot.innerHTML = h;
     var c = el('replay'), rr = c.getBoundingClientRect(), dpr = window.devicePixelRatio || 1; c.width = Math.round(rr.width * dpr); c.height = Math.round(rr.height * dpr);
     drawReplay(0.5);
-    slot.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'center' });
     if (sess.mode === 'daily') drawDailyVs();
   }
   function resultButtons() {
-    var m = sess.mode;
-    if (m === 'drill' || m === 'ghost') return '<button type="button" class="bbtn primary" data-g="next">Next rep (Deck ' + sess.to + ' becomes the outgoing track)</button><button type="button" class="bbtn" data-g="again">Same transition again</button><button type="button" class="bbtn ghost" data-g="stop">Stop</button>';
-    if (m === 'beatmatch') return '<button type="button" class="bbtn primary" data-g="again">Another round</button><button type="button" class="bbtn ghost" data-g="stop">Stop</button>';
-    if (m === 'daily') return '<button type="button" class="bbtn primary" data-g="again">Try again (your best counts)</button><button type="button" class="bbtn ghost" data-g="stop">Done</button>';
-    return '<button type="button" class="bbtn primary" data-g="again">Try again</button><button type="button" class="bbtn" data-g="tutorials">Back to tutorials</button>';
+    var m = sess.mode, keep = '<button type="button" class="bbtn" data-keep="1">Keep playing</button>';
+    if (m === 'drill' || m === 'ghost') return '<button type="button" class="bbtn primary" data-g="again">Try again</button><button type="button" class="bbtn" data-g="next">Next rep (Deck ' + sess.to + ' becomes the outgoing track)</button>' + keep + '<button type="button" class="bbtn ghost" data-g="stop">Stop</button>';
+    if (m === 'beatmatch') return '<button type="button" class="bbtn primary" data-g="again">Try again</button>' + keep + '<button type="button" class="bbtn ghost" data-g="stop">Stop</button>';
+    if (m === 'daily') return '<button type="button" class="bbtn primary" data-g="again">Try again (your best counts)</button>' + keep + '<button type="button" class="bbtn ghost" data-g="stop">Done</button>';
+    var nx = TECH_ORDER[TECH_ORDER.indexOf(sess.tech) + 1];
+    return '<button type="button" class="bbtn primary" data-g="again">Try again</button>' + (nx ? '<button type="button" class="bbtn" data-gstart="tut:' + nx + ':' + (sess.src || 'loops') + '">Next lesson: ' + esc(TECH[nx].name) + '</button>' : '') + keep + '<button type="button" class="bbtn ghost" data-g="tutorials">Back to tutorials</button>';
   }
   function drawReplay(f) {
     var c = el('replay'); if (!c || !result) return;
@@ -458,8 +460,7 @@
     var s = stats(); s.sets.push({ at: Date.now(), tracks: sess.items.length, avg: avg, grade: gr }); S.save('stats', s);
     el('resultSlot').innerHTML = '<div class="result panel"><div class="res-head"><div class="grade g' + gr + '">' + gr + '</div><div class="grow"><div class="eyebrow">Set mode</div><h2>Your set: ' + avg + ' average over ' + rs.length + ' transition' + (rs.length === 1 ? '' : 's') + '</h2></div></div>' +
       (rs.length ? '<ol class="setlist">' + rs.map(function (r) { return '<li><b>' + r.grade + ' ' + r.total + '</b> into ' + esc(r.track) + (r.notes[0] ? '<br><span class="small muted">' + esc(r.notes[0]) + '</span>' : r.good[0] ? '<br><span class="small" style="color:var(--green)">' + esc(r.good[0]) + '</span>' : '') + '</li>'; }).join('') + '</ol>' : '<p class="muted">No transitions were finished.</p>') +
-      '<div class="row wrap"><button type="button" class="bbtn primary" data-g="setAgain">Play the set again</button><button type="button" class="bbtn ghost" data-g="stop">Done</button></div></div>';
-    el('resultSlot').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      '<div class="row wrap"><button type="button" class="bbtn primary" data-g="setAgain">Play the set again</button><button type="button" class="bbtn" data-keep="1">Keep playing</button><button type="button" class="bbtn ghost" data-g="stop">Done</button></div></div>';
   }
 
   // ---------- daily challenge (same for both of you) ----------

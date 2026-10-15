@@ -54,6 +54,7 @@
     add(d + '.jogEdge', { label: L + 'jog wheel (turn by the outer edge)', kind: 'relative', msg: [D.cc, 0x09], deck: d, part: 'deck' });
     add(d + '.play', { label: L + 'PLAY button', kind: 'button', msg: [D.note, 0x07], deck: d, part: 'deck', led: [D.note, 0x07] });
     add(d + '.cue', { label: L + 'CUE button', kind: 'button', msg: [D.note, 0x06], deck: d, part: 'deck', led: [D.note, 0x06] });
+    add(d + '.shiftCue', { label: L + 'SHIFT + CUE (back to the start)', kind: 'button', msg: [D.shiftNote, 0x06], deck: d, part: 'deck' });
     add(d + '.sync', { label: L + 'SYNC button', kind: 'button', msg: [D.note, 0x05], deck: d, part: 'deck', led: [D.note, 0x05] });
     add(d + '.shift', { label: L + 'SHIFT button', kind: 'button', msg: [D.note, 0x04], deck: d, part: 'deck' });
     add(d + '.load', { label: 'LOAD ' + d + ' button', kind: 'button', msg: [D.note, 0x0D], deck: d, part: 'mixer' });
@@ -96,8 +97,8 @@
 
   // Keyboard and mouse fallback (every action). Shown on screen; same names as the controls.
   var KEYS = {
-    'A.play': 'z', 'A.cue': 'x', 'A.sync': 'c', 'A.pfl': 'v', 'A.load': '1',
-    'B.play': 'm', 'B.cue': ',', 'B.sync': '.', 'B.pfl': 'n', 'B.load': '2',
+    'A.play': 'z', 'A.cue': 'x', 'A.sync': 'c', 'A.pfl': 'v', 'A.load': '1', 'A.start': '3',
+    'B.play': 'm', 'B.cue': ',', 'B.sync': '.', 'B.pfl': 'n', 'B.load': '2', 'B.start': '4',
     'A.volume+': 'w', 'A.volume-': 's', 'B.volume+': 'o', 'B.volume-': 'l',
     'A.eqLow+': 'e', 'A.eqLow-': 'd', 'B.eqLow+': 'i', 'B.eqLow-': 'k',
     'A.eqMid+': 'r', 'A.eqMid-': 'f', 'B.eqMid+': 'u', 'B.eqMid-': 'j',

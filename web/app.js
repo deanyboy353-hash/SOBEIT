@@ -546,12 +546,12 @@
     if (!mySession()) h += musicBar();
     if (q.planned) {
       var mustL = q.board.filter(function (x) { return x.must; }), bonusL = q.board.filter(function (x) { return !x.must; });
-      h += '<section class="card"><div class="head"><h3>' + (q.win ? 'Day won' : 'Win the day: ' + Math.min(q.doneCount, q.minimum) + ' of ' + q.minimum) + '</h3></div>' +
+      h += '<section class="card spot"><div class="head"><h3>' + (q.win ? 'Day won' : 'Win the day: ' + Math.min(q.doneCount, q.minimum) + ' of ' + q.minimum) + '</h3></div>' +
         (q.minimum ? '<div class="minbar"><i style="width:' + Math.round(Math.min(1, q.doneCount / q.minimum) * 100) + '%"></i></div><p class="small muted" style="margin:6px 0 4px">Do ' + q.minimum + ' job' + (q.minimum === 1 ? '' : 's') + ' (any of them) and the day is won. These are quick ones:</p>' : '<p class="small muted">Nothing you have to do today. A free win.</p>') +
         mustL.map(function (x) { return questRow(x, { claim: true }); }).join('') + '</section>';
       h += '<section class="card"><div class="head"><h3>Bonus</h3><span class="muted small">only if you\'ve got energy' + (q.energy ? ' (yours peaks in the ' + esc(q.energy) + ')' : '') + '</span></div>' + (bonusL.length ? bonusL.map(function (x) { return questRow(x, { claim: true }); }).join('') : '<p class="empty">No bonus jobs today.</p>') + '</section>';
     } else
-    h += '<section class="card"><div class="head"><h3>Today</h3><span class="muted small num">' + q.board.filter(function (x) { return x.doneToday; }).length + '/' + q.board.length + '</span></div>' +
+    h += '<section class="card spot"><div class="head"><h3>Today</h3><span class="muted small num">' + q.board.filter(function (x) { return x.doneToday; }).length + '/' + q.board.length + '</span></div>' +
       (q.board.length ? q.board.map(function (x) { return questRow(x, { claim: true }); }).join('') : '<p class="empty">Nothing due today.</p>') + '</section>';
     if (q.more.length) h += '<section class="card"><details><summary class="small muted" style="cursor:pointer">' + (q.planned ? 'Other jobs (' + q.more.length + '): ' + esc(names().other) + '\'s, or coming up soon. Doing one counts.' : 'Also due (' + q.more.length + '), only if you feel like it') + '</summary><div style="margin-top:8px">' + q.more.map(function (x) { return questRow(x, { claim: true }); }).join('') + '</div></details></section>';
     if (q.doneExtra.length) h += '<section class="card"><div class="head"><h3>Bonus today</h3></div>' + q.doneExtra.map(function (x) { return questRow(x); }).join('') + '</section>';
@@ -700,7 +700,7 @@
   }
   function renderPlay() {
     var G = S.games, n = names(), h = '<div class="top"><div><h1>Play</h1><div class="sub">Same puzzles for you both. Live scores.</div></div>' + meButton() + '</div>';
-    h += '<section class="card"><div class="vs"><div>' + avatarOf(S.who, 40) + '<div class="small muted">You</div><div class="num" style="font-size:28px;font-weight:700">' + G.stats.you + '</div></div><div class="center small muted">head to head<br><span class="tiny">' + G.stats.draws + ' draws</span></div><div class="right">' + avatarOf(S.who === 'me' ? 'partner' : 'me', 40, true) + '<div class="small muted">' + esc(n.other) + '</div><div class="num" style="font-size:28px;font-weight:700">' + G.stats.them + '</div></div></div></section>';
+    h += '<section class="card spot"><div class="vs"><div>' + avatarOf(S.who, 40) + '<div class="small muted">You</div><div class="num" style="font-size:28px;font-weight:700">' + G.stats.you + '</div></div><div class="center small muted">head to head<br><span class="tiny">' + G.stats.draws + ' draws</span></div><div class="right">' + avatarOf(S.who === 'me' ? 'partner' : 'me', 40, true) + '<div class="small muted">' + esc(n.other) + '</div><div class="num" style="font-size:28px;font-weight:700">' + G.stats.them + '</div></div></div></section>';
     h += '<div class="seg six">' + [['word', 'Word'], ['target', 'Numbers'], ['recall', 'Recall'], ['tempo', 'Tempo'], ['mix', 'Mix'], ['stats', 'Stats']].map(function (o) { return '<button type="button" data-pview="' + o[0] + '" aria-pressed="' + (playView === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
     if (playView === 'word') h += wordView(G.word, n);
     else if (playView === 'target') h += targetView(G.target, n);
@@ -873,9 +873,9 @@
     if (!t.plans[tsel]) tsel = t.sessions[0];
     var d = draft(), h = '<div class="top"><div><h1>Train</h1><div class="sub">' + (t.today ? 'Today: ' + esc(t.today) : 'Rest day. Next up: ' + esc(t.rotationNext || '') + '. Train any session you like.') + '</div></div>' + meButton() + '</div>';
     // one rotation indicator: the three sessions in order, the one you're on lit up; any other session from the picker
-    if (t.rotation) h += '<div class="rotstrip" aria-label="Your training rotation">' + t.rotation.map(function (r) { var cur = r === tsel; return '<button type="button" class="rot' + (cur ? ' on' : '') + (r === (t.today || t.rotationNext) ? ' next' : '') + '" data-tsel="' + esc(r) + '" aria-pressed="' + cur + '">' + esc(r) + '</button>'; }).join('<span class="rotarr" aria-hidden="true">›</span>') + '</div>' +
+    if (t.rotation) h += '<section class="card spot trainhero"><div class="eyebrow" style="margin-bottom:8px">' + (t.today ? 'Today' : 'Rotation') + '</div><div class="rotstrip" aria-label="Your training rotation">' + t.rotation.map(function (r) { var cur = r === tsel; return '<button type="button" class="rot' + (cur ? ' on' : '') + (r === (t.today || t.rotationNext) ? ' next' : '') + '" data-tsel="' + esc(r) + '" aria-pressed="' + cur + '">' + esc(r) + '</button>'; }).join('<span class="rotarr" aria-hidden="true">›</span>') + '</div>' +
       '<div class="rotmeta"><span class="tiny muted">Next is the one you\'ve gone longest without. Logging any session moves it on.</span>' +
-      (t.sessions.filter(function (s) { return t.rotation.indexOf(s) === -1; }).length ? '<label class="tiny rotpick">Other session <select data-tselect="1" aria-label="Pick a different session"><option value="">Choose…</option>' + t.sessions.filter(function (s) { return t.rotation.indexOf(s) === -1; }).map(function (s) { return '<option value="' + esc(s) + '"' + (s === tsel ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('') + '</select></label>' : '') + '</div>';
+      (t.sessions.filter(function (s) { return t.rotation.indexOf(s) === -1; }).length ? '<label class="tiny rotpick">Other session <select data-tselect="1" aria-label="Pick a different session"><option value="">Choose…</option>' + t.sessions.filter(function (s) { return t.rotation.indexOf(s) === -1; }).map(function (s) { return '<option value="' + esc(s) + '"' + (s === tsel ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('') + '</select></label>' : '') + '</div>' + '</section>';
     h += '<div id="restSlot"></div>';
     if (t.doneToday) h += '<div class="note">Today\'s workout is logged. Great work. You can log another below.</div>';
     else {
@@ -991,7 +991,7 @@
     pending.forEach(function (p) { kcal += p.kcal; prot += p.protein; });
     var kl = t.kcal - kcal, pl = t.proteinMin - prot, scale = t.proteinMax * 1.15;
     var h = '<div class="top"><div><h1>Food</h1><div class="sub">' + fmt(kcal) + ' kcal · ' + fmt(prot) + 'g protein so far</div></div>' + meButton() + '</div>';
-    h += '<section class="card"><div class="eyebrow">Calories</div><div class="between" style="align-items:baseline"><div><span class="big">' + fmt(kcal) + '</span> <span class="of">/ ' + fmt(t.kcal) + '</span></div><div class="left ' + (kl >= 0 ? 'good' : 'warn') + '">' + (kl >= 0 ? fmt(kl) + ' left' : fmt(-kl) + ' over') + '</div></div>' +
+    h += '<section class="card spot"><div class="eyebrow">Calories</div><div class="between" style="align-items:baseline"><div><span class="big">' + fmt(kcal) + '</span> <span class="of">/ ' + fmt(t.kcal) + '</span></div><div class="left ' + (kl >= 0 ? 'good' : 'warn') + '">' + (kl >= 0 ? fmt(kl) + ' left' : fmt(-kl) + ' over') + '</div></div>' +
       '<div class="bar' + (kl < 0 ? ' over' : '') + '" style="margin:8px 0 16px"><i style="width:' + Math.min(100, kcal / t.kcal * 100) + '%"></i></div>' +
       '<div class="eyebrow">Protein</div><div class="between" style="align-items:baseline"><div><span class="big">' + fmt(prot) + 'g</span> <span class="of">/ ' + t.proteinMin + '–' + t.proteinMax + 'g</span></div><div class="left ' + (pl > 0 ? '' : 'good') + '">' + (pl > 0 ? fmt(pl) + 'g to go' : prot > t.proteinMax ? 'Above range' : 'In range') + '</div></div>' +
       '<div class="bar" style="margin-top:8px"><i style="width:' + Math.min(100, prot / scale * 100) + '%"></i><span class="zone" style="left:' + (t.proteinMin / scale * 100) + '%;width:' + ((t.proteinMax - t.proteinMin) / scale * 100) + '%"></span></div></section>';
@@ -1021,7 +1021,7 @@
     var g = S.game, n = names(), th = document.documentElement.getAttribute('data-theme'), h = '';
     h += '<div class="top"><div class="row"><button class="iconbtn" type="button" data-goto="home" aria-label="Back">' + icon('back') + '</button><h1>You</h1></div></div>';
     h += charCard();
-    if (S.wardrobe) h += '<section class="card av-card"><div class="av3d tall" id="av3dYou"><div class="av3d-msg small muted center">Loading…</div></div><button class="btn primary wide" type="button" data-dress="open">' + icon('sparkles', 's') + 'Dressing room</button></section>';
+    if (S.wardrobe) h += '<section class="card spot av-card"><div class="av3d tall" id="av3dYou"><div class="av3d-msg small muted center">Loading…</div></div><button class="btn primary wide" type="button" data-dress="open">' + icon('sparkles', 's') + 'Dressing room</button></section>';
     h += '<div class="grid2" style="margin-bottom:12px"><button class="btn soft" type="button" data-goto="empire">' + icon('building', 's') + 'Your empire</button><button class="btn soft" type="button" data-goto="custom">' + icon('sparkles', 's') + 'Customise</button></div>';
     h += '<section class="card tint"><div class="between"><div><div class="eyebrow" style="color:var(--lilac)">Level ' + g.level.level + (S.fun && S.fun.era ? ' · ' + esc(S.fun.era) : '') + '</div><div class="num" style="font-size:28px;font-weight:700">' + fmt(g.total) + ' XP</div></div><div class="right"><div class="eyebrow">To spend</div><div class="num" style="font-size:22px;font-weight:700">' + fmt(g.balance) + '</div></div></div>' +
       '<div class="bar" style="margin-top:10px;background:var(--surface)"><i style="width:' + Math.round(g.level.into / g.level.need * 100) + '%"></i></div><div class="tiny muted" style="margin-top:6px">' + (g.level.need - g.level.into) + ' XP to level ' + (g.level.level + 1) + ' · best streak ' + g.streak.best + (g.streak.best === 1 ? ' day' : ' days') + '</div>' + (S.fun && S.fun.nextEra && S.fun.nextEra !== S.fun.era ? '<div class="tiny muted" style="margin-top:2px">Next era: ' + esc(S.fun.nextEra) + '</div>' : '') + '</section>';
@@ -1434,7 +1434,7 @@
     var sl = h.sleep, rd = h.readiness, hr = h.heart;
 
     // hero: steps ring + three tiles
-    out += '<section class="card"><div class="hhero"><div class="ring" style="width:132px;height:132px">' + ring(h.steps / h.goals.steps, 132, 12) +
+    out += '<section class="card spot"><div class="hhero"><div class="ring" style="width:132px;height:132px">' + ring(h.steps / h.goals.steps, 132, 12) +
       '<div class="t"><div><div class="tiny muted">Steps</div><div class="num" style="font-size:28px;font-weight:700">' + fmt(h.steps) + '</div><div class="tiny muted">of ' + fmt(h.goals.steps) + '</div></div></div></div><div class="grow stack">' +
       '<div class="htile ready"><span>Readiness</span><b class="num">' + (rd ? rd.score : '–') + '</b><em>' + (rd ? esc(rd.label) : 'needs sleep data') + '</em></div>' +
       '<div class="htile sleep"><span>Sleep</span><b class="num">' + (sl ? hm(sl.asleep) : '–') + '</b><em>' + (sl ? sl.score + ' · ' + esc(sl.label) : 'none recorded') + '</em></div>' +
@@ -1812,7 +1812,7 @@
     // character
     h += '<section class="card"><div class="head"><h3>Your look</h3></div><div class="row" style="gap:14px">' + avatarOf(S.who, 72) + '<p class="small muted grow" style="margin:0">Your face everywhere in the app comes from your character in the dressing room: skin, hair, clothes and extras.</p></div><button class="btn primary wide" type="button" data-dress="open" style="margin-top:12px">' + icon('sparkles', 's') + 'Open the dressing room</button></section>';
     // look
-    h += '<section class="card"><div class="head"><h3>Look</h3></div>' + lookPicker() +
+    h += '<section class="card spot"><div class="head"><h3>Look</h3></div>' + lookPicker() +
       '<div class="eyebrow" style="margin:14px 0 6px">Accent colour</div><div class="swatches">' + [['', 'Lilac'], ['pink', 'Pink'], ['green', 'Green'], ['teal', 'Teal'], ['orange', 'Orange'], ['blue', 'Blue'], ['lime', 'Lime'], ['red', 'Red'], ['gold', 'Gold']].map(function (o) {
         return '<button type="button" class="sw-' + (o[0] || 'lilac') + '" data-accent="' + o[0] + '" aria-pressed="' + ((p.accent || '') === o[0]) + '" aria-label="' + o[1] + '"></button>';
       }).join('') + '</div>' +
@@ -1988,7 +1988,7 @@
     var e = S.empire, n = names(), h = '';
     if (!e) return;
     h += '<div class="top"><div class="row"><button class="iconbtn" type="button" data-goto="you" aria-label="Back">' + icon('back') + '</button><h1>Empire</h1></div></div>';
-    h += '<section class="card bank"><div class="eyebrow">Cash</div><div class="num big">' + money(e.cash) + '</div>' +
+    h += '<section class="card spot bank"><div class="eyebrow">Cash</div><div class="num big">' + money(e.cash) + '</div>' +
       '<div class="small">' + (e.income ? '+' + money(e.income) + ' a day from your businesses · ' : '') + 'worth ' + money(e.worth) + '</div>' +
       '<div class="tiny" style="margin-top:8px;opacity:.85">Every XP you earn pays ' + money(10) + '. Businesses pay every morning.</div></section>';
     var bd = e.breakdown;
@@ -2586,7 +2586,7 @@
     h += '<div class="wk-grid"><div class="wk-a">' + wkNowCard();
     h += '<section class="card"><form class="inline" id="wkForm" autocomplete="off"><input type="text" id="wkText" placeholder="Write the report 10-11:30, Emails 30m…" aria-label="Add a block"><button class="btn primary" type="submit">Add</button></form>' +
       '<p class="tiny muted" style="margin:8px 0 0">Give it a time ("10-11:30", "at 3pm") and a length ("45m", "2h"), or a number to hit ("Queue 40 emails", "Edit 3 videos"). No time and it goes in the next free slot.</p></section>' + wkKitCard() + '</div>';
-    h += '<section class="card wk-tlcard"><div class="between" style="margin-bottom:10px"><div class="seg" style="margin:0;flex:1">' + [['today', 'Today'], ['tomorrow', 'Tomorrow']].map(function (o) { return '<button type="button" data-wkday="' + o[0] + '" aria-pressed="' + (wkDay === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div></div>';
+    h += '<section class="card spot wk-tlcard"><div class="between" style="margin-bottom:10px"><div class="seg" style="margin:0;flex:1">' + [['today', 'Today'], ['tomorrow', 'Tomorrow']].map(function (o) { return '<button type="button" data-wkday="' + o[0] + '" aria-pressed="' + (wkDay === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div></div>';
     if (wkDay !== 'today' && !wkOther) h += '<p class="empty">Loading…</p>';
     else h += (w.blocks.length ? '' : '<p class="small muted center" style="margin:0 0 8px">Nothing planned yet. Type above, tap an empty time, or ' + (wkDay === 'today' ? 'copy your last plan.' : 'plan tomorrow tonight.') + '</p>') + wkTimeline(w);
     h += '<p class="tiny muted" style="margin:8px 0 0">' + (wide() ? 'Drag a block to move it, drag its bottom edge to change its length, click it for more. Click an empty time to add one there.' : 'Tap a block to change it. Tap an empty time to add one there.') + '</p></section>';

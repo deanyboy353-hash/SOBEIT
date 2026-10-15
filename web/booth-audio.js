@@ -219,13 +219,20 @@
     if (this.playing) this.startAt(this.c.currentTime + 0.005, pos); else this.pos = pos;
   };
   D.snap = function (pos) { if (!this.track) return pos; var b = 60 / this.track.bpm, k = Math.round((pos - this.track.first) / b); return this.track.first + k * b; };
-  /** CDJ-style CUE: paused -> set cue here (snapped to the beat); playing -> back to cue and stop. Held while paused -> preview. */
-  D.cueDown = function () {
-    if (!this.track) return;
-    if (this.playing) { this.stop(); this.pos = this.cuePos; return 'back'; }
-    if (Math.abs(this.pos - this.cuePos) > 0.02) { this.cuePos = this.snap(this.pos); this.pos = this.cuePos; return 'set'; }
-    this.previewing = true; this.play(); return 'preview';
+  /** CUE (see booth-cue.js): playing -> back to cue and stop; paused -> back to cue (or set it right after a scrub); held at the cue -> preview; SHIFT -> the very start. */
+  D.cueDown = function (shift) {
+    var a = BoothCue.cueAction({ loaded: !!this.track, playing: this.playing, pos: this.pos, cuePos: this.cuePos, shift: !!shift, scrubbedAt: this.scrubT, now: this.c.currentTime });
+    if (a === 'none') return;
+    if (a === 'start') { this.toStart(); return a; }
+    if (a === 'back') { this.stop(); this.pos = this.cuePos; return a; }
+    if (a === 'set') { this.cuePos = this.snap(this.pos); this.pos = this.cuePos; this.scrubT = null; return a; }
+    if (a === 'return') { this.loop = null; this.pos = this.cuePos; return a; }
+    this.previewing = true; this.play(); return a;
   };
+  /** Back to the very start of the track (0:00). Keeps playing if it was; a loop is left. */
+  D.toStart = function () { if (!this.track) return; this.loop = null; this.seek(0); this.ended = false; };
+  /** Back to the cue point without stopping. */
+  D.toCue = function () { if (!this.track) return; this.loop = null; this.seek(this.cuePos); };
   D.cueUp = function () { if (this.previewing) { this.previewing = false; this.stop(); this.pos = this.cuePos; } };
   // ---------- loops ----------
   D.beatSec = function () { return 60 / this.track.bpm; };
@@ -317,7 +324,7 @@
   /** Jog: turning the wheel while playing bends the tempo briefly (a nudge); while stopped it moves the playhead. 720 ticks a turn. */
   D.jog = function (ticks) {
     if (!this.track) return;
-    if (!this.playing) { this.seek(this.pos + ticks / 720 * 1.8); return; }
+    if (!this.playing) { this.seek(this.pos + ticks / 720 * 1.8); this.scrubT = this.c.currentTime; return; }
     this.jogVel = Math.max(-40, Math.min(40, this.jogVel + ticks));
   };
   D.tick = function (t) {

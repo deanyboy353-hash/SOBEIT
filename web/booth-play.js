@@ -20,7 +20,7 @@
   }
   function drawProblem() { var b = el('libProblem'); if (b) b.innerHTML = problemHtml(); }
   var settings = null, padMode = { A: 'hotcue', B: 'hotcue' }, lastLoop = { A: '', B: '' }, listeners = [];
-  var LOOP_SIZES = [1 / 4, 1 / 2, 1, 2, 4, 8, 16, 32], JUMPS = [-1, 1, -2, 2, -4, 4, -8, 8];
+  var LOOP_SIZES = [1 / 4, 1 / 2, 1, 2, 4, 8, 16, 32];
   var PAD_NAMES = { hotcue: 'Hot cue', loop: 'Loop', slicer: 'Slicer', slicerloop: 'Slicer loop', sampler: 'Sampler', beatjump: 'Beatjump', toneplay: 'Toneplay', fx: 'FX' };
   var FX_PADS = [['echo', 0.5, 'Echo ½'], ['echo', 0.75, 'Echo ¾'], ['echo', 1, 'Echo 1'], ['echo', 2, 'Echo 2'], ['reverb', 0, 'Reverb']];
   var SAMPLES = ['Air horn', 'Siren', 'Riser', 'Laser', 'Clap', 'Kick', 'Crash', 'Sub drop'];
@@ -98,7 +98,8 @@
     if (pm) { if (padMode[id] !== pm[1]) setPadMode(id, pm[1]); pad(d, id, pm[1], !!pm[2] || shift[id], +pm[3] - 1, e.down); ui.dirty = true; return; }
     if (e.kind === 'button' && !e.down) { if (n === 'cue') d.cueUp(); return; }
     if (n === 'play') { if (!d.track) return S.toast('Load a track onto Deck ' + id + ' first (LOAD ' + id + ').'); if (d.playing) d.stop(); else d.play(); }
-    else if (n === 'cue') d.cueDown();
+    else if (n === 'cue') { var ca = d.cueDown(shift[id]); if (ca === 'start') hint('Deck ' + id + ': back to the start'); else if (ca === 'set') hint('Deck ' + id + ': cue point set here'); }
+    else if (n === 'shiftCue' || n === 'start') { if (!d.track) return S.toast('Load a track onto Deck ' + id + ' first.'); d.toStart(); hint('Deck ' + id + ': back to the start'); }
     else if (n === 'sync') { d.setSync(!d.sync); S.toast('Deck ' + id + ' SYNC ' + (d.sync ? 'on: it follows the other deck' : 'off: match it with the pitch fader and jog wheel')); }
     else if (n === 'pfl') d.set('pfl', d.vals.pfl ? 0 : 1);
     else if (n === 'load') loadTo(id).catch(function () {});
@@ -137,7 +138,7 @@
       return;
     }
     if (bank === 'slicer' || bank === 'slicerloop') return d.slice(k, down);
-    if (bank === 'beatjump') { if (down) d.beatJump(JUMPS[k] * (sh ? 4 : 1)); return; }
+    if (bank === 'beatjump') { if (!down) return; var j = BoothCue.padJump(k, sh); if (j === 'start') { d.toStart(); hint('Deck ' + id + ': back to the start'); } else if (j === 'cue') d.toCue(); else d.beatJump(j); return; }
     if (bank === 'sampler') { if (down) playSample(k); return; }
     if (bank === 'fx') {
       var f = FX_PADS[k]; if (!f) { if (down) S.toast('FX pads 1 to 5: Echo ½, ¾, 1, 2 beats and Reverb.'); return; }
@@ -233,7 +234,7 @@
     var d = E && E.decks[id], t = d && d.track;
     return '<section class="panel deckp deck' + id + '"><div class="row"><span class="dk">DECK ' + id + '</span><b class="grow ttl" id="t' + id + '">' + (t ? esc(t.name) : 'No track: press LOAD ' + id + ' or a Load ' + id + ' button below') + '</b></div>' +
       '<div class="dstats"><div><span class="big mono" id="bpm' + id + '">' + (t ? d.bpm().toFixed(2) : '--') + '</span> <span class="muted small">BPM</span></div><div class="mono" id="pitch' + id + '">±0.00%</div><div class="mono" id="key' + id + '">' + (t && t.camelot ? esc(t.camelot) + ' · ' + esc(t.key) : '') + '</div><div class="mono" id="time' + id + '">' + (t ? '−' + fmtTime(d.left()) : '') + '</div></div>' +
-      '<div class="dbtns"><button type="button" class="bbtn tbtn" data-b="' + id + '.play" id="play' + id + '">Play / pause</button><button type="button" class="bbtn tbtn" data-b="' + id + '.cue">Cue</button><button type="button" class="bbtn tbtn" data-b="' + id + '.sync" id="sync' + id + '">Sync</button></div>' +
+      '<div class="dbtns"><button type="button" class="bbtn tbtn" data-b="' + id + '.play" id="play' + id + '">Play / pause</button><button type="button" class="bbtn tbtn" data-b="' + id + '.cue" title="Paused: back to the cue point. SHIFT + CUE: back to the start.">Cue</button><button type="button" class="bbtn tbtn" data-b="' + id + '.start" title="Back to the start (SHIFT + CUE, or ' + esc(S.map.keys[id + '.start'] || '') + ')">⏮ Start</button><button type="button" class="bbtn tbtn" data-b="' + id + '.sync" id="sync' + id + '">Sync</button></div>' +
       '<label class="slider">Pitch fader <span class="muted tiny">(top slower, bottom faster)</span><input type="range" min="0" max="1" step="0.0005" data-r="' + id + '.pitch" value="' + (S.values[id + '.pitch'] === undefined ? 0.5 : S.values[id + '.pitch']) + '"></label>' +
       '<div class="pm row wrap" id="pm' + id + '">' + ['hotcue', 'loop', 'slicer', 'sampler', 'fx', 'beatjump'].map(function (b) { return '<button type="button" class="bbtn sm ghost' + (padMode[id] === b ? ' on' : '') + '" data-pm="' + id + '.' + b + '">' + PAD_NAMES[b] + '</button>'; }).join('') + '</div>' +
       '<div class="hot" id="pads' + id + '">' + [0, 1, 2, 3, 4, 5, 6, 7].map(function (k) { return '<button type="button" class="hc" data-hot="' + id + '.' + k + '"></button>'; }).join('') + '</div>' +
@@ -360,7 +361,7 @@
     if (m === 'hotcue') return { t: d.hot[k] !== null && d.hot[k] !== undefined ? 'Cue ' + (k + 1) : '+ ' + (k + 1), on: d.hot[k] !== null && d.hot[k] !== undefined, tip: 'Hot cue ' + (k + 1) + ': press to set or jump. SHIFT + pad (or right-click) deletes.' };
     if (m === 'loop') return { t: beatsText(LOOP_SIZES[k]).replace(' beats', '').replace(' beat', ''), on: !!d.loop && Math.abs(d.loopLen() - LOOP_SIZES[k]) < 1e-6, tip: 'Loop ' + beatsText(LOOP_SIZES[k]) + '. SHIFT + pad: loop roll (the track carries on underneath).' };
     if (m === 'slicer' || m === 'slicerloop') return { t: 'Slice ' + (k + 1), on: d.track && d.playing && d.sliceIndex() === k, tip: 'Plays slice ' + (k + 1) + ' of the 8 beats you\'re in, while held.' };
-    if (m === 'beatjump') return { t: (JUMPS[k] > 0 ? '+' : '−') + Math.abs(JUMPS[k]), on: false, tip: 'Jump ' + Math.abs(JUMPS[k]) + ' beat' + (Math.abs(JUMPS[k]) === 1 ? '' : 's') + ' ' + (JUMPS[k] > 0 ? 'forward' : 'back') + '. With SHIFT: 4× as far.' };
+    if (m === 'beatjump') { var bl = BoothCue.padJumpLabel(k, shift[id]), bs = BoothCue.padJumpLabel(k, true); return { t: bl.t, on: false, tip: bl.tip + '. With SHIFT: ' + bs.tip.charAt(0).toLowerCase() + bs.tip.slice(1) + '.' }; }
     if (m === 'sampler') return { t: SAMPLES[k], on: false, tip: 'Plays the ' + SAMPLES[k] + ' sample.' };
     if (m === 'fx') { var f = FX_PADS[k]; return f ? { t: f[2], on: !!(d.fx && d.fx.kind === f[0] && d.fx.beats === f[1]), tip: f[2] + ': press to turn on or off. SHIFT + pad: only while held.' } : { t: '–', on: false, tip: '' }; }
     return { t: '–', on: false, tip: '' };
@@ -391,7 +392,7 @@
       send(id + 'lo', c('loopOut').led, d.loop ? 0x7F : 0);
       var pc = c('pad.' + bank + '.1');
       for (var k = 0; k < 8; k++) {
-        var L = padLabel(id, k), col = bank === 'hotcue' ? (L.on ? mine : 0) : bank === 'loop' ? (L.on ? mine : C.dimBlue) : bank === 'slicer' || bank === 'slicerloop' ? (L.on ? C.white : C.dimCyan) : bank === 'beatjump' ? (JUMPS[k] > 0 ? C.dimGreen : C.dimRed) : bank === 'sampler' ? C.dimGreen : bank === 'fx' ? (k < 5 ? (L.on ? C.orange : C.dimRed) : 0) : 0;
+        var L = padLabel(id, k), col = bank === 'hotcue' ? (L.on ? mine : 0) : bank === 'loop' ? (L.on ? mine : C.dimBlue) : bank === 'slicer' || bank === 'slicerloop' ? (L.on ? C.white : C.dimCyan) : bank === 'beatjump' ? (typeof BoothCue.padJump(k) !== 'number' ? C.white : BoothCue.padJump(k) > 0 ? C.dimGreen : C.dimRed) : bank === 'sampler' ? C.dimGreen : bank === 'fx' ? (k < 5 ? (L.on ? C.orange : C.dimRed) : 0) : 0;
         if (pc) send(id + 'pad' + bank + k, c('pad.' + bank + '.' + (k + 1)).led, col);
       }
       // Beatmatch Guide: only for a deck you're matching by hand (SYNC off), against the other playing deck.

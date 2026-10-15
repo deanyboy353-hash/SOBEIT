@@ -88,13 +88,17 @@
     if (screen === 'test') { drawLearn(); drawChecklist(); hit({ id: done }); }
   }
 
+  // Results dock over the bottom of the screen (they never scroll the page). Keep playing closes the panel; the decks carry on.
+  document.addEventListener('click', function (ev) { var k = ev.target.closest('[data-keep]'); if (!k) return; var r = el('resultSlot'); if (r) r.innerHTML = ''; });
+
   // ---------- keyboard fallback ----------
   var keyFor = {};
   Object.keys(MAP.keys).forEach(function (a) { keyFor[MAP.keys[a].toLowerCase()] = a; });
   document.addEventListener('keydown', function (ev) {
     if (ev.target.closest && ev.target.closest('input, textarea, select')) return;
     if (ev.key === 'Escape' && learning) { learning = null; drawLearn(); return; }
-    var action = keyFor[ev.key.toLowerCase()]; if (!action) return;
+    var action = keyFor[ev.key.toLowerCase()] || (ev.shiftKey && ev.code === 'Comma' ? keyFor[','] : ''); if (!action) return;
+    if (ev.shiftKey && /\.cue$/.test(action)) action = action.replace('.cue', '.start');   // SHIFT + the CUE key: back to the start, like the hardware
     ev.preventDefault();
     var id = action.replace(/[+-]$/, ''), dir = /\+$/.test(action) ? 1 : /-$/.test(action) ? -1 : 0, c = control(id) || {};
     if (screen !== 'test' && window.BoothPlay) { if (!ev.repeat || dir) BoothPlay.key(id, dir, values[id], ev.timeStamp); return; }
@@ -172,7 +176,8 @@
     s += '<g class="c" data-id="' + d + '.jogTop" data-also="' + d + '.jogTouch" transform="translate(' + jx + ' 245)"><circle class="shape" r="96"/><line class="ind spin" x1="0" y1="-50" x2="0" y2="-92"/><text y="5" text-anchor="middle">JOG</text></g>';
     s += tri(d + '.phaseLeft', jx - 26, 102, 'left') + '<circle class="glight" data-glight="' + d + '.phaseOk" cx="' + jx + '" cy="102" r="5"/>' + tri(d + '.phaseRight', jx + 26, 102, 'right');
     // transport
-    s += button(d + '.shift', tx, 420, 64, 30, 'SHIFT') + button(d + '.sync', tx, 462, 64, 30, 'SYNC') + button(d + '.cue', tx, 504, 64, 30, 'CUE') + button(d + '.play', tx, 546, 64, 30, 'PLAY ▶');
+    s += button(d + '.shift', tx, 420, 64, 30, 'SHIFT') + button(d + '.sync', tx, 462, 64, 30, 'SYNC') + button(d + '.cue', tx, 504, 64, 30, 'CUE').replace('data-id="' + d + '.cue"', 'data-id="' + d + '.cue" data-also="' + d + '.shiftCue"') + button(d + '.play', tx, 546, 64, 30, 'PLAY ▶');
+    s += '<text x="' + tx + '" y="580" text-anchor="middle">SHIFT+CUE: START</text>';
     // pad modes and pads
     for (var i = 0; i < 4; i++) s += button(d + '.mode' + (i + 1), padX + 45 + i * 90, 418, 78, 22, MAP.padModes[i].toUpperCase(), 11);
     for (var p = 0; p < 8; p++) s += '<g class="c pad" data-id="' + d + '.pad.hotcue.' + (p + 1) + '" data-pad="' + d + '.' + (p + 1) + '" transform="translate(' + (padX + 45 + (p % 4) * 90) + ' ' + (p < 4 ? 470 : 540) + ')"><rect class="shape" x="-38" y="-28" width="76" height="56" rx="8"/><text y="4" text-anchor="middle">PAD ' + (p + 1) + '</text></g>';
@@ -206,7 +211,7 @@
   function drawTest() {
     el('screen').innerHTML = testHtml() + (window.BoothAcademy ? BoothAcademy.padCheckHtml() : '');
     drawTestAlert(); drawChecklist(); drawLog(); drawLeds(); drawLearn();
-    el('keys').innerHTML = Object.keys(MAP.keys).map(function (a) { var c = control(a.replace(/[+-]$/, '').replace('nudge', 'jogEdge')); return '<div><kbd>' + esc(MAP.keys[a]) + '</kbd> ' + esc((c ? c.label : a) + (/\+$/.test(a) ? (/nudge/.test(a) ? ' nudge forward' : ' up') : /-$/.test(a) ? (/nudge/.test(a) ? ' nudge back' : ' down') : '')) + '</div>'; }).join('');
+    el('keys').innerHTML = Object.keys(MAP.keys).map(function (a) { var c = control(a.replace(/[+-]$/, '').replace('nudge', 'jogEdge')); return '<div><kbd>' + esc(MAP.keys[a]) + '</kbd> ' + esc((c ? c.label : /\.start$/.test(a) ? 'Deck ' + a[0] + ' back to the start (or SHIFT + the CUE key)' : a) + (/\+$/.test(a) ? (/nudge/.test(a) ? ' nudge forward' : ' up') : /-$/.test(a) ? (/nudge/.test(a) ? ' nudge back' : ' down') : '')) + '</div>'; }).join('');
     MAP.controls.forEach(function (c) { if (values[c.id] !== undefined || spins[c.id]) paint(c.id); });
     paintChecks();
   }

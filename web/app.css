@@ -1206,3 +1206,7 @@ svg.figure.bounce { animation: figBounce 1.1s ease-in-out infinite; transform-or
 .petline { margin-top: 10px; align-items: flex-start; }
 .rsummary { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; font: inherit; color: var(--ink); padding: 14px 16px; cursor: pointer; }
 .rsummary .num { color: var(--muted); font-weight: 650; }
+/* the cash hero follows the theme's tokens (the old money-green gradient was white-on-cream in light looks) */
+.card.spot.bank { color: var(--ink); background: var(--surface); }
+.card.spot.bank .eyebrow { color: var(--muted); }
+.card.spot.bank .num.big { font-family: var(--font-display); color: var(--good); }
