@@ -167,6 +167,13 @@ var LATE_LINES = [
   'It\'s getting late and your streak is getting nervous. {x} XP.'
 ];
 
+/** Inside someone's quiet hours (from setup)? [start, end] in minutes; may wrap midnight. */
+function quietFor_(who, m) {
+  if (!setupOn_() && !prop_('SETUP_' + who)) return false;
+  var q = profile_(who).quiet; if (!q || q.length !== 2 || q[0] === q[1]) return false;
+  return q[0] < q[1] ? m >= q[0] && m < q[1] : m >= q[0] || m < q[1];
+}
+
 function heartbeat_() {
   if (!extrasOn_('Reminders') && !extrasOn_('Double XP')) return;
   var ymd = todayYmd_(), m = minutesNow_();
@@ -176,10 +183,16 @@ function heartbeat_() {
   var before = JSON.stringify(sent);
   var nk = nicks_(), goal = dailyGoal_(), r = seededRandom('lines' + ymd);
   function once(who, id, title, body, tab) {
-    if (sent[who].indexOf(id) !== -1) return;
+    if (sent[who].indexOf(id) !== -1 || quietFor_(who, m)) return;
     sent[who].push(id);
     push_(who, title, body, tab);
   }
+  if (setupOn_()) PEOPLE.forEach(function (who) {
+    // the day's list, once, half an hour after you usually wake
+    var pf = profile_(who), plan = cpToday_()[who];
+    if (m >= (pf.wake || 450) + 30 && plan.minimum + plan.bonus.length) once(who, 'list', plan.minimum ? 'Today: ' + plan.minimum + ' to win the day' : 'Today: nothing you have to do',
+      (plan.must.length ? plan.must.join(', ') : 'Just the bonus jobs, if you feel like it') + (plan.bonus.length ? '. Bonus: ' + plan.bonus.slice(0, 3).join(', ') + (plan.bonus.length > 3 ? '…' : '') : '') + '.', 'chores');
+  });
   var w = boostWindow_(ymd);
   if (extrasOn_('Double XP') && m >= w.start && m < w.end - 5) {
     PEOPLE.forEach(function (who) { once(who, 'boost', 'Double XP for the next half hour', 'Everything you do until ' + w.to + ' counts twice.', 'home'); });
@@ -188,16 +201,17 @@ function heartbeat_() {
     var g = gamesDay_(ymd);
     PEOPLE.forEach(function (who) {
       var other = who === 'me' ? 'partner' : 'me';
-      var xp = xpOn_(who, ymd), st = streakNow_(who, ymd, goal);
+      var xp = xpOn_(who, ymd), st = streakNow_(who, ymd, goal), behind = !st.todayDone, gentle = setupOn_() && profile_(who).reminder !== 'direct';
       var oxp = xpOn_(other, ymd), cname = charName_(prefs_(who).char) || 'Tommy';
       var fill = function (s) { return s.replace('{n}', st.count).replace('{x}', Math.max(0, goal - xp)).replace('{other}', nk[other]).replace('{ox}', oxp).replace('{mx}', xp).replace('{char}', cname); };
-      var pushy = nagLevel_(who) === 'aggressive';
-      if (!pushy && m >= 19 * 60 + 30 && xp < goal) once(who, 'streak', st.count ? 'Keep your streak' : 'Today still counts', fill(st.count ? STREAK_LINES[Math.floor(r() * STREAK_LINES.length)] : 'Two small jobs and today counts.'), 'chores');
-      if (!pushy && m >= 21 * 60 + 30 && xp < goal && st.count) once(who, 'late', 'Streak alert', fill(LATE_LINES[Math.floor(r() * LATE_LINES.length)]), 'chores');
+      var pushy = nagLevel_(who) === 'aggressive' && !gentle;
+      var small = setupOn_() ? (function () { var pl = cpToday_()[who]; return 'Your ' + (pl.minimum === 1 ? 'one small job' : pl.minimum + ' small jobs') + ' and today counts' + (pl.must.length ? ': ' + pl.must.join(', ') : '') + '.'; })() : 'Two small jobs and today counts.';
+      if (!pushy && m >= 19 * 60 + 30 && behind) once(who, 'streak', st.count ? 'Keep your streak' : 'Today still counts', gentle ? small : fill(st.count ? STREAK_LINES[Math.floor(r() * STREAK_LINES.length)] : small), 'chores');
+      if (!pushy && !gentle && m >= 21 * 60 + 30 && behind && st.count) once(who, 'late', 'Streak alert', fill(LATE_LINES[Math.floor(r() * LATE_LINES.length)]), 'chores');
       // Duolingo level: from 6pm, every half hour until today's goal is hit.
-      if (pushy && m >= 18 * 60 && xp < goal) {
+      if (pushy && m >= 18 * 60 && behind) {
         var slot = Math.floor(m / 30), pool = PUSHY_LINES.filter(function (l) { return (st.count || l.indexOf('{n}') === -1) && (oxp > xp || l.indexOf('{ox}') === -1); });
-        if (sent[who].indexOf('streak-' + slot) === -1) {
+        if (sent[who].indexOf('streak-' + slot) === -1 && !quietFor_(who, m)) {
           sent[who].push('streak-' + slot);
           push_(who, st.count ? 'Your streak needs you' : 'Today still counts', fill(pool[slot % pool.length]), 'chores', false, { persist: true, tag: 'streak' });
         }

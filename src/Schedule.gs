@@ -168,7 +168,7 @@ function saveQuest(key, f) {
     var nextDue = f.rhythm === 'daily' ? today : (parseEvery(every).kind === 'none' ? '' : nextOccurrence(every, addDays_(today, -1), ''));
     var fields = {
       'Minutes': String(Math.max(1, Math.min(180, Number(f.minutes) || 10))),
-      'Every': every, 'Who': ({ me: 'Me', partner: 'Partner' })[f.who] || 'Anyone',
+      'Every': every, 'Who': ({ me: 'Me', partner: 'Partner', together: 'Together', rotate: 'Rotate' })[f.who] || 'Anyone',
       'Energy': ({ low: 'Low', high: 'High' })[f.energy] || 'Medium', 'Next due': nextDue
     };
     var head = vals_('chores')[0];

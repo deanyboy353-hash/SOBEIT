@@ -19,10 +19,11 @@ const music = web('music.js');
 const portraits = web('portraits.js');
 const djset = web('djset.js');
 const avatar3d = web('avatar3d.js');
+const setupJs = web('setup.js');
 
 // ---- Google page ----
 // (No word list here to keep the page light: the server checks guesses.)
-for (const [name, src] of [['app.css', css], ['music.js', music], ['portraits.js', portraits], ['djset.js', djset], ['avatar3d.js', avatar3d], ['app.js', app]]) {
+for (const [name, src] of [['app.css', css], ['music.js', music], ['portraits.js', portraits], ['djset.js', djset], ['avatar3d.js', avatar3d], ['setup.js', setupJs], ['app.js', app]]) {
   if (src.includes('<?') || src.includes('</script') || src.includes('</style')) throw new Error(name + ' contains text that would break the Google page template');
 }
 const gas = `<!DOCTYPE html>
@@ -53,6 +54,9 @@ ${djset}
 </script>
 <script>
 ${avatar3d}
+</script>
+<script>
+${setupJs}
 </script>
 <script>
 ${app}

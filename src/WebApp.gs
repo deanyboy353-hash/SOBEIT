@@ -19,7 +19,7 @@ function rpcTable_() {
     brainDump: brainDump, saveBrainDump: saveBrainDump, addQuest: addQuest, addShopping: addShopping, toggleShopping: toggleShopping,
     askToJoin: askToJoin, planChore: planChore, startChore: startChore, stepDone: stepDone, extendChore: extendChore,
     finishChore: finishChore, parkThing: parkThing, clearLater: clearLater, redeemReward: redeemReward, highFive: highFive,
-    routineStep: routineStep, saveRoutine: saveRoutine, deleteRoutine: deleteRoutine, addWater: addWater, setTheme: setTheme, todayState: todayState, gymDone: gymDone,
+    routineStep: routineStep, saveRoutine: saveRoutine, setupState: setupState, saveSetup: saveSetup, previewChores: previewChores, buildChores: buildChores, saveChore: saveChore, choreAction: choreAction, deleteRoutine: deleteRoutine, addWater: addWater, setTheme: setTheme, todayState: todayState, gymDone: gymDone,
     logWeightNow: logWeightNow, foodState: foodState, logPreset: logPreset, quickAdd: quickAdd, undoLast: undoLast,
     saveClaudeKey: saveClaudeKey, trainState: trainState, setTrainingMax: setTrainingMax, saveWorkout: saveWorkout,
     respreadSchedule: respreadSchedule, saveQuest: saveQuest, deleteQuest: deleteQuest,
@@ -119,6 +119,8 @@ function appState_(who) {
   s.empire = empireState_(who);
   s.catalog = empireCatalog_();
   s.plan = planState_();
+  var pf = profile_(who), hh = health_(who);
+  s.setup = { done: !!pf.done, built: house_().built, health: !!hh.on, partnerDone: !!profile_(who === 'me' ? 'partner' : 'me').done, motivation: pf.motivation };
   if (who === 'me') {
     s.today = todayState_();
     s.food = foodState_();

@@ -79,7 +79,7 @@ function updateStreaks_(todayYmd) {
     var d = st.through;
     while (d < yesterday) {
       d = addDays_(d, 1);
-      var met = id === 'team' ? xpOn_('me', d) >= goal && xpOn_('partner', d) >= goal : xpOn_(id, d) >= goal;
+      var met = id === 'team' ? dayWon_('me', d, goal) && dayWon_('partner', d, goal) : dayWon_(id, d, goal);
       if (met) {
         st.count++;
         if (st.count % FREEZE_EVERY === 0) st.freezes = Math.min(MAX_FREEZES, st.freezes + 1);
@@ -96,10 +96,17 @@ function updateStreaks_(todayYmd) {
   });
 }
 
+/** A day counts for the streak: your chore minimum once setup has made your plan (any jobs count), otherwise the XP goal. */
+function dayWon_(who, ymd, goal) {
+  var m = minimumMet_(who, ymd);
+  if (m === null && setupOn_() && ymd === todayYmd_()) { cpToday_(); m = minimumMet_(who, ymd); }
+  return m === null ? xpOn_(who, ymd) >= goal : m;
+}
+
 /** Streak as shown: settled days plus today once today's goal is hit. */
 function streakNow_(id, todayYmd, goal) {
   var st = streakState_(id);
-  var today = id === 'team' ? xpOn_('me', todayYmd) >= goal && xpOn_('partner', todayYmd) >= goal : xpOn_(id, todayYmd) >= goal;
+  var today = id === 'team' ? dayWon_('me', todayYmd, goal) && dayWon_('partner', todayYmd, goal) : dayWon_(id, todayYmd, goal);
   return { count: st.count + (today ? 1 : 0), freezes: st.freezes, best: Math.max(st.best, st.count + (today ? 1 : 0)), todayDone: today, frozeYesterday: st.frozeOn === addDays_(todayYmd, -1) };
 }
 

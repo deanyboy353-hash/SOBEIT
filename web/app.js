@@ -374,7 +374,7 @@
       (now() - s.startedAt < 2 * 60000 ? '<button class="btn ghost sm" type="button" id="ccancel">Wrong job</button>' : '') + '</div>' +
       '<p class="small muted" style="margin:8px 0 0">Noticed something else that needs doing? Park it rather than switching.</p></section>';
   }
-  function planView() {
+  function readyView() {
     return '<section class="card"><div class="eyebrow">Ready?</div><h2 style="margin:6px 0">' + esc(plan.name) + '</h2>' +
       '<div class="row" style="justify-content:center;gap:16px;margin:12px 0"><button class="iconbtn" type="button" data-mins="-5" aria-label="Five minutes less">−</button><span class="num" style="font-size:30px;font-weight:700;min-width:96px;text-align:center">' + plan.minutes + ' min</span><button class="iconbtn" type="button" data-mins="5" aria-label="Five minutes more">' + icon('plus', 's') + '</button></div>' +
       (plan.steps && plan.steps.length ? '<ol class="small" style="margin:0 0 14px;padding-left:20px">' + plan.steps.map(function (st) { return '<li style="margin:3px 0">' + esc(st) + '</li>'; }).join('') + '</ol>' : '') +
@@ -390,7 +390,7 @@
     var s = mySession(), q = S.quests, n = names(), h = '<div class="top"><div><h1>Chores</h1><div class="sub">One job at a time.</div></div>' + meButton() + '</div>';
     h += '<section class="card"><div class="head"><h3>Together</h3><button class="btn ghost sm" type="button" id="askJoin">' + icon('send', 's') + 'Ask ' + esc(n.other) + ' to join</button></div><div class="duo" id="duo">' + duo() + '</div></section>';
     if (s) { el('tab-chores').innerHTML = h + focusView(s); return; }
-    if (plan) { el('tab-chores').innerHTML = h + planView(); return; }
+    if (plan) { el('tab-chores').innerHTML = h + readyView(); return; }
     if (S.chores.invite) h += '<div class="note">' + esc(n.other) + ' wants company. Start a job and do it together.</div>';
     h += '<div class="seg" role="tablist">' + [['today', 'Today'], ['schedule', 'Schedule'], ['plan', 'Plan']].map(function (o) { return '<button type="button" data-cview="' + o[0] + '" aria-pressed="' + (choresView === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
     if (choresView === 'schedule') { el('tab-chores').innerHTML = h + scheduleView(); return; }

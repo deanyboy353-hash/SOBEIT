@@ -29,7 +29,8 @@ function dayContext_(who) {
   var lines = ['Date: ' + todayYmd_() + ' (' + DAY_NAMES[dayOfWeek_(todayYmd_())] + ')',
     'Streak: ' + g.streak.count + ' days. XP today ' + g.xpToday + ' of ' + g.goal + '.',
     'Today\'s work plan: ' + (blockRows_(who, todayYmd_()).map(function (b) { return '[' + b.id + '] ' + clockMin_(b.start) + '-' + clockMin_(b.start + b.mins) + ' ' + b.task + ' (' + b.status + ')'; }).join('; ') || 'empty'),
-    'Today\'s chores: ' + (q.board.map(function (x) { return x.name + (x.doneToday ? ' (done)' : '') + ' ~' + x.minutes + 'min'; }).join('; ') || 'none')];
+    'Today\'s chores: ' + (q.board.map(function (x) { return x.name + (x.must ? ' [must-do]' : q.planned ? ' [bonus]' : '') + (x.doneToday ? ' (done)' : '') + ' ~' + x.minutes + 'min'; }).join('; ') || 'none') +
+      (q.planned ? '. Their minimum to win the day: ' + q.minimum + ' job' + (q.minimum === 1 ? '' : 's') + ' (done so far: ' + q.doneCount + '). Bonus jobs are optional; never guilt them about those.' : '')];
   try {
     var hs = healthState_(who);
     if (hs.sleep) lines.push('Last night: ' + hm_(hs.sleep.asleep) + ' asleep (' + hs.sleep.bedtime + '-' + hs.sleep.wake + '), sleep score ' + hs.sleep.score + (hs.readiness ? ', readiness ' + hs.readiness.score + ' (' + hs.readiness.label + ')' : '') + '.');

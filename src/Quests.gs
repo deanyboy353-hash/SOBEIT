@@ -31,6 +31,7 @@ function saveBoard_(b) {
 
 /** Daily job: build the board, send your quests to Google Tasks, email your partner theirs. */
 function planQuests_(ymd, cfg) {
+  if (setupOn_()) return planChoresDay_(ymd);
   var props = PROPS;
   props.deleteProperty('BOARD');
   var b = board_();
@@ -69,6 +70,7 @@ function completeQuest_(who, name, opts) {
   var rule = parseEvery(q.every);
   if (rule.kind !== 'none') upd['Next due'] = nextAfterDone(rule, today, q.nextDue);
   updateRow_('chores', q.row, upd);
+  cpAfterDone_(name, today, opts.together ? 'together' : who);
   if (opts.together) {
     // Done together: you both get double XP.
     var other = who === 'me' ? 'partner' : 'me', both = q.xp * TOGETHER_MULTIPLIER;
@@ -87,6 +89,7 @@ function completeQuest_(who, name, opts) {
 
 /** The board plus everything else, shaped for the Quests tab. */
 function questsState_(who) {
+  if (setupOn_()) return planQuestsState_(who);
   var today = todayYmd_();
   var b = board_();
   var quests = readChores_();
@@ -310,4 +313,39 @@ function askToJoin(key) {
   var sent = push_(other, names_()[who] + ' wants company for chores', 'Pick a job and do it together.', 'quests', true) > 0;
   addFeed_(who, 'Wants company for chores', 'invite');
   return { sent: sent, state: appState_(who) };
+}
+
+// ---------- once setup has built the chore list: each person's own day ----------
+
+/** Today for one person: their minimum (must-do) jobs, bonus jobs, and everything else for covering or doing early. */
+function planQuestsState_(who) {
+  var today = todayYmd_(), plan = cpToday_(), mine = plan[who], b = board_(), quests = readChores_().filter(function (q) { return !q.archived; });
+  var byName = {}; quests.forEach(function (q) { byName[q.name] = q; });
+  var view = function (q, tag) {
+    return {
+      name: q.name, minutes: q.minutes, steps: q.steps, usual: q.usual, every: q.every, who: q.who, energy: q.energy, xp: q.xp,
+      doneToday: q.lastDone === today, doneBy: q.lastDone === today ? q.lastBy : '', due: q.due, overdue: q.overdue, next: q.next,
+      claimedBy: b.claims[q.name] || '', must: tag === 'must', early: mine.early.indexOf(q.name) !== -1, area: q.area, tod: q.tod, label: q.label
+    };
+  };
+  var listed = mine.must.concat(mine.bonus), done = choresDoneOn_(who, today);
+  var other = plan[who === 'me' ? 'partner' : 'me'];
+  return {
+    planned: true, minimum: mine.minimum, doneCount: done, win: cpIsWin(done, mine.minimum),
+    board: mine.must.map(function (n) { return byName[n] && view(byName[n], 'must'); }).concat(mine.bonus.map(function (n) { return byName[n] && view(byName[n], 'bonus'); })).filter(Boolean),
+    more: quests.filter(function (q) { return listed.indexOf(q.name) === -1 && (q.due || other.must.indexOf(q.name) !== -1 || other.bonus.indexOf(q.name) !== -1) && q.lastDone !== today; }).map(function (q) { return view(q); }),
+    doneExtra: quests.filter(function (q) { return q.lastDone === today && listed.indexOf(q.name) === -1; }).map(function (q) { return view(q); }),
+    upcoming: quests.filter(function (q) { return !q.due && q.next && q.next > today && q.next <= addDays_(today, 7); }).sort(function (a, c) { return a.next < c.next ? -1 : 1; }).map(function (q) { return view(q); }),
+    all: readChores_().slice().sort(function (a, c) { return a.order - c.order; }).map(function (q) { var v = view(q); v.archived = q.archived; v.order = q.order; v.notes = q.notes; v.nowDays = q.nowDays; v.goalDays = q.goalDays; v.key = q.key; return v; })
+  };
+}
+
+/** Daily job (setup on): roll late jobs on, plan the day, Dean's jobs into Google Tasks. The morning list arrives by notification at wake time (heartbeat). */
+function planChoresDay_(ymd) {
+  var msg = cpDaily_(ymd), plan = cpToday_(), byName = {};
+  readChores_().forEach(function (q) { byName[q.name] = q; });
+  plan.me.must.concat(plan.me.bonus).forEach(function (name) {
+    var q = byName[name]; if (q) createTrackedTask_('quest', ymd, name, (q.minutes ? '~' + q.minutes + ' min · ' : '') + q.xp + ' XP. Tick here or in the app.', name);
+  });
+  return msg;
 }

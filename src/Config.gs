@@ -258,7 +258,7 @@ function seedChores_() {
 
 // Columns added to the Chores tab. Every: daily, 3 days, weekly, 2 weeks,
 // monthly, monthly 15, yearly, or weekdays like "Wed". Who: Anyone / Me / Partner.
-var QUEST_COLUMNS = ['Every', 'Who', 'Energy', 'XP', 'Last done', 'Last done by', 'Next due'];
+var QUEST_COLUMNS = ['Every', 'Who', 'Energy', 'XP', 'Last done', 'Last done by', 'Next due', 'Area', 'Time of day', 'Notes', 'Archived', 'Order', 'Now (days)', 'Goal (days)', 'Ramp from', 'Key', 'After'];
 
 // [Job, Minutes, Steps, Every, Who, Energy]
 var DEFAULT_QUESTS = [

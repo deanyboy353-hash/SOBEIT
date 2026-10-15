@@ -43,6 +43,8 @@ function saveSession_(p, s) {
 }
 
 /** Chores tab rows (the quest list), with due dates and how long each one has actually taken lately. */
+function ymdOf_(v) { if (v instanceof Date) return Utilities.formatDate(v, TZ, 'yyyy-MM-dd'); v = String(v || ''); return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : ''; }
+
 function readChores_() {
   if (choresCache_) return choresCache_;
   var rows = vals_('chores');
@@ -67,6 +69,7 @@ function readChores_() {
     if (nextDue instanceof Date) nextDue = Utilities.formatDate(nextDue, TZ, 'yyyy-MM-dd');
     nextDue = /^\d{4}-\d{2}-\d{2}$/.test(String(nextDue || '')) ? String(nextDue) : '';
     var due = questDue(every, String(last || ''), today, nextDue);
+    if (/^(yes|true|1)$/i.test(String(col(rows[i], 'Archived', '') || ''))) due = { due: false, overdue: 0, next: '', score: 0 };   // archived: kept, never due
     out.push({
       name: name,
       row: i + 1,
@@ -80,6 +83,10 @@ function readChores_() {
       lastDone: String(last || ''),
       lastBy: String(col(rows[i], 'Last done by', '') || ''),
       nextDue: nextDue, rhythm: rhythmOf(every), label: rhythmLabel(every),
+      area: String(col(rows[i], 'Area', '') || ''), tod: String(col(rows[i], 'Time of day', '') || 'any').toLowerCase() || 'any', notes: String(col(rows[i], 'Notes', '') || ''),
+      archived: /^(yes|true|1)$/i.test(String(col(rows[i], 'Archived', '') || '')), order: Number(col(rows[i], 'Order', '')) || i,
+      nowDays: Number(col(rows[i], 'Now (days)', '')) || 0, goalDays: Number(col(rows[i], 'Goal (days)', '')) || 0, rampFrom: ymdOf_(col(rows[i], 'Ramp from', '')),
+      key: String(col(rows[i], 'Key', '') || ''), after: String(col(rows[i], 'After', '') || ''),
       due: due.due, overdue: due.overdue, next: due.next, score: due.score
     });
   }
