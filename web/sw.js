@@ -16,6 +16,19 @@ self.addEventListener('activate', function (e) {
 // When a file really changed, open pages are told so they can offer a reload. Data calls go straight to the network.
 self.addEventListener('fetch', function (e) {
   var url = new URL(e.request.url);
+  // Shared from another app (a photo or some text): keep it, then open the Food log with it
+  if (e.request.method === 'POST' && url.origin === location.origin && /\/share$/.test(url.pathname)) {
+    e.respondWith(e.request.formData().then(function (fd) {
+      var photo = fd.get('photo'), text = [fd.get('title'), fd.get('text'), fd.get('url')].filter(Boolean).join(' ').trim();
+      return caches.open('nudge-share').then(function (c) {
+        var jobs = [c.put('share-text', new Response(text || ''))];
+        if (photo && photo.size) jobs.push(c.put('share-photo', new Response(photo, { headers: { 'Content-Type': photo.type || 'image/jpeg' } })));
+        else jobs.push(c.delete('share-photo'));
+        return Promise.all(jobs);
+      }).then(function () { return Response.redirect('./#food:share', 303); });
+    }).catch(function () { return Response.redirect('./#food', 303); }));
+    return;
+  }
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;
   e.respondWith(caches.open(CACHE).then(function (c) {
     return c.match(e.request, { ignoreSearch: true }).then(function (hit) {
