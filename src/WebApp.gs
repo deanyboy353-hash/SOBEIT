@@ -53,8 +53,9 @@ function doPost(e) {
     var hwho;
     try { hwho = who_(params.key); } catch (x) { return json_({ ok: false, error: 'bad key' }); }
     try {
-      return json_({ ok: true, source: 'health', result: withLock_(function () { return ingestHealth_(raw, hwho); }) });
+      return json_({ ok: true, source: 'health', result: withLock_(function () { var r = ingestHealth_(raw, hwho); healthContact_(hwho, r.test ? 'test' : r.days ? 'data' : 'empty', r.days || 0); return r; }) });
     } catch (err) {
+      try { healthContact_(hwho, 'error', 0, String(err)); } catch (x) { /* ignore */ }
       log_('ERROR', 'Health sync: ' + err);
       return json_({ ok: false, error: String(err) });
     }
@@ -139,8 +140,10 @@ var STATE_TTL = 300, STATE_PART = 90000;
 function appState(key) {
   var who = who_(key);
   var cache = stateCache_(), hit = cache && getCachedState_(cache, who);
-  if (hit) { hit.now = new Date().getTime(); return hit; }
+  var stamp = todayYmd_() + '|' + dayPart(minutesNow_());          // never serve yesterday's (or this morning's) screen after midnight / the next part of the day
+  if (hit && hit.cacheStamp === stamp) { hit.now = new Date().getTime(); return hit; }
   var state = withLock_(function () { if (!prop_('TRANSPORT_V1')) { try { ensureTransport_(); } catch (e) { log_('WARN', 'Transport setup: ' + e); } } if (!prop_('PRESETS_V1')) { try { ensurePresets_(); } catch (e) { log_('WARN', 'Presets: ' + e); } } if (!prop_('TRAIN_V2')) { try { ensureRotation_(); } catch (e) { log_('WARN', 'Training rotation: ' + e); } } return appState_(who); });
+  state.cacheStamp = stamp;
   if (cache) putCachedState_(cache, who, state);
   return state;
 }

@@ -234,6 +234,22 @@ function hm_(min) {
 // ---------- for the app ----------
 
 /** One day in full detail, plus two weeks of trends. */
+/** Every time HC Webhook gets in touch, even with nothing: so the app can say what's actually happening. */
+function healthContact_(who, kind, days, error) {
+  setProp_('HEALTH_CONTACT_' + who, JSON.stringify({ t: new Date().getTime(), kind: kind, days: days || 0, error: error ? String(error).slice(0, 200) : '' }));
+}
+
+/** Plain-English status for the Health screen: has data arrived for this day, and if not, why not and what to do. */
+function healthStatus(day, hasData, sync, contact, nowMs) {
+  if (hasData) return { ok: true, text: '', fix: '' };
+  var ago = function (t) { return Math.round((nowMs - t) / 60000); };
+  if (!contact && !sync) return { ok: false, text: 'No data from your watch yet.', fix: 'HC Webhook hasn\'t reached the app. In HC Webhook, add the webhook address below (JSON format) and tap Sync now.' };
+  if (contact && contact.kind === 'error') return { ok: false, text: 'HC Webhook reached the app but the data couldn\'t be read.', fix: 'In HC Webhook, set the format to JSON (not gRPC) and tap Sync now.' };
+  if (contact && contact.kind === 'test' && (!sync || contact.t > sync)) return { ok: false, text: 'Only HC Webhook\'s test message has arrived so far.', fix: 'Tap Sync now in HC Webhook (the Test button sends made-up data, which is ignored).' };
+  if (contact && contact.kind === 'empty' && ago(contact.t) < 180) return { ok: false, text: 'HC Webhook got in touch ' + (ago(contact.t) < 2 ? 'just now' : ago(contact.t) + ' min ago') + ' but sent nothing for today.', fix: 'Open HC Webhook and check Health Connect permissions (Steps, Sleep, Heart rate…), and that your watch has synced to Health Connect (open the Fitbit or Pixel Watch app).' };
+  return { ok: false, text: 'No data from your watch for ' + (day ? 'this day' : 'today') + ' yet.', fix: 'Open HC Webhook and tap Sync now. If it keeps happening, check it\'s set to sync every 15 minutes and has Health Connect permissions.' };
+}
+
 function healthState_(who, ymd) {
   ymd = ymd || todayYmd_();
   var goals = healthGoals_(), d = loadHealthDay_(ymd, who), sm = healthSummary_(d);
@@ -266,8 +282,11 @@ function healthState_(who, ymd) {
   healthRows_(who, addDays_(ymd, -60), ymd).forEach(function (r) {
     try { var dd = JSON.parse(String(r['Detail'] || '{}')); if (dd.w) lastW = { kg: dd.w, date: r['Date'] }; if (dd.vo2) lastVo2 = dd.vo2; } catch (e) { /* ignore */ }
   });
+  var hasData = !!(sm.steps || sm.sleep || Object.keys(d.hr).length || Object.keys(d.ex).length || sm.km);
+  var contact = JSON.parse(prop_('HEALTH_CONTACT_' + who) || 'null');
   return {
-    date: ymd, today: todayYmd_(), connected: !!sync || rows.length > 0, synced: sync,
+    date: ymd, today: todayYmd_(), connected: !!sync || rows.length > 0 || !!contact, synced: sync, hasData: hasData, contact: contact,
+    status: healthStatus(ymd === todayYmd_() ? '' : ymd, hasData, sync, contact, new Date().getTime()),
     webhook: WEBAPP_URL + '?key=' + PROPS.getProperty(who === 'me' ? 'WEBAPP_KEY' : 'PARTNER_KEY') + '&source=health',
     goals: goals,
     steps: sm.steps, km: sm.km, active: sm.active, stepsByHour: hours.map(function (x) { return Math.round(x.steps); }), exercise: ex,

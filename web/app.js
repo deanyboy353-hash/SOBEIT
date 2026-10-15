@@ -1269,10 +1269,11 @@
     }).join('');
   }
 
+  var healthHowOpen = false;
   function readinessAdvice(r) {
     var gym = ME && S.today && S.today.gym && !S.today.gym.done ? S.today.gym.session : '';
-    if (r.score >= 80) return gym ? 'Good day to push the 1+ set on ' + gym + '.' : 'Plenty in the tank today.';
-    if (r.score >= 60) return gym ? 'Train as planned. Keep the 1+ set honest.' : 'A normal day. Move, eat well, sleep on time.';
+    if (r.score >= 80) return gym ? 'Good day to push hard on ' + gym + ': go for the top of the rep ranges.' : 'Plenty in the tank today.';
+    if (r.score >= 60) return gym ? 'Train ' + gym + ' as planned, at the RPEs written.' : 'A normal day. Move, eat well, sleep on time.';
     return gym ? 'Your body is asking for an easier one. Lighter ' + gym + ', or swap to rest in Train.' : 'Take it easy: an early night will help most.';
   }
 
@@ -1290,9 +1291,17 @@
     var h = H();
     if (!h) return;
     var isToday = h.date === h.today, d = new Date(h.date + 'T12:00:00'), out = '';
-    out += '<div class="top"><div><h1>Health</h1><div class="sub">' + (h.synced ? (new Date(h.synced).toDateString() === new Date(now()).toDateString() ? 'Synced at ' + clockOf(h.synced) : 'Synced ' + new Date(h.synced).toLocaleDateString('en-GB', { weekday: 'short' }) + ' ' + clockOf(h.synced)) : 'Not connected yet') + '</div></div>' + meButton() + '</div>';
+    out += '<div class="top"><div><h1>Health</h1><div class="sub">' + (h.hasData && h.synced ? (new Date(h.synced).toDateString() === new Date(now()).toDateString() ? 'Synced at ' + clockOf(h.synced) : 'Last data ' + new Date(h.synced).toLocaleDateString('en-GB', { weekday: 'short' }) + ' ' + clockOf(h.synced)) : h.connected ? 'Waiting for data' : 'Not connected yet') + '</div></div>' + meButton() + '</div>';
     out += '<div class="daynav"><button class="iconbtn" type="button" data-hday="-1" aria-label="Day before">' + icon('back', 's') + '</button><b>' + (isToday ? 'Today' : d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })) + '</b><button class="iconbtn" type="button" data-hday="1" aria-label="Next day"' + (isToday ? ' disabled' : '') + '>' + icon('chevron', 's') + '</button></div>';
     if (!h.connected) { el('tab-health').innerHTML = out + setupCard(h); return; }
+    if (!h.hasData && h.status) {
+      // nothing for this day: say why and what to do, instead of a screen of zeros
+      out += '<section class="card pushwarn"><b>' + esc(h.status.text) + '</b><p class="small" style="margin:6px 0 10px">' + esc(h.status.fix) + '</p>' +
+        (h.synced ? '<p class="tiny muted" style="margin:0 0 10px">Last data arrived ' + new Date(h.synced).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit' }) + '.</p>' : '') +
+        '<div class="grid2"><button class="btn primary" type="button" data-fun="healthRetry">Check again</button><button class="btn soft" type="button" data-fun="healthHow">Show me the setup</button></div></section>';
+      if (healthHowOpen) out += setupCard(h);
+      el('tab-health').innerHTML = out; return;
+    }
     var sl = h.sleep, rd = h.readiness, hr = h.heart;
 
     // hero: steps ring + three tiles
@@ -1376,7 +1385,7 @@
     save('hcPort', port);
     msg('Reading ' + n + ' days from your watch…');
     fetch('http://127.0.0.1:' + port + '/?days=' + n, { targetAddressSpace: 'loopback' }).then(function (r) { if (!r.ok) throw new Error('HC Webhook said ' + r.status); return r.json(); }).then(uploadHealth).catch(function () {
-      msg('Couldn\'t reach HC Webhook from the app (Chrome blocks it on some phones). Use the file way below instead.');
+      msg('Chrome stopped the app talking to HC Webhook\'s server on this phone (a security rule for web apps reaching the phone itself). Use the file way below instead: it always works.');
     });
   }
   function uploadHealth(p) {
@@ -1432,8 +1441,13 @@
     if (slot) { slot.textContent = m.getAttribute('data-tip'); slot.classList.remove('muted'); }
   });
   document.addEventListener('click', function (ev) {
-    var t = ev.target.closest('[data-hday], [data-fun="healthAI"], [data-fun="copyHook"], [data-fun="importHealth"], [data-days]');
+    var t = ev.target.closest('[data-hday], [data-fun="healthAI"], [data-fun="copyHook"], [data-fun="importHealth"], [data-days], [data-fun="healthRetry"], [data-fun="healthHow"]');
     if (!t || !S) return;
+    if (t.dataset.fun === 'healthHow') { healthHowOpen = !healthHowOpen; return renderHealth(); }
+    if (t.dataset.fun === 'healthRetry') {
+      t.disabled = true; t.textContent = 'Checking…';
+      return rpc('healthDay', [H().date]).then(function (x) { if (x.date === S.health.today) { S.health = x; hview = null; } else hview = x; renderHealth(); toast(x.hasData ? 'Got it: your data is in.' : 'Still nothing. ' + (x.status ? x.status.fix : '')); }, function (e) { toast(e.message, true); renderHealth(); });
+    }
     if (t.dataset.fun === 'copyHook') {
       var u = H().webhook;
       if (navigator.clipboard) navigator.clipboard.writeText(u).then(function () { toast('Copied. Paste it into HC Webhook.'); }, function () { toast('Press and hold the address to copy it.'); });

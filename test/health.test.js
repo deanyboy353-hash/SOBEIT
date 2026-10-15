@@ -146,3 +146,32 @@ test('HC Webhook test syncs are ignored, and a history import rebuilds whole day
   assert.ok(Number(row['Steps']) < 20000, 'junk replaced: ' + row['Steps']);
   assert.ok(Number(row['Sleep (min)']) > 400);
 });
+
+test('Health status: no "Synced at" with zeros; says why there is no data and what to do', () => {
+  const { g, me } = ready();
+  const st = () => JSON.parse(JSON.stringify(g.ctx.appState(me).health));
+  let h = st();
+  assert.strictEqual(h.hasData, false); assert.strictEqual(h.connected, false);
+  assert.match(h.status.fix, /add the webhook address/);
+  // the Test button: ignored, and said so
+  post(g, me, { test: true, steps: [{ count: 9999, start_time: '2026-10-13T08:00:00Z' }] });
+  h = st();
+  assert.strictEqual(h.hasData, false); assert.strictEqual(h.synced, 0);
+  assert.match(h.status.text, /test message/);
+  // HC Webhook got in touch with nothing for today
+  post(g, me, {});
+  h = st();
+  assert.match(h.status.text, /sent nothing for today/); assert.match(h.status.fix, /Health Connect permissions/);
+  // the wrong format
+  g.ctx.doPost({ parameter: { key: me, source: 'health' }, postData: { contents: 'not json' } });
+  assert.match(st().status.fix, /JSON \(not gRPC\)/);
+  // real data: now it's synced, with a time
+  post(g, me, data.day(g.ctx.todayYmd_()));
+  h = st();
+  assert.strictEqual(h.hasData, true); assert.ok(h.synced > 0); assert.strictEqual(h.status.ok, true);
+  // days later, with nothing new: today says there's nothing yet (not "Synced at" over zeros)
+  g.state.now = new Date(g.state.now.getTime() + 3 * 864e5);
+  h = plain(g.ctx.healthDay(me, g.ctx.todayYmd_()));
+  assert.strictEqual(h.hasData, false); assert.ok(h.synced > 0);
+  assert.match(h.status.text, /No data from your watch for today yet/);
+});

@@ -319,3 +319,13 @@ test('Today brief: written for the part of the day, never greets, regenerated wh
   g.ctx.getBrief(me);
   assert.match(g.state.claudeRequests.at(-1).body.messages[0].content, /Rest day from the gym\. Next session: Push/);
 });
+
+test('The cached app state is never served after midnight (or into the next part of the day)', () => {
+  const { g, me } = ready();
+  g.state.now = new Date('2026-10-14T22:58:00Z');            // 23:58 Wed
+  const a = plain(g.ctx.appState(me));
+  g.state.now = new Date('2026-10-14T23:01:00Z');            // 00:01 Thu, within the 5-minute cache
+  const b = plain(g.ctx.appState(me));
+  assert.notStrictEqual(a.cacheStamp, b.cacheStamp);
+  assert.match(b.cacheStamp, /^2026-10-15\|night/);
+});
