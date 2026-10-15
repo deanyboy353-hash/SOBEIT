@@ -292,3 +292,30 @@ test('Money is shown in pounds everywhere', () => {
   const gs = ['Empire.gs', 'Wardrobe.gs'].map(f => fs.readFileSync(__dirname + '/../src/' + f, 'utf8')).join('\n');
   assert.doesNotMatch(gs, /You need \$|' \$' \+/);
 });
+
+test('Today brief: written for the part of the day, never greets, regenerated when the part of the day changes', () => {
+  const { g, me } = ready();
+  assert.strictEqual(g.ctx.dayPart(4 * 60), 'night'); assert.strictEqual(g.ctx.dayPart(9 * 60), 'morning');
+  assert.strictEqual(g.ctx.dayPart(13 * 60), 'afternoon'); assert.strictEqual(g.ctx.dayPart(19 * 60), 'evening');
+  // the app's header uses the same boundaries
+  const app = require('fs').readFileSync(__dirname + '/../web/app.js', 'utf8');
+  assert.match(app, /function greeting\(\) \{ var hr = new Date\(now\(\)\)\.getHours\(\); return hr < 5 \? 'Late one' : hr < 12 \? 'Morning' : hr < 18 \? 'Afternoon' : 'Evening'; \}/);
+  g.state.props.ANTHROPIC_API_KEY = 'sk-ant-test';
+  claudeSays(g, { brief: 'Push today: leave at 14:59 for the 3.', first: 'Pack your gym bag' });
+  g.state.now = new Date('2026-10-13T07:00:00Z');            // Tue 08:00, a training day
+  let b = plain(g.ctx.getBrief(me));
+  assert.strictEqual(b.part, 'morning');
+  const req = g.state.claudeRequests.at(-1);
+  assert.match(req.body.system, /Do not greet/); assert.match(req.body.system, /It is morning now/);
+  assert.match(req.body.messages[0].content, /Training day: Push session/);
+  assert.doesNotMatch(req.body.messages[0].content, /Rest day/);
+  const n = g.state.claudeRequests.length;
+  g.ctx.getBrief(me); assert.strictEqual(g.state.claudeRequests.length, n, 'same part of the day: kept');
+  g.state.now = new Date('2026-10-13T14:00:00Z');            // 15:00
+  b = plain(g.ctx.getBrief(me));
+  assert.strictEqual(b.part, 'afternoon'); assert.strictEqual(g.state.claudeRequests.length, n + 1);
+  assert.strictEqual(plain(g.ctx.appState(me)).brief.part, 'afternoon');
+  g.state.now = new Date('2026-10-15T14:00:00Z');            // Thu: a rest day names the next session
+  g.ctx.getBrief(me);
+  assert.match(g.state.claudeRequests.at(-1).body.messages[0].content, /Rest day from the gym\. Next session: Push/);
+});

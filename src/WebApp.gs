@@ -107,7 +107,7 @@ function appState_(who) {
   var s = {
     who: who, now: new Date().getTime(), names: names_(), game: gameState_(who), quests: questsState_(who), chores: choresState_(who),
     routines: routinesState_(who), shopping: shoppingState_(), hasClaudeKey: !!claudeKey_(), schedule: scheduleState_(),
-    games: gamesState_(who), push: pushStatus_(who), brief: brief && brief.date === todayYmd_() ? brief : null,
+    games: gamesState_(who), push: pushStatus_(who), brief: brief && brief.date === todayYmd_() && brief.part === dayPart(minutesNow_()) ? brief : null,
     theme: String(prop_('THEME_' + who) || 'light')
   };
   s.fun = funState_(who, s.game);

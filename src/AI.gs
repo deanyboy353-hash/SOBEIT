@@ -38,8 +38,8 @@ function dayContext_(who) {
   } catch (e) { /* health optional */ }
   if (who === 'me') {
     var t = todayState_();
-    if (t.gym) lines.push('Gym: ' + t.gym.session + (t.gym.travel ? ', ' + t.gym.travel + ', leave ' + t.gym.leaveAt : '') + (t.gym.weather ? '. Weather: ' + t.gym.weather : '') + (t.gym.done ? ' (done)' : ''));
-    else lines.push('Rest day from the gym.');
+    if (t.gym) lines.push('Training day: ' + t.gym.session + ' session' + (t.gym.done ? ' (already done today)' : '') + (t.gym.travel ? '. Getting there: ' + t.gym.travel + ', leave by ' + t.gym.leaveAt + (t.gym.plan ? ' (' + String(t.gym.plan).split('\n')[0] + ')' : '') : '') + (t.gym.homeBy ? ', home by ' + t.gym.homeBy : '') + (t.gym.weather ? '. Weather: ' + t.gym.weather : '') + '.');
+    else lines.push('Rest day from the gym. Next session: ' + rotationNext_(todayYmd_()) + ' (the rotation goes Push, Pull, Shoulders & Arms and moves on when a session is done).');
     if (t.weighDay && !t.weighedToday) lines.push('It is a weigh-in day.');
     try {
       var evs = CalendarApp.getDefaultCalendar().getEvents(atTime_(todayYmd_(), 0), atTime_(addDays_(todayYmd_(), 1), 0))
@@ -56,11 +56,15 @@ function dayContext_(who) {
 var AI_VOICE = 'You are a calm, kind helper inside an app for someone with ADHD (and their partner) in Glenboig, Scotland. ' +
   'Be brief, concrete and encouraging, never preachy or guilt-tripping. Plain British English. No emojis. ';
 
+/** The part of the day, the same way the app's header greets you: night (before 5am), morning, afternoon, evening (from 6pm). */
+function dayPart(min) { return min < 300 ? 'night' : min < 720 ? 'morning' : min < 1080 ? 'afternoon' : 'evening'; }
+
 function makeBrief_(who) {
-  var n = names_()[who];
-  var res = callClaudeJson_(AI_VOICE + 'Write this person\'s morning brief: what matters today, kept light, and the easiest good first move.',
-    'Name: ' + n + '\n' + dayContext_(who), BRIEF_SCHEMA, claudeModel_(), 4000);
-  var b = { date: todayYmd_(), brief: String(res.brief || ''), first: String(res.first || '') };
+  var n = names_()[who], part = dayPart(minutesNow_());
+  var res = callClaudeJson_(AI_VOICE + 'Write this person\'s brief for the rest of today. It is ' + part + ' now (' + now_('HH:mm') + '): only talk about what is still ahead today' +
+    (part === 'night' ? ' and gently suggest bed' : '') + '. Do not greet them or say good morning/afternoon: the app already greets them. Use the facts below exactly (a training day is a training day; only say rest day if it says rest day). Kept light, plus the easiest good next move.',
+    'Name: ' + n + '\nTime now: ' + now_('HH:mm') + ' (' + part + ')\n' + dayContext_(who), BRIEF_SCHEMA, claudeModel_(), 4000);
+  var b = { date: todayYmd_(), part: part, at: now_('HH:mm'), brief: String(res.brief || ''), first: String(res.first || '') };
   setProp_('BRIEF_' + who, JSON.stringify(b));
   return b;
 }
@@ -175,7 +179,7 @@ function clearAsk(key) {
 function getBrief(key) {
   var who = who_(key);
   var b = JSON.parse(prop_('BRIEF_' + who) || 'null');
-  if (b && b.date === todayYmd_()) return b;
+  if (b && b.date === todayYmd_() && b.part === dayPart(minutesNow_())) return b;   // fresh for this part of the day
   if (!claudeKey_()) return null;
   return makeBrief_(who);
 }

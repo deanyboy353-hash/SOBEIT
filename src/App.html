@@ -3203,6 +3203,16 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     var n = S.names || {}, f = S.fun || {};
     return { me: f.nick || (n[S.who] && n[S.who] !== 'Your partner' ? n[S.who] : ''), other: f.otherNick || n[S.who === 'me' ? 'partner' : 'me'] || 'Your partner', team: f.team || 'Together' };
   }
+  // the Today brief is written for the part of the day it's for (morning, afternoon, evening, night), like the greeting
+  var briefAsked = '';
+  function dayPartNow() { var hr = new Date(now()).getHours(); return hr < 5 ? 'night' : hr < 12 ? 'morning' : hr < 18 ? 'afternoon' : 'evening'; }
+  function maybeBrief() {
+    if (!S || !S.hasClaudeKey) return;
+    var want = new Date(now()).toDateString() + dayPartNow();
+    if (S.brief && S.brief.part === dayPartNow() || briefAsked === want) return;
+    briefAsked = want;
+    rpc('getBrief', []).then(function (b) { if (b) { S.brief = b; if (current === 'home') renderHome(); } }, function () {});
+  }
   function greeting() { var hr = new Date(now()).getHours(); return hr < 5 ? 'Late one' : hr < 12 ? 'Morning' : hr < 18 ? 'Afternoon' : 'Evening'; }
 
   var ICONS = {
@@ -3396,7 +3406,9 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     h += wardrobeCard();
     seg('wardrobe');
     // brief
-    if (S.brief && S.brief.brief) h += '<section class="card tint"><div class="eyebrow" style="color:var(--lilac);display:flex;gap:6px;align-items:center">' + icon('sparkles', 's') + 'Today</div><p class="brief" style="margin:8px 0 10px">' + esc(S.brief.brief) + '</p>' +
+    maybeBrief();
+    if (S.brief && S.brief.brief && S.brief.part !== dayPartNow()) S.brief = null;    // written for an earlier part of the day: a fresh one is on its way
+    if (S.brief && S.brief.brief) h += '<section class="card tint"><div class="eyebrow" style="color:var(--lilac);display:flex;gap:6px;align-items:center">' + icon('sparkles', 's') + 'Today' + (S.brief.at ? '<span class="muted" style="font-weight:500"> · as of ' + esc(S.brief.at) + '</span>' : '') + '</div><p class="brief" style="margin:8px 0 10px">' + esc(S.brief.brief) + '</p>' +
       (S.brief.first ? '<div class="row small"><span class="chip lilac">First move</span><span>' + esc(S.brief.first) + '</span></div>' : '') + '</section>';
 
     seg('brief');
@@ -6084,7 +6096,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     var na = location.hash.match(/dl=(\w+):(\w+)/);
     if (na) { history.replaceState(null, '', location.pathname + location.search + '#home'); setTimeout(function () { handleNoteAction(na[1], na[2]); }, 400); }
     if (hash !== 'djset') setTimeout(intro, 250);
-    if (!S.brief && S.hasClaudeKey) rpc('getBrief', []).then(function (b) { if (b) { S.brief = b; renderHome(); } }, function () {});
+    maybeBrief();
   }
   if (!KEY) {
     el('tab-home').innerHTML = '<div class="loading"><h2>Open your app link</h2><p class="muted">Paste your link from the Config tab of your Google Sheet (Your app link, or Partner app link). It has your private key in it.</p>' +
