@@ -287,96 +287,280 @@
   function mesh(gm, mat, x, y, z) { var m = new T.Mesh(gm, mat); m.position.set(x || 0, y || 0, z || 0); m.castShadow = false; return m; }
   function joint(name, parent, x, y, z) { var j = new T.Group(); j.name = name; j.position.set(x, y, z); parent.add(j); return j; }
 
-  /** Build one character. Proportions are slightly stylised: big hands and head, chunky limbs. */
+  // ---------- the body: ONE continuous skinned mesh (no ball joints), clothes painted into its textures ----------
+  // Each part is a loft: rings of points around a line, joined into a tube, smooth-shaded, and weighted to the
+  // bones so elbows and knees bend in one piece (how characters were built for consoles of that era).
+  var BODY_FRONT = 0.5;   // u = 0.5 is the front of every part; u = 0 / 1 the back
+  function loft(rings, sides, bones) {
+    // rings: [{ y, x, z, rx, rz, v, w: [[bone, weight], ...], f(x,z,ang) optional reshaper }] in bind pose (world space)
+    var pos = [], uv = [], si = [], sw = [], idx = [];
+    rings.forEach(function (r, ri) {
+      for (var k = 0; k <= sides; k++) {
+        var a = (k / sides) * Math.PI * 2, x = Math.sin(a) * r.rx, z = -Math.cos(a) * r.rz;
+        if (r.f) { var q = r.f(x, z, a); x = q[0]; z = q[1]; }
+        pos.push(r.x + x, r.y, r.z + z); uv.push(k / sides, r.v);
+        var w = r.w(x, z), tot = 0, ws = [0, 0, 0, 0], is = [0, 0, 0, 0];
+        w.slice(0, 4).forEach(function (p, j) { is[j] = bones.indexOf(p[0]); ws[j] = p[1]; tot += p[1]; });
+        for (var j = 0; j < 4; j++) ws[j] /= tot || 1;
+        si.push.apply(si, is); sw.push.apply(sw, ws);
+      }
+      if (ri) for (var k2 = 0; k2 < sides; k2++) { var a0 = (ri - 1) * (sides + 1) + k2, b0 = ri * (sides + 1) + k2; idx.push(a0, b0, a0 + 1, a0 + 1, b0, b0 + 1); }
+    });
+    // close the ends with a fan so no part is ever hollow
+    [0, rings.length - 1].forEach(function (ri, e) {
+      var r = rings[ri], c = pos.length / 3; pos.push(r.x, r.y + (e ? 0.004 : -0.004), r.z); uv.push(0.5, r.v);
+      var w = r.w(0, 0), ws = [0, 0, 0, 0], is = [0, 0, 0, 0], tot = 0; w.slice(0, 4).forEach(function (p, j) { is[j] = bones.indexOf(p[0]); ws[j] = p[1]; tot += p[1]; }); for (var j = 0; j < 4; j++) ws[j] /= tot || 1;
+      si.push.apply(si, is); sw.push.apply(sw, ws);
+      for (var k = 0; k < sides; k++) { var a = ri * (sides + 1) + k; if (e) idx.push(a, a + 1, c); else idx.push(a + 1, a, c); }
+    });
+    var g = new T.BufferGeometry();
+    g.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new T.Float32BufferAttribute(uv, 2));
+    g.setAttribute('skinIndex', new T.Uint16BufferAttribute(si, 4)); g.setAttribute('skinWeight', new T.Float32BufferAttribute(sw, 4));
+    g.setIndex(idx); g.computeVertexNormals();
+    return g;
+  }
+  function blend(a, b, t) { t = Math.max(0, Math.min(1, t)); t = t * t * (3 - 2 * t); return [[a, 1 - t], [b, t]]; }
+  function bump(x, c, s) { return Math.exp(-((x - c) * (x - c)) / (2 * s * s)); }
+
+  /** Painted body textures. Each maps a part's length (v) to world height, so clothes land in the right place. */
+  function torsoPaint(L, Y) {
+    var t = L.top, b = L.bottom, sk = L.skin, c1 = t.c1, c2 = t.c2, jacket = ['bomber', 'leather', 'track', 'hoodie'].indexOf(t.style) !== -1;
+    return tex('torso2|' + JSON.stringify(t) + JSON.stringify(b) + sk + L.frame + L.metallic, 128, 128, function (g, w, h) {
+      var py = function (y) { return Math.round((1 - Y(y)) * h); };
+      // skin, then the bottoms up to the waistband, then the top
+      g.fillStyle = sk; g.fillRect(0, 0, w, h); grain(g, w, h, hex(sk, -0.2), 300, 0.1, 51);
+      var waist = py(1.02), hem = t.style === 'crop' ? py(1.2) : t.style === 'corset' ? py(1.05) : py(0.97);
+      g.fillStyle = b.c1; g.fillRect(0, waist, w, h - waist);
+      if (b.style === 'jeans' || b.style === 'flares' || b.style === 'cargos') { g.fillStyle = hex(b.c1, -0.35); g.fillRect(0, waist, w, 3); g.fillStyle = '#d6a531'; for (var x = 0; x < w; x += 6) g.fillRect(x, waist + 5, 3, 1); g.fillStyle = hex(b.c1, -0.25); g.fillRect(w * 0.47, waist + 3, 2, 10); }
+      if (b.style === 'trackies') { g.fillStyle = hex(b.c1, -0.25); g.fillRect(0, waist, w, 5); g.fillStyle = '#eee'; g.fillRect(w * 0.48, waist + 4, 1, 8); g.fillRect(w * 0.52, waist + 4, 1, 8); }
+      // the top: from the hem up to the neckline
+      var neck = py(1.455);
+      var topBand = function () { var gr = g.createLinearGradient(0, neck, 0, hem); gr.addColorStop(0, hex(c1, 0.06)); gr.addColorStop(0.75, c1); gr.addColorStop(1, hex(c1, -0.18)); g.fillStyle = gr; g.fillRect(0, neck, w, hem - neck); };
+      topBand();
+      if (L.metallic || t.style === 'sequin') { var r = rnd(9); for (var yy = neck; yy < hem; yy += 3) for (var xx = (yy / 3) % 2 ? 1 : 0; xx < w; xx += 3) { g.fillStyle = r() > 0.5 ? hex(c1, 0.4) : hex(c1, -0.25); g.fillRect(xx, yy, 2, 2); } }
+      else grain(g, w, hem - neck, hex(c1, -0.3), 260, 0.12, 52);
+      // folds: under the chest and at the sides of the waist (painted shading, the PS2 trick)
+      g.globalAlpha = 0.22; g.strokeStyle = hex(c1, -0.5); g.lineWidth = 2;
+      [0.36, 0.64].forEach(function (u) { g.beginPath(); g.moveTo(w * u, py(1.2)); g.quadraticCurveTo(w * (u + (u < 0.5 ? -0.04 : 0.04)), py(1.08), w * u, hem); g.stroke(); });
+      g.beginPath(); g.moveTo(w * 0.3, py(1.24)); g.quadraticCurveTo(w * 0.5, py(1.2), w * 0.7, py(1.24)); g.stroke();
+      g.globalAlpha = 1;
+      g.fillStyle = hex(c1, -0.3); g.fillRect(0, hem - 3, w, 3);   // hem
+      // the front: necklines, plackets, zips, prints
+      var fx = w * BODY_FRONT;
+      if (['vest', 'crop', 'corset', 'sequin'].indexOf(t.style) !== -1) {
+        g.fillStyle = sk; g.beginPath(); g.ellipse(fx, neck, w * 0.09, (py(1.36) - neck) * (t.style === 'vest' ? 1 : 0.8), 0, 0, 7); g.fill();
+        // armholes (vests) or strapless (corset, sequin): skin over the shoulders
+        if (t.style === 'vest' || t.style === 'crop') [0.25, 0.75].forEach(function (u) { g.fillStyle = sk; g.beginPath(); g.ellipse(w * u, neck, w * 0.1, py(1.33) - neck, 0, 0, 7); g.fill(); });
+        else { g.fillStyle = sk; g.fillRect(0, neck, w, py(1.36) - neck); g.fillStyle = hex(c1, -0.3); g.fillRect(0, py(1.36), w, 2); }
+      } else if (jacket) {
+        if (t.style !== 'hoodie') { g.fillStyle = c2; g.fillRect(fx - w * 0.07, neck, w * 0.14, hem - neck); }   // the tee underneath shows at the open front
+        g.fillStyle = hex(c1, -0.35); g.fillRect(fx - w * 0.075, neck, 2, hem - neck); g.fillRect(fx + w * 0.07, neck, 2, hem - neck);
+        if (t.style === 'leather' || t.style === 'bomber') { g.fillStyle = hex(c1, -0.2); g.beginPath(); g.moveTo(fx - w * 0.075, neck); g.lineTo(fx - w * 0.16, neck); g.lineTo(fx - w * 0.075, py(1.3)); g.fill(); g.beginPath(); g.moveTo(fx + w * 0.075, neck); g.lineTo(fx + w * 0.16, neck); g.lineTo(fx + w * 0.075, py(1.3)); g.fill(); }
+        if (t.style === 'leather') { g.fillStyle = 'rgba(255,255,255,.18)'; g.fillRect(w * 0.3, neck, 3, hem - neck); g.fillRect(w * 0.68, neck, 3, hem - neck); }
+        if (t.style === 'track') { g.fillStyle = '#d9d9d9'; g.fillRect(fx - 1, neck, 2, hem - neck); g.fillStyle = c2; g.fillRect(w * 0.22, neck, 3, hem - neck); g.fillRect(w * 0.78 - 3, neck, 3, hem - neck); }
+        if (t.style === 'hoodie') { g.fillStyle = hex(c1, -0.18); g.fillRect(fx - w * 0.13, py(1.14), w * 0.26, py(1.02) - py(1.14)); g.strokeStyle = '#eee'; g.lineWidth = 1; g.beginPath(); g.moveTo(fx - 4, neck); g.lineTo(fx - 5, py(1.33)); g.moveTo(fx + 4, neck); g.lineTo(fx + 5, py(1.33)); g.stroke(); }
+        g.fillStyle = hex(c1, -0.3); g.fillRect(0, hem - 6, w, 6);   // ribbed hem
+      } else {
+        g.fillStyle = sk; g.beginPath(); g.ellipse(fx, neck, w * 0.06, (py(1.42) - neck), 0, 0, 7); g.fill();   // crew neck
+        g.strokeStyle = hex(c1, -0.35); g.lineWidth = 2; g.beginPath(); g.ellipse(fx, neck, w * 0.065, (py(1.415) - neck), 0, 0, Math.PI); g.stroke();
+        if (t.style === 'shirt' || t.style === 'hawaii') { g.fillStyle = hex(c1, -0.25); g.fillRect(fx - 1, neck, 2, hem - neck); for (var bt = py(1.38); bt < hem - 4; bt += 9) { g.fillStyle = '#f5f0e6'; g.fillRect(fx + 2, bt, 2, 2); } g.fillStyle = hex(c1, 0.15); g.beginPath(); g.moveTo(fx - 2, neck); g.lineTo(fx - w * 0.12, neck); g.lineTo(fx - 3, py(1.4)); g.fill(); g.beginPath(); g.moveTo(fx + 2, neck); g.lineTo(fx + w * 0.12, neck); g.lineTo(fx + 3, py(1.4)); g.fill(); }
+      }
+      if (t.style === 'hawaii') { var rr = rnd(21); for (var f = 0; f < 22; f++) { var fx2 = rr() * w, fy = neck + rr() * (hem - neck); g.fillStyle = rr() > 0.5 ? c2 : hex(c2, -0.3); for (var p = 0; p < 5; p++) { g.beginPath(); g.ellipse(fx2 + Math.cos(p * 1.26) * 3, fy + Math.sin(p * 1.26) * 3, 2.4, 1.6, p, 0, 7); g.fill(); } } }
+      if (t.style === 'corset') { g.strokeStyle = c2; g.lineWidth = 1; for (var l = py(1.34); l < hem - 6; l += 7) { g.beginPath(); g.moveTo(fx - 3, l); g.lineTo(fx + 3, l + 5); g.moveTo(fx + 3, l); g.lineTo(fx - 3, l + 5); g.stroke(); } [0.36, 0.64].forEach(function (u) { g.fillStyle = hex(c1, -0.35); g.fillRect(w * u, py(1.36), 2, hem - py(1.36)); }); }
+      var gy = py(1.27);
+      if (['stripes', 'check', 'flames', 'leopard'].indexOf(t.graphic) !== -1) { g.save(); g.beginPath(); g.rect(0, neck, w, hem - neck); g.clip(); patternPaint(g, w, h, t.graphic, c2, 12); g.restore(); }
+      else if (t.graphic && t.graphic !== 'none' && !jacket) graphicPaint(g, t.graphic, fx, gy, (hem - neck) * 0.16, c2);
+      else if (t.graphic && t.graphic !== 'none' && t.style === 'hoodie') graphicPaint(g, t.graphic, fx, gy, (hem - neck) * 0.13, c2);
+      // neck at the very top: skin, with a soft shadow under the jaw
+      g.fillStyle = sk; g.fillRect(0, 0, w, py(1.5)); var sg = g.createLinearGradient(0, 0, 0, py(1.5)); sg.addColorStop(0, 'rgba(60,25,15,.35)'); sg.addColorStop(1, 'rgba(60,25,15,0)'); g.fillStyle = sg; g.fillRect(0, 0, w, py(1.5));
+      if (t.style === 'hoodie' || t.style === 'track' || t.style === 'bomber' || t.style === 'leather') { g.fillStyle = hex(c1, -0.12); g.fillRect(0, py(1.53), w, py(1.47) - py(1.53)); if (t.style !== 'hoodie') { g.fillStyle = sk; g.fillRect(fx - w * 0.05, py(1.53), w * 0.1, py(1.47) - py(1.53)); } }   // collars
+    });
+  }
+  function armPaint(L, Dn) {   // Dn(d): distance down the arm (0 shoulder .. 0.68 fingertips) -> canvas y
+    var t = L.top, sleeve = { tee: 0.17, crop: 0.14, shirt: 0.2, hawaii: 0.19, vest: 0, corset: 0, sequin: 0, longtee: 0.5, track: 0.5, hoodie: 0.5, bomber: 0.5, leather: 0.5 }[t.style];
+    return tex('arm2|' + JSON.stringify(t) + L.skin + L.tattoo + L.metallic + (L.acc.indexOf('gloves') !== -1), 64, 128, function (g, w, h) {
+      var sk = L.skin; g.fillStyle = sk; g.fillRect(0, 0, w, h); grain(g, w, h, hex(sk, -0.2), 160, 0.1, 61);
+      // elbow and knuckle shading
+      var e = Dn(0.27), sh = g.createLinearGradient(0, e - 8, 0, e + 8); sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(0.5, 'rgba(70,30,20,.18)'); sh.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = sh; g.fillRect(0, e - 8, w, 16);
+      var se = Dn(sleeve || 0);
+      if (L.tattoo === 'sleeve') { g.fillStyle = 'rgba(30,40,60,.55)'; for (var k = 0; k < 12; k++) { g.beginPath(); g.arc((k * 17) % w, se + 6 + (k % 4) * 12, 4, 0, 7); g.fill(); } }
+      if (L.tattoo === 'band') { g.fillStyle = 'rgba(30,30,40,.7)'; g.fillRect(0, Math.max(se + 4, Dn(0.22)), w, 4); }
+      if (L.tattoo === 'rose') { g.fillStyle = 'rgba(170,30,50,.75)'; g.beginPath(); g.arc(w * 0.75, Dn(0.36), 4, 0, 7); g.fill(); g.fillStyle = 'rgba(40,110,50,.75)'; g.fillRect(w * 0.75 - 1, Dn(0.36) + 3, 2, 6); }
+      if (L.tattoo === 'stars') graphicPaint(g, 'star', w * 0.72, Dn(0.34), 3, 'rgba(30,30,40,.75)');
+      if (sleeve) {
+        var gr = g.createLinearGradient(0, 0, 0, se); gr.addColorStop(0, t.c1); gr.addColorStop(1, hex(t.c1, -0.15)); g.fillStyle = gr; g.fillRect(0, 0, w, se);
+        if (L.metallic || t.style === 'sequin') { var r = rnd(19); for (var y = 0; y < se; y += 3) for (var x = 0; x < w; x += 3) { g.fillStyle = r() > 0.5 ? hex(t.c1, 0.4) : hex(t.c1, -0.25); g.fillRect(x, y, 2, 2); } }
+        else grain(g, w, se, hex(t.c1, -0.3), 80, 0.14, 62);
+        if (t.style === 'hawaii') { var rr = rnd(23); for (var f = 0; f < 6; f++) { g.fillStyle = t.c2; g.beginPath(); g.arc(rr() * w, rr() * se, 2, 0, 7); g.fill(); } }
+        if (t.style === 'track') { g.fillStyle = t.c2; g.fillRect(w * 0.25 - 3, 0, 3, se); g.fillRect(w * 0.25 + 2, 0, 2, se); }
+        // folds at the elbow of long sleeves, and the cuff
+        if (sleeve >= 0.5) { g.strokeStyle = hex(t.c1, -0.35); g.globalAlpha = 0.5; for (var fo = -1; fo <= 1; fo++) { g.beginPath(); g.moveTo(w * 0.35, e + fo * 4); g.quadraticCurveTo(w * 0.5, e + fo * 4 + 3, w * 0.65, e + fo * 4); g.stroke(); } g.globalAlpha = 1; }
+        g.fillStyle = hex(t.c1, -0.3); g.fillRect(0, se - (sleeve >= 0.5 ? 6 : 3), w, sleeve >= 0.5 ? 6 : 3);
+      }
+      if (L.acc.indexOf('gloves') !== -1) { g.fillStyle = '#1a1a1a'; g.fillRect(0, Dn(0.47), w, h); }
+    });
+  }
+  function legPaint(L, Dn) {   // Dn(d): distance down the leg (0 hip .. 0.84 ankle) -> canvas y
+    var b = L.bottom, skirt = b.style === 'skirt' || b.style === 'mini', len = b.style === 'shorts' ? 0.34 : skirt ? 0 : 0.84;
+    return tex('leg2|' + JSON.stringify(b) + L.skin, 64, 128, function (g, w, h) {
+      var sk = L.skin; g.fillStyle = sk; g.fillRect(0, 0, w, h); grain(g, w, h, hex(sk, -0.2), 160, 0.1, 71);
+      var kn = Dn(0.42), sh = g.createLinearGradient(0, kn - 8, 0, kn + 8); sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(0.5, 'rgba(70,30,20,.14)'); sh.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = sh; g.fillRect(0, kn - 8, w, 16);
+      if (b.style === 'skirt') { g.fillStyle = 'rgba(20,10,15,.4)'; g.fillRect(0, 0, w, h); }   // dark tights under a long skirt
+      if (!len) return;
+      var ch = Dn(len); g.fillStyle = b.c1; g.fillRect(0, 0, w, ch);
+      if (b.style === 'jeans' || b.style === 'flares') {
+        var r = rnd(15); g.globalAlpha = 0.16; for (var i = 0; i < 400; i++) { g.fillStyle = r() > 0.5 ? '#ffffff' : '#000000'; g.fillRect(r() * w, r() * ch, 1, 1); } g.globalAlpha = 1;
+        g.fillStyle = '#d6a531'; for (var y = 2; y < ch; y += 5) { g.fillRect(w * 0.25, y, 1, 2); g.fillRect(w * 0.75, y, 1, 2); }   // side seams
+        g.fillStyle = hex(b.c1, 0.22); g.fillRect(w * 0.4, kn - 10, w * 0.2, 18);   // faded knees
+        g.fillStyle = hex(b.c1, -0.3); g.fillRect(w * 0.6, Dn(0.03), w * 0.18, 2);  // pocket
+      }
+      if (b.style === 'trackies') { g.fillStyle = b.c2; g.fillRect(w * 0.25 - 2, 0, 2, ch); g.fillRect(w * 0.25 + 1, 0, 2, ch); }
+      if (b.style === 'cargos') { g.fillStyle = hex(b.c1, -0.18); g.fillRect(w * 0.15, Dn(0.2), w * 0.2, Dn(0.34) - Dn(0.2)); g.fillStyle = hex(b.c1, -0.35); g.fillRect(w * 0.15, Dn(0.2), w * 0.2, 2); }
+      // creases behind the knee and at the ankle, then the hem
+      g.strokeStyle = hex(b.c1, -0.4); g.globalAlpha = 0.45; for (var c = 0; c < 3; c++) { g.beginPath(); g.moveTo(w * 0.85, kn - 5 + c * 4); g.lineTo(w * 0.95, kn - 3 + c * 4); g.stroke(); } g.globalAlpha = 1;
+      g.fillStyle = hex(b.c1, -0.32); g.fillRect(0, ch - 3, w, 3);
+    });
+  }
+
+  /** Build one character. Slightly stylised (a bigger head and hands), like a skate game of the early 2000s. */
   function build(look) {
     var L = normalize(look), f = L.frame === 'f';
-    var B = { slim: 0.86, avg: 1, muscular: 1.14, heavy: 1.26 }[L.build] || 1, belly = L.build === 'heavy' ? 1.18 : 1, arm = L.build === 'muscular' ? 1.22 : B;
-    var root = new T.Group(), J = {};
-    var skinM = lambert(skinTex(L)), topM = lambert(topTex(L, 'torso')), armM = lambert(topTex(L, 'arm')), legM = lambert(legTex(L)), shoeM = lambert(shoeTex(L)), hairM = lambert(hairTex(L)), faceM = lambert(faceTex(L));
+    var B = { slim: 0.88, avg: 1, muscular: 1.1, heavy: 1.2 }[L.build] || 1, belly = L.build === 'heavy' ? 1.22 : 1, arm = L.build === 'muscular' ? 1.25 : L.build === 'heavy' ? 1.15 : B, shK = L.build === 'muscular' ? 1.12 : 1;
     var heel = L.shoes.style === 'heels' ? 0.05 : L.shoes.style === 'platforms' ? 0.07 : 0;
-    var hips = joint('hips', root, 0, 0.88 + heel, 0);
-    J.hips = hips;
-    // pelvis + torso
-    var shW = (f ? 0.17 : 0.205) * B, waist = (f ? 0.125 : 0.155) * B * belly, hipW = (f ? 0.17 : 0.15) * B;
-    var pelvis = mesh(cyl(waist, hipW * 1.02, 0.15, 10), lambert(tex('pelvis|' + JSON.stringify(L.bottom) + L.skin, 32, 32, function (g, w, h) { var skirt = L.bottom.style === 'skirt' || L.bottom.style === 'mini'; shadeBand(g, w, h, skirt ? L.bottom.c1 : L.bottom.c1); g.fillStyle = hex(L.bottom.c1, -0.4); g.fillRect(0, 2, w, 3); })), 0, 0.06, 0); pelvis.scale.set(1, 1, 0.68); hips.add(pelvis);
-    var spine = joint('spine', hips, 0, 0.05, 0); J.spine = spine;
-    var chest = f ? shW * 0.95 : shW * 1.02;
-    var prof = [[waist * 0.98, 0], [waist, 0.06], [waist * 1.04, 0.14], [chest * 0.96, 0.24], [chest, 0.31], [shW * 0.98, 0.36], [shW * 0.82, 0.4], [0.06, 0.425]].map(function (q) { return new T.Vector2(q[0], q[1]); });
-    var tg = new T.LatheGeometry(prof, 10, Math.PI, Math.PI * 2);
-    var torso = mesh(tg, topM, 0, 0, 0); torso.scale.set(1, 1, f ? 0.66 : 0.6); spine.add(torso);
-    if (f) [-1, 1].forEach(function (s) { var b = mesh(new T.SphereGeometry(0.055 * B, 6, 4), topM, s * 0.06, 0.27, 0.075 * B); spine.add(b); });
-    if (L.top.style === 'crop') { var mid = mesh(cyl(waist * 0.98, waist, 0.1, 8), skinM, 0, 0.1, 0); mid.scale.set(1, 1, 0.62); spine.add(mid); }
-    // jackets: an open outer shell over the top (front left open so tees show)
-    if (['bomber', 'leather', 'track', 'hoodie'].indexOf(L.top.style) !== -1) {
-      var open = L.top.style === 'bomber' || L.top.style === 'leather';
-      var shellG = new T.CylinderGeometry(shW * 1.08, waist * 1.1, 0.42, 9, 1, true, open ? Math.PI + 0.42 : Math.PI, open ? Math.PI * 2 - 0.84 : Math.PI * 2); shellG.translate(0, -0.21, 0);
-      var shellM = lambert(tex('shell|' + L.top.style + L.top.c1, 64, 64, function (g, w, h) { shadeBand(g, w, h, L.top.c1); grain(g, w, h, hex(L.top.c1, -0.3), 200, 0.2, 41); if (L.top.style === 'leather') { g.fillStyle = 'rgba(255,255,255,.12)'; g.fillRect(w * 0.2, 0, 3, h); } g.fillStyle = hex(L.top.c1, -0.3); g.fillRect(0, h - 6, w, 6); }), null, { side: T.DoubleSide });
-      var shell = mesh(shellG, shellM, 0, 0.42, 0); shell.scale.set(1, 1, 0.66); spine.add(shell);
-      if (open) { var coll = mesh(new T.TorusGeometry(0.085, 0.022, 4, 10, Math.PI * 1.4), shellM, 0, 0.41, 0.01); coll.rotation.set(Math.PI / 2.4, 0, Math.PI * 1.3); spine.add(coll); }
+    var root = new T.Group(), J = {};
+    // ---- the skeleton (bind pose: arms straight down) ----
+    var bone = function (name, parent, x, y, z) { var b = new T.Bone(); b.name = name; b.position.set(x, y, z); if (parent) parent.add(b); J[name] = b; return b; };
+    var hips = bone('hips', null, 0, 0.92 + heel, 0); root.add(hips);
+    var spine = bone('spine', hips, 0, 0.12, 0), neck = bone('neck', spine, 0, 0.42, 0), headB = bone('head', neck, 0, 0.08, 0.005);
+    var shX = (f ? 0.142 : 0.16) * B * shK, shY = 0.37;
+    ['L', 'R'].forEach(function (side, si) {
+      var s = si ? 1 : -1;
+      var sb = bone('shoulder' + side, spine, s * shX, shY, 0), eb = bone('elbow' + side, sb, 0, -0.27, 0); bone('hand' + side, eb, 0, -0.245, 0);
+      var hb = bone('hip' + side, hips, s * (f ? 0.088 : 0.085) * B, -0.02, 0), kb = bone('knee' + side, hb, 0, -0.42, 0); bone('foot' + side, kb, 0, -0.42 + heel * 0.2, 0);
+    });
+    root.updateMatrixWorld(true);
+    var W = function (name) { var v = new T.Vector3(); J[name].getWorldPosition(v); return v; };
+    var names = Object.keys(J), bones = names.map(function (k) { return J[k]; });
+    var skinM = lambert(skinTex(L));
+    var skinned = function (geo, mat) { var m = new T.SkinnedMesh(geo, mat); m.frustumCulled = false; return m; };
+    var meshes = [];
+    // ---- torso: crotch to neck, one tube ----
+    var y0 = hips.position.y, wst = (f ? 0.118 : 0.142) * B * belly, hipW = (f ? 0.168 : 0.148) * B, ch = (f ? 0.15 : 0.172) * B * shK, shW = (f ? 0.162 : 0.19) * B * shK;
+    var jacketK = ['bomber', 'leather', 'hoodie', 'track'].indexOf(L.top.style) !== -1 ? 1.06 : 1;
+    var TR = [   // [height above the hips joint, half width, half depth]
+      [-0.07, hipW * 0.78, 0.085 * B], [-0.02, hipW * 0.98, 0.1 * B], [0.04, hipW, 0.105 * B], [0.1, wst * 1.06, 0.098 * B * belly], [0.18, wst, 0.092 * B * belly],
+      [0.27, ch * 0.92 * jacketK, 0.1 * B * jacketK], [0.36, ch * jacketK, 0.112 * B * jacketK], [0.43, shW * 0.95 * jacketK, 0.104 * B * jacketK], [0.48, shW * 0.82 * jacketK, 0.09 * B * jacketK],
+      [0.52, shW * 0.58, 0.072 * B], [0.55, 0.064, 0.058], [0.58, 0.056, 0.054], [0.63, 0.052, 0.05]
+    ];
+    var yMin = y0 + TR[0][0], yMax = y0 + TR[TR.length - 1][0], Yt = function (yw) { return (yw - yMin) / (yMax - yMin); };
+    var bust = f ? 0.035 * B : 0;
+    var torsoG = loft(TR.map(function (q) {
+      var y = y0 + q[0];
+      return { y: y, x: 0, z: q[0] > 0.5 ? 0.008 : 0, rx: q[1], rz: q[2], v: Yt(y),
+        f: function (x, z) {
+          if (z > 0 && bust && q[0] > 0.28 && q[0] < 0.44) z += bust * Math.max(bump(x, 0.06, 0.04), bump(x, -0.06, 0.04)) * Math.sin((q[0] - 0.28) / 0.16 * Math.PI);
+          if (z > 0 && L.build === 'heavy' && q[0] > 0.04 && q[0] < 0.26) z += 0.03 * Math.sin((q[0] - 0.04) / 0.22 * Math.PI);
+          if (z < 0 && q[0] < 0.06 && q[0] > -0.05) z -= (f ? 0.03 : 0.015) * B;   // seat
+          if (q[0] > 0.4 && q[0] < 0.56) { var sq = Math.abs(x) / q[1]; z *= 1 - sq * sq * 0.25; }   // flatter across the shoulders
+          return [x, z];
+        },
+        w: function (x) {
+          var wts = q[0] < 0.08 ? blend('hips', 'spine', (q[0] + 0.02) / 0.1) : q[0] < 0.5 ? [['spine', 1]] : q[0] < 0.57 ? blend('spine', 'neck', (q[0] - 0.5) / 0.06) : blend('neck', 'head', (q[0] - 0.57) / 0.06);
+          if (q[0] > 0.38 && q[0] < 0.56 && Math.abs(x) > shW * 0.55) { var k = Math.min(0.55, (Math.abs(x) - shW * 0.55) / (shW * 0.45) * 0.55); wts = wts.map(function (p) { return [p[0], p[1] * (1 - k)]; }).concat([[x < 0 ? 'shoulderL' : 'shoulderR', k]]); }
+          return wts;
+        } };
+    }), 14, names);
+    meshes.push(skinned(torsoG, lambert(torsoPaint(L, function (yNominal) { return Yt(yNominal - 0.92 + y0); }))));   // painted in heights for a flat-shod figure
+    // ---- arms: shoulder to wrist, the hand a separate rigid piece ----
+    var sleeveK = ['longtee', 'track', 'hoodie', 'bomber', 'leather'].indexOf(L.top.style) !== -1 ? 1.12 : 1;
+    var armDn = function (d) { return Math.round(d / 0.5 * 128); };
+    var armM = lambert(armPaint(L, armDn));
+    ['L', 'R'].forEach(function (side, si) {
+      var s = si ? 1 : -1, P = W('shoulder' + side), sb = 'shoulder' + side, eb = 'elbow' + side, hb = 'hand' + side;
+      var AR = [[0.0, 0.036 * arm, 0.04 * arm], [0.035, 0.05 * arm * sleeveK, 0.05 * arm * sleeveK], [0.07, 0.053 * arm * sleeveK, 0.049 * arm * sleeveK], [0.14, 0.05 * arm * sleeveK, 0.046 * arm * sleeveK], [0.23, 0.041 * arm * sleeveK, 0.04 * arm * sleeveK],
+        [0.28, 0.039 * arm * sleeveK, 0.037 * arm * sleeveK], [0.33, 0.042 * arm * sleeveK, 0.039 * arm * sleeveK], [0.42, 0.034 * arm * sleeveK, 0.031 * arm * sleeveK], [0.5, 0.027 * arm, 0.022 * arm]];
+      var g = loft(AR.map(function (q) {
+        return { y: P.y - q[0], x: P.x, z: P.z, rx: q[1], rz: q[2], v: 1 - Math.max(0, q[0]) / 0.5,
+          f: function (x, z) { if (q[0] > 0.28 && q[0] < 0.44 && z > 0) z *= 1.12; return [x, z]; },   // forearm muscle
+          w: function () { return q[0] < 0.2 ? [[sb, 1]] : q[0] < 0.34 ? blend(sb, eb, (q[0] - 0.2) / 0.14) : q[0] < 0.46 ? [[eb, 1]] : blend(eb, hb, (q[0] - 0.46) / 0.05); } };
+      }), 9, names);
+      meshes.push(skinned(g, armM));
+      // hand: a tapered, slightly cupped palm with a thumb (rigid on the hand bone)
+      var gl = L.acc.indexOf('gloves') !== -1, hm = gl ? lambert(null, '#1a1a1a') : skinM;
+      var hg = new T.BoxGeometry(0.062 * arm, 0.1, 0.032, 2, 3, 1), hp = hg.attributes.position;
+      for (var i = 0; i < hp.count; i++) { var hy = hp.getY(i), k = 1 - Math.max(0, -hy) * 2.4; hp.setX(i, hp.getX(i) * k); hp.setZ(i, hp.getZ(i) * (0.9 + 0.1 * k) + Math.max(0, -hy - 0.02) * 0.25); }
+      hg.translate(0, -0.05, 0); hg.computeVertexNormals();
+      var hand = new T.Mesh(hg, hm); J[hb].add(hand);
+      var th = new T.Mesh(new T.BoxGeometry(0.02, 0.05, 0.022), hm); th.position.set(-s * 0.03 * arm, -0.03, 0.018); th.rotation.set(0.3, 0, s * 0.45); J[hb].add(th);
+    });
+    // ---- legs: hip to ankle ----
+    var fit = { skinny: 0.9, regular: 1, baggy: 1.28 }[L.bottom.fit] || 1, flare = L.bottom.style === 'flares', bare = L.bottom.style === 'shorts' || L.bottom.style === 'skirt' || L.bottom.style === 'mini';
+    var legDn = function (d) { return Math.round(d / 0.84 * 128); };
+    var legM = lambert(legPaint(L, legDn));
+    ['L', 'R'].forEach(function (side, si) {
+      var s = si ? 1 : -1, P = W('hip' + side), hb = 'hip' + side, kb = 'knee' + side, fb = 'foot' + side;
+      var cloth = function (d) { return bare && (L.bottom.style !== 'shorts' || d > 0.34) ? 1 : d < 0.42 ? fit : 1 + (fit - 1) * 1.15 + (flare ? (d - 0.42) * 0.9 : 0); };
+      var LR = [[-0.04, 0.088], [0.04, 0.084], [0.16, 0.076], [0.3, 0.064], [0.4, 0.052], [0.44, 0.051], [0.5, 0.054], [0.6, 0.053], [0.72, 0.042], [0.84, 0.034]];
+      var g = loft(LR.map(function (q) {
+        var rr = q[1] * B * (f && q[0] < 0.3 ? 1.06 : 1) * cloth(q[0]);
+        return { y: P.y - q[0], x: P.x - s * Math.max(0, q[0]) * 0.012, z: q[0] > 0.44 ? -0.008 : 0, rx: rr, rz: rr * 1.04, v: 1 - Math.max(0, q[0]) / 0.84,
+          f: function (x, z) { if (q[0] > 0.46 && q[0] < 0.72 && z < 0) z *= 1.18; return [x, z]; },   // calf
+          w: function (x) { return q[0] < 0.04 ? [['hips', 0.5 - q[0] * 5], [hb, 0.5 + q[0] * 5]] : q[0] < 0.36 ? [[hb, 1]] : q[0] < 0.48 ? blend(hb, kb, (q[0] - 0.36) / 0.12) : q[0] < 0.8 ? [[kb, 1]] : blend(kb, fb, (q[0] - 0.8) / 0.04); } };
+      }), 10, names);
+      meshes.push(skinned(g, legM));
+      // the shoe: a lofted sole-and-upper (rigid on the foot bone)
+      var fh = L.shoes.style === 'boots' ? 0.12 : L.shoes.style === 'platforms' ? 0.1 : 0.07, sg = new T.BoxGeometry(0.094, fh, 0.24, 3, 2, 4), sp = sg.attributes.position;
+      for (var v = 0; v < sp.count; v++) {
+        var z = sp.getZ(v), y = sp.getY(v), x = sp.getX(v), toe = Math.max(0, z / 0.12);
+        if (y > 0) sp.setY(v, y - fh * 0.55 * toe * toe);                    // the upper slopes down to the toe
+        sp.setX(v, x * (1 - 0.25 * toe * toe + (z < -0.06 ? -0.1 : 0)));     // rounded toe, narrower heel
+        if (L.shoes.style === 'heels' && z < -0.04) sp.setY(v, sp.getY(v) + heel * 0.6);
+      }
+      sg.computeVertexNormals();
+      var shoe = new T.Mesh(sg, lambert(shoeTex(L))); shoe.position.set(0, -fh / 2 + 0.035, 0.045); J[fb].add(shoe);
+      if (L.shoes.style === 'heels') { var hl = new T.Mesh(new T.BoxGeometry(0.018, heel + 0.02, 0.02), lambert(shoeTex(L))); hl.position.set(0, -fh / 2 - heel / 2 + 0.03, -0.075); J[fb].add(hl); }
+      if (L.bottom.style === 'boots' || L.shoes.style === 'boots') { var cuff = new T.Mesh(new T.CylinderGeometry(0.05, 0.05, 0.08, 9, 1, true), lambert(shoeTex(L), null, { side: T.DoubleSide })); cuff.position.set(0, 0.07, 0); J[fb].add(cuff); }
+    });
+    meshes.forEach(function (m) { root.add(m); });
+    var skel = new T.Skeleton(bones);
+    meshes.forEach(function (m) { m.bind(skel); });
+    // ---- head (rigid on the head bone): the painted face, hair and hats from before ----
+    var head = new T.Group(); head.position.set(0, 0.095, 0.014); head.scale.setScalar(1.2); headB.add(head);
+    var hg2 = new T.SphereGeometry(0.105, 16, 12, -Math.PI / 2, Math.PI * 2), p = hg2.attributes.position;
+    var shape = L.face.shape, jawK = shape === 'square' ? 0.06 : shape === 'heart' ? 0.3 : shape === 'round' ? 0.02 : 0.18, hy2 = shape === 'long' ? 1.22 : shape === 'round' ? 1.04 : 1.13, hx = shape === 'round' ? 1.05 : shape === 'long' ? 0.94 : 0.98;
+    for (var i2 = 0; i2 < p.count; i2++) {
+      var x = p.getX(i2), y = p.getY(i2), z = p.getZ(i2);
+      if (y < 0) { var k = 1 - (-y / 0.105) * jawK; x *= k; z *= 1 - (-y / 0.105) * 0.1; }
+      if (z > 0.06 && Math.abs(y + 0.005) < 0.03 && Math.abs(x) > 0.025 && Math.abs(x) < 0.07) z -= 0.008;   // eye sockets
+      if (z > 0.07 && y > -0.05 && y < -0.015 && Math.abs(x) > 0.04) z += 0.006;                            // cheekbones
+      if (z < 0) z *= 0.94;
+      p.setXYZ(i2, x * hx, y * hy2, z * 1.02);
     }
-    // hood (down on the back; hidden when long or big hair would clip through it)
-    var bigHair = ['long', 'bigvolume', 'afro', 'braids', 'buns', 'ponytail'].indexOf(L.hair.style) !== -1;
-    if (L.top.style === 'hoodie' && !bigHair) { var hood = mesh(new T.TorusGeometry(0.09, 0.04, 5, 10), lambert(null, hex(L.top.c1, -0.1)), 0, 0.43, -0.06); hood.rotation.x = 1.3; spine.add(hood); }
-    // neck + head
-    var neck = joint('neck', spine, 0, 0.42, 0); J.neck = neck;
-    neck.add(mesh(cyl(0.05, 0.056, 0.07, 7), skinM, 0, 0.06, 0));
-    var head = joint('head', neck, 0, 0.16, 0.008); J.head = head; head.scale.setScalar(1.28);
-    var hg = new T.SphereGeometry(0.105, 14, 10, -Math.PI / 2, Math.PI * 2), p = hg.attributes.position;   // the face (u = 0.5) points forward
-    var shape = L.face.shape, jawK = shape === 'square' ? 0.06 : shape === 'heart' ? 0.3 : shape === 'round' ? 0.02 : 0.18, hy = shape === 'long' ? 1.24 : shape === 'round' ? 1.04 : 1.14, hx = shape === 'round' ? 1.06 : shape === 'long' ? 0.94 : 1;
-    for (var i = 0; i < p.count; i++) { var x = p.getX(i), y = p.getY(i), z = p.getZ(i); if (y < 0) { var k = 1 - (-y / 0.105) * jawK; x *= k; z *= 1 - (-y / 0.105) * 0.08; } if (z < 0) z *= 0.92; p.setXYZ(i, x * hx, y * hy, z * 1.02); }
-    hg.computeVertexNormals();
-    head.add(mesh(hg, faceM, 0, 0, 0));
-    var nose = mesh(new T.ConeGeometry(L.face.nose === 'wide' ? 0.022 : 0.017, 0.035, 4), skinM, 0, -0.01, 0.103); nose.rotation.x = Math.PI / 2; head.add(nose);
-    [-1, 1].forEach(function (s) { head.add(mesh(new T.BoxGeometry(0.018, 0.04, 0.03), skinM, s * 0.104 * hx, -0.005, 0)); });
-    addHair(head, L, hairM, hx, hy);
+    hg2.computeVertexNormals();
+    head.add(new T.Mesh(hg2, lambert(faceTex(L))));
+    var ng = new T.ConeGeometry(L.face.nose === 'wide' ? 0.021 : 0.016, 0.034, 4); ng.rotateX(Math.PI / 2); ng.scale(1, L.face.nose === 'long' ? 1.25 : 1, 1);
+    var nose = new T.Mesh(ng, skinM); nose.position.set(0, -0.012, 0.104); head.add(nose);
+    [-1, 1].forEach(function (s) { var ear = new T.Mesh(new T.SphereGeometry(0.022, 5, 4), skinM); ear.scale.set(0.45, 1, 0.8); ear.position.set(s * 0.101 * hx, -0.008, -0.004); head.add(ear); });
+    var hairM = lambert(hairTex(L));
+    addHair(head, L, hairM, hx, hy2);
     addHeadAcc(head, L);
-    // arms (sleeves are painted into the arm texture, so they can't clip)
-    ['L', 'R'].forEach(function (side, si) {
-      var s = si ? 1 : -1;
-      var sh = joint('shoulder' + side, spine, s * (shW * 0.86), 0.375, 0); sh.rotation.z = s * (f ? 0.07 : 0.09);
-      var ua = mesh(cyl(0.05 * arm, 0.042 * arm, 0.27, 8), armM, 0, 0, 0); sh.add(ua);
-      var sleeveTop = L.top.style !== 'vest' && L.top.style !== 'corset' && L.top.style !== 'sequin';
-      sh.add(mesh(new T.SphereGeometry(0.052 * arm, 8, 5), sleeveTop ? topM : skinM, 0, -0.005, 0));
-      var el = joint('elbow' + side, sh, 0, -0.27, 0); el.rotation.x = -0.12; el.rotation.z = -s * 0.04;
-      el.add(mesh(new T.SphereGeometry(0.042 * arm, 7, 4), armM, 0, 0, 0));
-      el.add(mesh(cyl(0.042 * arm, 0.034 * arm, 0.24, 8), lambert(tex('fore|' + JSON.stringify(L.top) + L.skin, 32, 32, function (g, w, h) { var full = ['longtee', 'track', 'hoodie', 'bomber', 'leather'].indexOf(L.top.style) !== -1; shadeBand(g, w, h, full ? L.top.c1 : L.skin); if (full) { g.fillStyle = hex(L.top.c1, -0.3); g.fillRect(0, h - 5, w, 5); } })), 0, 0, 0));
-      var hand = joint('hand' + side, el, 0, -0.245, 0); J['hand' + side] = hand;
-      var gl = L.acc.indexOf('gloves') !== -1;
-      var hm = gl ? lambert(null, '#1a1a1a') : skinM;
-      hand.add(mesh(new T.BoxGeometry(0.07, 0.095, 0.042, 1, 2, 1), hm, 0, -0.045, 0));   // a chunky mitten hand
-      var th = mesh(new T.BoxGeometry(0.024, 0.05, 0.026), hm, -s * 0.035, -0.03, 0.012); th.rotation.z = s * 0.4; hand.add(th);
-      J['shoulder' + side] = sh; J['elbow' + side] = el;
-    });
-    // legs
-    var fit = { skinny: 0.88, regular: 1, baggy: 1.22 }[L.bottom.fit] || 1, flare = L.bottom.style === 'flares';
-    ['L', 'R'].forEach(function (side, si) {
-      var s = si ? 1 : -1;
-      var hipJ = joint('hip' + side, hips, s * (f ? 0.085 : 0.08) * B, 0, 0);
-      var thighG = cyl(0.074 * B * fit, 0.056 * fit, 0.4, 9), tuv = thighG.attributes.uv;
-      for (var i1 = 0; i1 < tuv.count; i1++) tuv.setY(i1, 0.5 + tuv.getY(i1) * 0.5);   // upper half of the leg texture
-      hipJ.add(mesh(thighG, legM, 0, 0, 0));
-      var knee = joint('knee' + side, hipJ, 0, -0.4, 0);
-      knee.add(mesh(new T.SphereGeometry(0.055 * fit, 8, 4), legM, 0, 0, 0));
-      var shinG = cyl(0.054 * fit, flare ? 0.075 : 0.045 * fit, 0.4, 9);
-      var uv = shinG.attributes.uv; for (var i2 = 0; i2 < uv.count; i2++) uv.setY(i2, uv.getY(i2) * 0.5);   // lower half of the leg texture
-      knee.add(mesh(shinG, legM, 0, 0, 0));
-      var foot = joint('foot' + side, knee, 0, -0.4, 0);
-      var fh = L.shoes.style === 'boots' ? 0.11 : L.shoes.style === 'platforms' ? 0.1 : 0.065;
-      var shoe = mesh(new T.BoxGeometry(0.09, fh, 0.21, 2, 1, 3), shoeM, 0, -fh / 2 + heel * 0.2, 0.04); var sp2 = shoe.geometry.attributes.position; for (var v2 = 0; v2 < sp2.count; v2++) { if (sp2.getZ(v2) > 0.05 && sp2.getY(v2) > 0) sp2.setY(v2, sp2.getY(v2) - fh * 0.35); } shoe.geometry.computeVertexNormals(); foot.add(shoe);
-      if (L.shoes.style === 'heels') foot.add(mesh(new T.BoxGeometry(0.02, heel + 0.02, 0.02), shoeM, 0, -fh - heel / 2, -0.04));
-      J['hip' + side] = hipJ; J['knee' + side] = knee;
-    });
-    // skirts: a flared cone over the hips
+    // ---- clothes that need their own shape: skirts, hoods ----
     if (L.bottom.style === 'skirt' || L.bottom.style === 'mini') {
       var len = L.bottom.style === 'skirt' ? 0.5 : 0.24;
-      var sk = mesh(cyl(hipW * 1.05, hipW * 1.55, len, 9, true), lambert(tex('skirt|' + JSON.stringify(L.bottom), 64, 64, function (g, w, h) { shadeBand(g, w, h, L.bottom.c1); grain(g, w, h, hex(L.bottom.c1, -0.3), 200, 0.15, 43); g.strokeStyle = hex(L.bottom.c1, -0.25); for (var x = 4; x < w; x += 9) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x - 2, h); g.stroke(); } }), null, { side: T.DoubleSide }), 0, 0.02, 0);
-      sk.scale.set(1, 1, 0.8); hips.add(sk);
+      var skG = new T.CylinderGeometry(hipW * 1.06, hipW * (L.bottom.style === 'skirt' ? 1.7 : 1.45), len, 12, 2, true, Math.PI, Math.PI * 2); skG.translate(0, -len / 2, 0);
+      var sk = new T.Mesh(skG, lambert(tex('skirt2|' + JSON.stringify(L.bottom), 64, 64, function (g, w, h) { shadeBand(g, w, h, L.bottom.c1); grain(g, w, h, hex(L.bottom.c1, -0.3), 160, 0.15, 43); g.strokeStyle = hex(L.bottom.c1, -0.3); for (var x2 = 3; x2 < w; x2 += 8) { g.beginPath(); g.moveTo(x2, 4); g.lineTo(x2 - 2, h); g.stroke(); } g.fillStyle = hex(L.bottom.c1, -0.35); g.fillRect(0, 0, w, 4); }), null, { side: T.DoubleSide }));
+      sk.position.set(0, 0.07, 0); sk.scale.set(1, 1, 0.78); hips.add(sk);
     }
+    var bigHair = ['long', 'bigvolume', 'afro', 'braids', 'buns', 'ponytail'].indexOf(L.hair.style) !== -1;
+    if (L.top.style === 'hoodie' && !bigHair) { var hood = new T.Mesh(new T.TorusGeometry(0.085, 0.038, 6, 12), lambert(null, hex(L.top.c1, -0.08))); hood.position.set(0, 0.45, -0.105); hood.rotation.x = 1.0; hood.scale.set(0.95, 1, 0.62); spine.add(hood); }
     addBodyAcc(spine, L, shW);
-    // stance and height
+    // ---- the resting pose: weight on one leg, arms relaxed, a little attitude ----
     var st = L.stance;
-    if (st === 'wide') { J.hipL.rotation.z = -0.12; J.hipR.rotation.z = 0.12; }
-    if (st === 'hip') { hips.rotation.z = 0.06; J.hipL.rotation.z = -0.05; J.hipR.rotation.z = 0.1; spine.rotation.z = -0.07; }
+    J.shoulderL.rotation.z = -0.1; J.shoulderR.rotation.z = 0.1; J.elbowL.rotation.x = -0.18; J.elbowR.rotation.x = -0.22;
+    J.shoulderL.rotation.x = 0.04; J.shoulderR.rotation.x = -0.03; J.handL.rotation.y = 0.3; J.handR.rotation.y = -0.3;
+    if (st === 'wide') { J.hipL.rotation.z = -0.1; J.hipR.rotation.z = 0.1; }
+    else if (st === 'hip') { hips.rotation.z = 0.07; J.hipL.rotation.z = -0.04; J.hipR.rotation.z = 0.12; J.kneeR.rotation.x = 0.12; spine.rotation.z = -0.08; J.shoulderR.rotation.z = 0.32; J.elbowR.rotation.z = 0.9; J.elbowR.rotation.x = -0.6; }
+    else { hips.rotation.z = 0.03; J.hipR.rotation.z = 0.05; J.kneeR.rotation.x = 0.08; spine.rotation.z = -0.02; J.head.rotation.z = 0.03; }
     var hs = Math.max(0.9, Math.min(1.1, Number(L.height) || 1)); root.scale.setScalar(hs * (f ? 0.96 : 1));
     var tris = 0; root.traverse(function (o) { if (o.isMesh) { var g2 = o.geometry; tris += (g2.index ? g2.index.count : g2.attributes.position.count) / 3; } });
     root.userData = { joints: J, tris: Math.round(tris), look: L, rest: snapshot(J) };
@@ -518,7 +702,7 @@
       pr.setPixelRatio(1); pr.setSize(size, size);
       var sc = new T.Scene(); sc.add(new T.HemisphereLight('#ffd9b0', '#3a2246', 0.95)); var k = new T.DirectionalLight('#ffe2c0', 0.7); k.position.set(-1, 1.5, 2); sc.add(k);
       var f = build(L); pose(f, 'portrait', 0); sc.add(f);
-      var cam = new T.PerspectiveCamera(22, 1, 0.1, 10); var hy = 1.5 * f.scale.y; cam.position.set(0.16, hy + 0.04, 1.1); cam.lookAt(0, hy - 0.03, 0);
+      f.updateMatrixWorld(true); var hv = new T.Vector3(); f.userData.joints.head.getWorldPosition(hv); var cam = new T.PerspectiveCamera(22, 1, 0.1, 10); var hy = hv.y + 0.04; cam.position.set(0.16, hy + 0.04, 1.1); cam.lookAt(0, hy - 0.03, 0);
       pr.render(sc, cam);
       var url = pr.domElement.toDataURL('image/png');
       f.traverse(function (o) { if (o.geometry) o.geometry.dispose(); });

@@ -132,3 +132,17 @@ Everything is in the Sheet. Edit on your phone (Google Sheets app) or PC. Only c
 - `prepareSheet_()` runs every morning, so new tabs, settings and triggers arrive without re-running setup.
 - Script: https://script.google.com/d/1kGCjIZ6uRZteKZ0n_SFiOh5xnZxdoZY1Y1lWlMDno1Fi7D83lMjvuaCX/edit
 </details>
+
+## Art and asset licences
+
+Every character, outfit, icon and illustration in Nudge is original, drawn or modelled in code for this app. Nothing is copied from any game, show, app or brand.
+
+| What | Where | Licence |
+|---|---|---|
+| 2D figures (Home, You, dressing room) | `web/figure.js` | Original, part of this app |
+| 3D characters (creator prototype, waiting for approval) | `web/ps2char.js`: procedural skinned bodies, canvas-painted textures | Original, part of this app |
+| Faces and portraits | `web/face.js` | Original, part of this app |
+| 3D engine | `web/three.min.js` (three.js r149) | MIT |
+| Fonts | Unbounded, Bodoni Moda, Manrope (Google Fonts) | SIL Open Font Licence 1.1 |
+
+No third-party 3D models or animations are used yet. If CC0 packs (Quaternius, Kenney) or Mixamo animations are added later, each one is listed here with its licence and source.

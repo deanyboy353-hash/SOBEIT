@@ -40,7 +40,7 @@
     var c = document.createElement('div'); c.className = 'c';
     c.innerHTML = '<div class="ps2-host"></div><b>' + L.name + '</b><small></small>';
     document.getElementById('row').appendChild(c);
-    var st = PS2Char.stage(c.querySelector(".ps2-host"), [L], { capture: true, still: true, ps2: ps2, pose: poseName, dist: 4.2, camY: 0.92, yaw: 0.35, floor: '#3a1f2a', sky: '#ffd2a6', rim: '#b08cff' });
+    var st = PS2Char.stage(c.querySelector(".ps2-host"), [L], { capture: true, still: true, ps2: ps2, pose: poseName, dist: 5.0, camY: 0.98, yaw: 0.35, floor: '#3a1f2a', sky: '#ffd2a6', rim: '#b08cff' });
     c.querySelector('small').textContent = st.tris[0] + ' triangles';
     window.TRIS.push(st.tris[0]);
   });
