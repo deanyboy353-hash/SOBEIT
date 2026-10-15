@@ -97,13 +97,17 @@ class FakeSheet {
   setFrozenRows() {}
   insertRowAfter(r) { this.data.splice(r, 0, []); }
   deleteRow(r) { this.data.splice(r - 1, 1); }
+  deleteRows(r, n) { this.data.splice(r - 1, n); }
+  setName(n) { this.name = n; }
   setColumnWidth() {}
   rows() { return this.getDataRange().getValues(); }
 }
 
 class FakeSpreadsheet {
-  constructor() { this.sheets = [new FakeSheet('Sheet1')]; }
-  getId() { return 'sheet-id'; }
+  constructor(id, name) { this.sheets = [new FakeSheet('Sheet1')]; this.id = id || 'sheet-id'; this.name = name || 'Nudge'; }
+  getId() { return this.id; }
+  getUrl() { return 'https://docs.google.com/spreadsheets/d/' + this.id; }
+  getName() { return this.name; }
   getSheetByName(n) { return this.sheets.find(s => s.name === n) || null; }
   insertSheet(n) { const s = new FakeSheet(n); s.ss = this; this.sheets.push(s); return s; }
   getSheets() { return this.sheets; }
@@ -180,7 +184,8 @@ function loadProject(opts = {}) {
   const ctx = {
     Date: FakeDate, console, JSON, Math, Object, String, Number, Array, Error, RegExp, encodeURIComponent, isNaN,
     Utilities,
-    SpreadsheetApp: { getActiveSpreadsheet: () => ss, openById: () => ss, getUi: () => null },
+    SpreadsheetApp: { getActiveSpreadsheet: () => ss, openById: id => (state.spreadsheets || []).find(x => x.id === id) || ss, getUi: () => null,
+      create: name => { const x = new FakeSpreadsheet('ss-' + ((state.spreadsheets = state.spreadsheets || []).length + 1), name); state.spreadsheets.push(x); return x; } },
     PropertiesService: {
       getScriptProperties: () => ({
         getProperty: k => (k in state.props ? state.props[k] : null),

@@ -26,7 +26,8 @@ function dailyJobs_() {
     { name: 'Weigh-in', run: planWeighIn_ },
     { name: 'Food check', run: scheduleFoodCheck_ },
     { name: 'Morning briefs', run: planBriefs_ },
-    { name: 'Business income', run: function () { return payIncome_(); } }
+    { name: 'Business income', run: function () { return payIncome_(); } },
+    { name: 'Backup', run: dailyBackup_ }
   ];
 }
 

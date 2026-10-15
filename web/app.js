@@ -1675,6 +1675,7 @@
 
   var charGame = 'sa';
   function renderCustom() {
+    loadBackupInfo();
     var p = prefs(), th = document.documentElement.getAttribute('data-theme'), cur = charOf(S.who), n = names(), h = '';
     h += '<div class="top"><div class="row"><button class="iconbtn" type="button" data-goto="you" aria-label="Back">' + icon('back') + '</button><h1>Customise</h1></div></div>';
     // character
@@ -1718,9 +1719,37 @@
       var on = p[o[0]] !== false;
       return '<div class="item"><div class="grow"><b>' + o[1] + '</b><div class="tiny muted">' + o[2] + '</div></div><button class="toggle' + (on ? ' on' : '') + '" type="button" data-pref="' + o[0] + '" aria-pressed="' + on + '" aria-label="' + o[1] + '"><i></i></button></div>';
     }).join('') + '</section>';
+    if (ME) h += '<section class="card" id="backupCard"><div class="head"><h3>Backups</h3></div><p class="small muted" style="margin:0 0 8px">Every morning a copy of everything goes to a separate "Nudge backups" sheet in your Drive (the last ' + (backupInfo ? backupInfo.keep : 14) + ' days are kept). ' +
+      (backupInfo ? (backupInfo.last ? 'Last backup: ' + esc(backupInfo.last) + '.' : 'No backup yet.') + (backupInfo.url ? ' <a href="' + esc(backupInfo.url) + '" target="_blank" rel="noopener">Open backups</a>' : '') : '') + '</p>' +
+      '<div class="grid2"><button class="btn soft" type="button" data-backup="export">' + icon('undo', 's') + 'Export everything</button><label class="btn soft">Import backup<input type="file" accept=".json,application/json" id="backupFile" hidden></label></div>' +
+      '<button class="btn ghost wide" type="button" data-backup="now" style="margin-top:8px">Back up now</button>' +
+      '<p class="tiny muted" style="margin:8px 0 0">Importing never touches your live data: it rebuilds the backup as a new sheet so you can check it first.</p></section>';
     h += '<p class="small muted center">Your choices follow you to any phone you open the app on. ' + esc(n.other) + ' has their own.</p>';
     el('tab-custom').innerHTML = h;
   }
+
+  // ---------- backups (Dean's link: the backup holds both of you) ----------
+  var backupInfo = null;
+  function loadBackupInfo() { if (!ME || backupInfo) return; rpc('backupStatus', []).then(function (b) { backupInfo = b; if (el('backupCard')) renderCustom(); }, function () {}); }
+  function downloadText(name, text) {
+    var a = document.createElement('a'), url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+  }
+  document.addEventListener('click', function (ev) {
+    var b = ev.target.closest('[data-backup]'); if (!b) return;
+    if (b.dataset.backup === 'export') { toast('Gathering everything…'); return rpc('exportAll', []).then(function (json) { downloadText('nudge-backup-' + new Date().toISOString().slice(0, 10) + '.json', json); toast('Saved to your downloads'); }, function (e) { toast(e.message, true); }); }
+    if (b.dataset.backup === 'now') { toast('Backing up…'); return rpc('backupNow', []).then(function (r) { backupInfo = r; renderCustom(); toast(r.msg); }, function (e) { toast(e.message, true); }); }
+  });
+  document.addEventListener('change', function (ev) {
+    if (ev.target.id !== 'backupFile' || !ev.target.files.length) return;
+    var f = ev.target.files[0]; ev.target.value = '';
+    f.text().then(function (text) {
+      toast('Rebuilding the backup as a new sheet…');
+      return rpc('importBackup', [text]).then(function (r) {
+        openSheet('<h2>Backup rebuilt</h2><p class="muted">' + r.tabs + ' tabs restored into a new sheet, "' + esc(r.name) + '". Your live data hasn\'t changed. Check it over; to switch back to it, copy the tabs you need across.</p><a class="btn primary wide" href="' + esc(r.url) + '" target="_blank" rel="noopener">Open it</a><button class="btn ghost wide" type="button" data-close="1" style="margin-top:8px">Done</button>');
+      });
+    }).catch(function (e) { toast(e.message, true); });
+  });
 
   function lookEditor(id) {
     var O = LQPortrait.OPTIONS, L = lookOf(S.who) || {}, base = LQPortrait.look(id), h = '<section class="card"><div class="head"><h3>Your look</h3>' + (Object.keys(L).length ? '<button class="btn ghost sm" type="button" data-lookreset="1">Reset</button>' : '') + '</div>';
@@ -3058,6 +3087,11 @@
     if (what === 'weigh') { var w = el('weighText'); if (w) { w.scrollIntoView({ block: 'center' }); w.focus(); } else toast('Weight is already in for today'); return; }
     if (what === 'start') { var st = document.querySelector('#tab-train [data-wk="start"], #tab-train .btn.primary'); if (st) st.scrollIntoView({ block: 'center' }); }
   }
+  window.addEventListener('hashchange', function () {
+    var m = location.hash.match(/^#(\w+):(\w+)$/); if (!m || !S) return;
+    history.replaceState(null, '', location.pathname + location.search + '#' + m[1]);
+    showTab(m[1]); setTimeout(function () { shortcut(m[1], m[2]); }, 200);
+  });
   function boot() {
     if (!S) return;
     ME = S.who === 'me';
