@@ -2750,8 +2750,17 @@
   function dressPanel() {
     var W = S.wardrobe, L = dress.look, tab = dress.tab, h = '';
     if (tab === 'body') {
-      h += '<div class="eyebrow">Frame</div><div class="seg" style="margin:6px 0 12px">' + [['m', 'Broad'], ['f', 'Curvy']].map(function (o) { return '<button type="button" data-dbody="' + o[0] + '" aria-pressed="' + (L.body === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>' +
-        '<div class="eyebrow">Skin</div>' + swatches('skin', SKINS, L.skin);
+      var opt = function (key, label, list, def) {
+        var cur = L[key] === undefined ? def : L[key];
+        return '<div class="eyebrow">' + label + '</div><div class="seg" style="margin:6px 0 12px">' + list.map(function (o) { return '<button type="button" data-dopt="' + key + '" data-v="' + o[0] + '" aria-pressed="' + (String(cur) === String(o[0])) + '">' + o[1] + '</button>'; }).join('') + '</div>';
+      };
+      h += '<div class="eyebrow">Frame</div><div class="seg" style="margin:6px 0 12px">' + [['m', 'Straight'], ['f', 'Curvy']].map(function (o) { return '<button type="button" data-dbody="' + o[0] + '" aria-pressed="' + (L.body === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>' +
+        opt('build', 'Build', [['slim', 'Slim'], ['avg', 'Average'], ['broad', 'Broad'], ['big', 'Big']], 'avg') +
+        opt('height', 'Height', [['short', 'Shorter'], ['avg', 'Average'], ['tall', 'Taller']], 'avg') +
+        '<div class="eyebrow">Skin</div>' + swatches('skin', SKINS, L.skin) +
+        '<div class="eyebrow" style="margin-top:12px">Eyes</div>' + swatches('eyeC', ['#4a2f1d', '#2a1a10', '#6b8e23', '#3f7cc0', '#7d8a96', '#a0522d'], L.eyeC || '#4a2f1d') +
+        '<div style="margin-top:12px"></div>' + opt('beard', 'Facial hair', [['none', 'None'], ['stubble', 'Stubble'], ['goatee', 'Goatee'], ['full', 'Full beard']], L.body === 'f' ? 'none' : 'stubble') +
+        opt('freckles', 'Freckles', [['', 'No'], ['1', 'Yes']], L.freckles ? '1' : '');
       return h;
     }
     if (tab === 'glam') {
@@ -2806,7 +2815,7 @@
     document.body.classList.remove('dress-open'); dress = null;
   }
   document.addEventListener('click', function (ev) {
-    var t = ev.target.closest('[data-dress], [data-dtab], [data-dtry], [data-dbuy], [data-dcol], [data-dbody], [data-dpat]');
+    var t = ev.target.closest('[data-dress], [data-dtab], [data-dtry], [data-dbuy], [data-dcol], [data-dbody], [data-dpat], [data-dopt]');
     if (!t || !S) return;
     var d = t.dataset, L = dress && dress.look;
     if (d.dress === 'open') return openDress();
@@ -2819,6 +2828,7 @@
     if (d.dtab) { dress.tab = d.dtab; return renderDress(); }
     if (d.dpat) { dress.patFor = d.dpat; return renderDress(); }
     if (d.dbody) { L.body = d.dbody; preview(true); return renderDress(); }
+    if (d.dopt) { L[d.dopt] = d.dopt === 'freckles' ? !!d.v : d.v; preview(true); return renderDress(); }
     if (d.dcol) { L[d.dcol] = d.v; preview(false); return renderDress(); }
     if (d.dtry) {
       var it = S.wardrobe.catalog.filter(function (w) { return w.id === d.dtry; })[0]; if (!it) return;

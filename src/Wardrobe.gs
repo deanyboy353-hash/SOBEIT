@@ -128,7 +128,10 @@ function setLook3d(key, look) {
       if (!slotOk(look[p[0]], p[1])) throw new Error('You don\'t own that yet.');
       cur[p[0]] = look[p[0]];
     });
-    ['skin', 'hairC', 'topC', 'botC', 'shoeC'].forEach(function (k) { if (look[k] !== undefined && hex.test(look[k])) cur[k] = look[k].toLowerCase(); });
+    ['skin', 'hairC', 'topC', 'botC', 'shoeC', 'eyeC'].forEach(function (k) { if (look[k] !== undefined && hex.test(look[k])) cur[k] = look[k].toLowerCase(); });
+    var pick = { build: ['slim', 'avg', 'broad', 'big'], height: ['short', 'avg', 'tall'], beard: ['none', 'stubble', 'goatee', 'full'] };
+    Object.keys(pick).forEach(function (k) { if (look[k] !== undefined && pick[k].indexOf(look[k]) !== -1) cur[k] = look[k]; });
+    if (look.freckles !== undefined) cur.freckles = !!look.freckles;
     if ((look.lips !== undefined || look.shadow !== undefined) && owned.indexOf('glam') !== -1) {
       if (hex.test(look.lips || '')) cur.lips = look.lips.toLowerCase();
       if (hex.test(look.shadow || '')) cur.shadow = look.shadow.toLowerCase();

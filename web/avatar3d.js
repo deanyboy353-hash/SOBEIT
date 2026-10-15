@@ -106,7 +106,7 @@
   }
   var faceCache = {};
   function faceTex(L, f) {
-    var key = [L.skin, L.lips, L.shadow, L.hairC, f ? 1 : 0, L.lips !== '#9c4a52' ? 1 : 0].join();
+    var key = [L.skin, L.lips, L.shadow, L.hairC, f ? 1 : 0, L.lips !== '#9c4a52' ? 1 : 0, L.beard || '', L.eyeC || '', L.freckles ? 1 : 0].join();
     if (faceCache[key]) return faceCache[key];
     var W = 512, H = 256, c = document.createElement('canvas'); c.width = W; c.height = H;
     var g = c.getContext('2d'), cx = W * 0.25, glam = f || L.lips !== '#9c4a52';
@@ -116,13 +116,22 @@
     var rg = function (x, y, r, col) { var gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, col); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); };
     [-1, 1].forEach(function (s) { rg(cx + s * 30, 152, 20, warm); rg(cx + s * 22, 118, 16, 'rgba(60,30,20,0.18)'); });
     rg(cx, 160, 10, 'rgba(60,30,20,0.15)');
-    if (!f) { g.globalAlpha = 0.16; for (var i = 0; i < 500; i++) { var a = Math.random() * Math.PI, rr = 34 + Math.random() * 16; g.fillStyle = shade(L.hairC, 0.1); g.fillRect(cx + Math.cos(a) * rr * 0.95, 150 + Math.sin(a) * rr * 0.55, 1.4, 1.4); } g.globalAlpha = 1; }
+    var beard = L.beard || (f ? 'none' : 'stubble'), bc = shade(L.hairC, 0.05);
+    if (beard === 'goatee' || beard === 'full') {
+      g.fillStyle = bc; g.globalAlpha = 0.92;
+      if (beard === 'full') { g.beginPath(); g.moveTo(cx - 46, 128); g.quadraticCurveTo(cx - 44, 196, cx, 206); g.quadraticCurveTo(cx + 44, 196, cx + 46, 128); g.lineTo(cx + 34, 140); g.quadraticCurveTo(cx + 22, 186, cx, 186); g.quadraticCurveTo(cx - 22, 186, cx - 34, 140); g.closePath(); g.fill(); }
+      g.beginPath(); g.ellipse(cx, 186, 13, 10, 0, 0, Math.PI * 2); g.fill();                                   // chin
+      g.beginPath(); g.moveTo(cx - 17, 166); g.quadraticCurveTo(cx, 158, cx + 17, 166); g.quadraticCurveTo(cx, 163, cx - 17, 166); g.lineWidth = 5; g.strokeStyle = bc; g.stroke();   // moustache
+      g.globalAlpha = 1;
+    }
+    if (L.freckles) { g.fillStyle = shade(L.skin, -0.32); g.globalAlpha = 0.55; for (var fr = 0; fr < 26; fr++) { var fs = fr % 2 ? 1 : -1; g.beginPath(); g.arc(cx + fs * (18 + (fr * 7 % 22)), 136 + (fr * 11 % 16), 1.3, 0, 7); g.fill(); } g.globalAlpha = 1; }
+    if (beard === 'stubble') { g.globalAlpha = 0.16; for (var i = 0; i < 500; i++) { var a = Math.random() * Math.PI, rr = 34 + Math.random() * 16; g.fillStyle = shade(L.hairC, 0.1); g.fillRect(cx + Math.cos(a) * rr * 0.95, 150 + Math.sin(a) * rr * 0.55, 1.4, 1.4); } g.globalAlpha = 1; }
     // eyes
     [-1, 1].forEach(function (s) {
       var ex = cx + s * 21, ey = 121;
       if (glam) { g.fillStyle = L.shadow; g.globalAlpha = 0.75; g.beginPath(); g.ellipse(ex, ey - 4, 12, 7, 0, Math.PI, 0); g.fill(); g.globalAlpha = 1; }
       g.fillStyle = '#ffffff'; g.beginPath(); g.ellipse(ex, ey, 9.5, 5, 0, 0, Math.PI * 2); g.fill();
-      g.fillStyle = '#4a2f1d'; g.beginPath(); g.arc(ex + s * 0.5, ey, 4.3, 0, Math.PI * 2); g.fill();
+      g.fillStyle = L.eyeC || '#4a2f1d'; g.beginPath(); g.arc(ex + s * 0.5, ey, 4.3, 0, Math.PI * 2); g.fill();
       g.fillStyle = '#0d0907'; g.beginPath(); g.arc(ex + s * 0.5, ey, 2.1, 0, Math.PI * 2); g.fill();
       g.fillStyle = '#ffffff'; g.beginPath(); g.arc(ex + s * 0.5 + 1.5, ey - 1.5, 1, 0, Math.PI * 2); g.fill();
       g.strokeStyle = f ? '#120c0a' : 'rgba(40,25,20,0.8)'; g.lineWidth = f ? 2.4 : 1.4; g.beginPath(); g.ellipse(ex, ey, 9.5, 5, 0, Math.PI * 1.05, Math.PI * 1.95); g.stroke();
@@ -173,7 +182,7 @@
     var heel = L.shoes === 'heels' || L.shoes === 'thigh' ? 0.07 : 0;
     var body = new T.Group(); body.position.y = heel; root.add(body); parts.body = body;
     var sleeves = { tee: 'short', tank: 'none', grove: 'none', tracktop: 'long', hawaiian: 'short', vcsuit: 'long', hoodie: 'long', bomber: 'long', leather: 'long', crop: 'short', corset: 'none', bodice: 'none', fur: 'long' }[L.top] || 'short';
-    var bulky = L.top === 'fur' ? 1.22 : L.top === 'bomber' || L.top === 'hoodie' || L.top === 'leather' ? 1.07 : 1;
+    var bulky = (L.top === 'fur' ? 1.22 : L.top === 'bomber' || L.top === 'hoodie' || L.top === 'leather' ? 1.07 : 1) * ({ slim: 0.88, broad: 1.14, big: 1.26 }[L.build] || 1);
     // legs
     var legX = f ? 0.088 : 0.098, baggy = L.bottom === 'baggy' || L.bottom === 'trackpants' ? 1.28 : L.bottom === 'slacks' ? 1.1 : 1;
     var legCover = { jeans: [1, 1], shorts: [0.55, 0], baggy: [1, 1], trackpants: [1, 1], slacks: [1, 1], skirt: [0, 0], hotpants: [0.12, 0], mermaid: [1, 1], gown: [1, 1] }[L.bottom] || [1, 1];
@@ -245,6 +254,7 @@
     });
     (L.acc || []).forEach(function (id) { addAcc(id, parts, L, f); });
     root.userData = parts;
+    var hs = { short: 0.94, tall: 1.06 }[L.height]; if (hs) root.scale.setScalar(hs);
     return root;
   }
   function addHair(head, L, m) {

@@ -316,3 +316,16 @@ test('earned outfits: shown with their requirement, unlock free on the achieveme
   g.ctx.setLook3d(me, { top: 'streakhoodie', acc: ['goldphones'] });
   assert.strictEqual(g.ctx.appState(me).wardrobe.look.top, 'streakhoodie');
 });
+
+test('character options: build, height, facial hair, eye colour and freckles are saved; junk is ignored', () => {
+  const { loadProject } = require('./fakes');
+  const g = loadProject({ now: new Date('2026-10-13T09:00:00Z') });
+  g.ctx.setup();
+  const me = g.state.props.WEBAPP_KEY;
+  g.ctx.setLook3d(me, { build: 'broad', height: 'tall', beard: 'full', eyeC: '#3F7CC0', freckles: true });
+  let L = g.ctx.appState(me).wardrobe.look;
+  assert.deepStrictEqual([L.build, L.height, L.beard, L.eyeC, L.freckles], ['broad', 'tall', 'full', '#3f7cc0', true]);
+  g.ctx.setLook3d(me, { build: 'huge<script>', beard: 'x', eyeC: 'red' });
+  L = g.ctx.appState(me).wardrobe.look;
+  assert.deepStrictEqual([L.build, L.beard, L.eyeC], ['broad', 'full', '#3f7cc0']);
+});

@@ -57,7 +57,8 @@
     s += '<g clip-path="url(#' + id + 'c)"><rect width="100" height="100" fill="url(#' + id + 'b)"/>';
     s += hairBack(h, hairC);
     // shoulders and top
-    s += '<path d="M12 104c2-18 16-26 38-26s36 8 38 26z" fill="' + top + '"/>';
+    var sh = { slim: 4, broad: -3, big: -6 }[look.build] || 0;
+    s += '<path d="M' + (12 + sh) + ' 104c2-18 16-26 38-26s36 8 38 26z" fill="' + top + '"/>';
     if (look.topPat === 'stripes') s += '<path d="M16 92h68M14 98h72" stroke="' + hex(top, 0.45) + '" stroke-width="3"/>';
     if (o.wear === 'gym') s += '<path d="M33 80c3 10 9 14 17 14s14-4 17-14" fill="' + skin + '"/>';                     // vest top
     else if (o.wear === 'rain') s += '<path d="M22 86c4-14 14-22 28-22s24 8 28 22" fill="none" stroke="' + hex(top, -0.2) + '" stroke-width="7"/>';  // hood
@@ -65,17 +66,24 @@
     // neck, ears, head
     s += '<rect x="42" y="60" width="16" height="20" rx="6" fill="' + hex(skin, -0.12) + '"/>';
     s += '<ellipse cx="29" cy="47" rx="4" ry="6" fill="' + hex(skin, -0.06) + '"/><ellipse cx="71" cy="47" rx="4" ry="6" fill="' + hex(skin, -0.06) + '"/>';
-    s += '<ellipse cx="50" cy="44" rx="21" ry="24" fill="' + skin + '"/>';
+    var bw = { slim: 19.5, broad: 22, big: 23.5 }[look.build] || 21;
+    s += '<ellipse cx="50" cy="44" rx="' + bw + '" ry="24" fill="' + skin + '"/>';
     s += '<ellipse cx="50" cy="56" rx="15" ry="9" fill="' + hex(skin, -0.05) + '" opacity=".5"/>';
     // eyes and brows
     if (sleepy) s += '<path d="M38 47q5 3 9 0M53 47q5 3 9 0" stroke="#2a1f1a" stroke-width="2" fill="none" stroke-linecap="round"/>';
     else {
       if (glam) s += '<ellipse cx="42" cy="45" rx="6" ry="4" fill="' + (look.shadow || '#7b3fa0') + '" opacity=".45"/><ellipse cx="58" cy="45" rx="6" ry="4" fill="' + (look.shadow || '#7b3fa0') + '" opacity=".45"/>';
       s += '<ellipse cx="42" cy="47" rx="4.2" ry="' + (happy ? 2.6 : 3.6) + '" fill="#fff"/><ellipse cx="58" cy="47" rx="4.2" ry="' + (happy ? 2.6 : 3.6) + '" fill="#fff"/>';
-      s += '<circle cx="42.5" cy="47.5" r="2.3" fill="#2a1f1a"/><circle cx="58.5" cy="47.5" r="2.3" fill="#2a1f1a"/><circle cx="43.3" cy="46.6" r=".8" fill="#fff"/><circle cx="59.3" cy="46.6" r=".8" fill="#fff"/>';
+      s += '<circle cx="42.5" cy="47.5" r="2.3" fill="' + (look.eyeC || '#2a1f1a') + '"/><circle cx="58.5" cy="47.5" r="2.3" fill="' + (look.eyeC || '#2a1f1a') + '"/><circle cx="43.3" cy="46.6" r=".8" fill="#fff"/><circle cx="59.3" cy="46.6" r=".8" fill="#fff"/>';
       if (glam) s += '<path d="M37 44l-2-2M38.5 43.2l-1.4-2.2M63 44l2-2M61.5 43.2l1.4-2.2" stroke="#1a1a1a" stroke-width="1"/>';
     }
     s += '<path d="M36 ' + (happy ? 39 : 40) + 'q6-3 11 0M53 ' + (happy ? 39 : 40) + 'q6-3 11 0" stroke="' + hex(hairC, 0.05) + '" stroke-width="2.2" fill="none" stroke-linecap="round"/>';
+    // freckles and facial hair (from the dressing room)
+    if (look.freckles) s += [[38, 52], [41, 54], [44, 52], [56, 52], [59, 54], [62, 52]].map(function (p) { return '<circle cx="' + p[0] + '" cy="' + p[1] + '" r=".8" fill="' + hex(skin, -0.35) + '"/>'; }).join('');
+    var beard = look.beard || (look.body === 'f' ? 'none' : 'stubble'), bc = hex(hairC, 0.05);
+    if (beard === 'stubble') s += '<path d="M31 52q2 15 19 16q17-1 19-16q-4 9-19 10q-15-1-19-10z" fill="' + bc + '" opacity=".22"/>';
+    if (beard === 'full') s += '<path d="M29 46q0 22 21 23q21-1 21-23q-3 8-8 10q-3-4-13-4q-10 0-13 4q-5-2-8-10z" fill="' + bc + '"/>';
+    if (beard === 'goatee' || beard === 'full') s += '<path d="M42 58q8-4 16 0q-8-2-16 0zM45 63q5 9 10 0q-5 3-10 0z" fill="' + bc + '" stroke="' + bc + '" stroke-width="2"/>';
     // nose, cheeks, mouth
     s += '<path d="M50 49q-3 6 0 7" stroke="' + hex(skin, -0.28) + '" stroke-width="1.6" fill="none" stroke-linecap="round"/>';
     s += '<ellipse cx="37" cy="55" rx="4" ry="2.4" fill="#ff7a9a" opacity="' + (happy || glam ? '.35' : '.15') + '"/><ellipse cx="63" cy="55" rx="4" ry="2.4" fill="#ff7a9a" opacity="' + (happy || glam ? '.35' : '.15') + '"/>';

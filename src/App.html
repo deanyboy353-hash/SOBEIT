@@ -2589,7 +2589,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
   }
   var faceCache = {};
   function faceTex(L, f) {
-    var key = [L.skin, L.lips, L.shadow, L.hairC, f ? 1 : 0, L.lips !== '#9c4a52' ? 1 : 0].join();
+    var key = [L.skin, L.lips, L.shadow, L.hairC, f ? 1 : 0, L.lips !== '#9c4a52' ? 1 : 0, L.beard || '', L.eyeC || '', L.freckles ? 1 : 0].join();
     if (faceCache[key]) return faceCache[key];
     var W = 512, H = 256, c = document.createElement('canvas'); c.width = W; c.height = H;
     var g = c.getContext('2d'), cx = W * 0.25, glam = f || L.lips !== '#9c4a52';
@@ -2599,13 +2599,22 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     var rg = function (x, y, r, col) { var gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, col); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); };
     [-1, 1].forEach(function (s) { rg(cx + s * 30, 152, 20, warm); rg(cx + s * 22, 118, 16, 'rgba(60,30,20,0.18)'); });
     rg(cx, 160, 10, 'rgba(60,30,20,0.15)');
-    if (!f) { g.globalAlpha = 0.16; for (var i = 0; i < 500; i++) { var a = Math.random() * Math.PI, rr = 34 + Math.random() * 16; g.fillStyle = shade(L.hairC, 0.1); g.fillRect(cx + Math.cos(a) * rr * 0.95, 150 + Math.sin(a) * rr * 0.55, 1.4, 1.4); } g.globalAlpha = 1; }
+    var beard = L.beard || (f ? 'none' : 'stubble'), bc = shade(L.hairC, 0.05);
+    if (beard === 'goatee' || beard === 'full') {
+      g.fillStyle = bc; g.globalAlpha = 0.92;
+      if (beard === 'full') { g.beginPath(); g.moveTo(cx - 46, 128); g.quadraticCurveTo(cx - 44, 196, cx, 206); g.quadraticCurveTo(cx + 44, 196, cx + 46, 128); g.lineTo(cx + 34, 140); g.quadraticCurveTo(cx + 22, 186, cx, 186); g.quadraticCurveTo(cx - 22, 186, cx - 34, 140); g.closePath(); g.fill(); }
+      g.beginPath(); g.ellipse(cx, 186, 13, 10, 0, 0, Math.PI * 2); g.fill();                                   // chin
+      g.beginPath(); g.moveTo(cx - 17, 166); g.quadraticCurveTo(cx, 158, cx + 17, 166); g.quadraticCurveTo(cx, 163, cx - 17, 166); g.lineWidth = 5; g.strokeStyle = bc; g.stroke();   // moustache
+      g.globalAlpha = 1;
+    }
+    if (L.freckles) { g.fillStyle = shade(L.skin, -0.32); g.globalAlpha = 0.55; for (var fr = 0; fr < 26; fr++) { var fs = fr % 2 ? 1 : -1; g.beginPath(); g.arc(cx + fs * (18 + (fr * 7 % 22)), 136 + (fr * 11 % 16), 1.3, 0, 7); g.fill(); } g.globalAlpha = 1; }
+    if (beard === 'stubble') { g.globalAlpha = 0.16; for (var i = 0; i < 500; i++) { var a = Math.random() * Math.PI, rr = 34 + Math.random() * 16; g.fillStyle = shade(L.hairC, 0.1); g.fillRect(cx + Math.cos(a) * rr * 0.95, 150 + Math.sin(a) * rr * 0.55, 1.4, 1.4); } g.globalAlpha = 1; }
     // eyes
     [-1, 1].forEach(function (s) {
       var ex = cx + s * 21, ey = 121;
       if (glam) { g.fillStyle = L.shadow; g.globalAlpha = 0.75; g.beginPath(); g.ellipse(ex, ey - 4, 12, 7, 0, Math.PI, 0); g.fill(); g.globalAlpha = 1; }
       g.fillStyle = '#ffffff'; g.beginPath(); g.ellipse(ex, ey, 9.5, 5, 0, 0, Math.PI * 2); g.fill();
-      g.fillStyle = '#4a2f1d'; g.beginPath(); g.arc(ex + s * 0.5, ey, 4.3, 0, Math.PI * 2); g.fill();
+      g.fillStyle = L.eyeC || '#4a2f1d'; g.beginPath(); g.arc(ex + s * 0.5, ey, 4.3, 0, Math.PI * 2); g.fill();
       g.fillStyle = '#0d0907'; g.beginPath(); g.arc(ex + s * 0.5, ey, 2.1, 0, Math.PI * 2); g.fill();
       g.fillStyle = '#ffffff'; g.beginPath(); g.arc(ex + s * 0.5 + 1.5, ey - 1.5, 1, 0, Math.PI * 2); g.fill();
       g.strokeStyle = f ? '#120c0a' : 'rgba(40,25,20,0.8)'; g.lineWidth = f ? 2.4 : 1.4; g.beginPath(); g.ellipse(ex, ey, 9.5, 5, 0, Math.PI * 1.05, Math.PI * 1.95); g.stroke();
@@ -2656,7 +2665,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     var heel = L.shoes === 'heels' || L.shoes === 'thigh' ? 0.07 : 0;
     var body = new T.Group(); body.position.y = heel; root.add(body); parts.body = body;
     var sleeves = { tee: 'short', tank: 'none', grove: 'none', tracktop: 'long', hawaiian: 'short', vcsuit: 'long', hoodie: 'long', bomber: 'long', leather: 'long', crop: 'short', corset: 'none', bodice: 'none', fur: 'long' }[L.top] || 'short';
-    var bulky = L.top === 'fur' ? 1.22 : L.top === 'bomber' || L.top === 'hoodie' || L.top === 'leather' ? 1.07 : 1;
+    var bulky = (L.top === 'fur' ? 1.22 : L.top === 'bomber' || L.top === 'hoodie' || L.top === 'leather' ? 1.07 : 1) * ({ slim: 0.88, broad: 1.14, big: 1.26 }[L.build] || 1);
     // legs
     var legX = f ? 0.088 : 0.098, baggy = L.bottom === 'baggy' || L.bottom === 'trackpants' ? 1.28 : L.bottom === 'slacks' ? 1.1 : 1;
     var legCover = { jeans: [1, 1], shorts: [0.55, 0], baggy: [1, 1], trackpants: [1, 1], slacks: [1, 1], skirt: [0, 0], hotpants: [0.12, 0], mermaid: [1, 1], gown: [1, 1] }[L.bottom] || [1, 1];
@@ -2728,6 +2737,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     });
     (L.acc || []).forEach(function (id) { addAcc(id, parts, L, f); });
     root.userData = parts;
+    var hs = { short: 0.94, tall: 1.06 }[L.height]; if (hs) root.scale.setScalar(hs);
     return root;
   }
   function addHair(head, L, m) {
@@ -2922,7 +2932,8 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     s += '<g clip-path="url(#' + id + 'c)"><rect width="100" height="100" fill="url(#' + id + 'b)"/>';
     s += hairBack(h, hairC);
     // shoulders and top
-    s += '<path d="M12 104c2-18 16-26 38-26s36 8 38 26z" fill="' + top + '"/>';
+    var sh = { slim: 4, broad: -3, big: -6 }[look.build] || 0;
+    s += '<path d="M' + (12 + sh) + ' 104c2-18 16-26 38-26s36 8 38 26z" fill="' + top + '"/>';
     if (look.topPat === 'stripes') s += '<path d="M16 92h68M14 98h72" stroke="' + hex(top, 0.45) + '" stroke-width="3"/>';
     if (o.wear === 'gym') s += '<path d="M33 80c3 10 9 14 17 14s14-4 17-14" fill="' + skin + '"/>';                     // vest top
     else if (o.wear === 'rain') s += '<path d="M22 86c4-14 14-22 28-22s24 8 28 22" fill="none" stroke="' + hex(top, -0.2) + '" stroke-width="7"/>';  // hood
@@ -2930,17 +2941,24 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     // neck, ears, head
     s += '<rect x="42" y="60" width="16" height="20" rx="6" fill="' + hex(skin, -0.12) + '"/>';
     s += '<ellipse cx="29" cy="47" rx="4" ry="6" fill="' + hex(skin, -0.06) + '"/><ellipse cx="71" cy="47" rx="4" ry="6" fill="' + hex(skin, -0.06) + '"/>';
-    s += '<ellipse cx="50" cy="44" rx="21" ry="24" fill="' + skin + '"/>';
+    var bw = { slim: 19.5, broad: 22, big: 23.5 }[look.build] || 21;
+    s += '<ellipse cx="50" cy="44" rx="' + bw + '" ry="24" fill="' + skin + '"/>';
     s += '<ellipse cx="50" cy="56" rx="15" ry="9" fill="' + hex(skin, -0.05) + '" opacity=".5"/>';
     // eyes and brows
     if (sleepy) s += '<path d="M38 47q5 3 9 0M53 47q5 3 9 0" stroke="#2a1f1a" stroke-width="2" fill="none" stroke-linecap="round"/>';
     else {
       if (glam) s += '<ellipse cx="42" cy="45" rx="6" ry="4" fill="' + (look.shadow || '#7b3fa0') + '" opacity=".45"/><ellipse cx="58" cy="45" rx="6" ry="4" fill="' + (look.shadow || '#7b3fa0') + '" opacity=".45"/>';
       s += '<ellipse cx="42" cy="47" rx="4.2" ry="' + (happy ? 2.6 : 3.6) + '" fill="#fff"/><ellipse cx="58" cy="47" rx="4.2" ry="' + (happy ? 2.6 : 3.6) + '" fill="#fff"/>';
-      s += '<circle cx="42.5" cy="47.5" r="2.3" fill="#2a1f1a"/><circle cx="58.5" cy="47.5" r="2.3" fill="#2a1f1a"/><circle cx="43.3" cy="46.6" r=".8" fill="#fff"/><circle cx="59.3" cy="46.6" r=".8" fill="#fff"/>';
+      s += '<circle cx="42.5" cy="47.5" r="2.3" fill="' + (look.eyeC || '#2a1f1a') + '"/><circle cx="58.5" cy="47.5" r="2.3" fill="' + (look.eyeC || '#2a1f1a') + '"/><circle cx="43.3" cy="46.6" r=".8" fill="#fff"/><circle cx="59.3" cy="46.6" r=".8" fill="#fff"/>';
       if (glam) s += '<path d="M37 44l-2-2M38.5 43.2l-1.4-2.2M63 44l2-2M61.5 43.2l1.4-2.2" stroke="#1a1a1a" stroke-width="1"/>';
     }
     s += '<path d="M36 ' + (happy ? 39 : 40) + 'q6-3 11 0M53 ' + (happy ? 39 : 40) + 'q6-3 11 0" stroke="' + hex(hairC, 0.05) + '" stroke-width="2.2" fill="none" stroke-linecap="round"/>';
+    // freckles and facial hair (from the dressing room)
+    if (look.freckles) s += [[38, 52], [41, 54], [44, 52], [56, 52], [59, 54], [62, 52]].map(function (p) { return '<circle cx="' + p[0] + '" cy="' + p[1] + '" r=".8" fill="' + hex(skin, -0.35) + '"/>'; }).join('');
+    var beard = look.beard || (look.body === 'f' ? 'none' : 'stubble'), bc = hex(hairC, 0.05);
+    if (beard === 'stubble') s += '<path d="M31 52q2 15 19 16q17-1 19-16q-4 9-19 10q-15-1-19-10z" fill="' + bc + '" opacity=".22"/>';
+    if (beard === 'full') s += '<path d="M29 46q0 22 21 23q21-1 21-23q-3 8-8 10q-3-4-13-4q-10 0-13 4q-5-2-8-10z" fill="' + bc + '"/>';
+    if (beard === 'goatee' || beard === 'full') s += '<path d="M42 58q8-4 16 0q-8-2-16 0zM45 63q5 9 10 0q-5 3-10 0z" fill="' + bc + '" stroke="' + bc + '" stroke-width="2"/>';
     // nose, cheeks, mouth
     s += '<path d="M50 49q-3 6 0 7" stroke="' + hex(skin, -0.28) + '" stroke-width="1.6" fill="none" stroke-linecap="round"/>';
     s += '<ellipse cx="37" cy="55" rx="4" ry="2.4" fill="#ff7a9a" opacity="' + (happy || glam ? '.35' : '.15') + '"/><ellipse cx="63" cy="55" rx="4" ry="2.4" fill="#ff7a9a" opacity="' + (happy || glam ? '.35' : '.15') + '"/>';
@@ -6120,8 +6138,17 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
   function dressPanel() {
     var W = S.wardrobe, L = dress.look, tab = dress.tab, h = '';
     if (tab === 'body') {
-      h += '<div class="eyebrow">Frame</div><div class="seg" style="margin:6px 0 12px">' + [['m', 'Broad'], ['f', 'Curvy']].map(function (o) { return '<button type="button" data-dbody="' + o[0] + '" aria-pressed="' + (L.body === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>' +
-        '<div class="eyebrow">Skin</div>' + swatches('skin', SKINS, L.skin);
+      var opt = function (key, label, list, def) {
+        var cur = L[key] === undefined ? def : L[key];
+        return '<div class="eyebrow">' + label + '</div><div class="seg" style="margin:6px 0 12px">' + list.map(function (o) { return '<button type="button" data-dopt="' + key + '" data-v="' + o[0] + '" aria-pressed="' + (String(cur) === String(o[0])) + '">' + o[1] + '</button>'; }).join('') + '</div>';
+      };
+      h += '<div class="eyebrow">Frame</div><div class="seg" style="margin:6px 0 12px">' + [['m', 'Straight'], ['f', 'Curvy']].map(function (o) { return '<button type="button" data-dbody="' + o[0] + '" aria-pressed="' + (L.body === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>' +
+        opt('build', 'Build', [['slim', 'Slim'], ['avg', 'Average'], ['broad', 'Broad'], ['big', 'Big']], 'avg') +
+        opt('height', 'Height', [['short', 'Shorter'], ['avg', 'Average'], ['tall', 'Taller']], 'avg') +
+        '<div class="eyebrow">Skin</div>' + swatches('skin', SKINS, L.skin) +
+        '<div class="eyebrow" style="margin-top:12px">Eyes</div>' + swatches('eyeC', ['#4a2f1d', '#2a1a10', '#6b8e23', '#3f7cc0', '#7d8a96', '#a0522d'], L.eyeC || '#4a2f1d') +
+        '<div style="margin-top:12px"></div>' + opt('beard', 'Facial hair', [['none', 'None'], ['stubble', 'Stubble'], ['goatee', 'Goatee'], ['full', 'Full beard']], L.body === 'f' ? 'none' : 'stubble') +
+        opt('freckles', 'Freckles', [['', 'No'], ['1', 'Yes']], L.freckles ? '1' : '');
       return h;
     }
     if (tab === 'glam') {
@@ -6176,7 +6203,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     document.body.classList.remove('dress-open'); dress = null;
   }
   document.addEventListener('click', function (ev) {
-    var t = ev.target.closest('[data-dress], [data-dtab], [data-dtry], [data-dbuy], [data-dcol], [data-dbody], [data-dpat]');
+    var t = ev.target.closest('[data-dress], [data-dtab], [data-dtry], [data-dbuy], [data-dcol], [data-dbody], [data-dpat], [data-dopt]');
     if (!t || !S) return;
     var d = t.dataset, L = dress && dress.look;
     if (d.dress === 'open') return openDress();
@@ -6189,6 +6216,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     if (d.dtab) { dress.tab = d.dtab; return renderDress(); }
     if (d.dpat) { dress.patFor = d.dpat; return renderDress(); }
     if (d.dbody) { L.body = d.dbody; preview(true); return renderDress(); }
+    if (d.dopt) { L[d.dopt] = d.dopt === 'freckles' ? !!d.v : d.v; preview(true); return renderDress(); }
     if (d.dcol) { L[d.dcol] = d.v; preview(false); return renderDress(); }
     if (d.dtry) {
       var it = S.wardrobe.catalog.filter(function (w) { return w.id === d.dtry; })[0]; if (!it) return;
