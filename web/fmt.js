@@ -2,11 +2,55 @@
 (function (root) {
   'use strict';
   /** The XP ring's text: under the goal "12" / "of 30 XP"; at or past it "Goal hit" / "45 XP today". */
-  function xpGoal(xp, goal) {
-    xp = Math.max(0, Math.round(Number(xp) || 0)); goal = Math.max(1, Math.round(Number(goal) || 1));
-    return xp >= goal ? { hit: true, big: 'Goal hit', small: xp + ' XP today', label: 'Goal hit · ' + xp + ' XP' } : { hit: false, big: String(xp), small: 'of ' + goal + ' XP', label: xp + ' of ' + goal + ' XP' };
+  /** Win the day, in words: {big, small, label}. Never claims a win that hasn't happened. */
+  function winText(w) {
+    if (!w) return { big: '', small: '', label: '' };
+    var unit = w.by === 'xp' ? ' XP' : w.need === 1 ? ' job' : ' jobs';
+    if (w.won && !w.need) return { big: 'Free win', small: 'nothing due today', label: 'Free win today' };
+    if (w.won) return { big: 'Won', small: w.extra ? '+' + w.extra + (w.by === 'xp' ? ' XP' : ' bonus') : 'today', label: 'Day won' };
+    var left = w.need - w.done;
+    return { big: w.done + '/' + w.need, small: left + unit.replace(/s$/, left === 1 ? '' : 's') + ' to go', label: 'Win the day: ' + w.done + ' of ' + w.need };
   }
-  var api = { xpGoal: xpGoal };
+  /** "just now", "4 min ago", "2 h ago" */
+  function ago(ts, nowMs) {
+    var m = Math.max(0, Math.floor((nowMs - (Number(ts) || 0)) / 60000));
+    return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.floor(m / 60) + ' h ago';
+  }
+  /** Should the brief be rewritten? 'stale' (new part of the day, or 3 hours old), 'big' (something big got done, 15+ min since the last one) or ''. */
+  function briefDue(b, part, nowMs, dirtyAt) {
+    if (!b || !b.brief || b.part !== part) return 'stale';
+    var age = nowMs - (Number(b.ts) || 0);
+    if (age >= 3 * 3600000) return 'stale';
+    if (dirtyAt && dirtyAt > (Number(b.ts) || 0) && age >= 15 * 60000) return 'big';
+    return '';
+  }
+  /** Something worth rewriting the brief for: the day won, the gym done, a routine or deadline finished. */
+  function bigMoment(prev, next) {
+    if (!prev || !next) return false;
+    var won = function (st) { return !!(st.game && (st.game.win ? st.game.win.won : st.game.streak && st.game.streak.todayDone)); };
+    var gym = function (st) { return !!(st.today && st.today.gym && st.today.gym.done); };
+    var fin = function (st) { return ((st.routines && st.routines.routines) || []).filter(function (r) { return r.finished; }).length; };
+    var dl = function (st) { return Array.isArray(st.deadlines) ? st.deadlines.length : 0; };
+    return won(next) && !won(prev) || gym(next) && !gym(prev) || fin(next) > fin(prev) || dl(next) < dl(prev);
+  }
+  // Home's cards, in the order Home starts with. Anything can be moved or hidden in Edit home screen.
+  var HOME_DEFAULT = ['brief', 'win', 'deadlines', 'routine', 'tiles', 'stage', 'ask', 'gym', 'challenges', 'whatnow', 'work', 'next', 'make', 'us', 'feed'];
+  var HOME_QUIET = { next: 1, make: 1, feed: 1 };
+  /**
+   * The order to draw Home in. A saved order from before Win the day (no 'win' in it) is replaced by the new
+   * default, but what you'd hidden stays hidden. Cards that were merged (ring, chores -> win; pet, wardrobe -> stage) show.
+   */
+  function homeOrder(saved) {
+    saved = (saved || []).filter(function (x) { return x && x.id; });
+    var known = {}, seen = {}, out = [];
+    HOME_DEFAULT.forEach(function (id) { known[id] = 1; });
+    var current = saved.some(function (x) { return x.id === 'win'; });
+    if (current) saved.forEach(function (x) { if (known[x.id] && !seen[x.id]) { seen[x.id] = 1; out.push({ id: x.id, hide: !!x.hide }); } });
+    var hid = {}; if (!current) saved.forEach(function (x) { if (known[x.id]) hid[x.id] = !!x.hide; });
+    HOME_DEFAULT.forEach(function (id) { if (!seen[id]) out.push({ id: id, hide: hid[id] !== undefined ? hid[id] : !!HOME_QUIET[id] }); });
+    return out;
+  }
+  var api = { homeOrder: homeOrder, HOME_DEFAULT: HOME_DEFAULT, winText: winText, ago: ago, briefDue: briefDue, bigMoment: bigMoment };
   root.NudgeFmt = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

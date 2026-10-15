@@ -104,6 +104,28 @@ function dayWon_(who, ymd, goal) {
   return m === null ? xpOn_(who, ymd) >= goal : m;
 }
 
+/**
+ * Win the day: the one daily score. Once setup has planned the day it's your chore minimum (any jobs count),
+ * before that it's the XP goal. Exactly the rule the streak and the pet use (dayWon_).
+ */
+function winOf_(who, ymd, goal) {
+  var m = minimumMet_(who, ymd);
+  if (m === null && setupOn_() && ymd === todayYmd_()) { cpToday_(); m = minimumMet_(who, ymd); }
+  if (m !== null) {
+    var need = Number((JSON.parse(prop_('CPMIN') || '{}')[ymd] || {})[who]) || 0, done = choresDoneOn_(who, ymd);
+    return { by: 'jobs', done: Math.min(done, need), need: need, extra: Math.max(0, done - need), won: cpIsWin(done, need) };
+  }
+  var xp = xpOn_(who, ymd);
+  return { by: 'xp', done: Math.min(xp, goal), need: goal, extra: Math.max(0, xp - goal), won: xp >= goal };
+}
+/** Your win plus your partner's (null when solo); both: you've both won, which is what feeds the pet and the couple streak. */
+function winState_(who, ymd, goal) {
+  var w = winOf_(who, ymd, goal);
+  w.partner = solo_() ? null : winOf_(who === 'me' ? 'partner' : 'me', ymd, goal);
+  w.both = w.won && (!w.partner || w.partner.won);
+  return w;
+}
+
 /** Streak as shown: settled days plus today once today's goal is hit. */
 function streakNow_(id, todayYmd, goal) {
   var st = streakState_(id);
@@ -122,7 +144,7 @@ function petState(team, minutesNow, solo) {
   var late = minutesNow >= 22 * 60 || minutesNow < 6 * 60;
   var mood = team.todayDone ? (late ? 'sleepy' : 'happy') : late || !team.count ? 'sleepy' : 'waiting';
   return { days: days, stage: stage[1], name: stage[2], next: next ? { at: next[0], name: next[2], left: next[0] - days } : null, mood: mood, streak: team.count,
-    line: mood === 'happy' ? (solo ? 'Fed and bouncing. You won today.' : 'Fed and bouncing. You both won today.') : mood === 'waiting' ? (solo ? 'Waiting for you to hit your minimum.' : 'Waiting for you both to hit the minimum.') : team.todayDone ? 'Full and fast asleep.' : !team.count ? (solo ? 'Having a long nap. One day you win wakes it up.' : 'Having a long nap. One day you both win wakes it up.') : 'Dozing. Still time to win today.' };
+    line: mood === 'happy' ? (solo ? 'Fed and bouncing. You won today.' : 'Fed and bouncing. You both won today.') : mood === 'waiting' ? (solo ? 'Waiting for you to win the day.' : 'Waiting for you both to win the day.') : team.todayDone ? 'Full and fast asleep.' : !team.count ? (solo ? 'Having a long nap. One day you win wakes it up.' : 'Having a long nap. One day you both win wakes it up.') : 'Dozing. Still time to win today.' };
 }
 
 // ---------- badges ----------
@@ -201,6 +223,7 @@ function gameState_(who) {
     goal: goal,
     xpToday: xpOn_(who, today),
     otherXpToday: xpOn_(other, today),
+    win: winState_(who, today, goal),
     streak: streak,
     otherStreak: streakNow_(other, today, goal).count,
     team: streakNow_('team', today, goal),

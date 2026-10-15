@@ -34,7 +34,7 @@ test('solo: no pushes to a partner, every chore is his, the pet grows on his own
   const st = g.ctx.cpState_('2026-10-13');
   assert.ok(st.chores.length > 0 && st.chores.every(c => c.assign === 'me'));
   const pet = JSON.parse(JSON.stringify(g.ctx.petState({ total: 3, count: 3, todayDone: false }, 600, true)));
-  assert.match(pet.line, /you to hit your minimum/);
+  assert.match(pet.line, /you to win the day/);
 });
 
 test('the main app is unchanged: not solo, partner link still works', () => {

@@ -64,7 +64,7 @@ function makeBrief_(who) {
   var res = callClaudeJson_(AI_VOICE + 'Write this person\'s brief for the rest of today. It is ' + part + ' now (' + now_('HH:mm') + '): only talk about what is still ahead today' +
     (part === 'night' ? ' and gently suggest bed' : '') + '. Do not greet them or say good morning/afternoon: the app already greets them. Use the facts below exactly (a training day is a training day; only say rest day if it says rest day). Kept light, plus the easiest good next move.',
     'Name: ' + n + '\nTime now: ' + now_('HH:mm') + ' (' + part + ')\n' + dayContext_(who), BRIEF_SCHEMA, claudeModel_(), 4000);
-  var b = { date: todayYmd_(), part: part, at: now_('HH:mm'), brief: String(res.brief || ''), first: String(res.first || '') };
+  var b = { date: todayYmd_(), part: part, at: now_('HH:mm'), ts: new Date().getTime(), brief: String(res.brief || ''), first: String(res.first || '') };
   setProp_('BRIEF_' + who, JSON.stringify(b));
   return b;
 }
@@ -176,10 +176,21 @@ function clearAsk(key) {
 }
 
 /** Morning brief on demand (the app asks for it after loading if 6am didn't make one). */
-function getBrief(key) {
+/**
+ * Does the brief need rewriting? Yes for a new day or part of the day, or once it's 3 hours old.
+ * After something big gets done (force) it's rewritten too, but never more than every 15 minutes.
+ */
+var BRIEF_MAX_AGE = 3 * 3600000, BRIEF_MIN_GAP = 15 * 60000;
+function briefStale(b, ymd, part, nowMs, force) {
+  if (!b || !b.brief || b.date !== ymd || b.part !== part) return true;
+  var age = nowMs - (Number(b.ts) || 0);
+  return age >= (force ? BRIEF_MIN_GAP : BRIEF_MAX_AGE);
+}
+
+function getBrief(key, force) {
   var who = who_(key);
   var b = JSON.parse(prop_('BRIEF_' + who) || 'null');
-  if (b && b.date === todayYmd_() && b.part === dayPart(minutesNow_())) return b;   // fresh for this part of the day
+  if (!briefStale(b, todayYmd_(), dayPart(minutesNow_()), new Date().getTime(), !!force)) return b;
   if (!claudeKey_()) return null;
   return makeBrief_(who);
 }

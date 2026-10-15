@@ -338,7 +338,7 @@ var DEFAULT_REWARDS = [
 ];
 
 var DEFAULT_ROUTINES = [
-  ['Morning', 'Me', '08:30', 'Meds (if you take them); Glass of water; Teeth; Get dressed; Look at the Home tab'],
+  ['Morning', 'Me', '08:30', 'Meds (if you take them); Glass of water; Teeth; Get dressed'],
   ['Evening', 'Me', '22:30', 'Phone on charge; Keys, wallet and headphones by the door; Gym bag ready if training tomorrow; Teeth; Set out tomorrow\'s clothes']
 ];
 

@@ -49,6 +49,20 @@ function planRoutines_(ymd, cfg) {
   return routines.length + ' routines';
 }
 
+/**
+ * How a routine shows on Home right now: 'open' (the full checklist), 'summary' (one line, e.g. "Morning routine 3/6")
+ * or 'hidden'. Morning routines are open 05:00-12:00 and fold to a summary until 18:00; evening ones appear at 18:00
+ * (and stay until 03:00). Anything else keeps the old rule: from an hour before its time until it's finished.
+ */
+function routinePhase(r, nowMin, finished) {
+  var t = r.time === null || r.time === undefined || r.time === '' ? null : Number(r.time);
+  var evening = /evening|night|bed/i.test(r.name) || (t !== null && t >= 17 * 60);
+  var morning = !evening && (/morning|wake/i.test(r.name) || (t !== null && t < 12 * 60));
+  if (evening) return nowMin >= 18 * 60 || nowMin < 3 * 60 ? (finished ? 'summary' : 'open') : 'hidden';
+  if (morning) return nowMin >= 18 * 60 || nowMin < 5 * 60 ? 'hidden' : nowMin >= 12 * 60 || finished ? 'summary' : 'open';
+  return !finished && (t === null || nowMin >= t - 60) ? 'open' : 'hidden';
+}
+
 function routinesState_(who) {
   var d = dayState_();
   var nowMin = parseClock(now_('HH:mm'));
@@ -56,8 +70,9 @@ function routinesState_(who) {
     routines: readRoutines_(who).map(function (r) {
       var k = who + '|' + r.name;
       return { name: r.name, time: r.time === null ? '' : formatClock(r.time), steps: r.steps, done: d.done[k] || [], finished: !!d.finished[k],
-        showNow: r.time === null || nowMin >= r.time - 60 || (r.time < 6 * 60 && nowMin < 6 * 60) };
+        showNow: r.time === null || nowMin >= r.time - 60 || (r.time < 6 * 60 && nowMin < 6 * 60), phase: routinePhase(r, nowMin, !!d.finished[k]) };
     }),
+    evening: nowMin >= 18 * 60 || nowMin < 3 * 60,
     water: d.water[who] || 0,
     waterGoal: waterGoal_(who)
   };
@@ -156,4 +171,15 @@ function deleteRoutine(key, name) {
     sheet_('routines').deleteRow(row); forget_('routines');
     return appState_(who);
   });
+}
+
+/** One-off: drop the old default "Look at the Home tab" step (Home is where the routine already is). Other steps are left alone. */
+function tidyRoutines_() {
+  var rows = vals_('routines'), sh = sheet_('routines');
+  for (var i = 1; i < rows.length; i++) {
+    var steps = String(rows[i][3] || '').split(/\s*;\s*|\n/).filter(String), kept = steps.filter(function (s) { return !/^look at the home tab$/i.test(s.trim()); });
+    if (kept.length && kept.length !== steps.length) sh.getRange(i + 1, 4).setNumberFormat('@').setValue(kept.join('; '));
+  }
+  forget_('routines');
+  setProp_('ROUTINE_V2', '1');
 }

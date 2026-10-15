@@ -81,15 +81,19 @@
     return { me: f.nick || (n[S.who] && n[S.who] !== 'Your partner' ? n[S.who] : ''), other: f.otherNick || n[S.who === 'me' ? 'partner' : 'me'] || 'Your partner', team: f.team || 'Together' };
   }
   // the Today brief is written for the part of the day it's for (morning, afternoon, evening, night), like the greeting
-  var briefAsked = '';
+  var briefAsked = '', briefDirty = 0;
   function dayPartNow() { var hr = new Date(now()).getHours(); return hr < 5 ? 'night' : hr < 12 ? 'morning' : hr < 18 ? 'afternoon' : 'evening'; }
+  /** The brief rewrites itself every few hours, for each part of the day, and soon after something big gets done. */
   function maybeBrief() {
     if (!S || !S.hasClaudeKey) return;
-    var want = new Date(now()).toDateString() + dayPartNow();
-    if (S.brief && S.brief.part === dayPartNow() || briefAsked === want) return;
+    var due = NudgeFmt.briefDue(S.brief, dayPartNow(), now(), briefDirty);
+    if (!due) return;
+    var want = due + ':' + dayPartNow() + ':' + (due === 'big' ? briefDirty : Math.floor(now() / 3600000));
+    if (briefAsked === want) return;
     briefAsked = want;
-    rpc('getBrief', []).then(function (b) { if (b) { S.brief = b; if (current === 'home') renderHome(); } }, function () {});
+    rpc('getBrief', [due === 'big']).then(function (b) { if (b) { if (due === 'big') briefDirty = 0; S.brief = b; if (current === 'home') renderHome(); } }, function () {});
   }
+  setInterval(function () { if (S && current === 'home' && !homeEditing && !document.hidden) { maybeBrief(); var u = document.querySelector('[data-briefago]'); if (u && S.brief && S.brief.ts) u.textContent = NudgeFmt.ago(S.brief.ts, now()); } }, 60000);
   function greeting() { var hr = new Date(now()).getHours(); return hr < 5 ? 'Late one' : hr < 12 ? 'Morning' : hr < 18 ? 'Afternoon' : 'Evening'; }
 
   var ICONS = {
@@ -184,16 +188,15 @@
   function celebrate(prev, next) {
     if (!prev || !next || !prev.game || !next.game) return;
     var a = prev.game, b = next.game;
-    if (b.team && a.team && !a.team.todayDone && b.team.todayDone) setTimeout(function () { highFive('You both hit the minimum'); }, b.level.level > a.level.level ? 2600 : 900);
+    var wonA = a.win ? a.win.won : a.streak && a.streak.todayDone, wonB = b.win ? b.win.won : b.streak && b.streak.todayDone;
+    if (NudgeFmt.bigMoment(prev, next)) briefDirty = now();   // something big: the brief catches up (at most every 15 min)
+    if (b.team && a.team && !a.team.todayDone && b.team.todayDone) setTimeout(function () { highFive(S.solo ? 'Day won' : 'You both won the day'); }, b.level.level > a.level.level ? 2600 : 900);
     if (b.level.level > a.level.level) {
       confetti(true); chime([660, 880, 1100, 1320]); buzz([60, 40, 60, 40, 120]); levelBurst(b.level.level);
       openSheet('<div class="center" style="padding:10px 0 4px">' + icon('star', 'l') + '<h2 style="margin:8px 0 4px">Level ' + b.level.level + '</h2><p class="muted">' + fmt(b.total) + ' XP so far. Nicely done.</p><button class="btn primary wide" type="button" data-close>Continue</button></div>');
-    } else if (a.streak && b.streak && !a.streak.todayDone && b.streak.todayDone) {
+    } else if (wonB && !wonA) {
       confetti(true); chime([660, 880, 1100]); buzz([50, 40, 120]);
       minBurst(b.streak.count);
-    } else if (a.xpToday < a.goal && b.xpToday >= b.goal) {
-      confetti(true); chime([660, 880, 1100]); buzz([50, 40, 120]);
-      toast('Daily goal reached. Streak: ' + b.streak.count + ' day' + (b.streak.count === 1 ? '' : 's'));
     } else if (b.xpToday > a.xpToday) {
       confetti(false); chime([880, 1175]); buzz(25);
     }
@@ -211,7 +214,7 @@
     document.body.appendChild(o); setTimeout(done, ms || 2400);
   }
   function minBurst(count) {
-    overlay('minhit', '<div class="burst-in">' + flame(count, 56) + '<h2>Today counts</h2><p>Minimum hit · streak ' + count + ' day' + (count === 1 ? '' : 's') + '</p></div>', 2000);
+    overlay('minhit', '<div class="burst-in">' + flame(count, 56) + '<h2>Day won</h2><p>Streak ' + count + ' day' + (count === 1 ? '' : 's') + '</p></div>', 2000);
   }
   function levelBurst(level) {
     if (reducedMotion()) return;
@@ -312,6 +315,72 @@
     return '<section class="card petcard"><div class="row" style="gap:12px">' + petSvg(p, 96) + '<div class="grow"><div class="eyebrow">' + esc(names().team) + '\'s pet</div><h3 style="margin:2px 0">' + esc(p.name) + ' · ' + p.days + ' day' + (p.days === 1 ? '' : 's') + '</h3>' +
       '<p class="small muted" style="margin:0 0 6px">' + esc(p.line) + '</p><div class="tiny muted">' + esc(nx) + '</div></div></div></section>';
   }
+  /** The one daily score. Jobs (your minimum) once setup has planned the day, otherwise the XP goal. XP, challenges and streaks sit under it. */
+  function winOf() {
+    var g = S.game;
+    return g.win || { by: 'xp', done: Math.min(g.xpToday, g.goal), need: g.goal, extra: Math.max(0, g.xpToday - g.goal), won: g.xpToday >= g.goal, partner: null, both: false };
+  }
+  function winCard() {
+    var g = S.game, n = names(), W = winOf(), t = NudgeFmt.winText(W), P = W.partner, Q = S.quests;
+    var mine = Q.planned ? Q.board : Q.board.filter(function (q) { return q.who === 'anyone' || q.who === 'together' || q.who === S.who; });
+    var open = mine.filter(function (q) { return !q.doneToday; }), ch = S.fun && S.fun.challenges, chDone = ch ? ch.list.filter(function (x) { return x.done; }).length : 0;
+    var h = '<section class="card spot today win' + (W.won ? ' won' : '') + '"><div class="between" style="margin-bottom:10px"><div class="eyebrow">Win the day</div><button class="btn ghost sm" type="button" data-goto="chores">All jobs' + icon('chevron', 's') + '</button></div>';
+    h += '<div class="hero"><div class="ring" style="width:112px;height:112px">' + ring(W.need ? W.done / W.need : 1, 112, 10) +
+      '<div class="t"><div><div class="num display-num" style="font-size:' + (t.big.length > 4 ? 19 : 30) + 'px">' + esc(t.big) + '</div><div class="tiny muted">' + esc(t.small) + '</div></div></div></div><div class="grow">';
+    if (P) h += '<div class="stat"><span>' + esc(n.other) + '</span><b>' + (P.won ? 'Won' : P.done + ' of ' + P.need) + '</b></div>';
+    h += '<div class="stat"><span class="row" style="gap:6px">' + flame(g.streak.count, 16) + 'Days won in a row</span><b>' + g.streak.count + (g.streak.freezes ? ' · ' + g.streak.freezes + ' freeze' + (g.streak.freezes > 1 ? 's' : '') : '') + '</b></div>' +
+      (S.solo ? '' : '<div class="stat"><span class="row" style="gap:6px">' + icon('heart', 's') + 'Both won</span><b>' + g.team.count + ' day' + (g.team.count === 1 ? '' : 's') + '</b></div>') +
+      '<div class="stat"><span>XP today</span><b>' + g.xpToday + '</b></div>' +
+      (ch ? '<div class="stat"><span>Challenges</span><b>' + chDone + '/' + ch.list.length + '</b></div>' : '') +
+      (S.empire ? '<button class="stat cashrow" type="button" data-goto="empire"><span class="row" style="gap:6px">' + icon('gift', 's') + 'Cash</span><b>' + money(S.empire.cash) + '</b></button>' : '') +
+      '<div class="bar" style="margin-top:8px"><i style="width:' + Math.round(g.level.into / g.level.need * 100) + '%"></i></div><div class="tiny muted" style="margin-top:4px">Level ' + g.level.level + ' · ' + (g.level.need - g.level.into) + ' XP to the next</div></div></div>';
+    h += '<p class="small muted winhow">' + (W.won ? (W.both && P ? 'You\'ve both won today. The pet\'s fed and your joint streak grows.' : P ? 'You\'ve won today. When ' + esc(n.other) + ' wins too, the pet\'s fed.' : 'Won. Anything more is a bonus.') :
+      W.by === 'jobs' ? 'Do any ' + W.need + ' job' + (W.need === 1 ? '' : 's') + ' today and the day is won.' : 'Earn ' + W.need + ' XP today to win: chores, the gym, food and challenges all count.') + '</p>';
+    if (open.length) h += open.slice(0, 3).map(function (q) { return questRow(q); }).join('');
+    else if (mine.length) h += '<p class="empty">All of today\'s jobs are done.</p>';
+    return h + '</section>';
+  }
+  /** Your characters on a little stage, with the pet at their feet. */
+  function stageCard() {
+    var W = S.wardrobe, p = S.game && S.game.pet, n = names(); if (!W && !p) return '';
+    var h = '<section class="card stagecard"><div class="between" style="margin-bottom:6px"><div class="eyebrow">' + esc(S.solo ? 'You' : n.team) + '</div>' + (W ? '<button class="btn ghost sm" type="button" data-dress="open">' + icon('sparkles', 's') + 'Dressing room</button>' : '') + '</div>';
+    if (W) h += '<div class="stagewrap' + (S.solo ? ' solo' : '') + '"><div class="av3d stage" id="av3dHome"><div class="av3d-msg small muted center">Loading your characters…</div></div>' + (p ? '<div class="stagepet">' + petSvg(p, 64) + '</div>' : '') + '</div>' +
+      (S.solo ? '' : '<div class="between av-names"><span>You</span><span>' + esc(n.other) + '</span></div>') + stageLine();
+    if (p) {
+      var nx = p.next ? p.next.left + ' more day' + (p.next.left === 1 ? '' : 's') + (S.solo ? ' you win → ' : ' you both win → ') + p.next.name : 'Fully grown. Legendary.';
+      h += '<div class="row petline" style="gap:10px">' + (W ? '' : petSvg(p, 64)) + '<div class="grow"><b>' + esc(p.name) + '</b> <span class="small muted">· ' + p.days + ' day' + (p.days === 1 ? '' : 's') + ' won together</span><div class="small muted">' + esc(p.line) + ' ' + esc(nx) + '</div></div></div>';
+    }
+    if (W) { var nu = nextUnlock(), left = nu ? nu.chores - W.chores : 0; if (nu) h += '<p class="tiny muted" style="margin:8px 0 0">' + left + ' more chore' + (left === 1 ? '' : 's') + ' unlocks the ' + esc(nu.name) + '</p>'; }
+    return h + '</section>';
+  }
+  /** The routine for now: the morning one folds to a line after noon; the evening one shows from 6pm. */
+  var routineOpen = {};
+  function routineCards() {
+    var h = '', R = S.routines;
+    R.routines.forEach(function (r) {
+      var ph = r.phase || (r.showNow && !r.finished ? 'open' : 'hidden');
+      if (!r.steps.length || ph === 'hidden') return;
+      var ic = icon(ph && /evening|night|bed/i.test(r.name) ? 'moon' : 'sun'), count = r.done.length + '/' + r.steps.length;
+      if (ph === 'summary' && !routineOpen[r.name]) {
+        h += '<button class="card rsummary" type="button" data-ropen="' + esc(r.name) + '" aria-expanded="false">' + ic + '<span class="grow">' + esc(r.name) + ' routine</span><span class="num">' + count + '</span>' + (r.finished ? icon('check', 's') : icon('chevron', 's')) + '</button>';
+        return;
+      }
+      h += '<section class="card"><div class="head"><div class="row" style="gap:8px">' + ic + '<h3>' + esc(r.name) + ' routine</h3></div><span class="row" style="gap:6px"><span class="muted small num">' + count + '</span>' +
+        (ph === 'summary' ? '<button class="btn ghost sm" type="button" data-ropen="' + esc(r.name) + '" aria-expanded="true">Fold</button>' : '') +
+        '<button class="btn ghost sm" type="button" data-redit="' + esc(r.name) + '" aria-label="Change the ' + esc(r.name) + ' routine">' + icon('edit', 's') + 'Edit</button></span></div>' +
+        r.steps.map(function (s, i) { var dn = r.done.indexOf(i) !== -1; return '<div class="item' + (dn ? ' done' : '') + '"><button class="check" type="button" data-routine="' + esc(r.name) + '" data-ri="' + i + '" aria-label="Done">' + icon('check') + '</button><div class="t grow" style="font-weight:500">' + esc(s) + '</div></div>'; }).join('') + '</section>';
+    });
+    if (R.evening && !R.routines.some(function (r) { return /evening|night|bed/i.test(r.name); }) && !load('noEvening')) {
+      h += '<p class="addline"><button class="btn ghost sm" type="button" data-evening="add">' + icon('moon', 's') + 'Add an evening routine</button> <button class="btn ghost sm" type="button" data-evening="no">Not for me</button></p>';
+    }
+    return h;
+  }
+  document.addEventListener('click', function (ev) {
+    var t = ev.target.closest('[data-ropen], [data-evening]'); if (!t || !S) return;
+    if (t.dataset.ropen) { routineOpen[t.dataset.ropen] = !routineOpen[t.dataset.ropen]; return renderHome(); }
+    if (t.dataset.evening === 'no') { save('noEvening', 1); return renderHome(); }
+    rEd = { old: '', name: 'Evening', time: '21:30', steps: ['Phone on charge', 'Keys and wallet by the door', 'Set out tomorrow\'s clothes', 'Teeth'] }; drawRoutineEd();
+  });
   /** The streak flame grows with the streak (and goes grey at zero). */
   function flame(count, size) {
     var k = count ? Math.min(1, .55 + Math.log(1 + count) / 6) : .5, s = Math.round((size || 18) * (count ? 1 + Math.min(count, 60) / 60 : 1));
@@ -320,14 +389,9 @@
       (count ? '<path d="M12 10c.5 2 3 3 3 6a3 3 0 0 1-6 0c0-1.5 1-2.5 1.5-3 .2 1 .8 1.5 1.5 1.5 0-2-.5-3 0-4.5z" fill="' + hot + '" transform="scale(' + k + ') translate(' + (12 / k - 12) + ' ' + (22 / k - 22) + ')"/>' : '') + '</svg>';
   }
 
-  /** The ring's middle: "12 of 30 XP" until the goal, then "Goal hit · 45 XP" (never "45 of 30"). */
-  function xpGoalText(xp, goal) {
-    var t = NudgeFmt.xpGoal(xp, goal);
-    return '<div class="num display-num" style="font-size:' + (t.hit ? 17 : 30) + 'px">' + esc(t.big) + '</div><div class="tiny muted">' + esc(t.small) + '</div>';
-  }
   /** Under the date: what today needs, in plain words. */
   function dayStatus() {
-    if (S.game && S.game.streak && S.game.streak.todayDone) return ' · <span class="good">Today counts</span>';
+    if (S.game && (S.game.win ? S.game.win.won : S.game.streak && S.game.streak.todayDone)) return ' · <span class="good">Day won</span>';
     var q = S.quests || {}, must = (q.board || []).filter(function (x) { return x.must && !x.doneToday; }).length;
     if (q.planned && must) return ' · ' + must + ' job' + (must === 1 ? '' : 's') + ' to win the day';
     return '';
@@ -350,33 +414,26 @@
     if (S.chores.invite) h += '<div class="note">' + esc(n.other) + ' wants company for chores. Pick a job in Chores.</div>';
     if (g.streak.frozeYesterday) h += '<div class="note">A streak freeze covered yesterday. Your streak is safe.</div>';
 
+    if (S.setup && !S.setup.done) h += '<section class="card tint"><b>Set up your chores</b><p class="small" style="margin:4px 0 10px">A few quick taps about you and your home, and Nudge plans each day for you: a small must-do minimum, the rest a bonus. About 5 minutes.</p><button class="btn primary wide" type="button" data-setup="run">' + (S.setup.built ? 'Finish my part of setup' : 'Start setup') + '</button></section>';
     seg('header');
     h += deadlinesCard();
     seg('deadlines');
     h += workMini();
     seg('work');
-    seg('wardrobe');   // the characters now live in the Today hero
     // brief
     maybeBrief();
     if (S.brief && S.brief.brief && S.brief.part !== dayPartNow()) S.brief = null;    // written for an earlier part of the day: a fresh one is on its way
-    if (S.brief && S.brief.brief) h += '<section class="card tint"><div class="eyebrow" style="color:var(--lilac);display:flex;gap:6px;align-items:center">' + icon('sparkles', 's') + 'Today' + (S.brief.at ? '<span class="muted" style="font-weight:500"> · as of ' + esc(S.brief.at) + '</span>' : '') + '</div><p class="brief" style="margin:8px 0 10px">' + esc(S.brief.brief) + '</p>' +
+    if (S.brief && S.brief.brief) h += '<section class="card tint"><div class="eyebrow" style="color:var(--lilac);display:flex;gap:6px;align-items:center">' + icon('sparkles', 's') + 'Today' + (S.brief.ts || S.brief.at ? '<span class="muted" style="font-weight:500"> · updated <span data-briefago>' + esc(S.brief.ts ? NudgeFmt.ago(S.brief.ts, now()) : 'at ' + S.brief.at) + '</span></span>' : '') + '</div><p class="brief" style="margin:8px 0 10px">' + esc(S.brief.brief) + '</p>' +
       (S.brief.first ? '<div class="row small"><span class="chip lilac">First move</span><span>' + esc(S.brief.first) + '</span></div>' : '') + '</section>';
 
     seg('brief');
     h += '<button class="askbar" type="button" id="openAsk">' + icon('sparkles') + '<span class="grow">Ask anything, or tell me what\'s on your mind</span>' + icon('chevron', 's') + '</button>';
 
     seg('ask');
-    h += '<section class="card spot today"><div class="between" style="margin-bottom:8px"><div class="eyebrow">Today</div>' + (S.wardrobe ? '<button class="btn ghost sm" type="button" data-dress="open">' + icon('sparkles', 's') + 'Dressing room</button>' : '') + '</div>' + todayStage() + '<div class="hero"><div class="ring" style="width:112px;height:112px">' + ring(g.xpToday / g.goal, 112, 10) +
-      '<div class="t"><div>' + xpGoalText(g.xpToday, g.goal) + '</div></div></div><div class="grow">' +
-      '<div class="stat"><span class="row" style="gap:6px">' + flame(g.streak.count, 16) + 'Streak</span><b>' + g.streak.count + ' day' + (g.streak.count === 1 ? '' : 's') + (g.streak.freezes ? ' · ' + g.streak.freezes + ' freeze' + (g.streak.freezes > 1 ? 's' : '') : '') + '</b></div>' +
-      (S.solo ? '' : '<div class="stat"><span class="row" style="gap:6px">' + icon('heart', 's') + esc(n.team) + '</span><b>' + g.team.count + ' day' + (g.team.count === 1 ? '' : 's') + '</b></div>' +
-      '<div class="stat"><span>' + esc(n.other) + ' today</span><b>' + g.otherXpToday + ' XP</b></div>') +
-      (S.empire ? '<button class="stat cashrow" type="button" data-goto="empire"><span class="row" style="gap:6px">' + icon('gift', 's') + 'Cash</span><b>' + money(S.empire.cash) + '</b></button>' : '') +
-      '<div class="bar" style="margin-top:8px"><i style="width:' + Math.round(g.level.into / g.level.need * 100) + '%"></i></div><div class="tiny muted" style="margin-top:4px">Level ' + g.level.level + ' · ' + (g.level.need - g.level.into) + ' XP to the next</div>' +
-      '</div></div></section>';
-    seg('ring');
-    h += petCard();
-    seg('pet');
+    h += winCard();
+    seg('win');
+    h += stageCard();
+    seg('stage');
     h += challengesCard();
     seg('challenges');
     h += nextCard();
@@ -385,11 +442,7 @@
     h += '<button class="btn primary big wide" type="button" id="whatNow" style="margin-bottom:12px">' + icon('sparkles') + 'What should I do now?</button>';
 
     seg('whatnow');
-    S.routines.routines.filter(function (r) { return r.showNow && !r.finished && r.steps.length; }).forEach(function (r) {
-      h += '<section class="card"><div class="head"><div class="row" style="gap:8px">' + icon(r.name === 'Evening' ? 'moon' : 'sun') + '<h3>' + esc(r.name) + ' routine</h3></div><span class="row" style="gap:6px"><span class="muted small num">' + r.done.length + '/' + r.steps.length + '</span><button class="btn ghost sm" type="button" data-redit="' + esc(r.name) + '" aria-label="Change the ' + esc(r.name) + ' routine">' + icon('edit', 's') + 'Edit</button></span></div>' +
-        r.steps.map(function (s, i) { var dn = r.done.indexOf(i) !== -1; return '<div class="item' + (dn ? ' done' : '') + '"><button class="check" type="button" data-routine="' + esc(r.name) + '" data-ri="' + i + '" aria-label="Done">' + icon('check') + '</button><div class="t grow" style="font-weight:500">' + esc(s) + '</div></div>'; }).join('') + '</section>';
-    });
-
+    h += routineCards();
     seg('routine');
     if (ME && S.today.gym) {
       var gy = S.today.gym, leave = '';
@@ -407,16 +460,6 @@
     }
 
     seg('gym');
-    if (S.setup && !S.setup.done) h += '<section class="card tint"><b>Set up your chores</b><p class="small" style="margin:4px 0 10px">A few quick taps about you and your home, and Nudge plans each day for you: a small must-do minimum, the rest a bonus. About 5 minutes.</p><button class="btn primary wide" type="button" data-setup="run">' + (S.setup.built ? 'Finish my part of setup' : 'Start setup') + '</button></section>';
-    var Q = S.quests, mine = Q.planned ? Q.board : Q.board.filter(function (q) { return q.who === 'anyone' || q.who === 'together' || q.who === S.who; });
-    var open = mine.filter(function (q) { return !q.doneToday; });
-    if (Q.planned) h += '<section class="card"><div class="head"><h3>' + (Q.win ? 'Today counts ✓' : 'Win the day: ' + Math.min(Q.doneCount, Q.minimum) + ' of ' + Q.minimum) + '</h3><button class="btn ghost sm" type="button" data-goto="chores">All' + icon('chevron', 's') + '</button></div>' +
-      (Q.minimum ? '<div class="minbar"><i style="width:' + Math.round(Math.min(1, Q.doneCount / Q.minimum) * 100) + '%"></i></div>' : '') +
-      (open.length ? open.slice(0, 4).map(function (q) { return questRow(q); }).join('') : '<p class="empty">All done. Anything more is a bonus.</p>') + '</section>';
-    else h += '<section class="card"><div class="head"><h3>Today\'s chores <span class="muted num" style="font-weight:500">' + (mine.length - open.length) + '/' + mine.length + '</span></h3><button class="btn ghost sm" type="button" data-goto="chores">All' + icon('chevron', 's') + '</button></div>' +
-      (open.length ? open.slice(0, 4).map(function (q) { return questRow(q); }).join('') : '<p class="empty">All done. Anything more is a bonus.</p>') + '</section>';
-
-    seg('chores');
     h += '<div class="grid2" style="margin-bottom:12px">';
     if (ME) {
       var t = S.today, lw = t.lastWeight;
@@ -446,7 +489,7 @@
     seg('feed');
     if (S.solo) { parts.us = ''; parts.feed = ''; }
     if (homeEditing) h = parts.header + homeEditView(parts);
-    else h = parts.header + (parts.ring || '') + homeOrder().filter(function (x) { return !x.hide && x.id !== 'ring'; }).map(function (x) { return parts[x.id] || ''; }).join('') +
+    else h = parts.header + homeOrder().filter(function (x) { return !x.hide; }).map(function (x) { return parts[x.id] || ''; }).join('') +
       '<p class="center" style="margin:6px 0 18px"><button class="btn line sm" type="button" id="homeEdit">' + icon('edit', 's') + 'Edit home screen</button></p>';
     el('tab-home').innerHTML = h;
     mountHome3d();
@@ -503,8 +546,8 @@
     if (!mySession()) h += musicBar();
     if (q.planned) {
       var mustL = q.board.filter(function (x) { return x.must; }), bonusL = q.board.filter(function (x) { return !x.must; });
-      h += '<section class="card"><div class="head"><h3>' + (q.win ? 'Today counts ✓' : 'Your minimum: ' + Math.min(q.doneCount, q.minimum) + ' of ' + q.minimum) + '</h3></div>' +
-        (q.minimum ? '<div class="minbar"><i style="width:' + Math.round(Math.min(1, q.doneCount / q.minimum) * 100) + '%"></i></div><p class="small muted" style="margin:6px 0 4px">Do ' + q.minimum + ' job' + (q.minimum === 1 ? '' : 's') + ' (any of them) and today is a win. These are quick ones:</p>' : '<p class="small muted">Nothing you have to do today. A free win.</p>') +
+      h += '<section class="card"><div class="head"><h3>' + (q.win ? 'Day won' : 'Win the day: ' + Math.min(q.doneCount, q.minimum) + ' of ' + q.minimum) + '</h3></div>' +
+        (q.minimum ? '<div class="minbar"><i style="width:' + Math.round(Math.min(1, q.doneCount / q.minimum) * 100) + '%"></i></div><p class="small muted" style="margin:6px 0 4px">Do ' + q.minimum + ' job' + (q.minimum === 1 ? '' : 's') + ' (any of them) and the day is won. These are quick ones:</p>' : '<p class="small muted">Nothing you have to do today. A free win.</p>') +
         mustL.map(function (x) { return questRow(x, { claim: true }); }).join('') + '</section>';
       h += '<section class="card"><div class="head"><h3>Bonus</h3><span class="muted small">only if you\'ve got energy' + (q.energy ? ' (yours peaks in the ' + esc(q.energy) + ')' : '') + '</span></div>' + (bonusL.length ? bonusL.map(function (x) { return questRow(x, { claim: true }); }).join('') : '<p class="empty">No bonus jobs today.</p>') + '</section>';
     } else
@@ -1691,16 +1734,8 @@
     }
   });
 
-  var HOME_NAMES = { deadlines: 'Deadlines', work: 'Work: now and next', wardrobe: 'Your 3D characters', brief: 'Morning brief', ask: 'Ask anything', ring: 'XP and streaks', pet: 'Our pet', challenges: 'Daily challenges', next: 'Next up', whatnow: 'What should I do now?', routine: 'Routines', gym: 'Gym today', chores: 'Today\'s chores', tiles: 'Weight and water', make: 'Make something', us: 'Us', feed: 'Partner feed' };
-  var HOME_DEFAULT = ['deadlines', 'work', 'brief', 'ask', 'pet', 'challenges', 'next', 'whatnow', 'routine', 'gym', 'chores', 'tiles', 'make', 'us', 'feed'];
-  // a calmer start: these are one tap away under Edit home (Hidden, Show)
-  var HOME_QUIET = { next: 1, make: 1, feed: 1 };
-  function homeOrder() {
-    var saved = (S.fun && S.fun.prefs && S.fun.prefs.home) || [], seen = {}, out = [];
-    saved.forEach(function (x) { if (HOME_NAMES[x.id] && x.id !== 'ring' && x.id !== 'wardrobe' && !seen[x.id]) { seen[x.id] = 1; out.push({ id: x.id, hide: !!x.hide }); } });
-    HOME_DEFAULT.forEach(function (id) { if (!seen[id]) out.push({ id: id, hide: !!HOME_QUIET[id] }); });
-    return out;
-  }
+  var HOME_NAMES = { brief: 'Today brief', win: 'Win the day', deadlines: 'Next deadline', routine: 'Routine for now', tiles: 'Water and weight', stage: 'Characters and pet', ask: 'Ask anything', gym: 'Gym today', challenges: 'Daily challenges', whatnow: 'What should I do now?', work: 'Work: now and next', next: 'Next up', make: 'Make something', us: 'Us', feed: 'Partner feed' };
+  function homeOrder() { return NudgeFmt.homeOrder(S.fun && S.fun.prefs && S.fun.prefs.home); }
   function prefs() { return (S && S.fun && S.fun.prefs) || {}; }
   // ---------- the look: After Dark or Glam, light or dark (follows the phone unless overridden) ----------
   var darkMQ = window.matchMedia ? matchMedia('(prefers-color-scheme: dark)') : null;
@@ -1901,17 +1936,28 @@
     var mins = Math.round((due - now()) / 60000), a = Math.abs(mins), span = a >= 60 ? Math.floor(a / 60) + 'h ' + (a % 60) + 'm' : a + ' min';
     return mins >= 0 ? span + ' left' : span + ' late';
   }
+  var dlAdd = false, dlAll = false;
+  /** Home's deadline slot: the next one (more on a tap), or just a small "+ Add deadline" link when there are none. */
   function deadlinesCard() {
-    var list = S.deadlines || [], h = '<section class="card dl"><div class="head"><h3 class="row" style="gap:8px">' + icon('clock', 's') + 'Deadlines</h3>' + (list.length ? '<span class="small muted">' + list.length + ' open</span>' : '') + '</div>';
-    h += list.map(function (d) {
+    var list = (S.deadlines || []).slice().sort(function (x, y) { return x.due - y.due; });
+    if (!list.length && !dlAdd) return '<p class="addline"><button class="btn ghost sm" type="button" data-dladd="1">' + icon('plus', 's') + 'Add deadline</button></p>';
+    var show = dlAll ? list : list.slice(0, 1);
+    var h = '<section class="card dl"><div class="head"><h3 class="row" style="gap:8px">' + icon('clock', 's') + (list.length ? 'Next deadline' : 'New deadline') + '</h3>' +
+      (list.length && !dlAdd ? '<button class="btn ghost sm" type="button" data-dladd="1" aria-label="Add a deadline">' + icon('plus', 's') + 'Add</button>' : '') + '</div>';
+    h += show.map(function (d) {
       var late = d.due < now();
       return '<div class="dlrow' + (late ? ' late' : '') + '"><div class="grow"><b>' + esc(d.task) + '</b><div class="small"><span>by ' + esc(d.dueText.slice(-5)) + (d.dueText.slice(0, 10) !== (S.today ? S.today.date : d.dueText.slice(0, 10)) ? ' ' + esc(dayLabel(d.dueText.slice(0, 10)).toLowerCase()) : '') + '</span> · <span data-due="' + d.due + '">' + dueLabel(d.due) + '</span></div></div>' +
         '<div class="dlbtns"><button class="btn primary sm" type="button" data-dl="' + esc(d.id) + '" data-act="done">' + icon('check', 's') + 'Done</button><button class="btn soft sm" type="button" data-dl="' + esc(d.id) + '" data-act="extend">+30m</button><button class="btn ghost sm" type="button" data-dl="' + esc(d.id) + '" data-act="park">Park</button></div></div>';
     }).join('');
-    h += '<form class="inline" id="dlForm" autocomplete="off" style="margin-top:' + (list.length ? 10 : 0) + 'px"><input type="text" id="dlText" placeholder="Send the invoice by 3pm" aria-label="Something with a deadline" maxlength="140"><button class="btn primary" type="submit">Add</button></form>' +
-      '<p class="tiny muted" style="margin:6px 0 0">' + (list.length ? 'It nags until you tap Done. Park costs 10 XP, +30m costs 3.' : 'Add a time ("by 3pm", "in 2 hours", "tonight") and it nags until it\'s done.') + '</p></section>';
-    return h;
+    if (list.length > 1) h += '<button class="btn ghost sm" type="button" data-dlall="1" style="margin-top:4px">' + (dlAll ? 'Show just the next' : list.length - 1 + ' more') + '</button>';
+    if (dlAdd || !list.length) h += '<form class="inline" id="dlForm" autocomplete="off" style="margin-top:' + (list.length ? 10 : 0) + 'px"><input type="text" id="dlText" placeholder="Send the invoice by 3pm" aria-label="Something with a deadline" maxlength="140"><button class="btn primary" type="submit">Add</button></form>' +
+      '<p class="tiny muted" style="margin:6px 0 0">Add a time ("by 3pm", "in 2 hours", "tonight") and it nags until it\'s done. Park costs 10 XP, +30m costs 3.</p>';
+    return h + '</section>';
   }
+  document.addEventListener('click', function (ev) {
+    var t = ev.target.closest('[data-dladd], [data-dlall]'); if (!t || !S) return;
+    if (t.dataset.dladd) { dlAdd = true; renderHome(); var i = el('dlText'); if (i) i.focus(); } else { dlAll = !dlAll; renderHome(); }
+  });
   function deadlineAct(id, act, fromNote) {
     if (act === 'park' && !fromNote && !confirm('Park it? That costs 10 XP. It goes to Saved for later.')) return;
     call('deadlineAction', [id, act], function (r) {
@@ -1922,7 +1968,7 @@
     if (ev.target.id !== 'dlForm' || !S) return;
     var v = el('dlText').value.trim();
     if (!v) { toast('Type a job with a time, like "Send the invoice by 3pm"'); el('dlText').focus(); return; }
-    call('addDeadline', [v], function (r) { el('dlText').value = ''; apply(r.state, r.added.task + ': due ' + (r.added.inMin < 60 ? 'in ' + r.added.inMin + ' min' : 'at ' + r.added.dueText.slice(-5) + (r.added.inMin > 1440 - 60 * new Date(now()).getHours() ? ' tomorrow' : '')) + '. I\'ll keep reminding you.'); });
+    call('addDeadline', [v], function (r) { el('dlText').value = ''; dlAdd = false; apply(r.state, r.added.task + ': due ' + (r.added.inMin < 60 ? 'in ' + r.added.inMin + ' min' : 'at ' + r.added.dueText.slice(-5) + (r.added.inMin > 1440 - 60 * new Date(now()).getHours() ? ' tomorrow' : '')) + '. I\'ll keep reminding you.'); });
   });
   document.addEventListener('click', function (ev) {
     var t = ev.target.closest('[data-dl]');
@@ -2772,13 +2818,13 @@
   function stageLine() {
     var f = faceState(S.who), hr = new Date(now()).getHours(), t = '';
     if (f.mood === 'sleepy') t = 'It\'s ' + (hr === 0 ? 'past midnight' : hr + 'am') + '. Time for bed.';
-    else if (f.mood === 'happy') t = 'You both hit the minimum. Look at them go.';
+    else if (f.mood === 'happy') t = S.solo ? 'Day won. Look at you go.' : 'You both won the day. Look at them go.';
     else if (f.wear === 'rain') t = 'Rain later. Jackets on.';
     else if (f.wear === 'gym') t = 'Gym kit on: ' + esc(S.today.gym.session) + ' today.';
     else if (f.wear === 'dj') t = 'Headphones on after Booth.';
     return t ? '<p class="small center stage-line" style="margin:6px 0 0">' + t + '</p>' : '';
   }
-  function mountHome3d() { var o = S && S.who === 'me' ? 'partner' : 'me'; if (S && S.wardrobe && el('av3dHome')) mount3d('av3dHome', S.solo ? [S.wardrobe.look] : [S.wardrobe.look, S.wardrobe.other], { theme: 'vice', h: 236, states: [faceState(S.who), faceState(o)] }); }
+  function mountHome3d() { var o = S && S.who === 'me' ? 'partner' : 'me'; if (S && S.wardrobe && el('av3dHome')) mount3d('av3dHome', S.solo ? [S.wardrobe.look] : [S.wardrobe.look, S.wardrobe.other], { theme: 'vice', h: 200, states: [faceState(S.who), faceState(o)] }); }
   function mountYou3d() { if (S && S.wardrobe && el('av3dYou')) mount3d('av3dYou', [S.wardrobe.look], { h: 300, states: [faceState(S.who)], theme: (charOf(S.who) || '').slice(0, 2) === 'sa' ? 'grove' : 'vice' }); }
   function owns(id) { return S.wardrobe.owned.indexOf(id) !== -1; }
   function wearing(L, it) {

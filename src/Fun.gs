@@ -390,7 +390,7 @@ function daysBetween_(a, b) {
 
 // ---------- customisation ----------
 
-var HOME_BLOCKS = ['deadlines', 'work', 'wardrobe', 'brief', 'ask', 'ring', 'pet', 'challenges', 'next', 'whatnow', 'routine', 'gym', 'chores', 'tiles', 'make', 'us', 'feed'];
+var HOME_BLOCKS = ['brief', 'win', 'deadlines', 'routine', 'tiles', 'stage', 'ask', 'gym', 'challenges', 'whatnow', 'work', 'next', 'make', 'us', 'feed', 'wardrobe', 'ring', 'pet', 'chores'];
 var PREF_DEFAULTS = { char: '', skin: '', mode: 'auto', accent: '', text: 'normal', sound: false, haptics: true, confetti: true, motion: true, home: [], nag: '', look: {} };
 // the style studio: the first choice is the default
 var STYLE_CHOICES = { bg: ['live', 'lasers', 'grid', 'stars', 'plain'], cards: ['soft', 'glass', 'neon', 'outline', 'flat'], font: ['default', 'rounded', 'mono', 'serif', 'condensed'], corners: ['round', 'sharp', 'pill'] };
