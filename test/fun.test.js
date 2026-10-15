@@ -266,3 +266,24 @@ test('your look: hair, clothes and colours are saved, and only real options are 
   s = g.ctx.setPrefs(partner, { char: 'sa-denise' });
   assert.strictEqual(s.fun.chars.partner, 'sa-denise');
 });
+
+test('the shared pet grows with lifetime joint days, never shrinks, and naps instead of dying', () => {
+  const { g } = ready();
+  const pet = (t, m) => JSON.parse(JSON.stringify(g.ctx.petState(t, m)));
+  assert.strictEqual(pet({ total: 0, count: 0, todayDone: false }, 600).stage, 'egg');
+  assert.strictEqual(pet({ total: 0, count: 0, todayDone: false }, 600).mood, 'sleepy');
+  const p7 = pet({ total: 7, count: 7, todayDone: true }, 600);
+  assert.strictEqual(p7.stage, 'teen'); assert.strictEqual(p7.mood, 'happy'); assert.deepStrictEqual(p7.next, { at: 14, name: 'Grown-up', left: 7 });
+  const lapsed = pet({ total: 7, count: 0, todayDone: false }, 600);
+  assert.strictEqual(lapsed.stage, 'teen', 'a broken streak never shrinks the pet');
+  assert.strictEqual(lapsed.mood, 'sleepy');
+  assert.strictEqual(pet({ total: 7, count: 3, todayDone: false }, 600).mood, 'waiting');
+  assert.strictEqual(pet({ total: 7, count: 3, todayDone: false }, 23 * 60).mood, 'sleepy');
+  assert.strictEqual(pet({ total: 120, count: 0 }, 600).stage, 'mythic');
+  // lifetime total survives a reset
+  g.state.props.STREAK_team = JSON.stringify({ count: 5, freezes: 0, best: 5, through: '2026-10-11', frozeOn: '' });
+  g.ctx.updateStreaks_('2026-10-13');
+  const st = JSON.parse(g.state.props.STREAK_team);
+  assert.strictEqual(st.count, 0); assert.strictEqual(st.best, 5);
+  assert.ok(g.ctx.appState(g.state.props.WEBAPP_KEY).game.pet.days >= 5);
+});

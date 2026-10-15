@@ -82,6 +82,7 @@ function updateStreaks_(todayYmd) {
       var met = id === 'team' ? dayWon_('me', d, goal) && dayWon_('partner', d, goal) : dayWon_(id, d, goal);
       if (met) {
         st.count++;
+        if (id === 'team') st.total = (st.total === undefined ? st.best : st.total) + 1;   // the pet's lifetime days: never goes down
         if (st.count % FREEZE_EVERY === 0) st.freezes = Math.min(MAX_FREEZES, st.freezes + 1);
       } else if (st.count > 0 && st.freezes > 0) {
         st.freezes--;
@@ -107,7 +108,21 @@ function dayWon_(who, ymd, goal) {
 function streakNow_(id, todayYmd, goal) {
   var st = streakState_(id);
   var today = id === 'team' ? dayWon_('me', todayYmd, goal) && dayWon_('partner', todayYmd, goal) : dayWon_(id, todayYmd, goal);
-  return { count: st.count + (today ? 1 : 0), freezes: st.freezes, best: Math.max(st.best, st.count + (today ? 1 : 0)), todayDone: today, frozeYesterday: st.frozeOn === addDays_(todayYmd, -1) };
+  return { count: st.count + (today ? 1 : 0), freezes: st.freezes, best: Math.max(st.best, st.count + (today ? 1 : 0)), todayDone: today, frozeYesterday: st.frozeOn === addDays_(todayYmd, -1),
+    total: (st.total === undefined ? st.best : st.total) + (today ? 1 : 0) };
+}
+
+// ---------- the shared pet ----------
+// Grows with every day you BOTH win (lifetime, so it never shrinks). Gets sleepy when the joint streak
+// lapses or it's late. It never dies.
+var PET_STAGES = [[0, 'egg', 'Egg'], [1, 'baby', 'Hatchling'], [3, 'kid', 'Little one'], [7, 'teen', 'Teen'], [14, 'adult', 'Grown-up'], [30, 'legend', 'Legend'], [100, 'mythic', 'Mythic']];
+function petState(team, minutesNow) {
+  var days = Math.max(0, Number(team.total) || 0), stage = PET_STAGES[0], next = null;
+  PET_STAGES.forEach(function (s, i) { if (days >= s[0]) { stage = s; next = PET_STAGES[i + 1] || null; } });
+  var late = minutesNow >= 22 * 60 || minutesNow < 6 * 60;
+  var mood = team.todayDone ? (late ? 'sleepy' : 'happy') : late || !team.count ? 'sleepy' : 'waiting';
+  return { days: days, stage: stage[1], name: stage[2], next: next ? { at: next[0], name: next[2], left: next[0] - days } : null, mood: mood, streak: team.count,
+    line: mood === 'happy' ? 'Fed and bouncing. You both won today.' : mood === 'waiting' ? 'Waiting for you both to hit the minimum.' : team.todayDone ? 'Full and fast asleep.' : !team.count ? 'Having a long nap. One day you both win wakes it up.' : 'Dozing. Still time to win today.' };
 }
 
 // ---------- badges ----------
@@ -189,6 +204,7 @@ function gameState_(who) {
     streak: streak,
     otherStreak: streakNow_(other, today, goal).count,
     team: streakNow_('team', today, goal),
+    pet: petState(streakNow_('team', today, goal), minutesNow_()),
     total: total,
     balance: xpBalance_(who),
     level: levelFor(total),

@@ -180,9 +180,13 @@
   function celebrate(prev, next) {
     if (!prev || !next || !prev.game || !next.game) return;
     var a = prev.game, b = next.game;
+    if (b.team && a.team && !a.team.todayDone && b.team.todayDone) setTimeout(function () { highFive('You both hit the minimum'); }, b.level.level > a.level.level ? 2600 : 900);
     if (b.level.level > a.level.level) {
-      confetti(true); chime([660, 880, 1100, 1320]); buzz([60, 40, 60, 40, 120]);
+      confetti(true); chime([660, 880, 1100, 1320]); buzz([60, 40, 60, 40, 120]); levelBurst(b.level.level);
       openSheet('<div class="center" style="padding:10px 0 4px">' + icon('star', 'l') + '<h2 style="margin:8px 0 4px">Level ' + b.level.level + '</h2><p class="muted">' + fmt(b.total) + ' XP so far. Nicely done.</p><button class="btn primary wide" type="button" data-close>Continue</button></div>');
+    } else if (a.streak && b.streak && !a.streak.todayDone && b.streak.todayDone) {
+      confetti(true); chime([660, 880, 1100]); buzz([50, 40, 120]);
+      minBurst(b.streak.count);
     } else if (a.xpToday < a.goal && b.xpToday >= b.goal) {
       confetti(true); chime([660, 880, 1100]); buzz([50, 40, 120]);
       toast('Daily goal reached. Streak: ' + b.streak.count + ' day' + (b.streak.count === 1 ? '' : 's'));
@@ -195,6 +199,23 @@
     var list = seen || [];
     b.badges.forEach(function (bd) { if (bd.earned && list.indexOf(bd.id) === -1) { list.push(bd.id); if (seen) toast('New badge: ' + bd.name); } });
     save('badges-' + S.who, list);
+  }
+  // big moments: a full-screen burst, tap anywhere (or wait) to carry on; skipped when motion is off
+  function overlay(cls, html, ms) {
+    var o = document.createElement('div'); o.className = 'burst ' + cls; o.innerHTML = html; o.setAttribute('role', 'status');
+    var done = function () { if (o.parentNode) { o.classList.add('out'); setTimeout(function () { o.remove(); }, 300); } };
+    o.addEventListener('click', done); document.body.appendChild(o); setTimeout(done, ms || 2400);
+  }
+  function minBurst(count) {
+    overlay('minhit', '<div class="burst-in">' + flame(count, 56) + '<h2>Today counts</h2><p>Minimum hit · streak ' + count + ' day' + (count === 1 ? '' : 's') + '</p></div>', 2000);
+  }
+  function levelBurst(level) {
+    if (reducedMotion()) return;
+    overlay('lvl', '<div class="rays"></div><div class="burst-in"><div class="lvl-n">' + level + '</div><h2>Level up</h2>' + (S.fun && S.fun.era ? '<p>' + esc(S.fun.era) + '</p>' : '') + '</div>', 2600);
+  }
+  function highFive(text) {
+    buzz([30, 60, 90]);
+    overlay('hi5', '<div class="burst-in"><div class="hands"><span class="hand l">' + avatarOf('me', 64) + '</span><span class="clap"><svg viewBox="0 0 40 40" width="44" height="44" aria-hidden="true"><path d="M20 2l4 11 11-4-7 9 9 6-11 1 1 11-7-8-7 8 1-11-11-1 9-6-7-9 11 4z" fill="#ffd36b"/></svg></span><span class="hand r">' + avatarOf('partner', 64) + '</span></div><h2>High five</h2><p>' + esc(text || '') + '</p></div>', 2200);
   }
   function apply(res, msg) {
     var prev = S;
@@ -256,6 +277,45 @@
       (!q.doneToday ? '<div class="row" style="gap:6px">' + claim + '<button class="iconbtn soft" type="button" data-qstart="' + esc(q.name) + '" aria-label="Start a timer">' + icon('play', 's') + '</button></div>' : '') + '</div>';
   }
 
+  // ---------- the shared pet and the streak flame ----------
+  var PET_ORDER = ['egg', 'baby', 'kid', 'teen', 'adult', 'legend', 'mythic'];
+  function petSvg(pet, size) {
+    var st = PET_ORDER.indexOf(pet.stage), sleepy = pet.mood === 'sleepy', happy = pet.mood === 'happy', g = 'pg' + size;
+    var defs = '<defs><radialGradient id="' + g + '" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#ffd0ea"/><stop offset=".55" stop-color="var(--pink, #ff5fb2)"/><stop offset="1" stop-color="var(--lilac, #8f6bff)"/></radialGradient></defs>';
+    var body;
+    if (st <= 0) {
+      body = '<ellipse cx="50" cy="58" rx="24" ry="30" fill="url(#' + g + ')"/><circle cx="42" cy="50" r="4" fill="#fff" opacity=".5"/><circle cx="58" cy="66" r="5" fill="#fff" opacity=".35"/><circle cx="55" cy="42" r="3" fill="#fff" opacity=".4"/>';
+    } else {
+      var k = [0, .62, .74, .84, .94, 1, 1][st], rx = 30 * k, ry = 26 * k, cy = 88 - ry;
+      var eyeY = cy - ry * .15, ex = rx * .38;
+      var eyes = sleepy ? '<path d="M' + (50 - ex - 5) + ' ' + eyeY + 'q5 4 10 0M' + (50 + ex - 5) + ' ' + eyeY + 'q5 4 10 0" stroke="#2a1035" stroke-width="2.4" fill="none" stroke-linecap="round"/>'
+        : happy ? '<path d="M' + (50 - ex - 5) + ' ' + (eyeY + 2) + 'q5 -6 10 0M' + (50 + ex - 5) + ' ' + (eyeY + 2) + 'q5 -6 10 0" stroke="#2a1035" stroke-width="2.6" fill="none" stroke-linecap="round"/>'
+        : '<circle cx="' + (50 - ex) + '" cy="' + eyeY + '" r="4.2" fill="#2a1035"/><circle cx="' + (50 + ex) + '" cy="' + eyeY + '" r="4.2" fill="#2a1035"/><circle cx="' + (51 - ex) + '" cy="' + (eyeY - 1.5) + '" r="1.4" fill="#fff"/><circle cx="' + (51 + ex) + '" cy="' + (eyeY - 1.5) + '" r="1.4" fill="#fff"/>';
+      var mouth = happy ? '<path d="M45 ' + (eyeY + 9) + 'q5 6 10 0" fill="#2a1035"/>' : sleepy ? '<ellipse cx="50" cy="' + (eyeY + 10) + '" rx="2.4" ry="1.6" fill="#2a1035"/>' : '<path d="M46 ' + (eyeY + 9) + 'q4 3 8 0" stroke="#2a1035" stroke-width="2" fill="none" stroke-linecap="round"/>';
+      var ears = st >= 3 ? '<path d="M' + (50 - rx * .7) + ' ' + (cy - ry * .7) + 'l-6 -16 14 8zM' + (50 + rx * .7) + ' ' + (cy - ry * .7) + 'l6 -16 -14 8z" fill="url(#' + g + ')"/>' : '';
+      var crown = st >= 5 ? '<path d="M38 ' + (cy - ry - 2) + 'l4 -12 8 8 8 -8 4 12z" fill="#ffd36b" stroke="#c79a2a" stroke-width="1"/>' : '';
+      var aura = st >= 6 ? '<circle cx="50" cy="' + cy + '" r="' + (rx + 12) + '" fill="none" stroke="#ffd36b" stroke-width="1.5" opacity=".6" stroke-dasharray="3 5"/>' : '';
+      var feet = '<ellipse cx="' + (50 - rx * .45) + '" cy="89" rx="6" ry="3" fill="var(--lilac, #8f6bff)"/><ellipse cx="' + (50 + rx * .45) + '" cy="89" rx="6" ry="3" fill="var(--lilac, #8f6bff)"/>';
+      var blush = happy ? '<ellipse cx="' + (50 - ex - 6) + '" cy="' + (eyeY + 7) + '" rx="4" ry="2.4" fill="#ff7cc2" opacity=".6"/><ellipse cx="' + (50 + ex + 6) + '" cy="' + (eyeY + 7) + '" rx="4" ry="2.4" fill="#ff7cc2" opacity=".6"/>' : '';
+      body = aura + ears + feet + '<ellipse cx="50" cy="' + cy + '" rx="' + rx + '" ry="' + ry + '" fill="url(#' + g + ')"/><ellipse cx="' + (50 - rx * .35) + '" cy="' + (cy - ry * .5) + '" rx="' + rx * .25 + '" ry="' + ry * .15 + '" fill="#fff" opacity=".35"/>' + eyes + blush + mouth + crown;
+    }
+    var zz = sleepy ? '<g class="pet-z" fill="var(--muted)" font-size="11" font-weight="700"><text x="72" y="30">z</text><text x="80" y="20" font-size="8">z</text></g>' : '';
+    return '<svg class="pet ' + pet.mood + '" viewBox="0 0 100 100" width="' + size + '" height="' + size + '" aria-hidden="true">' + defs + '<ellipse cx="50" cy="92" rx="26" ry="4" fill="#000" opacity=".18"/><g class="pet-b">' + body + '</g>' + zz + '</svg>';
+  }
+  function petCard() {
+    var p = S.game && S.game.pet; if (!p) return '';
+    var nx = p.next ? p.next.left + ' more day' + (p.next.left === 1 ? '' : 's') + ' you both win → ' + p.next.name : 'Fully grown. Legendary.';
+    return '<section class="card petcard"><div class="row" style="gap:12px">' + petSvg(p, 96) + '<div class="grow"><div class="eyebrow">' + esc(names().team) + '\'s pet</div><h3 style="margin:2px 0">' + esc(p.name) + ' · ' + p.days + ' day' + (p.days === 1 ? '' : 's') + '</h3>' +
+      '<p class="small muted" style="margin:0 0 6px">' + esc(p.line) + '</p><div class="tiny muted">' + esc(nx) + '</div></div></div></section>';
+  }
+  /** The streak flame grows with the streak (and goes grey at zero). */
+  function flame(count, size) {
+    var k = count ? Math.min(1, .55 + Math.log(1 + count) / 6) : .5, s = Math.round((size || 18) * (count ? 1 + Math.min(count, 60) / 60 : 1));
+    var hot = count >= 30 ? '#7fd8ff' : count >= 7 ? '#ffd36b' : '#ff9a3c';
+    return '<svg class="flame' + (count ? ' lit' : '') + '" viewBox="0 0 24 24" width="' + s + '" height="' + s + '" aria-hidden="true"><path d="M12 2c1 4 6 6 6 12a6 6 0 0 1-12 0c0-3 2-5 3-6 0 2 1 3 2 3 0-4-1-6 1-9z" fill="' + (count ? 'var(--pink, #ff5fb2)' : 'var(--faint, #888)') + '"/>' +
+      (count ? '<path d="M12 10c.5 2 3 3 3 6a3 3 0 0 1-6 0c0-1.5 1-2.5 1.5-3 .2 1 .8 1.5 1.5 1.5 0-2-.5-3 0-4.5z" fill="' + hot + '" transform="scale(' + k + ') translate(' + (12 / k - 12) + ' ' + (22 / k - 22) + ')"/>' : '') + '</svg>';
+  }
+
   function renderHome() {
     var g = S.game, n = names(), h = '', parts = {};
     function seg(id) { parts[id] = h; h = ''; }
@@ -293,13 +353,15 @@
     seg('ask');
     h += '<section class="card"><div class="hero"><div class="ring" style="width:104px;height:104px">' + ring(g.xpToday / g.goal, 104, 10) +
       '<div class="t"><div><div class="num" style="font-size:24px;font-weight:700">' + g.xpToday + '</div><div class="tiny muted">of ' + g.goal + ' XP</div></div></div></div><div class="grow">' +
-      '<div class="stat"><span class="row" style="gap:6px">' + icon('flame', 's') + 'Streak</span><b>' + g.streak.count + ' day' + (g.streak.count === 1 ? '' : 's') + (g.streak.freezes ? ' · ' + g.streak.freezes + ' freeze' + (g.streak.freezes > 1 ? 's' : '') : '') + '</b></div>' +
+      '<div class="stat"><span class="row" style="gap:6px">' + flame(g.streak.count, 16) + 'Streak</span><b>' + g.streak.count + ' day' + (g.streak.count === 1 ? '' : 's') + (g.streak.freezes ? ' · ' + g.streak.freezes + ' freeze' + (g.streak.freezes > 1 ? 's' : '') : '') + '</b></div>' +
       '<div class="stat"><span class="row" style="gap:6px">' + icon('heart', 's') + esc(n.team) + '</span><b>' + g.team.count + ' day' + (g.team.count === 1 ? '' : 's') + '</b></div>' +
       '<div class="stat"><span>' + esc(n.other) + ' today</span><b>' + g.otherXpToday + ' XP</b></div>' +
       (S.empire ? '<button class="stat cashrow" type="button" data-goto="empire"><span class="row" style="gap:6px">' + icon('gift', 's') + 'Cash</span><b>' + money(S.empire.cash) + '</b></button>' : '') +
       '<div class="bar" style="margin-top:8px"><i style="width:' + Math.round(g.level.into / g.level.need * 100) + '%"></i></div><div class="tiny muted" style="margin-top:4px">Level ' + g.level.level + ' · ' + (g.level.need - g.level.into) + ' XP to the next</div>' +
       '</div></div></section>';
     seg('ring');
+    h += petCard();
+    seg('pet');
     h += challengesCard();
     seg('challenges');
     h += nextCard();
@@ -1648,8 +1710,8 @@
     }
   });
 
-  var HOME_NAMES = { deadlines: 'Deadlines', work: 'Work: now and next', wardrobe: 'Your 3D characters', brief: 'Morning brief', ask: 'Ask anything', ring: 'XP and streaks', challenges: 'Daily challenges', next: 'Next up', whatnow: 'What should I do now?', routine: 'Routines', gym: 'Gym today', chores: 'Today\'s chores', tiles: 'Weight and water', make: 'Make something', us: 'Us', feed: 'Partner feed' };
-  var HOME_DEFAULT = ['deadlines', 'work', 'wardrobe', 'brief', 'ask', 'ring', 'challenges', 'next', 'whatnow', 'routine', 'gym', 'chores', 'tiles', 'make', 'us', 'feed'];
+  var HOME_NAMES = { deadlines: 'Deadlines', work: 'Work: now and next', wardrobe: 'Your 3D characters', brief: 'Morning brief', ask: 'Ask anything', ring: 'XP and streaks', pet: 'Our pet', challenges: 'Daily challenges', next: 'Next up', whatnow: 'What should I do now?', routine: 'Routines', gym: 'Gym today', chores: 'Today\'s chores', tiles: 'Weight and water', make: 'Make something', us: 'Us', feed: 'Partner feed' };
+  var HOME_DEFAULT = ['deadlines', 'work', 'wardrobe', 'brief', 'ask', 'ring', 'pet', 'challenges', 'next', 'whatnow', 'routine', 'gym', 'chores', 'tiles', 'make', 'us', 'feed'];
   // a calmer start: these are one tap away under Edit home (Hidden, Show)
   var HOME_QUIET = { next: 1, make: 1, feed: 1 };
   function homeOrder() {
@@ -2652,9 +2714,19 @@
     var nu = nextUnlock(), left = nu ? nu.chores - W.chores : 0;
     return '<section class="card av-card"><div class="head"><h3>' + esc(n.team) + '</h3><span class="small muted">' + (wide() ? 'Drag to spin' : 'Swipe to spin') + '</span></div>' +
       '<div class="av3d" id="av3dHome"><div class="av3d-msg small muted center">Loading your characters…</div></div>' +
-      '<div class="between av-names"><span>You</span><span>' + esc(n.other) + '</span></div>' +
+      '<div class="between av-names"><span>You</span><span>' + esc(n.other) + '</span></div>' + stageLine() +
       (nu ? '<p class="small center" style="margin:8px 0 10px"><b>' + left + ' more chore' + (left === 1 ? '' : 's') + '</b> unlocks the ' + esc(nu.name) + (nu.style === 'drag' ? ' (runway)' : '') + '</p>' : '<p class="small center" style="margin:8px 0 10px">Everything in the wardrobe is unlocked. Legendary.</p>') +
       '<button class="btn primary wide" type="button" data-dress="open">' + icon('sparkles', 's') + 'Dressing room</button></section>';
+  }
+  /** One line under the stage that reacts to the real day. */
+  function stageLine() {
+    var f = faceState(S.who), hr = new Date(now()).getHours(), t = '';
+    if (f.mood === 'sleepy') t = 'It\'s ' + (hr === 0 ? 'past midnight' : hr + 'am') + '. Time for bed.';
+    else if (f.mood === 'happy') t = 'You both hit the minimum. Look at them go.';
+    else if (f.wear === 'rain') t = 'Rain later. Jackets on.';
+    else if (f.wear === 'gym') t = 'Gym kit on: ' + esc(S.today.gym.session) + ' today.';
+    else if (f.wear === 'dj') t = 'Headphones on after Booth.';
+    return t ? '<p class="small center stage-line" style="margin:6px 0 0">' + t + '</p>' : '';
   }
   function mountHome3d() { if (S && S.wardrobe && el('av3dHome')) mount3d('av3dHome', [S.wardrobe.look, S.wardrobe.other], { theme: 'vice' }); }
   function mountYou3d() { if (S && S.wardrobe && el('av3dYou')) mount3d('av3dYou', [S.wardrobe.look], { theme: (charOf(S.who) || '').slice(0, 2) === 'sa' ? 'grove' : 'vice' }); }
@@ -2788,6 +2860,7 @@
       buzz([20, 30, 20]);
     }, 'questDone', [ds.qdone], ds.qdone + ': done');
     if (ds.claim) return quick(function () { S.quests.board.concat(S.quests.more).forEach(function (x) { if (x.name === ds.claim) x.claimedBy = x.claimedBy === S.who ? '' : S.who; }); }, 'claimQuest', [ds.claim]);
+    if (ds.hi5) { highFive('Sent to ' + names().other); }
     if (ds.hi5) return quick(function () { S.game.feed.forEach(function (f) { if (f.id === ds.hi5 && f.hi5.indexOf(S.who) === -1) f.hi5.push(S.who); }); }, 'highFive', [ds.hi5], 'High-five sent');
     if (ds.routine !== undefined && ds.ri !== undefined) return quick(function () {
       S.routines.routines.forEach(function (r) { if (r.name !== ds.routine) return; var i = r.done.indexOf(+ds.ri); if (i === -1) r.done.push(+ds.ri); else r.done.splice(i, 1); if (!r.finished && r.done.length >= r.steps.length) { r.finished = true; addXpLocal(10); } });
