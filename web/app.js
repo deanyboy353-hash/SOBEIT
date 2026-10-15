@@ -2384,6 +2384,20 @@
     tickTimer();
     document.documentElement.setAttribute('data-theme', S.theme || 'rave');
   }
+  // one big thumb-reach button per screen, bottom right on phones, for the thing you came to do
+  var FAB = {
+    home: ['sparkles', 'What now?', function () { var b = el('whatNow'); if (b) b.click(); return !!b; }],
+    chores: ['play', 'Start a job', function () { var vis = function (q) { return [].slice.call(document.querySelectorAll(q)).filter(function (x) { return x.offsetParent && !x.disabled; })[0]; }; var b = vis('#tab-chores .btn.primary.big') || vis('#tab-chores [data-qstart]') || vis('#tab-chores .btn.primary'); if (b) b.click(); return !!b; }],
+    food: ['food', 'Log food', function () { var q = el('quickText'); if (q && !q.disabled) { q.scrollIntoView({ block: 'center' }); q.focus(); return true; } var ph = el('foodPhoto'); if (ph) { ph.click(); return true; } return false; }],
+    train: ['check', 'Next set', function () { var b = [].slice.call(document.querySelectorAll('#tab-train button.check:not(.on), #tab-train [data-set]:not(.done)')).filter(function (x) { return x.offsetParent; })[0]; if (b) { b.scrollIntoView({ block: 'center' }); b.focus(); } return !!b; }],
+    work: ['plus', 'Add a block', function () { var w = el('wkText'); if (w) { w.scrollIntoView({ block: 'center' }); w.focus(); } return !!w; }]
+  };
+  function updateFab() {
+    var f = el('fab'), cfg = FAB[current];
+    if (!f) { f = document.createElement('button'); f.id = 'fab'; f.type = 'button'; f.className = 'fab'; document.body.appendChild(f); f.addEventListener('click', function () { var c = FAB[current]; buzz(10); if (c && !c[2]()) toast('Nothing to do here right now'); }); }
+    if (!cfg || !S || (current === 'food' && !ME)) { f.hidden = true; return; }
+    f.hidden = false; f.innerHTML = icon(cfg[0], 's') + '<span>' + cfg[1] + '</span>'; f.setAttribute('aria-label', cfg[1]);
+  }
   function showTab(name) {
     if (!ME && (name === 'train' || name === 'food')) name = 'home';
     current = name;
@@ -2394,6 +2408,7 @@
     if (name !== 'play') mixStop();
     window.scrollTo(0, 0);
     if (name === 'play') { loadWords(); pollGames(); }
+    updateFab();
   }
 
   // ---------- WORK (time blocking) ----------

@@ -1051,3 +1051,12 @@ body { isolation: isolate; }
 .stage-line { color: var(--lilac); font-weight: 600; }
 :root.calm :is(.pet .pet-b, .pet-z text, .flame.lit, .burst, .burst *) { animation: none !important; }
 @media (prefers-reduced-motion: reduce) { :is(.pet .pet-b, .pet-z text, .flame.lit, .burst, .burst *) { animation: none !important; } }
+
+/* thumb-reach action button (phones only) */
+.fab { position: fixed; right: 14px; bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 7; display: inline-flex; align-items: center; gap: 8px; padding: 0 18px; height: 52px; border: 0; border-radius: 26px;
+  font: inherit; font-weight: 650; color: #12091f; background: linear-gradient(135deg, var(--ring-a, #ff7cc2), var(--ring-b, #a98bff)); box-shadow: 0 8px 24px rgba(0, 0, 0, .28), 0 0 22px color-mix(in srgb, var(--lilac) 35%, transparent); }
+.fab .i { stroke: currentColor; }
+.fab[hidden] { display: none; }
+body.sheetopen .fab, body.dress-open .fab { display: none; }
+@media (max-width: 959px) { main { padding-bottom: calc(150px + env(safe-area-inset-bottom)); } }
+@media (min-width: 960px) { .fab { display: none; } }
