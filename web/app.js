@@ -12,7 +12,7 @@
   var S = window.LQ_BOOT || load('state-' + KEY.slice(0, 6)) || null;
   var ME = S ? S.who === 'me' : true;
   var offset = S && S.now ? S.now - Date.now() : 0;
-  var busy = false, inflight = 0, current = 'home';
+  var busy = false, inflight = 0, current = 'home', updateOffered = false;
 
   function rpc(fn, args) {
     return new Promise(function (resolve, reject) {
@@ -2986,7 +2986,7 @@
   if (MODE === 'web' && 'serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').then(function (r) { swReg = r; if (window.Notification && Notification.permission === 'granted' && KEY) enablePush(true); }).catch(function () {});
   }
-  if (MODE === 'web' && 'serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', function (e) { if (e.data && e.data.tab && S) { showTab(e.data.tab); if (e.data.deadline && e.data.act) handleNoteAction(e.data.deadline, e.data.act); else refreshQuiet(); } });
+  if (MODE === 'web' && 'serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', function (e) { if (e.data && e.data.updated) { if (!updateOffered) { updateOffered = true; setTimeout(function () { toast('A new version of Nudge is ready.', false, { label: 'Reload', fn: function () { location.reload(); } }); }, 1500); } return; } if (e.data && e.data.tab && S) { showTab(e.data.tab); if (e.data.deadline && e.data.act) handleNoteAction(e.data.deadline, e.data.act); else refreshQuiet(); } });
   if (!ME) el('nav').querySelectorAll('[data-me]').forEach(function (b) { b.remove(); });
   // the phone tab bar: four main tabs and More (the rest), the same on every screen; computers keep the full sidebar
   var PRIMARY = { me: ['home', 'chores', 'train', 'food'], partner: ['home', 'chores', 'play', 'work'] };

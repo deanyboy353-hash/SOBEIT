@@ -1,5 +1,5 @@
 /* Nudge service worker: opens instantly (cached shell) and shows push notifications. */
-var CACHE = 'lq-v1';
+var CACHE = 'lq-v2';
 var SHELL = ['./', 'index.html', 'app.css', 'app.js', 'setup.js', 'face.js', 'music.js', 'portraits.js', 'djset.js', 'avatar3d.js', 'words.js', 'booth.html', 'booth.css', 'booth.js', 'booth-map.js', 'booth-midi.js', 'booth-dsp.js', 'booth-audio.js', 'booth-lib.js', 'booth-play.js', 'booth-score.js', 'booth-game.js', 'booth-skills.js', 'booth-academy.js', 'config.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 
 importScripts('config.js');
@@ -12,16 +12,24 @@ self.addEventListener('activate', function (e) {
     return Promise.all(keys.filter(function (k) { return k !== CACHE; }).map(function (k) { return caches.delete(k); }));
   }).then(function () { return self.clients.claim(); }));
 });
-// App files: network first so updates arrive, cache when offline. Data calls go straight to the network.
+// App files: straight from the cache (instant, works offline), refreshed in the background.
+// When a file really changed, open pages are told so they can offer a reload. Data calls go straight to the network.
 self.addEventListener('fetch', function (e) {
   var url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;
-  e.respondWith(fetch(e.request).then(function (res) {
-    var copy = res.clone();
-    caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
-    return res;
-  }).catch(function () {
-    return caches.match(e.request, { ignoreSearch: true }).then(function (r) { return r || caches.match('index.html'); });
+  e.respondWith(caches.open(CACHE).then(function (c) {
+    return c.match(e.request, { ignoreSearch: true }).then(function (hit) {
+      var net = fetch(e.request).then(function (res) {
+        if (res && res.ok && res.type === 'basic') {
+          var copy = res.clone();
+          if (hit && /\.(js|css|html)$|\/$/.test(url.pathname)) Promise.all([hit.clone().text(), res.clone().text()]).then(function (t) { if (t[0] !== t[1]) self.clients.matchAll({ type: 'window' }).then(function (list) { list.forEach(function (w) { w.postMessage({ updated: true }); }); }); });
+          c.put(e.request, copy);
+        }
+        return res;
+      });
+      if (hit) { e.waitUntil(net.catch(function () {})); return hit; }
+      return net.catch(function () { return c.match('index.html'); });
+    });
   }));
 });
 
