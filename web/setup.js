@@ -264,11 +264,11 @@
 
   // ---------- the setup card in Settings: change one answer ----------
   function answers(st) {
-    var p = st.profile, h = st.health, ho = st.house, w = p.work || {}, rows = [];
+    var p = st.profile || {}, h = st.health || {}, ho = st.house || {}, w = p.work || {}, rows = [];
     var workTxt = WEEK.filter(function (i) { return w[i]; }).map(function (i) { return DAYS[i] + ' ' + hm(w[i][0]) + '–' + hm(w[i][1]); }).join(', ') || 'No work days';
     rows.push(['name', 'Name', p.name], ['work', 'Work', workTxt], ['wake', 'Wake / bed', hm(p.wake) + ' / ' + hm(p.bed)], ['energy', 'Most energy', p.energy], ['manageable', 'Chores a day', p.manageable],
-      ['minimum', 'Daily minimum', p.minimum + ' must-do job' + (p.minimum === 1 ? '' : 's')], ['hates', 'Chores you hate', (p.hates || []).length + ' picked'], ['motivation', 'Motivation', p.motivation], ['reminder', 'Reminders', p.reminder], ['quiet', 'Quiet hours', hm(p.quiet[0]) + '–' + hm(p.quiet[1])]);
-    if (h.on) rows.push(['body', 'Height / weight / goal', [h.height ? h.height + ' cm' : '–', h.weight ? h.weight + ' kg' : '–', h.goal ? h.goal + ' kg' : '–'].join(' / ')], ['train', 'Training days', h.trainDays + ' (stretch ' + h.stretchDays + ')'], ['food', 'Food targets', h.kcal + ' kcal, ' + h.protein[0] + '–' + h.protein[1] + ' g protein'], ['weigh', 'Weigh-ins', (h.weighDays || []).map(function (d) { return DAYS[d]; }).join(', ')], ['share', 'Sharing with ' + st.partner.name, h.share ? 'On' : 'Private']);
+      ['minimum', 'Daily minimum', p.minimum + ' must-do job' + (p.minimum === 1 ? '' : 's')], ['hates', 'Chores you hate', (p.hates || []).length + ' picked'], ['motivation', 'Motivation', p.motivation], ['reminder', 'Reminders', p.reminder], ['quiet', 'Quiet hours', p.quiet && p.quiet.length === 2 ? hm(p.quiet[0]) + '–' + hm(p.quiet[1]) : 'None']);
+    if (h.on) rows.push(['body', 'Height / weight / goal', [h.height ? h.height + ' cm' : '–', h.weight ? h.weight + ' kg' : '–', h.goal ? h.goal + ' kg' : '–'].join(' / ')], ['train', 'Training days', h.trainDays + ' (stretch ' + h.stretchDays + ')'], ['food', 'Food targets', h.kcal + ' kcal, ' + (h.protein || ['–'])[0] + '–' + (h.protein || ['', '–'])[1] + ' g protein'], ['weigh', 'Weigh-ins', (h.weighDays || []).map(function (d) { return DAYS[d]; }).join(', ')], ['share', 'Sharing with ' + st.partner.name, h.share ? 'On' : 'Private']);
     rows.push(['rooms', 'Rooms', (ho.rooms || []).length + ' rooms'], ['bins', 'Bins', (ho.bins || []).map(function (b) { return b.name + ' ' + DAYS[b.day]; }).join(', ') || 'None'], ['laundry', 'Laundry day', ho.laundryDay === '' || ho.laundryDay === undefined ? 'Any day' : DAYS[ho.laundryDay]]);
     return rows;
   }
