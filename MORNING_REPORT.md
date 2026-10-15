@@ -1,6 +1,6 @@
 # Morning report: overnight audit and polish
 
-Everything below is committed on `claude/adhd-automation-system-htcfxg` (one commit per fix). It's deployed to the website (life-quest-5c52d.web.app) and to Apps Script (version @40). All 204 automated tests pass. No stored data was deleted or reset. The only data changes add fields (for example the pet's lifetime day count) or rename old Upper/Lower rows to "Old: …" so they're kept but ignored.
+Everything below is committed on `claude/adhd-automation-system-htcfxg` (one commit per fix). It's deployed to the website (life-quest-5c52d.web.app) and to Apps Script (version @41). All 204 automated tests pass. No stored data was deleted or reset. The only data changes add fields (for example the pet's lifetime day count) or rename old Upper/Lower rows to "Old: …" so they're kept but ignored.
 
 ## 1. Known bugs: fixed
 
@@ -15,6 +15,11 @@ Everything below is committed on `claude/adhd-automation-system-htcfxg` (one com
 | Mix practice | Opens Booth. |
 
 ## 2. Audit
+
+* **Tapping every button, as Yaz on a phone:** 260 buttons on 27 screens. This found one real bug, now fixed and deployed (version @41): "Show my answers" under Setup could crash. Everything else it reported was the test itself:
+  * classic characters folded away in a closed section
+  * memory-game pads that only respond during a round
+  * buttons behind the dressing room the test had left open
 
 * **Every screen as both of you.** An automated pass on phone, desktop, light and dark visits every screen and taps every button. No text errors (no undefined, NaN, null, "the The" or stray punctuation), no layout overflow, and no script errors.
 * **Numbers.** Tests cover XP, levels, streaks, calories, protein, water, chore counts, head-to-head and "days over".
