@@ -2766,7 +2766,7 @@
   var SKINS = ['#f3cfb3', '#e0a982', '#c68a62', '#a8714d', '#8d5a3b', '#6b4226', '#4a2c1a'];
   var HAIRC = ['#1c1410', '#3b2416', '#6b4423', '#b5793f', '#e8c37a', '#f2f0e6', '#c1121f', '#ff5fae', '#7c5cff', '#2fe0d6'];
   var LIPS = ['#9c4a52', '#c2185b', '#e63946', '#ff5fae', '#6a1b4d', '#d4a373', '#111111', '#7c5cff'];
-  var DRESS_TABS = [['body', 'Body'], ['hair', 'Hair'], ['top', 'Tops'], ['bottom', 'Bottoms'], ['shoes', 'Shoes'], ['acc', 'Extras'], ['pattern', 'Patterns'], ['glam', 'Glam']];
+  var DRESS_TABS = [['body', 'Body'], ['face', 'Face'], ['hair', 'Hair'], ['top', 'Tops'], ['bottom', 'Bottoms'], ['shoes', 'Shoes'], ['acc', 'Accessories'], ['details', 'Details']];
   function threeUrl() {
     if (MODE !== 'gas') return 'three.min.js';
     var base = S && S.fun && S.fun.appBase ? S.fun.appBase.replace(/[?#].*$/, '').replace(/\/?$/, '/') : '';
@@ -2853,17 +2853,21 @@
       h += '<div class="eyebrow">Frame</div><div class="seg" style="margin:6px 0 12px">' + [['m', 'Straight'], ['f', 'Curvy']].map(function (o) { return '<button type="button" data-dbody="' + o[0] + '" aria-pressed="' + (L.body === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>' +
         opt('build', 'Build', [['slim', 'Slim'], ['avg', 'Average'], ['broad', 'Broad'], ['big', 'Big']], 'avg') +
         opt('height', 'Height', [['short', 'Shorter'], ['avg', 'Average'], ['tall', 'Taller']], 'avg') +
-        '<div class="eyebrow">Skin</div>' + swatches('skin', SKINS, L.skin) +
-        '<div class="eyebrow" style="margin-top:12px">Eyes</div>' + swatches('eyeC', ['#4a2f1d', '#2a1a10', '#6b8e23', '#3f7cc0', '#7d8a96', '#a0522d'], L.eyeC || '#4a2f1d') +
-        '<div style="margin-top:12px"></div>' + opt('beard', 'Facial hair', [['none', 'None'], ['stubble', 'Stubble'], ['goatee', 'Goatee'], ['full', 'Full beard']], L.body === 'f' ? 'none' : 'stubble') +
-        opt('freckles', 'Freckles', [['', 'No'], ['1', 'Yes']], L.freckles ? '1' : '');
+        '<div class="eyebrow">Skin</div>' + swatches('skin', SKINS, L.skin);
       return h;
     }
-    if (tab === 'glam') {
-      if (!owns('glam')) { var gk = W.catalog.filter(function (w) { return w.id === 'glam'; })[0]; return '<p class="small muted">Lipstick and eyeshadow, any colour. Unlock the Glam kit to paint your face for the runway.</p>' + itemCard(gk); }
-      return '<div class="eyebrow">Lipstick</div>' + swatches('lips', LIPS, L.lips) + '<div class="eyebrow" style="margin-top:12px">Eyeshadow</div>' + swatches('shadow', SWATCH.concat(['#ffd166']), L.shadow);
+    if (tab === 'face') {
+      var fopt = function (key, label, list, def) {
+        var cur = L[key] === undefined ? def : L[key];
+        return '<div class="eyebrow">' + label + '</div><div class="seg" style="margin:6px 0 12px">' + list.map(function (o) { return '<button type="button" data-dopt="' + key + '" data-v="' + o[0] + '" aria-pressed="' + (String(cur) === String(o[0])) + '">' + o[1] + '</button>'; }).join('') + '</div>';
+      };
+      h += '<div class="eyebrow">Eyes</div>' + swatches('eyeC', NudgeLook.PALETTES.eyes, L.eyeC || '#4a2f1d') + '<div style="margin-top:12px"></div>' +
+        fopt('beard', 'Facial hair', [['none', 'None'], ['stubble', 'Stubble'], ['goatee', 'Goatee'], ['full', 'Full beard']], L.body === 'f' ? 'none' : 'stubble') +
+        fopt('freckles', 'Freckles', [['', 'No'], ['1', 'Yes']], L.freckles ? '1' : '');
+      if (!owns('glam')) { var gk = W.catalog.filter(function (w) { return w.id === 'glam'; })[0]; return h + '<div class="eyebrow">Glam</div><p class="small muted" style="margin:4px 0 8px">Lipstick and eyeshadow, any colour. Unlock the Glam kit to paint your face for the runway.</p>' + itemCard(gk); }
+      return h + '<div class="eyebrow">Lipstick</div>' + swatches('lips', LIPS, L.lips) + '<div class="eyebrow" style="margin-top:12px">Eyeshadow</div>' + swatches('shadow', SWATCH.concat(['#ffd166']), L.shadow);
     }
-    if (tab === 'pattern') h += '<div class="seg" style="margin:0 0 10px">' + [['top', 'On your top'], ['bottom', 'On your bottoms']].map(function (o) { return '<button type="button" data-dpat="' + o[0] + '" aria-pressed="' + (dress.patFor === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
+    if (tab === 'details') { tab = 'pattern'; h += '<p class="small muted" style="margin:0 0 8px">Patterns and prints. Pick where they go, then a pattern.</p><div class="seg" style="margin:0 0 10px">' + [['top', 'On your top'], ['bottom', 'On your bottoms']].map(function (o) { return '<button type="button" data-dpat="' + o[0] + '" aria-pressed="' + (dress.patFor === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>'; }
     var colKey = { hair: 'hairC', top: 'topC', bottom: 'botC', shoes: 'shoeC' }[tab];
     if (colKey) h += '<div class="eyebrow">Colour</div>' + swatches(colKey, tab === 'hair' ? HAIRC : SWATCH, L[colKey]) + '<div class="eyebrow" style="margin-top:12px">' + (tab === 'acc' ? 'Up to four' : 'Styles') + '</div>';
     if (tab === 'acc') h += '<p class="tiny muted" style="margin:0 0 8px">Wear up to four at once.</p>';
@@ -2880,6 +2884,15 @@
   function renderDress() {
     if (!dress) return;
     var W = S.wardrobe, un = unowned(dress.look);
+    var sv = W.saved || [];
+    el('dressTools').innerHTML = '<div class="row wrap" style="gap:6px"><button class="btn soft sm" type="button" data-dress="random">' + icon('shuffle', 's') + 'Randomise</button>' +
+      '<button class="btn ghost sm" type="button" data-dress="undo"' + (dress.hist.canUndo() ? '' : ' disabled') + '>' + icon('undo', 's') + 'Undo</button>' +
+      '<button class="btn ghost sm" type="button" data-dress="redo"' + (dress.hist.canRedo() ? '' : ' disabled') + '>Redo<span class="flipx">' + icon('undo', 's') + '</span></button></div>' +
+      '<div class="eyebrow" style="margin:10px 0 6px">Saved looks</div><div class="lookslots">' + [0, 1, 2].map(function (i) {
+        var x = sv[i];
+        return '<div class="lookslot' + (x ? '' : ' empty') + '">' + (x ? '<button type="button" class="ls-wear" data-dslot="' + i + '" data-act="wear">' + NudgeFigure.svg(x.look, 46, {}) + '<span>' + esc(x.name) + '</span></button>' : '<span class="tiny muted">Empty</span>') +
+          '<button type="button" class="btn ghost sm" data-dslot="' + i + '" data-act="save">' + (x ? 'Replace' : 'Save here') + '</button></div>';
+      }).join('') + '</div>';
     el('dressTabs').innerHTML = DRESS_TABS.map(function (t) { return '<button type="button" data-dtab="' + t[0] + '" aria-pressed="' + (dress.tab === t[0]) + '">' + t[1] + '</button>'; }).join('');
     el('dressPanel').innerHTML = dressPanel();
     el('dressCash').innerHTML = money(S.empire ? S.empire.cash : 0) + ' to spend · ' + W.chores + ' chore' + (W.chores === 1 ? '' : 's') + ' done';
@@ -2887,24 +2900,30 @@
     el('dressSave').disabled = !!un.length;
   }
   function preview(spin) {
-    if (window.NudgeFigure) return mount3d('av3dDress', [dress.look], { h: 330 });
+    if (window.NudgeFigure) {
+      mount3d('av3dDress', [dress.look], { h: 330, states: [dress.pose === 'happy' ? { mood: 'happy', bounce: !reducedMotion() } : {}] });
+      var host = el('av3dDress'); if (host) { host.classList.toggle('runway', dress.pose === 'runway' && !reducedMotion()); host.style.setProperty('--zoom', dress.zoom); }
+      return;
+    }
     var s = stages3d.av3dDress; if (!s) return;
     s.set([dress.look]); s.key = JSON.stringify([dress.look]);
     if (spin) s.sashay(0);
   }
   function openDress() {
     if (!S.wardrobe) return;
-    dress = { look: JSON.parse(JSON.stringify(S.wardrobe.look)), tab: 'hair', patFor: 'top' };
+    dress = { look: JSON.parse(JSON.stringify(S.wardrobe.look)), tab: 'body', patFor: 'top', pose: 'stand', zoom: 1 };
+    dress.hist = NudgeLook.history(dress.look);
     var box = document.createElement('div');
     box.id = 'dress'; box.className = 'dress'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'Dressing room');
-    box.innerHTML = '<div class="dress-in"><div class="dress-stage"><div class="av3d" id="av3dDress"><div class="av3d-msg small center">Loading…</div></div><button class="dress-spin" type="button" data-dress="spin">Sashay</button></div>' +
+    box.innerHTML = '<div class="dress-in"><div class="dress-stage"><div class="av3d" id="av3dDress"><div class="av3d-msg small center">Loading…</div></div><div class="dress-ctl"><div class="seg" role="group" aria-label="Pose">' + [['stand', 'Stand'], ['runway', 'Runway'], ['happy', 'Happy']].map(function (o) { return '<button type="button" data-dpose="' + o[0] + '" aria-pressed="' + (o[0] === 'stand') + '">' + o[1] + '</button>'; }).join('') + '</div>' +
+      '<span class="row" style="gap:4px"><button class="iconbtn" type="button" data-dzoom="-1" aria-label="Zoom out">−</button><button class="iconbtn" type="button" data-dzoom="1" aria-label="Zoom in">+</button></span></div></div>' +
       '<div class="dress-side"><div class="between"><div><div class="eyebrow">Wardrobe</div><h2 style="margin:2px 0 0">Dressing room</h2></div><button class="iconbtn" type="button" data-dress="close" aria-label="Close">' + icon('x') + '</button></div>' +
-      '<div class="small muted" id="dressCash" style="margin:4px 0 10px"></div><div class="dress-tabs" id="dressTabs"></div><div id="dressPanel" class="dress-panel"></div>' +
+      '<div class="small muted" id="dressCash" style="margin:4px 0 10px"></div><div id="dressTools" class="dress-tools"></div><div class="dress-tabs" id="dressTabs"></div><div id="dressPanel" class="dress-panel"></div>' +
       '<div class="dress-foot"><p class="tiny" id="dressNote"></p><div class="grid2"><button class="btn line" type="button" data-dress="close">Cancel</button><button class="btn primary" type="button" id="dressSave" data-dress="save">Save look</button></div></div></div></div>';
     document.body.appendChild(box); document.body.classList.add('dress-open');
     renderDress();
     if (stages3d.av3dDress) { stages3d.av3dDress.dispose(); delete stages3d.av3dDress; }
-    mount3d('av3dDress', [dress.look], { theme: 'vice', spin: false, yaw: 0.2 });
+    if (window.NudgeFigure) preview(false); else mount3d('av3dDress', [dress.look], { theme: 'vice', spin: false, yaw: 0.2 });
   }
   function closeDress() {
     if (stages3d.av3dDress) { stages3d.av3dDress.dispose(); delete stages3d.av3dDress; }
@@ -2912,28 +2931,40 @@
     document.body.classList.remove('dress-open'); dress = null;
   }
   document.addEventListener('click', function (ev) {
-    var t = ev.target.closest('[data-dress], [data-dtab], [data-dtry], [data-dbuy], [data-dcol], [data-dbody], [data-dpat], [data-dopt]');
+    var t = ev.target.closest('[data-dress], [data-dtab], [data-dtry], [data-dbuy], [data-dcol], [data-dbody], [data-dpat], [data-dopt], [data-dpose], [data-dzoom], [data-dslot]');
     if (!t || !S) return;
     var d = t.dataset, L = dress && dress.look;
     if (d.dress === 'open') return openDress();
     if (!dress) return;
     if (d.dress === 'close') return closeDress();
     if (d.dress === 'spin') { var s = stages3d.av3dDress; if (s) s.sashay(0); return; }
+    var changed = function (spin) { dress.hist.push(dress.look); preview(spin); renderDress(); };
+    if (d.dress === 'random') { dress.look = NudgeLook.randomise(S.wardrobe.catalog, S.wardrobe.owned, Math.random, dress.look); buzz(10); return changed(true); }
+    if (d.dress === 'undo' || d.dress === 'redo') { var back = dress.hist[d.dress](); if (back) { dress.look = back; preview(false); renderDress(); } return; }
+    if (d.dpose) { dress.pose = d.dpose; document.querySelectorAll('[data-dpose]').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.dpose === dress.pose); }); return preview(false); }
+    if (d.dzoom) { dress.zoom = Math.max(0.8, Math.min(1.8, dress.zoom + (+d.dzoom) * 0.2)); return preview(false); }
+    if (d.dslot !== undefined && d.act) {
+      var slot = +d.dslot;
+      if (d.act === 'wear') return rpc('wearLookSlot', [slot]).then(function (res) { apply(res); dress.look = JSON.parse(JSON.stringify(S.wardrobe.look)); changed(true); toast('Wearing ' + S.wardrobe.saved[slot].name); }, function (e) { toast(e.message, true); });
+      if (unowned(L).length) return toast('Buy the pieces you\'re trying on first, then save the look.', true);
+      var nm = prompt('Name this look', (S.wardrobe.saved[slot] && S.wardrobe.saved[slot].name) || ['Everyday', 'Night out', 'Gym'][slot]); if (nm === null) return;
+      return rpc('saveLookSlot', [slot, nm, L]).then(function (res) { apply(res); renderDress(); toast('Saved as ' + (S.wardrobe.saved[slot] || {}).name); }, function (e) { toast(e.message, true); });
+    }
     if (d.dress === 'save') {
       return rpc('setLook3d', [L]).then(function (res) { apply(res); closeDress(); toast('Looking good. Saved.'); chime([523, 659, 784]); }, function (e) { toast(e.message, true); });
     }
     if (d.dtab) { dress.tab = d.dtab; return renderDress(); }
     if (d.dpat) { dress.patFor = d.dpat; return renderDress(); }
-    if (d.dbody) { L.body = d.dbody; preview(true); return renderDress(); }
-    if (d.dopt) { L[d.dopt] = d.dopt === 'freckles' ? !!d.v : d.v; preview(true); return renderDress(); }
-    if (d.dcol) { L[d.dcol] = d.v; preview(false); return renderDress(); }
+    if (d.dbody) { L.body = d.dbody; return changed(true); }
+    if (d.dopt) { L[d.dopt] = d.dopt === 'freckles' ? !!d.v : d.v; return changed(true); }
+    if (d.dcol) { L[d.dcol] = d.v; return changed(false); }
     if (d.dtry) {
       var it = S.wardrobe.catalog.filter(function (w) { return w.id === d.dtry; })[0]; if (!it) return;
       if (it.slot === 'acc') { var a = L.acc || (L.acc = []), i = a.indexOf(it.id); if (i !== -1) a.splice(i, 1); else { if (a.length >= 4) return toast('Four extras at most. Take one off first.'); a.push(it.id); } }
       else if (it.slot === 'pattern') L[dress.patFor === 'top' ? 'topPat' : 'botPat'] = it.id;
       else if (it.slot === 'glam') return;
       else L[it.slot] = it.id;
-      preview(true); return renderDress();
+      return changed(true);
     }
     if (d.dbuy) {
       var item = S.wardrobe.catalog.filter(function (w) { return w.id === d.dbuy; })[0];
@@ -2949,7 +2980,7 @@
     var k = ev.target.dataset && ev.target.dataset.dcolor; if (!k || !dress) return;
     dress.look[k] = ev.target.value; preview(false);
   });
-  document.addEventListener('change', function (ev) { if (ev.target.dataset && ev.target.dataset.dcolor && dress) renderDress(); });
+  document.addEventListener('change', function (ev) { if (ev.target.dataset && ev.target.dataset.dcolor && dress) { dress.hist.push(dress.look); renderDress(); } });
 
   // ---------- taps ----------
   document.addEventListener('click', function (ev) {

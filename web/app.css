@@ -1210,3 +1210,18 @@ svg.figure.bounce { animation: figBounce 1.1s ease-in-out infinite; transform-or
 .card.spot.bank { color: var(--ink); background: var(--surface); }
 .card.spot.bank .eyebrow { color: var(--muted); }
 .card.spot.bank .num.big { font-family: var(--font-display); color: var(--good); }
+/* character creator: tools, saved looks, poses and zoom */
+.flipx { display: inline-flex; transform: scaleX(-1); }
+.dress-tools { margin: 0 0 10px; }
+.lookslots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.lookslot { display: grid; gap: 2px; justify-items: center; padding: 6px; border-radius: 14px; background: var(--raised); min-width: 0; }
+.lookslot.empty { min-height: 72px; align-content: center; border: 1px dashed var(--line); background: transparent; }
+.ls-wear { display: grid; justify-items: center; gap: 2px; border: 0; background: none; color: var(--ink); font: inherit; font-size: 12px; font-weight: 650; padding: 0; cursor: pointer; max-width: 100%; }
+.ls-wear span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dress-ctl { position: absolute; left: 12px; right: 12px; bottom: 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px; pointer-events: none; }
+.dress-ctl > * { pointer-events: auto; }
+.dress-ctl .seg { margin: 0; background: color-mix(in srgb, var(--surface) 80%, transparent); backdrop-filter: blur(8px); }
+#av3dDress .figs { transform: scale(var(--zoom, 1)); transform-origin: 50% 85%; transition: transform .2s ease-out; }
+#av3dDress.runway .fig { animation: runway 1.6s ease-in-out infinite; }
+@keyframes runway { 0%, 100% { transform: translateX(-18px) rotate(-1.5deg); } 25% { transform: translateX(0) translateY(-4px) rotate(0); } 50% { transform: translateX(18px) rotate(1.5deg); } 75% { transform: translateX(0) translateY(-4px) rotate(0); } }
+@media (prefers-reduced-motion: reduce) { #av3dDress.runway .fig { animation: none; } #av3dDress .figs { transition: none; } }

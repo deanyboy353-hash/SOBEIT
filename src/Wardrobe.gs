@@ -11,29 +11,29 @@ var ACH_TEXT = { streak7: 'Hit a 7-day streak', gym10: 'Log 10 gym sessions', bo
 var WARDROBE = [
   // hair
   ['fade', 'hair', 'Fade', 0, 0, 'basic'], ['buzz', 'hair', 'Buzz cut', 0, 0, 'basic'], ['bob', 'hair', 'Bob', 0, 0, 'basic'], ['bald', 'hair', 'Clean head', 0, 0, 'basic'],
-  ['afro', 'hair', 'Afro', 800, 0, 'sa'], ['cornrows', 'hair', 'Cornrows', 1200, 0, 'sa'], ['jheri', 'hair', 'Jheri curl', 1500, 3, 'sa'],
-  ['mullet', 'hair', 'Mullet', 1000, 0, 'vc'], ['slick', 'hair', 'Slicked back', 1200, 0, 'vc'], ['waves', 'hair', 'Long waves', 900, 0, 'basic'],
-  ['ponytail', 'hair', 'High ponytail', 900, 0, 'basic'], ['buns', 'hair', 'Space buns', 1100, 0, 'basic'], ['mohawk', 'hair', 'Mohawk', 1400, 5, 'vc'],
+  ['afro', 'hair', 'Afro', 0, 0, 'sa'], ['cornrows', 'hair', 'Cornrows', 0, 0, 'sa'], ['jheri', 'hair', 'Jheri curl', 1500, 3, 'sa'],
+  ['mullet', 'hair', 'Mullet', 0, 0, 'vc'], ['slick', 'hair', 'Slicked back', 1200, 0, 'vc'], ['waves', 'hair', 'Long waves', 0, 0, 'basic'],
+  ['ponytail', 'hair', 'High ponytail', 0, 0, 'basic'], ['buns', 'hair', 'Space buns', 0, 0, 'basic'], ['mohawk', 'hair', 'Mohawk', 1400, 5, 'vc'],
   ['beehive', 'hair', 'Beehive', 3000, 15, 'drag'], ['volume', 'hair', 'Volume Queen wig', 6000, 40, 'drag'],
   // tops
-  ['tee', 'top', 'T-shirt', 0, 0, 'basic'], ['tank', 'top', 'Vest top', 0, 0, 'basic'], ['grove', 'top', 'Number 7 jersey', 1500, 5, 'sa'], ['tracktop', 'top', 'Tracksuit top', 1800, 0, 'sa'],
-  ['hawaiian', 'top', 'Hawaiian shirt', 1500, 0, 'vc'], ['vcsuit', 'top', 'Pastel suit jacket', 4000, 20, 'vc'], ['hoodie', 'top', 'Hoodie', 1200, 0, 'basic'],
-  ['bomber', 'top', 'Bomber jacket', 2000, 0, 'basic'], ['leather', 'top', 'Leather jacket', 3500, 10, 'vc'], ['crop', 'top', 'Crop top', 1000, 0, 'basic'],
+  ['tee', 'top', 'T-shirt', 0, 0, 'basic'], ['tank', 'top', 'Vest top', 0, 0, 'basic'], ['grove', 'top', 'Number 7 jersey', 1500, 5, 'sa'], ['tracktop', 'top', 'Tracksuit top', 0, 0, 'sa'],
+  ['hawaiian', 'top', 'Hawaiian shirt', 1500, 0, 'vc'], ['vcsuit', 'top', 'Pastel suit jacket', 4000, 20, 'vc'], ['hoodie', 'top', 'Hoodie', 0, 0, 'basic'],
+  ['bomber', 'top', 'Bomber jacket', 0, 0, 'basic'], ['leather', 'top', 'Leather jacket', 3500, 10, 'vc'], ['crop', 'top', 'Crop top', 0, 0, 'basic'],
   ['corset', 'top', 'Corset', 4500, 25, 'drag'], ['bodice', 'top', 'Sequin bodice', 8000, 50, 'drag'], ['fur', 'top', 'Fur coat', 9000, 60, 'drag'],
   // bottoms
-  ['jeans', 'bottom', 'Jeans', 0, 0, 'basic'], ['shorts', 'bottom', 'Shorts', 0, 0, 'basic'], ['baggy', 'bottom', 'Baggy jeans', 1200, 0, 'sa'], ['trackpants', 'bottom', 'Tracksuit bottoms', 1400, 0, 'sa'],
-  ['slacks', 'bottom', 'Pleated slacks', 1800, 0, 'vc'], ['skirt', 'bottom', 'Mini skirt', 1000, 0, 'basic'], ['hotpants', 'bottom', 'Hot pants', 1500, 5, 'drag'],
+  ['jeans', 'bottom', 'Jeans', 0, 0, 'basic'], ['shorts', 'bottom', 'Shorts', 0, 0, 'basic'], ['baggy', 'bottom', 'Baggy jeans', 0, 0, 'sa'], ['trackpants', 'bottom', 'Tracksuit bottoms', 0, 0, 'sa'],
+  ['slacks', 'bottom', 'Pleated slacks', 1800, 0, 'vc'], ['skirt', 'bottom', 'Mini skirt', 0, 0, 'basic'], ['hotpants', 'bottom', 'Hot pants', 1500, 5, 'drag'],
   ['mermaid', 'bottom', 'Mermaid gown', 9000, 40, 'drag'], ['gown', 'bottom', 'Ball gown', 12000, 75, 'drag'],
   // shoes
-  ['sneakers', 'shoes', 'Trainers', 0, 0, 'basic'], ['boots', 'shoes', 'Boots', 1500, 0, 'sa'], ['loafers', 'shoes', 'Loafers', 1500, 0, 'vc'],
+  ['sneakers', 'shoes', 'Trainers', 0, 0, 'basic'], ['boots', 'shoes', 'Boots', 0, 0, 'sa'], ['loafers', 'shoes', 'Loafers', 0, 0, 'vc'],
   ['heels', 'shoes', 'Platform heels', 3000, 10, 'drag'], ['thigh', 'shoes', 'Thigh-high boots', 7000, 30, 'drag'],
   // extras (up to four at once)
-  ['shades', 'acc', 'Aviators', 600, 0, 'vc'], ['bandana', 'acc', 'Bandana', 500, 0, 'sa'], ['chain', 'acc', 'Gold chain', 1500, 0, 'sa'], ['cap', 'acc', 'Backwards cap', 400, 0, 'sa'],
-  ['headphones', 'acc', 'DJ headphones', 1200, 0, 'basic'], ['hoops', 'acc', 'Hoop earrings', 800, 0, 'basic'], ['fan', 'acc', 'Fan', 3000, 15, 'drag'],
+  ['shades', 'acc', 'Aviators', 600, 0, 'vc'], ['bandana', 'acc', 'Bandana', 0, 0, 'sa'], ['chain', 'acc', 'Gold chain', 1500, 0, 'sa'], ['cap', 'acc', 'Backwards cap', 0, 0, 'sa'],
+  ['headphones', 'acc', 'DJ headphones', 0, 0, 'basic'], ['hoops', 'acc', 'Hoop earrings', 0, 0, 'basic'], ['fan', 'acc', 'Fan', 3000, 15, 'drag'],
   ['boa', 'acc', 'Feather boa', 5000, 20, 'drag'], ['sash', 'acc', 'Pageant sash', 4000, 30, 'drag'], ['tiara', 'acc', 'Tiara', 7000, 50, 'drag'],
   ['wings', 'acc', 'Runway wings', 15000, 80, 'drag'], ['crown', 'acc', 'Winner\'s crown', 20000, 100, 'drag'],
   // patterns (for tops and bottoms)
-  ['solid', 'pattern', 'Plain', 0, 0, 'basic'], ['stripes', 'pattern', 'Stripes', 500, 0, 'basic'], ['plaid', 'pattern', 'Plaid', 900, 0, 'sa'], ['flames', 'pattern', 'Flames', 1500, 5, 'sa'],
+  ['solid', 'pattern', 'Plain', 0, 0, 'basic'], ['stripes', 'pattern', 'Stripes', 0, 0, 'basic'], ['plaid', 'pattern', 'Plaid', 0, 0, 'sa'], ['flames', 'pattern', 'Flames', 1500, 5, 'sa'],
   ['floral', 'pattern', 'Tropical florals', 1200, 0, 'vc'], ['leopard', 'pattern', 'Leopard', 2500, 10, 'drag'], ['chrome', 'pattern', 'Chrome', 4000, 25, 'drag'], ['sequins', 'pattern', 'Sequins', 6000, 35, 'drag'],
   // glam
   ['glam', 'glam', 'Glam kit (lipstick and shadow)', 2000, 5, 'drag'],
@@ -88,7 +88,7 @@ function choresDone_(who) {
 
 function wardrobeState_(who) {
   var other = who === 'me' ? 'partner' : 'me';
-  return { catalog: WARDROBE, owned: owned3d_(who), ach: achievements_(who), look: look3d_(who), other: look3d_(other), chores: choresDone_(who) };
+  return { catalog: WARDROBE, owned: owned3d_(who), ach: achievements_(who), look: look3d_(who), other: look3d_(other), chores: choresDone_(who), saved: savedLooks_(who) };
 }
 
 // ---- called from the app ----
@@ -115,34 +115,81 @@ function buyWear(key, id) {
   });
 }
 
-/** Save what you're wearing. Only things you own; colours as #rrggbb. */
+/** A look, checked: only things you own; colours as #rrggbb. Starts from `cur` and changes what `look` sets. */
+function cleanLook_(who, look, cur) {
+  look = look || {};
+  var owned = owned3d_(who), hex = /^#[0-9a-f]{6}$/i;
+  cur = Object.assign({}, cur);
+  var slotOk = function (id, slot) { var it = wardrobeItem_(id); return it && it.slot === slot && owned.indexOf(id) !== -1; };
+  if (look.body !== undefined) cur.body = look.body === 'f' ? 'f' : 'm';
+  [['hair', 'hair'], ['top', 'top'], ['bottom', 'bottom'], ['shoes', 'shoes'], ['topPat', 'pattern'], ['botPat', 'pattern']].forEach(function (p) {
+    if (look[p[0]] === undefined) return;
+    if (!slotOk(look[p[0]], p[1])) throw new Error('You don\'t own that yet.');
+    cur[p[0]] = look[p[0]];
+  });
+  ['skin', 'hairC', 'topC', 'botC', 'shoeC', 'eyeC'].forEach(function (k) { if (look[k] !== undefined && hex.test(look[k])) cur[k] = look[k].toLowerCase(); });
+  var pick = { build: ['slim', 'avg', 'broad', 'big'], height: ['short', 'avg', 'tall'], beard: ['none', 'stubble', 'goatee', 'full'] };
+  Object.keys(pick).forEach(function (k) { if (look[k] !== undefined && pick[k].indexOf(look[k]) !== -1) cur[k] = look[k]; });
+  if (look.freckles !== undefined) cur.freckles = !!look.freckles;
+  if ((look.lips !== undefined || look.shadow !== undefined) && owned.indexOf('glam') !== -1) {
+    if (hex.test(look.lips || '')) cur.lips = look.lips.toLowerCase();
+    if (hex.test(look.shadow || '')) cur.shadow = look.shadow.toLowerCase();
+  }
+  if (Array.isArray(look.acc)) {
+    var acc = look.acc.filter(function (id, i, a) { return a.indexOf(id) === i; });
+    if (acc.length > 4) throw new Error('Four extras at most.');
+    acc.forEach(function (id) { if (!slotOk(id, 'acc')) throw new Error('You don\'t own that yet.'); });
+    cur.acc = acc;
+  }
+  return cur;
+}
+
+/** Save what you're wearing. */
 function setLook3d(key, look) {
   var who = who_(key);
-  look = look || {};
   return withLock_(function () {
-    var owned = owned3d_(who), cur = look3d_(who), hex = /^#[0-9a-f]{6}$/i;
-    var slotOk = function (id, slot) { var it = wardrobeItem_(id); return it && it.slot === slot && owned.indexOf(id) !== -1; };
-    if (look.body !== undefined) cur.body = look.body === 'f' ? 'f' : 'm';
-    [['hair', 'hair'], ['top', 'top'], ['bottom', 'bottom'], ['shoes', 'shoes'], ['topPat', 'pattern'], ['botPat', 'pattern']].forEach(function (p) {
-      if (look[p[0]] === undefined) return;
-      if (!slotOk(look[p[0]], p[1])) throw new Error('You don\'t own that yet.');
-      cur[p[0]] = look[p[0]];
-    });
-    ['skin', 'hairC', 'topC', 'botC', 'shoeC', 'eyeC'].forEach(function (k) { if (look[k] !== undefined && hex.test(look[k])) cur[k] = look[k].toLowerCase(); });
-    var pick = { build: ['slim', 'avg', 'broad', 'big'], height: ['short', 'avg', 'tall'], beard: ['none', 'stubble', 'goatee', 'full'] };
-    Object.keys(pick).forEach(function (k) { if (look[k] !== undefined && pick[k].indexOf(look[k]) !== -1) cur[k] = look[k]; });
-    if (look.freckles !== undefined) cur.freckles = !!look.freckles;
-    if ((look.lips !== undefined || look.shadow !== undefined) && owned.indexOf('glam') !== -1) {
-      if (hex.test(look.lips || '')) cur.lips = look.lips.toLowerCase();
-      if (hex.test(look.shadow || '')) cur.shadow = look.shadow.toLowerCase();
-    }
-    if (Array.isArray(look.acc)) {
-      var acc = look.acc.filter(function (id, i, a) { return a.indexOf(id) === i; });
-      if (acc.length > 4) throw new Error('Four extras at most.');
-      acc.forEach(function (id) { if (!slotOk(id, 'acc')) throw new Error('You don\'t own that yet.'); });
-      cur.acc = acc;
-    }
-    setProp_('LOOK3D_' + who, JSON.stringify(cur));
+    setProp_('LOOK3D_' + who, JSON.stringify(cleanLook_(who, look, look3d_(who))));
+    return appState_(who);
+  });
+}
+
+// ---- up to three saved looks each ----
+var LOOK_SLOTS = 3;
+function savedLooks_(who) {
+  var a = JSON.parse(prop_('LOOKS3_' + who) || '[]');
+  for (var i = 0; i < LOOK_SLOTS; i++) a[i] = a[i] || null;
+  return a.slice(0, LOOK_SLOTS);
+}
+/** Keep a look in slot 0-2 (what you're wearing if no look is given). */
+function saveLookSlot(key, slot, name, look) {
+  var who = who_(key);
+  slot = Math.floor(Number(slot));
+  if (!(slot >= 0 && slot < LOOK_SLOTS)) throw new Error('Pick one of the three slots.');
+  return withLock_(function () {
+    var a = savedLooks_(who), base = look3d_(who);
+    a[slot] = { name: String(name || '').replace(/\s+/g, ' ').trim().slice(0, 24) || 'Look ' + (slot + 1), look: look ? cleanLook_(who, look, base) : base, at: todayYmd_() };
+    setProp_('LOOKS3_' + who, JSON.stringify(a));
+    return appState_(who);
+  });
+}
+/** Put a saved look on (things you no longer own are skipped, so it never fails). */
+function wearLookSlot(key, slot) {
+  var who = who_(key);
+  return withLock_(function () {
+    var s = savedLooks_(who)[Math.floor(Number(slot))];
+    if (!s) throw new Error('Nothing saved there yet.');
+    var cur = look3d_(who), owned = owned3d_(who), L = Object.assign({}, s.look);
+    ['hair', 'top', 'bottom', 'shoes', 'topPat', 'botPat'].forEach(function (k) { if (L[k] && owned.indexOf(L[k]) === -1) delete L[k]; });
+    if (L.acc) L.acc = L.acc.filter(function (id) { return owned.indexOf(id) !== -1; });
+    setProp_('LOOK3D_' + who, JSON.stringify(cleanLook_(who, L, cur)));
+    return appState_(who);
+  });
+}
+function deleteLookSlot(key, slot) {
+  var who = who_(key);
+  return withLock_(function () {
+    var a = savedLooks_(who); a[Math.floor(Number(slot))] = null;
+    setProp_('LOOKS3_' + who, JSON.stringify(a));
     return appState_(who);
   });
 }
