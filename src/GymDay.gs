@@ -10,10 +10,23 @@ var EVENT_TAG = 'sobeit';
  */
 function todaySession_(ymd, cfg) {
   var o = JSON.parse(prop_('GYM_TODAY') || 'null');
-  if (o && o.date === ymd) return o.session;
-  var day = (cfg || readConfig_()).schedule[dayOfWeek_(ymd)];
-  if (!day || !day.train) return '';
+  if (o && o.date === ymd) return o.session || rotationDoneOn_(ymd);
+  cfg = cfg || readConfig_();
+  var day = cfg.schedule[dayOfWeek_(ymd)];
+  if (!day || !day.train) {
+    if (!flexGym_(cfg) || weekSessionsLeft_(ymd) <= 0) return rotationDoneOn_(ymd);
+    return rotationDoneOn_(ymd) || rotationNext_(ymd);
+  }
   return rotationDoneOn_(ymd) || (ROTATION.indexOf(day.session) !== -1 || day.session === 'Rotation' || !day.session || /^(Upper|Lower) [AB]$/.test(day.session) ? rotationNext_(ymd) : day.session);
+}
+
+/** Any day can be a gym day (until the week's target is hit) when this setting is on. */
+function flexGym_(cfg) { return /^(true|yes|y|1)$/i.test(String((cfg || readConfig_()).settings['Train any day I can make the bus'] || '')); }
+/** Sessions still to do this week (Mon to Sun) to hit the target from setup (default 4). */
+function weekSessionsLeft_(ymd) {
+  var h = health_('me'), target = h.on === false ? 0 : Number(h.trainDays) || 4, mon = addDays_(ymd, -((dayOfWeek_(ymd) + 6) % 7));
+  var done = {}; rotationDone_(addDays_(ymd, -1)).forEach(function (x) { if (x.date >= mon) done[x.date] = 1; });
+  return target - Object.keys(done).length;
 }
 
 function planGymDay_(ymd, cfg) {
@@ -44,6 +57,11 @@ function planGymDay_(ymd, cfg) {
   var title, start, end;
   if (t.mode === 'bike') { title = day.session + ' · E-bike · leave ' + hm(t.bike.leave); start = t.bike.leave; end = t.bike.home; }
   else if (t.ok) { title = day.session + ' · Bus ' + t.out.route + ' ' + hm(t.out.dep) + ' · leave ' + hm(t.leaveBy); start = t.leaveBy; end = t.homeBy; }
+  else if (!(cfg.schedule[dow] || {}).train) {   // an optional day and no way there after work: just a rest day
+    setProp_('GYM_TODAY', JSON.stringify({ date: ymd, session: '' }));
+    removeTaggedEvents_(ymd, 'gym');
+    return 'Rest day (no bus fits after work)';
+  }
   else { title = 'Move ' + day.session + ' to ' + tp.moveTo + '? No bus after work'; start = tp.free; end = tp.free + 30; }
   var lines = tp.lines.concat(tp.weather ? ['Weather: ' + tp.weather] : []).concat(warnings.map(function (w) { return 'Note: ' + w; }));
   lines.push('', day.session.toUpperCase());

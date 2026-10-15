@@ -320,6 +320,11 @@
       (count ? '<path d="M12 10c.5 2 3 3 3 6a3 3 0 0 1-6 0c0-1.5 1-2.5 1.5-3 .2 1 .8 1.5 1.5 1.5 0-2-.5-3 0-4.5z" fill="' + hot + '" transform="scale(' + k + ') translate(' + (12 / k - 12) + ' ' + (22 / k - 22) + ')"/>' : '') + '</svg>';
   }
 
+  /** The ring's middle: "12 of 30 XP" until the goal, then "Goal hit · 45 XP" (never "45 of 30"). */
+  function xpGoalText(xp, goal) {
+    var t = NudgeFmt.xpGoal(xp, goal);
+    return '<div class="num" style="font-size:' + (t.hit ? 18 : 24) + 'px;font-weight:700">' + esc(t.big) + '</div><div class="tiny muted">' + esc(t.small) + '</div>';
+  }
   function renderHome() {
     var g = S.game, n = names(), h = '', parts = {};
     function seg(id) { parts[id] = h; h = ''; }
@@ -356,7 +361,7 @@
 
     seg('ask');
     h += '<section class="card"><div class="hero"><div class="ring" style="width:104px;height:104px">' + ring(g.xpToday / g.goal, 104, 10) +
-      '<div class="t"><div><div class="num" style="font-size:24px;font-weight:700">' + g.xpToday + '</div><div class="tiny muted">of ' + g.goal + ' XP</div></div></div></div><div class="grow">' +
+      '<div class="t"><div>' + xpGoalText(g.xpToday, g.goal) + '</div></div></div><div class="grow">' +
       '<div class="stat"><span class="row" style="gap:6px">' + flame(g.streak.count, 16) + 'Streak</span><b>' + g.streak.count + ' day' + (g.streak.count === 1 ? '' : 's') + (g.streak.freezes ? ' · ' + g.streak.freezes + ' freeze' + (g.streak.freezes > 1 ? 's' : '') : '') + '</b></div>' +
       (S.solo ? '' : '<div class="stat"><span class="row" style="gap:6px">' + icon('heart', 's') + esc(n.team) + '</span><b>' + g.team.count + ' day' + (g.team.count === 1 ? '' : 's') + '</b></div>' +
       '<div class="stat"><span>' + esc(n.other) + ' today</span><b>' + g.otherXpToday + ' XP</b></div>') +
@@ -818,9 +823,11 @@
     if (!tsel || !t.plans[tsel]) tsel = load('tsel-' + S.today.date) || t.today || t.sessions[0];
     if (!t.plans[tsel]) tsel = t.sessions[0];
     var d = draft(), h = '<div class="top"><div><h1>Train</h1><div class="sub">' + (t.today ? 'Today: ' + esc(t.today) : 'Rest day. Next up: ' + esc(t.rotationNext || '') + '. Train any session you like.') + '</div></div>' + meButton() + '</div>';
-    if (t.rotation) h += '<div class="rotstrip" aria-label="Your training rotation">' + t.rotation.map(function (r) { var cur = r === (t.today || t.rotationNext); return '<span class="rot' + (cur ? ' on' : '') + '">' + esc(r) + '</span>'; }).join('<span class="rotarr">→</span>') + '<span class="tiny muted rotnote">Moves on when you finish a session</span></div>';
+    // one rotation indicator: the three sessions in order, the one you're on lit up; any other session from the picker
+    if (t.rotation) h += '<div class="rotstrip" aria-label="Your training rotation">' + t.rotation.map(function (r) { var cur = r === tsel; return '<button type="button" class="rot' + (cur ? ' on' : '') + (r === (t.today || t.rotationNext) ? ' next' : '') + '" data-tsel="' + esc(r) + '" aria-pressed="' + cur + '">' + esc(r) + '</button>'; }).join('<span class="rotarr" aria-hidden="true">›</span>') + '</div>' +
+      '<div class="rotmeta"><span class="tiny muted">Next is the one you\'ve gone longest without. Logging any session moves it on.</span>' +
+      (t.sessions.filter(function (s) { return t.rotation.indexOf(s) === -1; }).length ? '<label class="tiny rotpick">Other session <select data-tselect="1" aria-label="Pick a different session"><option value="">Choose…</option>' + t.sessions.filter(function (s) { return t.rotation.indexOf(s) === -1; }).map(function (s) { return '<option value="' + esc(s) + '"' + (s === tsel ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('') + '</select></label>' : '') + '</div>';
     h += '<div id="restSlot"></div>';
-    h += '<div class="chips" style="margin-bottom:14px">' + t.sessions.map(function (s) { return '<button class="chip" type="button" data-tsel="' + esc(s) + '" aria-pressed="' + (s === tsel) + '" style="padding:8px 14px;font-size:14px">' + esc(s) + '</button>'; }).join('') + '</div>';
     if (t.doneToday) h += '<div class="note">Today\'s workout is logged. Great work. You can log another below.</div>';
     else {
       if (tsel !== t.today) h += '<div class="swap"><div class="grow"><b>Doing ' + esc(tsel) + ' today?</b><div class="tiny muted">' + (t.today ? 'Planned: ' + esc(t.today) : 'Today is a rest day') + '. Switching moves your calendar and gym task too.</div></div><button class="btn primary sm" type="button" data-setsession="' + esc(tsel) + '">Switch</button></div>';
@@ -854,6 +861,7 @@
     if (pr.weeks.length) { var mx = Math.max.apply(null, pr.weeks.map(function (w) { return w.volume; })) || 1; h += '<div class="eyebrow" style="margin-top:12px">Weekly volume</div><div class="vol">' + pr.weeks.map(function (w) { return '<div title="' + esc(w.week) + '" style="height:' + Math.max(4, w.volume / mx * 100) + '%"></div>'; }).join('') + '</div>'; }
     h += '</section>';
     var tt = el('tab-train'), y = window.scrollY;
+    h += '<section class="card quiet"><div class="between"><div><b>Bring in your history</b><div class="tiny muted">A workout export from Strong or Liftoff (.csv). Each workout is logged on its own day, with its XP. Safe to import twice.</div></div><label class="btn soft sm">Import<input type="file" accept=".csv,text/csv" id="wkImport" hidden></label></div></section>';
     tt.innerHTML = h;
     drawRest();
     if (tt.offsetParent) window.scrollTo(0, y);
@@ -2171,6 +2179,16 @@
       });
     }).catch(function () {});
   }
+  document.addEventListener('change', function (ev) { if (ev.target.dataset && ev.target.dataset.tselect && ev.target.value) { tsel = ev.target.value; save('tsel-' + S.today.date, tsel); renderTrain(); } });
+  document.addEventListener('change', function (ev) {
+    if (ev.target.id !== 'wkImport' || !ev.target.files.length) return;
+    var f = ev.target.files[0]; ev.target.value = '';
+    toast('Reading ' + f.name + '…');
+    f.text().then(function (text) { return rpc('importWorkoutCsv', [text]); }).then(function (r) {
+      apply(r.state); renderTrain();
+      toast(r.added ? 'Imported ' + r.added + ' workout' + (r.added === 1 ? '' : 's') + ' (' + r.sets + ' sets, ' + r.prs + ' PRs)' + (r.skipped ? '. ' + r.skipped + ' were already in.' : '') : 'All ' + r.skipped + ' workouts were already in.');
+    }).catch(function (e) { toast(e.message, true); });
+  });
   document.addEventListener('change', function (ev) { if (ev.target.id === 'foodPhoto' && ev.target.files.length) { photoFood(ev.target.files[0]); ev.target.value = ''; } });
   document.addEventListener('change', function (ev) { if (ev.target.id === 'ownFiles' && ev.target.files.length) playOwn([].slice.call(ev.target.files)); });
   document.addEventListener('submit', function (ev) { if (ev.target.id !== 'spotForm') return; ev.preventDefault(); var q = el('spotText').value.trim(); if (q) openSpotify(q); else toast('Type an album, artist or playlist'); });

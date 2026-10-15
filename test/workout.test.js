@@ -38,8 +38,11 @@ test('The rotation only moves on when a session is done', () => {
   assert.strictEqual(C.trainState(me).today, 'Push', 'still Push today, done');
   g.state.now = new Date('2026-10-14T15:30:00Z');                 // Wed: training day
   assert.strictEqual(C.trainState(me).today, 'Pull');
-  g.state.now = new Date('2026-10-15T15:30:00Z');                 // Thu: rest
+  g.state.now = new Date('2026-10-15T15:30:00Z');                 // Thu: not ticked, but any day the bus works can be a gym day
+  assert.strictEqual(C.trainState(me).today, 'Pull');
+  C.setSetting_('Train any day I can make the bus', 'FALSE');      // fixed days only: Thursday is a rest day
   assert.strictEqual(C.trainState(me).today, '');
+  C.setSetting_('Train any day I can make the bus', 'TRUE');
   g.state.now = new Date('2026-10-16T15:30:00Z');                 // Fri: Pull was skipped on Wednesday, so it's still Pull
   assert.strictEqual(C.trainState(me).today, 'Pull');
   C.gymDone(me);                                                  // ticking "Gym done" counts too
@@ -87,4 +90,30 @@ test('gym calendar event lists the session\'s exercises', () => {
   const ev = g.calendar.live().find(e => e.tags.sobeit === 'gym');
   assert.match(ev.title, /^Push/);
   assert.match(ev.opts.description, /Hack squat/);
+});
+
+test('rotation: next is the session you have gone longest without; any completed session moves it on', () => {
+  const { loadProject } = require('./fakes');
+  const g = loadProject({ now: new Date('2026-10-15T07:00:00Z') });
+  const pick = d => g.ctx.rotationPick(d);
+  assert.strictEqual(pick([]), 'Push');
+  assert.strictEqual(pick([{ date: '2026-10-12', session: 'Pull' }, { date: '2026-10-14', session: 'Push' }]), 'Shoulders & Arms', 'Pull Mon, Push Wed -> Shoulders & Arms');
+  assert.strictEqual(pick([{ date: '2026-10-14', session: 'Push' }]), 'Pull');
+  assert.strictEqual(pick([{ date: '2026-10-10', session: 'Shoulders & Arms' }, { date: '2026-10-12', session: 'Pull' }, { date: '2026-10-14', session: 'Push' }]), 'Shoulders & Arms');
+  assert.strictEqual(pick([{ date: '2026-10-08', session: 'Push' }, { date: '2026-10-10', session: 'Pull' }, { date: '2026-10-12', session: 'Shoulders & Arms' }]), 'Push', 'a full lap starts again at Push');
+});
+
+test('rotation end to end: a saved Wednesday Push (after a Monday Pull) makes Thursday Shoulders & Arms, on any day the bus works', () => {
+  const { loadProject } = require('./fakes');
+  const g = loadProject({ now: new Date('2026-10-12T17:00:00Z') });   // Mon
+  g.ctx.setup();
+  const me = g.state.props.WEBAPP_KEY;
+  const log = (iso, session) => { g.state.now = new Date(iso); g.ctx.saveWorkout(me, session, [{ exercise: 'Lat pulldown', set: 1, weight: 50, reps: 10, target: '8-10' }]); };
+  log('2026-10-12T17:00:00Z', 'Pull');
+  log('2026-10-14T17:00:00Z', 'Push');
+  g.state.now = new Date('2026-10-15T05:37:00Z');   // Thu 06:37: a day with no ticked training
+  g.state.cache = {};
+  assert.strictEqual(g.ctx.rotationNext_('2026-10-15'), 'Shoulders & Arms');
+  assert.strictEqual(g.ctx.todaySession_('2026-10-15'), 'Shoulders & Arms', 'not a rest day: any day can be a gym day');
+  assert.strictEqual(g.ctx.trainState(me).rotationNext, 'Shoulders & Arms');
 });

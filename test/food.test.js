@@ -142,6 +142,7 @@ test('food check wording: over → protein snack; nothing logged; all good', () 
 
 test('Sunday summary includes daily food averages, gym, weight and the week ahead', () => {
   const { g, key } = ready(new Date('2026-10-12T05:05:00Z')); // Mon
+  g.ctx.setSetting_('Train any day I can make the bus', 'FALSE'); g.state.cache = {};   // fixed training days for this summary
   const days = [['2026-10-12', 1700, 140], ['2026-10-13', 1900, 120], ['2026-10-15', 1800, 130]];
   days.forEach(([d, k, p]) => g.ctx.appendRow_('food', { Date: d, Time: '12:00', Item: 'x', kcal: k, 'Protein (g)': p, Source: 'test', Entry: d }));
   g.ctx.appendRow_('weight', { Date: '2026-10-14', 'Weight (kg)': 83.5 });

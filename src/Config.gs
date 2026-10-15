@@ -6,6 +6,7 @@
 
 // [Setting name (don't rename), starting value, what it does]
 var DEFAULT_SETTINGS = [
+  ['Train any day I can make the bus', 'TRUE', 'TRUE: any day can be a gym day (the next session in the rotation) until you hit your sessions for the week, as long as a bus or the e-bike fits after work. FALSE: only the days ticked in the weekly plan.'],
   ['Wake time', '08:30', 'When the weigh-in alert goes off on weigh-in days'],
   ['Weigh-in days', 'Mon, Wed', 'Days to weigh in, e.g. "Mon, Wed"'],
   ['Weight unit', 'kg', 'What a bare number means when you weigh in: kg, st or lb. You can always type "13st 2" or "185 lb".'],

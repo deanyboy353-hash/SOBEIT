@@ -103,6 +103,7 @@ function prepareSheet_() {
     setSetting_('Partner name', '-'); setSetting_('Partner nickname', '-'); setSetting_('Team name', inst.nick || inst.name || 'You');
     setGymDays_([]);   // a fresh copy starts with no gym days or weigh-ins: setup asks
     setSetting_('Weigh-in days', 'None');
+    setSetting_('Train any day I can make the bus', 'FALSE');
   }
   if (!props.getProperty('WEBAPP_KEY')) props.setProperty('WEBAPP_KEY', Utilities.getUuid().replace(/-/g, ''));
   if (!props.getProperty('PARTNER_KEY')) props.setProperty('PARTNER_KEY', Utilities.getUuid().replace(/-/g, ''));

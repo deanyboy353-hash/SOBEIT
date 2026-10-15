@@ -316,7 +316,8 @@ test('Today brief: written for the part of the day, never greets, regenerated wh
   b = plain(g.ctx.getBrief(me));
   assert.strictEqual(b.part, 'afternoon'); assert.strictEqual(g.state.claudeRequests.length, n + 1);
   assert.strictEqual(plain(g.ctx.appState(me)).brief.part, 'afternoon');
-  g.state.now = new Date('2026-10-15T14:00:00Z');            // Thu: a rest day names the next session
+  g.state.now = new Date('2026-10-15T14:00:00Z');            // Thu: a rest day (fixed training days) names the next session
+  g.ctx.setSetting_('Train any day I can make the bus', 'FALSE'); g.state.cache = {};
   g.ctx.getBrief(me);
   assert.match(g.state.claudeRequests.at(-1).body.messages[0].content, /Rest day from the gym\. Next session: Push/);
 });

@@ -20,7 +20,7 @@ function rpcTable_() {
     askToJoin: askToJoin, planChore: planChore, startChore: startChore, stepDone: stepDone, extendChore: extendChore,
     finishChore: finishChore, parkThing: parkThing, clearLater: clearLater, redeemReward: redeemReward, highFive: highFive,
     routineStep: routineStep, saveRoutine: saveRoutine, setupState: setupState, saveSetup: saveSetup, previewChores: previewChores, buildChores: buildChores, saveChore: saveChore, choreAction: choreAction, deleteRoutine: deleteRoutine, addWater: addWater, setTheme: setTheme, todayState: todayState, gymDone: gymDone,
-    logWeightNow: logWeightNow, foodState: foodState, logPreset: logPreset, quickAdd: quickAdd, quickAddPhoto: quickAddPhoto, backupStatus: backupStatus, backupNow: backupNow, exportAll: exportAll, importBackup: importBackup, undoLast: undoLast,
+    logWeightNow: logWeightNow, foodState: foodState, logPreset: logPreset, quickAdd: quickAdd, quickAddPhoto: quickAddPhoto, importWorkoutCsv: importWorkoutCsv, backupStatus: backupStatus, backupNow: backupNow, exportAll: exportAll, importBackup: importBackup, undoLast: undoLast,
     saveClaudeKey: saveClaudeKey, trainState: trainState, setTrainingMax: setTrainingMax, saveWorkout: saveWorkout,
     respreadSchedule: respreadSchedule, saveQuest: saveQuest, deleteQuest: deleteQuest,
     gamesState: gamesState, guessWord: guessWord, submitTarget: submitTarget, submitRecall: submitRecall,
@@ -144,7 +144,7 @@ function appState(key) {
   var cache = stateCache_(), hit = cache && getCachedState_(cache, who);
   var stamp = todayYmd_() + '|' + dayPart(minutesNow_());          // never serve yesterday's (or this morning's) screen after midnight / the next part of the day
   if (hit && hit.cacheStamp === stamp) { hit.now = new Date().getTime(); return hit; }
-  var state = withLock_(function () { if (!prop_('BINS_V2') && !instance_()) { try { ensureHomeBins_(); } catch (e) { log_('WARN', 'Bins: ' + e); } } if (!prop_('TRANSPORT_V1')) { try { ensureTransport_(); } catch (e) { log_('WARN', 'Transport setup: ' + e); } } if (!prop_('PRESETS_V1')) { try { ensurePresets_(); } catch (e) { log_('WARN', 'Presets: ' + e); } } if (!prop_('TRAIN_V2')) { try { ensureRotation_(); } catch (e) { log_('WARN', 'Training rotation: ' + e); } } return appState_(who); });
+  var state = withLock_(function () { if ((!prop_('LIFTOFF_V1') || !prop_('STRONG_V1')) && !instance_()) { try { ensureLiftoffImport_(); } catch (e) { log_('WARN', 'Liftoff import: ' + e); } } if (!prop_('BINS_V2') && !instance_()) { try { ensureHomeBins_(); } catch (e) { log_('WARN', 'Bins: ' + e); } } if (!prop_('TRANSPORT_V1')) { try { ensureTransport_(); } catch (e) { log_('WARN', 'Transport setup: ' + e); } } if (!prop_('PRESETS_V1')) { try { ensurePresets_(); } catch (e) { log_('WARN', 'Presets: ' + e); } } if (!prop_('TRAIN_V2')) { try { ensureRotation_(); } catch (e) { log_('WARN', 'Training rotation: ' + e); } } return appState_(who); });
   state.cacheStamp = stamp;
   if (cache) putCachedState_(cache, who, state);
   return state;

@@ -89,7 +89,7 @@ function trainState_() {
   // What comes next if you just go in order (handy when the week went sideways).
   var logged = rowsBetween_('workoutLog', addDays_(today, -60), addDays_(today, -1));
   var last = logged.length ? String(logged[logged.length - 1]['Session']) : '';
-  var next = rotationNext_(today), planned = day && day.train ? (rotationDoneOn_(today) || next) : '';
+  var next = rotationNext_(today), planned = day && day.train ? (rotationDoneOn_(today) || next) : todaySession;   // flexible days: whatever today offers
   sessions = ROTATION.filter(function (s) { return cfg.sessions[s]; }).concat(sessions.filter(function (s) { return ROTATION.indexOf(s) === -1; }));
   return {
     today: todaySession,

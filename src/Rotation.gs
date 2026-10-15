@@ -40,8 +40,9 @@ function classifySession(exercises) {
   var score = { 'Push': 0, 'Pull': 0, 'Shoulders & Arms': 0 };
   (exercises || []).forEach(function (e) {
     e = String(e).toLowerCase();
-    if (/bench|chest|incline|fly|squat|leg press|leg extension|split squat|lunge|pec/.test(e)) score.Push++;
-    else if (/row|pulldown|pull-up|pullup|chin|pullover|leg curl|hamstring|face pull|lat\b|deadlift/.test(e)) score.Pull++;
+    if (/reverse fly|rear delt|lateral|shoulder press|overhead press/.test(e)) score['Shoulders & Arms']++;
+    else if (/bench|chest|incline|fly|squat|leg press|leg extension|split squat|lunge|pec/.test(e)) score.Push++;
+    else if (/row|pulldown|pull.?ups?\b|chin|pullover|leg curl|hamstring|face pull|lat\b|deadlift/.test(e)) score.Pull++;
     else if (/shoulder|overhead press|lateral|rear delt|curl|triceps|tricep|dip|calf|shrug/.test(e)) score['Shoulders & Arms']++;
   });
   var best = '', top = 0;
@@ -56,11 +57,19 @@ function rotationDone_(toYmd) {
   try { rowsBetween_('gym', '0000', toYmd).forEach(function (r) { var s = String(r['Session']); if (ROTATION.indexOf(s) !== -1 && /^Done/.test(String(r['Status'] || ''))) out.push({ date: String(r['Date']), session: s }); }); } catch (e) { /* no gym log yet */ }
   return out.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
 }
-/** The session the rotation is on: the one after the last rotation session completed before `ymd`. */
-function rotationNext_(ymd) {
-  var done = rotationDone_(addDays_(ymd, -1)), last = done.length ? done[done.length - 1].session : '';
-  return last ? ROTATION[(ROTATION.indexOf(last) + 1) % ROTATION.length] : ROTATION[0];
+/**
+ * The session the rotation is on: whichever of the three you've gone longest without (never done comes first,
+ * in Push, Pull, Shoulders & Arms order). Done Pull on Monday and Push on Wednesday? Shoulders & Arms is next.
+ * Every completed session moves it on, whatever order you did them in.
+ */
+function rotationPick(done) {
+  var last = {};
+  (done || []).forEach(function (x) { if (!last[x.session] || x.date >= last[x.session]) last[x.session] = x.date; });
+  var best = ROTATION[0], bestAt = null;
+  ROTATION.forEach(function (s) { var at = last[s] || ''; if (bestAt === null || at < bestAt) { best = s; bestAt = at; } });
+  return best;
 }
+function rotationNext_(ymd) { return rotationPick(rotationDone_(addDays_(ymd, -1))); }
 /** Rotation session completed on a day ('' if none). */
 function rotationDoneOn_(ymd) {
   var d = rotationDone_(ymd).filter(function (x) { return x.date === ymd; });

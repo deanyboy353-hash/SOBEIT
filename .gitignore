@@ -4,3 +4,4 @@ dist/
 src/Secrets.gs
 .firebase/
 src/Instance.gs
+src/ImportData.gs

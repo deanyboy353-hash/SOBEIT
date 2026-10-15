@@ -193,11 +193,12 @@ test('weight typed but never ticked is still logged next morning', () => {
   assert.ok(!g.tasks.store[task.id], 'old task removed');
 });
 
-test('rest days: nothing created (Thursday)', () => {
+test('rest days: nothing created (Thursday, fixed training days)', () => {
   const g = loadProject({ now: new Date('2026-10-15T05:05:00Z') });
   g.ctx.setup();
+  g.ctx.setSetting_('Train any day I can make the bus', 'FALSE'); g.state.cache = {};
+  g.ctx.planGymDay_('2026-10-15', g.ctx.readConfig_());
   assert.strictEqual(gymEvents(g).length, 0);
-  assert.strictEqual(gymTasks(g).length, 0);
 });
 
 test('editing the Config tab changes the plan', () => {

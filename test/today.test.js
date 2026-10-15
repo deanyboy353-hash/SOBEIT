@@ -27,7 +27,8 @@ test('Today on a training day: session, leave time, exercises; Gym done logs it 
 });
 
 test('Today on a rest day: no gym', () => {
-  const { g, key } = ready('2026-10-15T05:05:00Z'); // Thu
+  const { g, key } = ready('2026-10-15T05:05:00Z'); // Thu, with fixed training days
+  g.ctx.setSetting_('Train any day I can make the bus', 'FALSE'); g.state.cache = {};
   assert.strictEqual(g.ctx.todayState(key).gym, null);
 });
 

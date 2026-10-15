@@ -46,10 +46,12 @@ function buildWeeklySummary_(endYmd, cfg) {
   lines.push('');
 
   // Gym
-  var gym = rowsBetween_('gym', startYmd, endYmd);
+  var gcfg = readConfig_(), flex = flexGym_(gcfg);
+  var gym = rowsBetween_('gym', startYmd, endYmd).filter(function (r) { return /^Done/.test(String(r['Status'])) || (gcfg.schedule[dayOfWeek_(String(r['Date']))] || {}).train; });   // optional days count only if you went
   var done = gym.filter(function (r) { return /^Done/.test(String(r['Status'])); });
+  var target = flex ? Math.max(done.length, Number(health_('me').trainDays) || 4) : gym.length;
   lines.push('GYM');
-  lines.push(gym.length ? done.length + ' of ' + gym.length + ' sessions done' + (done.length ? ' (' + done.map(function (r) { return r['Day'] + ' ' + r['Session']; }).join(', ') + ')' : '') : 'No sessions planned.');
+  lines.push(target ? done.length + ' of ' + target + ' sessions done' + (done.length ? ' (' + done.map(function (r) { return r['Day'] + ' ' + r['Session']; }).join(', ') + ')' : '') : 'No sessions planned.');
   lines.push('');
 
   // Weight

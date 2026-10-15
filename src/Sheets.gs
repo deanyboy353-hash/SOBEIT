@@ -273,6 +273,16 @@ function appendRow_(key, obj) {
   return r;
 }
 
+/** Many rows at once (one write): for imports. */
+function appendRows_(key, objs) {
+  if (!objs.length) return;
+  var v = vals_(key), map = headerMap_(key), width = Math.max(v[0].length, 1);
+  var rows = objs.map(function (obj) { var row = []; for (var i = 0; i < width; i++) row.push(''); Object.keys(obj).forEach(function (k) { if (k in map) row[map[k]] = obj[k]; }); return row; });
+  sheet_(key).getRange(v.length + 1, 1, rows.length, width).setValues(rows.map(function (r) { return r.map(asText_); }));
+  rows.forEach(function (r) { v.push(r); });
+  derived_(key);
+}
+
 /** Row number (1-based) of the last row whose `column` equals `value`, or 0. */
 function findRow_(key, column, value) {
   var v = vals_(key);
