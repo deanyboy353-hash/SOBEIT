@@ -323,7 +323,7 @@
   /** The ring's middle: "12 of 30 XP" until the goal, then "Goal hit · 45 XP" (never "45 of 30"). */
   function xpGoalText(xp, goal) {
     var t = NudgeFmt.xpGoal(xp, goal);
-    return '<div class="num" style="font-size:' + (t.hit ? 18 : 24) + 'px;font-weight:700">' + esc(t.big) + '</div><div class="tiny muted">' + esc(t.small) + '</div>';
+    return '<div class="num display-num" style="font-size:' + (t.hit ? 17 : 30) + 'px">' + esc(t.big) + '</div><div class="tiny muted">' + esc(t.small) + '</div>';
   }
   /** Under the date: what today needs, in plain words. */
   function dayStatus() {
@@ -355,8 +355,7 @@
     seg('deadlines');
     h += workMini();
     seg('work');
-    h += wardrobeCard();
-    seg('wardrobe');
+    seg('wardrobe');   // the characters now live in the Today hero
     // brief
     maybeBrief();
     if (S.brief && S.brief.brief && S.brief.part !== dayPartNow()) S.brief = null;    // written for an earlier part of the day: a fresh one is on its way
@@ -367,7 +366,7 @@
     h += '<button class="askbar" type="button" id="openAsk">' + icon('sparkles') + '<span class="grow">Ask anything, or tell me what\'s on your mind</span>' + icon('chevron', 's') + '</button>';
 
     seg('ask');
-    h += '<section class="card"><div class="hero"><div class="ring" style="width:104px;height:104px">' + ring(g.xpToday / g.goal, 104, 10) +
+    h += '<section class="card spot today"><div class="between" style="margin-bottom:8px"><div class="eyebrow">Today</div>' + (S.wardrobe ? '<button class="btn ghost sm" type="button" data-dress="open">' + icon('sparkles', 's') + 'Dressing room</button>' : '') + '</div>' + todayStage() + '<div class="hero"><div class="ring" style="width:112px;height:112px">' + ring(g.xpToday / g.goal, 112, 10) +
       '<div class="t"><div>' + xpGoalText(g.xpToday, g.goal) + '</div></div></div><div class="grow">' +
       '<div class="stat"><span class="row" style="gap:6px">' + flame(g.streak.count, 16) + 'Streak</span><b>' + g.streak.count + ' day' + (g.streak.count === 1 ? '' : 's') + (g.streak.freezes ? ' · ' + g.streak.freezes + ' freeze' + (g.streak.freezes > 1 ? 's' : '') : '') + '</b></div>' +
       (S.solo ? '' : '<div class="stat"><span class="row" style="gap:6px">' + icon('heart', 's') + esc(n.team) + '</span><b>' + g.team.count + ' day' + (g.team.count === 1 ? '' : 's') + '</b></div>' +
@@ -447,7 +446,7 @@
     seg('feed');
     if (S.solo) { parts.us = ''; parts.feed = ''; }
     if (homeEditing) h = parts.header + homeEditView(parts);
-    else h = parts.header + homeOrder().filter(function (x) { return !x.hide; }).map(function (x) { return parts[x.id] || ''; }).join('') +
+    else h = parts.header + (parts.ring || '') + homeOrder().filter(function (x) { return !x.hide && x.id !== 'ring'; }).map(function (x) { return parts[x.id] || ''; }).join('') +
       '<p class="center" style="margin:6px 0 18px"><button class="btn line sm" type="button" id="homeEdit">' + icon('edit', 's') + 'Edit home screen</button></p>';
     el('tab-home').innerHTML = h;
     mountHome3d();
@@ -1009,7 +1008,7 @@
     // settings
     if (window.NudgeSetup) h += NudgeSetup.settingsCard();
     h += '<section class="card"><div class="head"><h3>Settings</h3></div>';
-    h += '<div class="eyebrow" style="margin-bottom:6px">Appearance</div><div class="seg">' + [['light', 'Light'], ['dark', 'Dark'], ['rave', 'Rave'], ['auto', 'Auto']].map(function (o) { return '<button type="button" data-theme="' + o[0] + '" aria-pressed="' + (th === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
+    h += '<div class="eyebrow" style="margin-bottom:6px">Your look</div>' + lookPicker();
     h += '<div class="eyebrow" style="margin:6px 0">Notifications</div>';
     if (MODE === 'gas') h += '<p class="small muted" style="margin:0 0 12px">Push notifications work in the installed app. Open your new app link from the Config tab of your Sheet.</p>';
     else if (!('Notification' in window) || !('serviceWorker' in navigator)) h += '<p class="small muted" style="margin:0 0 12px">' + (/iPhone|iPad/.test(navigator.userAgent) && !standalone() ? 'On iPhone, add this app to your Home Screen first (Share, then Add to Home Screen), then open it from there.' : 'This browser can\'t show notifications.') + '</p>';
@@ -1693,19 +1692,40 @@
   });
 
   var HOME_NAMES = { deadlines: 'Deadlines', work: 'Work: now and next', wardrobe: 'Your 3D characters', brief: 'Morning brief', ask: 'Ask anything', ring: 'XP and streaks', pet: 'Our pet', challenges: 'Daily challenges', next: 'Next up', whatnow: 'What should I do now?', routine: 'Routines', gym: 'Gym today', chores: 'Today\'s chores', tiles: 'Weight and water', make: 'Make something', us: 'Us', feed: 'Partner feed' };
-  var HOME_DEFAULT = ['deadlines', 'work', 'wardrobe', 'brief', 'ask', 'ring', 'pet', 'challenges', 'next', 'whatnow', 'routine', 'gym', 'chores', 'tiles', 'make', 'us', 'feed'];
+  var HOME_DEFAULT = ['deadlines', 'work', 'brief', 'ask', 'pet', 'challenges', 'next', 'whatnow', 'routine', 'gym', 'chores', 'tiles', 'make', 'us', 'feed'];
   // a calmer start: these are one tap away under Edit home (Hidden, Show)
   var HOME_QUIET = { next: 1, make: 1, feed: 1 };
   function homeOrder() {
     var saved = (S.fun && S.fun.prefs && S.fun.prefs.home) || [], seen = {}, out = [];
-    saved.forEach(function (x) { if (HOME_NAMES[x.id] && !seen[x.id]) { seen[x.id] = 1; out.push({ id: x.id, hide: !!x.hide }); } });
+    saved.forEach(function (x) { if (HOME_NAMES[x.id] && x.id !== 'ring' && x.id !== 'wardrobe' && !seen[x.id]) { seen[x.id] = 1; out.push({ id: x.id, hide: !!x.hide }); } });
     HOME_DEFAULT.forEach(function (id) { if (!seen[id]) out.push({ id: id, hide: !!HOME_QUIET[id] }); });
     return out;
   }
   function prefs() { return (S && S.fun && S.fun.prefs) || {}; }
+  // ---------- the look: After Dark or Glam, light or dark (follows the phone unless overridden) ----------
+  var darkMQ = window.matchMedia ? matchMedia('(prefers-color-scheme: dark)') : null;
+  function skinOf() { var p = prefs(); return p.skin === 'glam' || p.skin === 'afterdark' ? p.skin : (S && S.who === 'partner' ? 'glam' : 'afterdark'); }
+  function modeOf() { var m = prefs().mode; return m === 'light' || m === 'dark' ? m : 'auto'; }
+  function themeName() { var m = modeOf(), dark = m === 'dark' || (m === 'auto' && (!darkMQ || darkMQ.matches)); return (skinOf() === 'glam' ? 'glam' : 'ad') + '-' + (dark ? 'dark' : 'light'); }
+  function applyTheme() {
+    var t = themeName(), root = document.documentElement;
+    if (root.getAttribute('data-theme') !== t) root.setAttribute('data-theme', t);
+    save('skin', skinOf()); save('mode', modeOf());
+    var mc = document.querySelector('meta[name="theme-color"]'); if (mc) mc.setAttribute('content', getComputedStyle(root).getPropertyValue('--bg').trim() || '#07050c');
+  }
+  if (darkMQ && darkMQ.addEventListener) darkMQ.addEventListener('change', function () { if (S) applyTheme(); });
+  function lookPicker() {
+    var sk = skinOf(), m = modeOf();
+    return '<div class="lookpick">' + [['afterdark', 'lp-ad', 'After Dark', 'Underground rave'], ['glam', 'lp-glam', 'Glam', 'Spotlight and sparkle']].map(function (o) {
+      return '<button type="button" class="' + o[1] + '" data-skin="' + o[0] + '" aria-pressed="' + (sk === o[0]) + '"><b>' + o[2] + '</b><small>' + o[3] + '</small></button>';
+    }).join('') + '</div><div class="eyebrow" style="margin:14px 0 6px">Light or dark</div><div class="seg">' + [['auto', 'Match my phone'], ['light', 'Light'], ['dark', 'Dark']].map(function (o) {
+      return '<button type="button" data-mode="' + o[0] + '" aria-pressed="' + (m === o[0]) + '">' + o[1] + '</button>';
+    }).join('') + '</div>';
+  }
   function applyPrefs() {
     var p = prefs(), root = document.documentElement;
     root.classList.toggle('solo', !!(S && S.solo));
+    applyTheme();
     if (p.accent) root.setAttribute('data-accent', p.accent); else root.removeAttribute('data-accent');
     root.setAttribute('data-text', p.text === 'large' ? 'large' : 'normal');
     root.classList.toggle('calm', p.motion === false);
@@ -1757,10 +1777,7 @@
     // character
     h += '<section class="card"><div class="head"><h3>Your look</h3></div><div class="row" style="gap:14px">' + avatarOf(S.who, 72) + '<p class="small muted grow" style="margin:0">Your face everywhere in the app comes from your character in the dressing room: skin, hair, clothes and extras.</p></div><button class="btn primary wide" type="button" data-dress="open" style="margin-top:12px">' + icon('sparkles', 's') + 'Open the dressing room</button></section>';
     // look
-    h += '<section class="card"><div class="head"><h3>Look</h3></div><div class="eyebrow" style="margin-bottom:6px">Theme</div>' +
-      '<div class="themes">' + [['light', 'Light'], ['dark', 'Dark'], ['rave', 'Rave'], ['grove', 'Grove'], ['vice', 'Vice'], ['auto', 'Auto']].map(function (o) {
-        return '<button type="button" class="th th-' + o[0] + '" data-theme="' + o[0] + '" aria-pressed="' + (th === o[0]) + '"><i></i>' + o[1] + '</button>';
-      }).join('') + '</div>' +
+    h += '<section class="card"><div class="head"><h3>Look</h3></div>' + lookPicker() +
       '<div class="eyebrow" style="margin:14px 0 6px">Accent colour</div><div class="swatches">' + [['', 'Lilac'], ['pink', 'Pink'], ['green', 'Green'], ['teal', 'Teal'], ['orange', 'Orange'], ['blue', 'Blue'], ['lime', 'Lime'], ['red', 'Red'], ['gold', 'Gold']].map(function (o) {
         return '<button type="button" class="sw-' + (o[0] || 'lilac') + '" data-accent="' + o[0] + '" aria-pressed="' + ((p.accent || '') === o[0]) + '" aria-label="' + o[1] + '"></button>';
       }).join('') + '</div>' +
@@ -2373,7 +2390,7 @@
     if (focused && el(focused)) el(focused).focus();
     keepAwake(!!mySession());
     tickTimer();
-    document.documentElement.setAttribute('data-theme', S.theme || 'rave');
+    applyTheme();
   }
   // one big thumb-reach button per screen, bottom right on phones, for the thing you came to do
   var FAB = {
@@ -2726,6 +2743,14 @@
     var W = S.wardrobe; if (!W) return null;
     return W.catalog.filter(function (w) { return w.chores > W.chores && W.owned.indexOf(w.id) === -1; }).sort(function (a, b) { return a.chores - b.chores || b.price - a.price; })[0] || null;
   }
+  /** The characters on the Today hero: the 3D stage, a line that reacts to the day, and the next unlock. */
+  function todayStage() {
+    var W = S.wardrobe, n = names(); if (!W) return '';
+    var nu = nextUnlock(), left = nu ? nu.chores - W.chores : 0;
+    return '<div class="av3d stage" id="av3dHome"><div class="av3d-msg small muted center">Loading your characters…</div></div>' +
+      (S.solo ? '' : '<div class="between av-names"><span>You</span><span>' + esc(n.other) + '</span></div>') + stageLine() +
+      (nu ? '<p class="tiny muted center" style="margin:4px 0 12px">' + left + ' more chore' + (left === 1 ? '' : 's') + ' unlocks the ' + esc(nu.name) + '</p>' : '<div style="height:10px"></div>');
+  }
   function wardrobeCard() {
     var W = S.wardrobe, n = names(); if (!W) return '';
     var nu = nextUnlock(), left = nu ? nu.chores - W.chores : 0;
@@ -2896,6 +2921,8 @@
     if (ds.water) return quick(function () { var b = S.routines.water; S.routines.water = Math.max(0, b + +ds.water); if (S.routines.waterGoal && b < S.routines.waterGoal && S.routines.water >= S.routines.waterGoal) addXpLocal(5); buzz(15); }, 'addWater', [+ds.water]);
     if (ds.shop) return quick(function () { S.shopping.forEach(function (it) { if (it.id === ds.shop) it.got = !it.got; }); }, 'toggleShopping', [ds.shop]);
     if (ds.clear) return quick(function () { S.chores.later = S.chores.later.filter(function (l) { return l.id !== ds.clear; }); }, 'clearLater', [ds.clear]);
+    if (ds.skin) { buzz(10); savePrefs({ skin: ds.skin }); return; }
+    if (ds.mode) { savePrefs({ mode: ds.mode }); return; }
     if (ds.theme) { S.theme = ds.theme; save('theme', ds.theme); document.documentElement.setAttribute('data-theme', ds.theme); renderYou(); renderCustom(); rpc('setTheme', [ds.theme]).catch(function () {}); return; }
     // home
     if (t.id === 'whatNow') { wn.skip = []; wn.pick = undefined; return whatNowSheet(); }
