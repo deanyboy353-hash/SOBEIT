@@ -170,7 +170,7 @@ test('cash: every XP pays $10, and old XP is paid out once', () => {
 test('empire: buy, upgrade, ride, income, sell, and Yaz sees it', () => {
   const { g, me, partner } = ready();
   withPush(g);
-  assert.throws(() => g.ctx.buyItem(me, 'ganton'), /You need \$5,000 more/);
+  assert.throws(() => g.ctx.buyItem(me, 'ganton'), /You need £5,000 more/);
   giveCash(g, 'me', 200000);
   let s = g.ctx.buyItem(me, 'ganton');
   assert.strictEqual(s.empire.cash, 195000);

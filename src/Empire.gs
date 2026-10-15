@@ -1,7 +1,7 @@
 /**
  * Empire.gs: cash, and the things you buy with it.
  *
- * Every XP you earn also pays cash ($10 per XP). Spend it on San Andreas and
+ * Every XP you earn also pays cash (£10 per XP). Spend it on San Andreas and
  * Vice City properties and businesses, and on cars, bikes, boats and aircraft.
  * Businesses pay you every morning; upgrades raise what a place pays (or what
  * it's worth). Sell anything back for 60% of what you put in.
@@ -137,7 +137,7 @@ function payIncome_() {
       var v = ownedValue_(o);
       if (v.income) { addCash_(who, 'Income: ' + empireItem_(o.id).name, v.income, 'income'); total += v.income; }
     });
-    if (total) paid.push(who + ' $' + total);
+    if (total) paid.push(who + ' £' + total);
   });
   return paid.length ? paid.join(', ') : 'no businesses yet';
 }
@@ -152,7 +152,7 @@ function buyItem(key, id) {
     var e = empire_(who);
     if (e.owned.some(function (o) { return o.id === id; })) throw new Error('You already own ' + the_(it.name) + '.');
     var cash = cashOf_(who);
-    if (cash < it.price) throw new Error('You need $' + (it.price - cash).toLocaleString('en-GB') + ' more.');
+    if (cash < it.price) throw new Error('You need £' + (it.price - cash).toLocaleString('en-GB') + ' more.');
     addCash_(who, 'Bought: ' + it.name, -it.price, 'buy');
     e.owned.push({ id: id, since: todayYmd_(), upgrades: [] });
     if (it.type === 'home' && !e.home) e.home = id;
@@ -172,7 +172,7 @@ function upgradeItem(key, id, upgradeId) {
     if (!up || up.types.indexOf(it.type) === -1) throw new Error('That upgrade doesn\'t fit ' + the_(it.name) + '.');
     if ((o.upgrades || []).indexOf(upgradeId) !== -1) throw new Error('Already done.');
     var cost = Math.round(it.price * up.share), cash = cashOf_(who);
-    if (cash < cost) throw new Error('You need $' + (cost - cash).toLocaleString('en-GB') + ' more.');
+    if (cash < cost) throw new Error('You need £' + (cost - cash).toLocaleString('en-GB') + ' more.');
     addCash_(who, it.name + ': ' + up.name, -cost, 'upgrade');
     o.upgrades = (o.upgrades || []).concat([upgradeId]);
     saveEmpire_(who, e);

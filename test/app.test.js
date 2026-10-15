@@ -283,3 +283,12 @@ test('ask: changes today\'s work plan (add, move, remove)', () => {
   assert.ok(ws().some(b => b.task === 'Call Sam' && b.start === 960));
   assert.match(g.state.claudeRequests.at(-1).body.messages[0].content, new RegExp('\\[' + lunch.id + '\\] 13:00-13:45 Lunch'));
 });
+
+test('Money is shown in pounds everywhere', () => {
+  const fs = require('fs');
+  const app = fs.readFileSync(__dirname + '/../web/app.js', 'utf8');
+  const money = app.match(/function money\(n\) \{[^\n]*\}/)[0];
+  assert.match(money, /£/); assert.doesNotMatch(money, /\$/);
+  const gs = ['Empire.gs', 'Wardrobe.gs'].map(f => fs.readFileSync(__dirname + '/../src/' + f, 'utf8')).join('\n');
+  assert.doesNotMatch(gs, /You need \$|' \$' \+/);
+});

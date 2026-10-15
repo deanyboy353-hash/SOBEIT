@@ -151,7 +151,7 @@ test('Wardrobe: free basics, chores unlock the best pieces, cash pays, only owne
   assert.ok(w.owned.includes('fade') && w.owned.includes('tee') && !w.owned.includes('gown'));
   assert.strictEqual(w.chores, 0);
   assert.throws(() => g.ctx.buyWear(me, 'grove'), /5 more chores/);
-  assert.throws(() => g.ctx.buyWear(me, 'afro'), /need \$800 more/);
+  assert.throws(() => g.ctx.buyWear(me, 'afro'), /need £800 more/);
   g.ctx.addCash_('me', 'Test money', 30000, 'test');
   g.ctx.buyWear(me, 'afro');
   assert.throws(() => g.ctx.buyWear(me, 'afro'), /already own/);

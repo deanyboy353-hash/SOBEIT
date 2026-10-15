@@ -79,7 +79,7 @@ function buyWear(key, id) {
     var done = choresDone_(who);
     if (done < it.chores) throw new Error('Do ' + (it.chores - done) + ' more chore' + (it.chores - done === 1 ? '' : 's') + ' to unlock the ' + it.name + '.');
     var cash = cashOf_(who);
-    if (cash < it.price) throw new Error('You need $' + (it.price - cash).toLocaleString('en-GB') + ' more.');
+    if (cash < it.price) throw new Error('You need £' + (it.price - cash).toLocaleString('en-GB') + ' more.');
     addCash_(who, 'Wardrobe: ' + it.name, -it.price, 'buy');
     var mine = JSON.parse(prop_('WARDROBE_' + who) || '[]');
     mine.push(id);

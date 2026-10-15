@@ -1729,7 +1729,7 @@
   });
 
   // ---------- DEADLINES (they nag until done) ----------
-  function money(n) { return (n < 0 ? '−$' : '$') + Math.abs(Math.round(n)).toLocaleString('en-GB'); }
+  function money(n) { return (n < 0 ? '−£' : '£') + Math.abs(Math.round(n)).toLocaleString('en-GB'); }
   function dueLabel(due) {
     var mins = Math.round((due - now()) / 60000), a = Math.abs(mins), span = a >= 60 ? Math.floor(a / 60) + 'h ' + (a % 60) + 'm' : a + ' min';
     return mins >= 0 ? span + ' left' : span + ' late';
