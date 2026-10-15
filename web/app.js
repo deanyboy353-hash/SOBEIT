@@ -1665,7 +1665,38 @@
     root.setAttribute('data-text', p.text === 'large' ? 'large' : 'normal');
     root.classList.toggle('calm', p.motion === false);
     save('accent', p.accent || '');
+    var st = {};
+    ['bg', 'cards', 'font', 'corners'].forEach(function (k) { var v = p[k] && STYLE_OPTS[k][0][0] !== p[k] ? p[k] : ''; if (v) { root.setAttribute('data-' + k, v); st[k] = v; } else root.removeAttribute('data-' + k); });
+    save('style', st);
+    setTod();
   }
+  // the style studio (labels; the server keeps the same lists)
+  var STYLE_OPTS = {
+    bg: [['live', 'Live', 'Drifts with the time of day'], ['lasers', 'Lasers', 'Slow sweeping beams'], ['grid', 'Grid', 'Synthwave floor'], ['stars', 'Stars', 'Quiet twinkle'], ['plain', 'Plain', 'Nothing moving']],
+    cards: [['soft', 'Soft', 'The usual'], ['glass', 'Glass', 'Frosted, see-through'], ['neon', 'Neon', 'Glowing edges'], ['outline', 'Outline', 'Just the lines'], ['flat', 'Flat', 'No borders']],
+    font: [['default', 'Clean', 'System font'], ['rounded', 'Rounded', 'Soft and friendly'], ['mono', 'Mono', 'Typewriter'], ['serif', 'Serif', 'Bookish'], ['condensed', 'Poster', 'Tall and tight']],
+    corners: [['round', 'Round', ''], ['sharp', 'Sharp', ''], ['pill', 'Pill', '']]
+  };
+  function setTod() {
+    var h = new Date(now()).getHours(), t = h < 5 || h >= 21 ? 'night' : h < 9 ? 'dawn' : h < 17 ? 'day' : 'dusk';
+    if (document.documentElement.getAttribute('data-tod') !== t) document.documentElement.setAttribute('data-tod', t);
+  }
+  setInterval(setTod, 5 * 60 * 1000);
+  function styleStudio(p) {
+    var lab = { bg: 'Background', cards: 'Cards', font: 'Font', corners: 'Corners' };
+    return '<section class="card"><div class="head"><h3>Style studio</h3><button class="btn ghost sm" type="button" data-stylereset="1">Reset</button></div><p class="small muted" style="margin:0 0 4px">Make it yours. Everything follows you to any phone.</p>' +
+      Object.keys(STYLE_OPTS).map(function (k) {
+        var cur = p[k] || STYLE_OPTS[k][0][0];
+        return '<div class="eyebrow" style="margin:12px 0 6px">' + lab[k] + '</div><div class="stylepick">' + STYLE_OPTS[k].map(function (o) {
+          return '<button type="button" data-style="' + k + ':' + o[0] + '" aria-pressed="' + (cur === o[0]) + '">' + o[1] + (o[2] ? '<small>' + o[2] + '</small>' : '') + '</button>';
+        }).join('') + '</div>';
+      }).join('') + '</section>';
+  }
+  document.addEventListener('click', function (ev) {
+    var b = ev.target.closest('[data-style], [data-stylereset]'); if (!b || !S) return;
+    if (b.dataset.stylereset) return savePrefs({ bg: 'live', cards: 'soft', font: 'default', corners: 'round' }, 'Back to the default style');
+    var kv = b.dataset.style.split(':'), ch = {}; ch[kv[0]] = kv[1]; buzz(10); savePrefs(ch);
+  });
   function savePrefs(change, msg) {
     S.fun.prefs = Object.assign({}, prefs(), change);
     if (change.char !== undefined) S.fun.chars[S.who] = change.char;
@@ -1692,10 +1723,11 @@
       '<div class="themes">' + [['light', 'Light'], ['dark', 'Dark'], ['rave', 'Rave'], ['grove', 'Grove'], ['vice', 'Vice'], ['auto', 'Auto']].map(function (o) {
         return '<button type="button" class="th th-' + o[0] + '" data-theme="' + o[0] + '" aria-pressed="' + (th === o[0]) + '"><i></i>' + o[1] + '</button>';
       }).join('') + '</div>' +
-      '<div class="eyebrow" style="margin:14px 0 6px">Accent colour</div><div class="swatches">' + [['', 'Lilac'], ['pink', 'Pink'], ['green', 'Green'], ['teal', 'Teal'], ['orange', 'Orange'], ['blue', 'Blue']].map(function (o) {
+      '<div class="eyebrow" style="margin:14px 0 6px">Accent colour</div><div class="swatches">' + [['', 'Lilac'], ['pink', 'Pink'], ['green', 'Green'], ['teal', 'Teal'], ['orange', 'Orange'], ['blue', 'Blue'], ['lime', 'Lime'], ['red', 'Red'], ['gold', 'Gold']].map(function (o) {
         return '<button type="button" class="sw-' + (o[0] || 'lilac') + '" data-accent="' + o[0] + '" aria-pressed="' + ((p.accent || '') === o[0]) + '" aria-label="' + o[1] + '"></button>';
       }).join('') + '</div>' +
       '<div class="eyebrow" style="margin:14px 0 6px">Text size</div><div class="seg">' + [['normal', 'Normal'], ['large', 'Larger']].map(function (o) { return '<button type="button" data-textsize="' + o[0] + '" aria-pressed="' + ((p.text || 'normal') === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div></section>';
+    h += styleStudio(p);
     // names and titles
     h += '<section class="card"><div class="head"><h3>Names</h3></div><form class="stack" id="namesForm" autocomplete="off">' +
       '<label class="small muted">What the app calls you<input type="text" id="nickText" value="' + esc(n.me) + '" maxlength="24"></label>' +
@@ -3130,7 +3162,7 @@
     boot();
     if (MODE === 'web') refreshQuiet();
   } else {
-    el('tab-home').innerHTML = '<div class="loading">Loading…</div>';
+    el('tab-home').innerHTML = '<div class="skel" aria-label="Loading"><div class="sk h"></div><div class="sk c1"></div><div class="sk c2"></div><div class="sk c3"></div></div>';
     el('tab-home').hidden = false;
     rpc('appState', []).then(function (res) { S = res; offset = res.now - Date.now(); save('state-' + KEY.slice(0, 6), S); boot(); }, function (e) {
       el('tab-home').innerHTML = '<div class="loading"><h2>Couldn\'t load</h2><p class="muted">' + esc(e.message) + '</p><button class="btn primary" type="button" onclick="location.reload()">Try again</button></div>';

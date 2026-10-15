@@ -945,9 +945,88 @@ nav.tabs .phone { display: flex; }
 .moreitem svg { width: 26px; height: 26px; color: var(--lilac); }
 .moreitem.on { box-shadow: inset 0 0 0 2px var(--lilac); }
 
+/* ---------- Style studio: live backgrounds, card styles, fonts, corners ---------- */
+body { isolation: isolate; }
+#bgfx { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; contain: strict; }
+#bgfx i { position: absolute; display: block; border-radius: 50%; filter: blur(60px); opacity: .55; will-change: transform; }
+:root { --fx1: #ff5fb2; --fx2: #8f6bff; --fx3: #2fe0d6; --fxo: .22; }
+:root[data-tod="dawn"] { --fx1: #ff9a6b; --fx2: #ff5fb2; --fx3: #ffd36b; }
+:root[data-tod="day"] { --fx1: #8f6bff; --fx2: #2fe0d6; --fx3: #ff7cc2; }
+:root[data-tod="dusk"] { --fx1: #ff5f7e; --fx2: #a24bff; --fx3: #ff9a3c; }
+:root[data-tod="night"] { --fx1: #5a3cff; --fx2: #ff3fa4; --fx3: #1b8cff; --fxo: .18; }
+:root[data-theme="light"] #bgfx, :root[data-theme="auto"] #bgfx { opacity: .5; }
+/* live: soft colour clouds that drift; colours follow the time of day */
+:root:not([data-bg]) #bgfx, :root[data-bg="live"] #bgfx { opacity: calc(var(--fxo) * 2.2); }
+:root:not([data-bg]) #bgfx i, :root[data-bg="live"] #bgfx i { width: 70vmax; height: 70vmax; }
+:root:not([data-bg]) #bgfx .b1, :root[data-bg="live"] #bgfx .b1 { background: var(--fx1); left: -30vmax; top: -35vmax; animation: fxA 38s ease-in-out infinite alternate; }
+:root:not([data-bg]) #bgfx .b2, :root[data-bg="live"] #bgfx .b2 { background: var(--fx2); right: -35vmax; top: -10vmax; animation: fxB 46s ease-in-out infinite alternate; }
+:root:not([data-bg]) #bgfx .b3, :root[data-bg="live"] #bgfx .b3 { background: var(--fx3); left: -10vmax; bottom: -50vmax; opacity: .35; animation: fxA 54s ease-in-out infinite alternate-reverse; }
+@keyframes fxA { to { transform: translate3d(18vmax, 12vmax, 0) scale(1.15); } }
+@keyframes fxB { to { transform: translate3d(-16vmax, 20vmax, 0) scale(.9); } }
+/* lasers: slow sweeping beams */
+:root[data-bg="lasers"] #bgfx i { display: none; }
+:root[data-bg="lasers"] #bgfx::before { content: ""; position: absolute; left: 50%; top: -20%; width: 200vmax; height: 200vmax; margin-left: -100vmax; opacity: .16;
+  background: repeating-conic-gradient(from 0deg at 50% 0%, var(--fx1) 0deg 1.2deg, transparent 1.2deg 14deg, var(--fx2) 14deg 15deg, transparent 15deg 30deg);
+  animation: fxSweep 24s ease-in-out infinite alternate; transform-origin: 50% 0; }
+@keyframes fxSweep { from { transform: rotate(-12deg); } to { transform: rotate(12deg); } }
+/* grid: synthwave floor with a sun */
+:root[data-bg="grid"] #bgfx i { display: none; }
+:root[data-bg="grid"] #bgfx::before { content: ""; position: absolute; left: 50%; bottom: 34vh; width: 46vmin; height: 46vmin; margin-left: -23vmin; border-radius: 50%; opacity: .28;
+  background: linear-gradient(var(--fx3), var(--fx1) 55%, var(--fx2)); -webkit-mask: linear-gradient(#000 55%, transparent 55% 60%, #000 60% 70%, transparent 70% 74%, #000 74% 82%, transparent 82% 86%, #000 86%); mask: linear-gradient(#000 55%, transparent 55% 60%, #000 60% 70%, transparent 70% 74%, #000 74% 82%, transparent 82% 86%, #000 86%); }
+:root[data-bg="grid"] #bgfx::after { content: ""; position: absolute; left: -50%; right: -50%; bottom: -10vh; height: 50vh; opacity: .3; transform: perspective(300px) rotateX(62deg); transform-origin: 50% 100%;
+  background: linear-gradient(var(--fx2) 1px, transparent 1px) 0 0 / 100% 40px, linear-gradient(90deg, var(--fx2) 1px, transparent 1px) 0 0 / 40px 100%; animation: fxRoll 4s linear infinite; }
+@keyframes fxRoll { to { background-position: 0 40px, 0 0; } }
+/* stars: a quiet twinkling sky */
+:root[data-bg="stars"] #bgfx i { display: none; }
+:root[data-bg="stars"] #bgfx::before, :root[data-bg="stars"] #bgfx::after { content: ""; position: absolute; inset: 0; opacity: .55;
+  background-image: radial-gradient(1.5px 1.5px at 20% 30%, #fff, transparent), radial-gradient(1px 1px at 70% 20%, #fff, transparent), radial-gradient(1.5px 1.5px at 40% 70%, var(--fx3), transparent), radial-gradient(1px 1px at 85% 60%, #fff, transparent), radial-gradient(2px 2px at 55% 45%, var(--fx1), transparent), radial-gradient(1px 1px at 10% 85%, #fff, transparent);
+  background-size: 260px 260px; animation: fxTwinkle 6s ease-in-out infinite alternate; }
+:root[data-bg="stars"] #bgfx::after { background-size: 380px 380px; background-position: 90px 140px; animation-delay: -3s; }
+@keyframes fxTwinkle { from { opacity: .2; } to { opacity: .65; } }
+:root[data-theme="light"][data-bg="stars"] #bgfx, :root[data-theme="light"][data-bg="grid"] #bgfx { filter: invert(1) hue-rotate(180deg); }
+:root[data-bg="plain"] #bgfx { display: none; }
+/* cards */
+:root[data-cards="glass"] :is(.card, .tile) { background: color-mix(in srgb, var(--surface) 62%, transparent); -webkit-backdrop-filter: blur(16px) saturate(1.3); backdrop-filter: blur(16px) saturate(1.3); border-color: color-mix(in srgb, var(--line) 60%, transparent); }
+:root[data-cards="neon"] :is(.card, .tile) { border-color: color-mix(in srgb, var(--lilac) 70%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--lilac) 25%, transparent), 0 0 22px color-mix(in srgb, var(--lilac) 22%, transparent); }
+:root[data-cards="outline"] :is(.card, .tile) { background: transparent; border-width: 1.5px; box-shadow: none; }
+:root[data-cards="flat"] :is(.card, .tile) { border-color: transparent; box-shadow: none; background: var(--raised, var(--surface)); }
+/* fonts (system fonts: nothing to download, works offline) */
+:root[data-font="rounded"] body { font-family: ui-rounded, "SF Pro Rounded", "Nunito", "Varela Round", system-ui, sans-serif; }
+:root[data-font="mono"] body { font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace; letter-spacing: -.01em; }
+:root[data-font="serif"] body { font-family: ui-serif, "New York", Georgia, "Times New Roman", serif; }
+:root[data-font="condensed"] body { font-family: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", system-ui, sans-serif; font-stretch: condensed; }
+:root[data-font="condensed"] h1, :root[data-font="condensed"] h2 { text-transform: uppercase; letter-spacing: .02em; }
+/* corners */
+:root[data-corners="sharp"] { --radius: 6px; }
+:root[data-corners="pill"] { --radius: 28px; }
+:root[data-corners="sharp"] .btn { border-radius: 6px; }
+/* more accents */
+:root[data-accent="lime"] { --lilac: #4f7d0f; --lilac-soft: #eef7dc; --lilac-mid: #c4e391; --ring-b: #9ad13b; }
+:root[data-accent="red"] { --lilac: #c22a3a; --lilac-soft: #fde6e8; --lilac-mid: #f3a9b1; --ring-b: #f0596a; }
+:root[data-accent="gold"] { --lilac: #9a6b00; --lilac-soft: #fbf1d6; --lilac-mid: #ecd08a; --ring-b: #f2b821; }
+:root:is([data-theme="dark"], [data-theme="rave"], [data-theme="grove"], [data-theme="vice"])[data-accent="lime"] { --lilac: #c2f06b; --lilac-soft: #26330f; --lilac-mid: #56751f; --ring-b: #a8e04a; }
+:root:is([data-theme="dark"], [data-theme="rave"], [data-theme="grove"], [data-theme="vice"])[data-accent="red"] { --lilac: #ff7d8a; --lilac-soft: #3a1418; --lilac-mid: #84303a; --ring-b: #ff5468; }
+:root:is([data-theme="dark"], [data-theme="rave"], [data-theme="grove"], [data-theme="vice"])[data-accent="gold"] { --lilac: #ffd36b; --lilac-soft: #33270a; --lilac-mid: #7a5d16; --ring-b: #ffc23d; }
+.swatches .sw-lime { background: #9ad13b; } .swatches .sw-red { background: #f0596a; } .swatches .sw-gold { background: #f2b821; }
+/* style preview chips */
+.stylepick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.stylepick button { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 12px; padding: 10px 6px; font: inherit; font-size: 13px; min-height: 44px; }
+.stylepick button[aria-pressed="true"] { border-color: var(--lilac); box-shadow: 0 0 0 2px var(--lilac-mid); font-weight: 650; }
+.stylepick button small { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
+:root.calm #bgfx :is(i), :root.calm #bgfx::before, :root.calm #bgfx::after { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { #bgfx i, #bgfx::before, #bgfx::after { animation: none !important; } }
+/* skeleton loader */
+.skel { padding: 18px 0; }
+.skel .sk { background: linear-gradient(90deg, var(--line) 0%, color-mix(in srgb, var(--line) 40%, var(--surface)) 50%, var(--line) 100%); background-size: 200% 100%; border-radius: var(--radius); animation: skel 1.2s ease-in-out infinite; margin-bottom: 12px; }
+.skel .sk.h { height: 34px; width: 55%; border-radius: 10px; }
+.skel .sk.c1 { height: 150px; } .skel .sk.c2 { height: 96px; } .skel .sk.c3 { height: 210px; }
+@keyframes skel { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+@media (prefers-reduced-motion: reduce) { .skel .sk { animation: none; } }
+
 </style>
 </head>
 <body>
+<div id="bgfx" aria-hidden="true"><i class="b1"></i><i class="b2"></i><i class="b3"></i></div>
 <main>
   <section class="tab" id="tab-home" hidden></section>
   <section class="tab" id="tab-chores" hidden></section>
@@ -4911,7 +4990,38 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     root.setAttribute('data-text', p.text === 'large' ? 'large' : 'normal');
     root.classList.toggle('calm', p.motion === false);
     save('accent', p.accent || '');
+    var st = {};
+    ['bg', 'cards', 'font', 'corners'].forEach(function (k) { var v = p[k] && STYLE_OPTS[k][0][0] !== p[k] ? p[k] : ''; if (v) { root.setAttribute('data-' + k, v); st[k] = v; } else root.removeAttribute('data-' + k); });
+    save('style', st);
+    setTod();
   }
+  // the style studio (labels; the server keeps the same lists)
+  var STYLE_OPTS = {
+    bg: [['live', 'Live', 'Drifts with the time of day'], ['lasers', 'Lasers', 'Slow sweeping beams'], ['grid', 'Grid', 'Synthwave floor'], ['stars', 'Stars', 'Quiet twinkle'], ['plain', 'Plain', 'Nothing moving']],
+    cards: [['soft', 'Soft', 'The usual'], ['glass', 'Glass', 'Frosted, see-through'], ['neon', 'Neon', 'Glowing edges'], ['outline', 'Outline', 'Just the lines'], ['flat', 'Flat', 'No borders']],
+    font: [['default', 'Clean', 'System font'], ['rounded', 'Rounded', 'Soft and friendly'], ['mono', 'Mono', 'Typewriter'], ['serif', 'Serif', 'Bookish'], ['condensed', 'Poster', 'Tall and tight']],
+    corners: [['round', 'Round', ''], ['sharp', 'Sharp', ''], ['pill', 'Pill', '']]
+  };
+  function setTod() {
+    var h = new Date(now()).getHours(), t = h < 5 || h >= 21 ? 'night' : h < 9 ? 'dawn' : h < 17 ? 'day' : 'dusk';
+    if (document.documentElement.getAttribute('data-tod') !== t) document.documentElement.setAttribute('data-tod', t);
+  }
+  setInterval(setTod, 5 * 60 * 1000);
+  function styleStudio(p) {
+    var lab = { bg: 'Background', cards: 'Cards', font: 'Font', corners: 'Corners' };
+    return '<section class="card"><div class="head"><h3>Style studio</h3><button class="btn ghost sm" type="button" data-stylereset="1">Reset</button></div><p class="small muted" style="margin:0 0 4px">Make it yours. Everything follows you to any phone.</p>' +
+      Object.keys(STYLE_OPTS).map(function (k) {
+        var cur = p[k] || STYLE_OPTS[k][0][0];
+        return '<div class="eyebrow" style="margin:12px 0 6px">' + lab[k] + '</div><div class="stylepick">' + STYLE_OPTS[k].map(function (o) {
+          return '<button type="button" data-style="' + k + ':' + o[0] + '" aria-pressed="' + (cur === o[0]) + '">' + o[1] + (o[2] ? '<small>' + o[2] + '</small>' : '') + '</button>';
+        }).join('') + '</div>';
+      }).join('') + '</section>';
+  }
+  document.addEventListener('click', function (ev) {
+    var b = ev.target.closest('[data-style], [data-stylereset]'); if (!b || !S) return;
+    if (b.dataset.stylereset) return savePrefs({ bg: 'live', cards: 'soft', font: 'default', corners: 'round' }, 'Back to the default style');
+    var kv = b.dataset.style.split(':'), ch = {}; ch[kv[0]] = kv[1]; buzz(10); savePrefs(ch);
+  });
   function savePrefs(change, msg) {
     S.fun.prefs = Object.assign({}, prefs(), change);
     if (change.char !== undefined) S.fun.chars[S.who] = change.char;
@@ -4938,10 +5048,11 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
       '<div class="themes">' + [['light', 'Light'], ['dark', 'Dark'], ['rave', 'Rave'], ['grove', 'Grove'], ['vice', 'Vice'], ['auto', 'Auto']].map(function (o) {
         return '<button type="button" class="th th-' + o[0] + '" data-theme="' + o[0] + '" aria-pressed="' + (th === o[0]) + '"><i></i>' + o[1] + '</button>';
       }).join('') + '</div>' +
-      '<div class="eyebrow" style="margin:14px 0 6px">Accent colour</div><div class="swatches">' + [['', 'Lilac'], ['pink', 'Pink'], ['green', 'Green'], ['teal', 'Teal'], ['orange', 'Orange'], ['blue', 'Blue']].map(function (o) {
+      '<div class="eyebrow" style="margin:14px 0 6px">Accent colour</div><div class="swatches">' + [['', 'Lilac'], ['pink', 'Pink'], ['green', 'Green'], ['teal', 'Teal'], ['orange', 'Orange'], ['blue', 'Blue'], ['lime', 'Lime'], ['red', 'Red'], ['gold', 'Gold']].map(function (o) {
         return '<button type="button" class="sw-' + (o[0] || 'lilac') + '" data-accent="' + o[0] + '" aria-pressed="' + ((p.accent || '') === o[0]) + '" aria-label="' + o[1] + '"></button>';
       }).join('') + '</div>' +
       '<div class="eyebrow" style="margin:14px 0 6px">Text size</div><div class="seg">' + [['normal', 'Normal'], ['large', 'Larger']].map(function (o) { return '<button type="button" data-textsize="' + o[0] + '" aria-pressed="' + ((p.text || 'normal') === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div></section>';
+    h += styleStudio(p);
     // names and titles
     h += '<section class="card"><div class="head"><h3>Names</h3></div><form class="stack" id="namesForm" autocomplete="off">' +
       '<label class="small muted">What the app calls you<input type="text" id="nickText" value="' + esc(n.me) + '" maxlength="24"></label>' +
@@ -6376,7 +6487,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     boot();
     if (MODE === 'web') refreshQuiet();
   } else {
-    el('tab-home').innerHTML = '<div class="loading">Loading…</div>';
+    el('tab-home').innerHTML = '<div class="skel" aria-label="Loading"><div class="sk h"></div><div class="sk c1"></div><div class="sk c2"></div><div class="sk c3"></div></div>';
     el('tab-home').hidden = false;
     rpc('appState', []).then(function (res) { S = res; offset = res.now - Date.now(); save('state-' + KEY.slice(0, 6), S); boot(); }, function (e) {
       el('tab-home').innerHTML = '<div class="loading"><h2>Couldn\'t load</h2><p class="muted">' + esc(e.message) + '</p><button class="btn primary" type="button" onclick="location.reload()">Try again</button></div>';

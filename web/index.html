@@ -13,13 +13,14 @@
 <link rel="icon" href="favicon-32.png" sizes="32x32">
 <link rel="icon" href="icon-192.png" sizes="192x192">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<script>try{var t=JSON.parse(localStorage.getItem('lq-theme')||'"rave"');document.documentElement.dataset.theme=t;var a=JSON.parse(localStorage.getItem('lq-accent')||'""');if(a)document.documentElement.dataset.accent=a;}catch(e){}</script>
+<script>try{var t=JSON.parse(localStorage.getItem('lq-theme')||'"rave"');document.documentElement.dataset.theme=t;var a=JSON.parse(localStorage.getItem('lq-accent')||'""');if(a)document.documentElement.dataset.accent=a;var st=JSON.parse(localStorage.getItem('lq-style')||'{}');['bg','cards','font','corners'].forEach(function(k){if(st[k])document.documentElement.dataset[k]=st[k];});var h=new Date().getHours();document.documentElement.dataset.tod=h<5||h>=21?'night':h<9?'dawn':h<17?'day':'dusk';}catch(e){}</script>
 <link rel="preconnect" href="https://script.google.com">
 <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
 <!--SHELL-->
+<div id="bgfx" aria-hidden="true"><i class="b1"></i><i class="b2"></i><i class="b3"></i></div>
 <main>
   <section class="tab" id="tab-home" hidden></section>
   <section class="tab" id="tab-chores" hidden></section>
