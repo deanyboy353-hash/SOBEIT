@@ -141,7 +141,7 @@
     try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); if (audio.state === 'suspended') audio.resume(); } catch (e) {}
   }, { capture: true });
   function chime(notes) {
-    if (!audio || (S && S.fun && S.fun.prefs && S.fun.prefs.sound === false)) return;
+    if (!audio || (S && S.fun && S.fun.prefs && S.fun.prefs.sound !== true)) return;   // sounds are opt-in
     (notes || [880]).forEach(function (f, i) {
       var o = audio.createOscillator(), g = audio.createGain(), t = audio.currentTime + i * 0.14;
       o.frequency.value = f; o.connect(g); g.connect(audio.destination);
@@ -189,6 +189,8 @@
     } else if (b.xpToday > a.xpToday) {
       confetti(false); chime([880, 1175]); buzz(25);
     }
+    var cd = function (st) { var c = st.fun && st.fun.challenges; return c ? c.list.filter(function (x) { return x.done; }).length : 0; };
+    if (cd(next) > cd(prev)) { buzz([30, 50, 30, 50, 60]); toast('Challenge beaten'); }
     var seen = load('badges-' + S.who);
     var list = seen || [];
     b.badges.forEach(function (bd) { if (bd.earned && list.indexOf(bd.id) === -1) { list.push(bd.id); if (seen) toast('New badge: ' + bd.name); } });
@@ -2722,6 +2724,7 @@
       var q = questByName(ds.qdone);
       [S.quests.board, S.quests.more, S.quests.all].forEach(function (l) { l.forEach(function (x) { if (x.name === ds.qdone) { x.doneToday = true; x.doneBy = S.who; } }); });
       if (q) addXpLocal(q.xp + (q.who !== 'anyone' && q.who !== 'together' && q.who !== S.who ? Math.round(q.xp / 2) : 0));
+      buzz([20, 30, 20]);
     }, 'questDone', [ds.qdone], ds.qdone + ': done');
     if (ds.claim) return quick(function () { S.quests.board.concat(S.quests.more).forEach(function (x) { if (x.name === ds.claim) x.claimedBy = x.claimedBy === S.who ? '' : S.who; }); }, 'claimQuest', [ds.claim]);
     if (ds.hi5) return quick(function () { S.game.feed.forEach(function (f) { if (f.id === ds.hi5 && f.hi5.indexOf(S.who) === -1) f.hi5.push(S.who); }); }, 'highFive', [ds.hi5], 'High-five sent');
