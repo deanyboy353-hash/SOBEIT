@@ -171,12 +171,13 @@
     var L = new Float32Array(n), R = new Float32Array(n), rand = rng(spec.seed || 7), parts = spec.parts || ['kick'];
     var has = function (p) { return parts.indexOf(p) !== -1; }, steps = bars * 16, step = beat / 4;
     function add(at, len, fn, gl, gr) { var s0 = Math.round(at * sr), e = Math.min(n, s0 + Math.round(len * sr)); for (var i = s0; i < e; i++) { var v = fn((i - s0) / sr); L[i] += v * gl; R[i] += v * (gr === undefined ? gl : gr); } }
+    var bd = spec.breakdown || null;   // [fromBar, toBar): no kick or rumble there, so the bar after is a drop
     for (var st = 0; st < steps; st++) {
-      var t = st * step, inBeat = st % 4;
-      if (has('kick') && inBeat === 0) add(t, 0.35, function (u) { var f = 45 + 110 * Math.exp(-u * 28); return Math.sin(2 * Math.PI * (45 * u + 110 * (1 - Math.exp(-u * 28)) / 28)) * Math.exp(-u * 7) * 0.9; }, 1);
+      var t = st * step, inBeat = st % 4, barNo = Math.floor(st / 16), broke = bd && barNo >= bd[0] && barNo < bd[1];
+      if (has('kick') && inBeat === 0 && !broke) add(t, 0.35, function (u) { var f = 45 + 110 * Math.exp(-u * 28); return Math.sin(2 * Math.PI * (45 * u + 110 * (1 - Math.exp(-u * 28)) / 28)) * Math.exp(-u * 7) * 0.9; }, 1);
       if (has('hats') && inBeat === 2) add(t, 0.06, function (u) { return (rand() * 2 - 1) * Math.exp(-u * 60) * 0.35; }, 0.8, 1);
       if (has('hats') && (inBeat === 1 || inBeat === 3)) add(t, 0.03, function (u) { return (rand() * 2 - 1) * Math.exp(-u * 120) * 0.15; }, 1, 0.8);
-      if (has('rumble') && inBeat === 1) add(t, step * 3, function (u) { return Math.sin(2 * Math.PI * 48 * u) * Math.exp(-u * 5) * 0.35 * Math.min(1, u * 40); }, 1);
+      if (has('rumble') && inBeat === 1 && !broke) add(t, step * 3, function (u) { return Math.sin(2 * Math.PI * 48 * u) * Math.exp(-u * 5) * 0.35 * Math.min(1, u * 40); }, 1);
     }
     if (has('acid')) {
       var root = spec.root || 45, pat = [0, 0, 12, 0, 3, 0, 15, 0, 0, 10, 0, 12, 0, 3, 7, 0], acc = [1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0];

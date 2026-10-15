@@ -128,7 +128,8 @@
     /** Tempo ride: reach a BPM, without any sudden jumps. */
     tempo: function (r, E, S) {
       var lastB = null, lastBpm = null, maxStep = 0, at = null, end = null, g = r.grid || r.deck;
-      S.forEach(function (s) { var b = s[g].beat; if (b < r.from || b > r.to || !s[r.deck].on) return; if (lastB !== null && b - lastB > 0) { var step = Math.abs(s[r.deck].bpm - lastBpm) / (b - lastB); if (step > maxStep) { maxStep = step; at = b; } } lastB = b; lastBpm = s[r.deck].bpm; end = s[r.deck].bpm; });
+      // the tempo change per beat, measured over whole beats (tiny gaps between samples would exaggerate it)
+      S.forEach(function (s) { var b = s[g].beat; if (b < r.from || b > r.to || !s[r.deck].on) return; end = s[r.deck].bpm; if (lastB === null) { lastB = b; lastBpm = end; return; } if (b - lastB < 1) return; var step = Math.abs(end - lastBpm) / (b - lastB); if (step > maxStep) { maxStep = step; at = b; } lastB = b; lastBpm = end; });
       var reach = end === null ? 99 : Math.abs(end - r.target), sm = maxStep > (r.maxStep || 0.25), s = clamp(100 - reach * 40 - (sm ? Math.min(50, (maxStep - (r.maxStep || 0.25)) * 100) : 0));
       var notes = []; if (reach > 0.5) notes.push('Ended at ' + (end || 0).toFixed(1) + ' BPM, aiming for ' + r.target + '.'); if (sm) notes.push('The tempo jumped ' + maxStep.toFixed(2) + ' BPM in a beat at ' + barBeat(at) + ': move the pitch fader in smaller, slower steps.');
       return { label: 'Tempo to ' + r.target + ' BPM smoothly', score: s, note: notes.join(' ') };
@@ -140,6 +141,25 @@
       var mean = errs.reduce(function (a, b) { return a + b; }, 0) / errs.length, worst = Math.max.apply(null, errs), s = clamp(100 - Math.max(0, mean - 8) * 3);
       return { label: 'Beats locked together', score: s, note: s >= 85 ? '' : 'The kicks were ' + Math.round(mean) + ' ms apart on average (worst ' + Math.round(worst) + ' ms). Correct drift with small pitch fader moves, not just the jog wheel.' };
     },
+    /** A deck back on the phrase: its own beat lines up with the lesson's bar count (mod 16 beats), e.g. after a beat jump or hot cue. */
+    deckPhase: function (r, E, S) {
+      var g = r.grid || 'C', m = r.mod || 16, best = null, bd = 1e9;
+      S.forEach(function (s) { var d = Math.abs(s[g].beat - r.at); if (d < bd && s[r.deck].on) { bd = d; best = s; } });
+      var label = r.label || 'Deck ' + r.deck + ' on the phrase at ' + barBeat(r.at);
+      if (!best || bd > 2) return { label: label, score: 0, note: 'Deck ' + r.deck + ' wasn\'t playing at ' + barBeat(r.at) + '.' };
+      var d = ((best[r.deck].beat - best[g].beat - (r.offset || 0)) % m + m * 1.5) % m - m / 2, sc = timingScore(d, r.tol || 0.25);
+      return { label: label, score: sc, note: sc === 100 ? '' : r.msg || 'Deck ' + r.deck + ' was ' + beats(d) + ' ' + (d > 0 ? 'ahead of' : 'behind') + ' the phrase at ' + barBeat(r.at) + '.' };
+    },
+    /** Tempos matched at a beat (within tol BPM). */
+    bpmMatch: function (r, E, S) {
+      var g = r.grid || 'C', best = null, bd = 1e9;
+      S.forEach(function (s) { var d = Math.abs(s[g].beat - r.at); if (d < bd) { bd = d; best = s; } });
+      if (!best || !best.A.on || !best.B.on) return { label: 'Tempos matched', score: 0, note: 'Both decks need to be playing at ' + barBeat(r.at) + '.' };
+      var diff = Math.abs(best.A.bpm - best.B.bpm), tol = r.tol || 0.05, sc = diff <= tol ? 100 : clamp(100 - (diff - tol) * 150);
+      return { label: 'Tempos matched at ' + barBeat(r.at), score: sc, note: sc >= 90 ? '' : 'Deck B was ' + diff.toFixed(2) + ' BPM ' + (best.B.bpm > best.A.bpm ? 'faster' : 'slower') + ' than Deck A at ' + barBeat(r.at) + '.' };
+    },
+    /** A listening question: r.answer is right, r.given is what you picked. */
+    quiz: function (r) { var ok = r.given === r.answer; return { label: r.label || 'Your answer', score: ok ? 100 : 0, note: ok ? '' : r.msg || 'Not quite: it was ' + r.answer + '.' }; },
     /** Phrase-locked double drop: the two tracks' phrase starts (every 32 beats) land together. */
     dropTogether: function (r, E, S) { return RULES.align({ at: r.at, tol: r.tol || 0.25 }, E, S); }
   };

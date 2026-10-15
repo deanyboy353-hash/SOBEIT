@@ -55,7 +55,12 @@
     { id: 'loop:rumble130', name: 'Built-in: rumble techno', bpm: 130, parts: ['kick', 'hats', 'rumble'], genre: 'Techno' },
     { id: 'loop:acid132', name: 'Built-in: acid line', bpm: 132, parts: ['kick', 'hats', 'acid'], genre: 'Acid', camelot: '8A', key: 'Am' },
     { id: 'loop:acid126', name: 'Built-in: slow acid', bpm: 126, parts: ['kick', 'acid'], genre: 'Acid', camelot: '8A', key: 'Am' },
-    { id: 'loop:hard135', name: 'Built-in: hard groove', bpm: 135, parts: ['kick', 'hats', 'rumble'], genre: 'Hard groove' }
+    { id: 'loop:hard135', name: 'Built-in: hard groove', bpm: 135, parts: ['kick', 'hats', 'rumble'], genre: 'Hard groove' },
+    // for the Academy: breakdowns (bars 17-24) with a drop on bar 25, and acid lines in other keys
+    { id: 'loop:drop130', name: 'Built-in: techno with a drop', bpm: 130, parts: ['kick', 'hats', 'rumble'], breakdown: [16, 24], genre: 'Techno' },
+    { id: 'loop:dropacid130', name: 'Built-in: acid with a drop', bpm: 130, parts: ['kick', 'hats', 'acid'], breakdown: [16, 24], genre: 'Acid', camelot: '8A', key: 'Am' },
+    { id: 'loop:acid132e', name: 'Built-in: acid in E minor', bpm: 132, parts: ['kick', 'hats', 'acid'], root: 52, genre: 'Acid', camelot: '9A', key: 'Em' },
+    { id: 'loop:acid132eb', name: 'Built-in: acid in E flat minor', bpm: 132, parts: ['kick', 'hats', 'acid'], root: 51, genre: 'Acid', camelot: '2A', key: 'Ebm' }
   ];
 
   function loopItems(prev, an) {
@@ -97,7 +102,7 @@
     if (this.buffers[item.id]) { if (item.loop && !item.waves) item.waves = DSP.waves(this.buffers[item.id].getChannelData(0), c.sampleRate); return Promise.resolve(this.buffers[item.id]); }
     var p;
     if (item.loop) {
-      var g = DSP.makeLoop({ parts: item.loop.parts, bpm: item.loop.bpm, bars: 32, sampleRate: c.sampleRate, seed: item.loop.bpm });
+      var g = DSP.makeLoop({ parts: item.loop.parts, bpm: item.loop.bpm, bars: 32, sampleRate: c.sampleRate, seed: item.loop.bpm, root: item.loop.root, breakdown: item.loop.breakdown });
       var b = c.createBuffer(2, g.left.length, c.sampleRate); b.copyToChannel(g.left, 0); b.copyToChannel(g.right, 1);
       if (!item.waves) item.waves = DSP.waves(g.left, c.sampleRate);
       p = Promise.resolve(b);

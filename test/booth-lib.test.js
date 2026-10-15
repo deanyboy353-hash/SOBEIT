@@ -14,13 +14,13 @@ const own = items => items.filter(x => x.own).map(x => x.name).sort();
 test('Library: upload tracks, reload, they are still there; loops are always present', async () => {
   await wipe('lq-dj'); await wipe('booth');
   let L = reload(), lib = new L(ctx);
-  assert.strictEqual(lib.items.filter(x => x.loop).length, 6, 'loops before storage is even read');
+  assert.strictEqual(lib.items.filter(x => x.loop).length, globalThis.BoothLibrary.LOOPS.length, 'loops before storage is even read');
   const r = await lib.addFiles([wav('Acid One.wav'), wav('Hard Two.wav')]);
   assert.deepStrictEqual(r.added.sort(), ['Acid One.wav', 'Hard Two.wav']); assert.deepStrictEqual(r.failed, []);
   assert.deepStrictEqual(own(lib.items), ['Acid One', 'Hard Two']);
   L = reload(); lib = new L(ctx); await lib.list();
   assert.deepStrictEqual(own(lib.items), ['Acid One', 'Hard Two'], 'still there after a reload');
-  assert.strictEqual(lib.items.filter(x => x.loop).length, 6);
+  assert.strictEqual(lib.items.filter(x => x.loop).length, globalThis.BoothLibrary.LOOPS.length);
 });
 
 test('Library: a failed upload says what went wrong', async () => {
@@ -55,7 +55,7 @@ test('Library: an older Booth tab holding the database open no longer hides anyt
   const t0 = Date.now(); await lib.list();
   assert.ok(Date.now() - t0 < 3000, 'did not hang');
   assert.deepStrictEqual(own(lib.items), ['Mine'], 'your tracks still show');
-  assert.strictEqual(lib.items.filter(x => x.loop).length, 6, 'loops still show');
+  assert.strictEqual(lib.items.filter(x => x.loop).length, globalThis.BoothLibrary.LOOPS.length, 'loops still show');
   assert.strictEqual(lib.problem, 'blocked');
   old.close();
   await new Promise(r => setTimeout(r, 200));
@@ -65,7 +65,7 @@ test('Library: an older Booth tab holding the database open no longer hides anyt
 
 test('Library: loops are there even with no storage at all', async () => {
   const saved = globalThis.indexedDB; delete globalThis.indexedDB;
-  try { const L = reload(), lib = new L(ctx); await lib.list(); assert.strictEqual(lib.items.filter(x => x.loop).length, 6); assert.ok(lib.problem); }
+  try { const L = reload(), lib = new L(ctx); await lib.list(); assert.strictEqual(lib.items.filter(x => x.loop).length, globalThis.BoothLibrary.LOOPS.length); assert.ok(lib.problem); }
   finally { globalThis.indexedDB = saved; }
 });
 

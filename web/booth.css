@@ -229,3 +229,29 @@ input.vert { writing-mode: vertical-lr; direction: rtl; width: 34px; height: 150
 @media (max-width: 1100px) { .hud-main { grid-template-columns: 1fr; } .res-scores, .statgrid { grid-template-columns: repeat(2, 1fr); } }
 .diagram.mini .c .shape { fill: #2a1c48; stroke: #5a4590; }
 .diagram.mini .c.focus .shape { stroke: #ffc44d; stroke-width: 8; fill: rgba(255, 196, 77, .55); }
+
+/* ---------- Advanced Academy ---------- */
+.mode.locked { opacity: .45; }
+.mode.locked:hover { border-color: var(--line); box-shadow: none; }
+.ac-tools { padding: 14px 16px; margin-bottom: 8px; }
+.ac-feed { min-height: 22px; font-size: 14px; margin-top: 6px; }
+.ac-feed div:first-child { font-weight: 650; }
+.ac-feed div + div { opacity: .6; }
+.ac-explain p { max-width: 70ch; }
+.ac-parts { display: grid; gap: 6px; margin: 12px 0; }
+.ac-part { display: grid; grid-template-columns: 1fr 140px 36px; align-items: center; gap: 10px; font-size: 14px; }
+.ac-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.ac-table th, .ac-table td { text-align: left; vertical-align: top; padding: 8px 10px; border-top: 1px solid var(--line); }
+.ac-table th { color: var(--muted); font-weight: 600; }
+.ac-cal { display: flex; align-items: center; gap: 16px; margin: 16px 0; }
+.ac-dot { width: 46px; height: 46px; border-radius: 50%; background: rgba(255, 255, 255, .08); border: 2px solid var(--line2); transition: background .05s; }
+.ac-dot.on { background: var(--pink); box-shadow: 0 0 30px var(--pink); }
+.ac-live { display: flex; align-items: center; gap: 12px; padding: 10px 14px; margin: 0 0 10px; border: 1px solid var(--pink); border-radius: var(--r); background: rgba(255, 63, 180, .1); }
+.ac-live .ac-left { font-size: 20px; font-weight: 800; color: var(--amber); }
+.ac-pads { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.ac-pad { display: grid; gap: 2px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; }
+.ac-pad.half { border-color: var(--amber); }
+.ac-pad.ok { border-color: var(--green); background: rgba(93, 255, 168, .06); }
+@media (max-width: 700px) { .ac-part { grid-template-columns: 1fr 80px 32px; } .ac-table { font-size: 13px; } }
+.hud .step { max-width: 70ch; }
+.ac-gear { margin: 10px 0; }

@@ -164,7 +164,8 @@
   };
   D.baseRate = function () {
     var o = this.e.other(this);
-    if (this.sync && o.track && o.playing && !(o.sync && o.startedAt > this.startedAt && this.playing)) return Math.max(0.84, Math.min(1.16, o.bpm() / this.track.bpm));
+    // follow the other deck unless it's following us (it started after us; on a tie, Deck A leads)
+    if (this.sync && o.track && o.playing && !(o.sync && this.playing && (o.startedAt > this.startedAt || (o.startedAt === this.startedAt && this.id === 'A')))) return Math.max(0.84, Math.min(1.16, o.bpm() / this.track.bpm));
     return 1 + this.pitch;
   };
   D.rate = function () { return this.baseRate() * (1 + this.nudge); };

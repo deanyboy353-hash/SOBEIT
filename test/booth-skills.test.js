@@ -165,3 +165,25 @@ test('Skills: beat text', () => {
   assert.strictEqual(K.beats(0.25), '1/4 beat'); assert.strictEqual(K.beats(1.5), '1 1/2 beats'); assert.strictEqual(K.beats(8), '2 bars');
   assert.strictEqual(K.barBeat(64), 'bar 17'); assert.strictEqual(K.barBeat(66.5), 'bar 17 beat 3 and 1/2');
 });
+
+// the Academy's own clock: C (continuous bars, even while a deck loops or jumps)
+function simC(o) { const S = sim(o); S.forEach(s => { s.C = { beat: s.A.beat }; if (o.deck) Object.assign(s.A, o.deck(s.C.beat)); }); return S; }
+
+test('Skills: back on the phrase after a beat jump, measured against the lesson clock', () => {
+  const ok = simC({ to: 40, deck: b => ({ beat: b < 20 ? b + 4 : b }) });       // 4 beats out, jumped back at 20
+  assert.strictEqual(K.evaluate([{ type: 'deckPhase', deck: 'A', at: 24 }], [], ok).total, 100);
+  const off = simC({ to: 40, deck: b => ({ beat: b + 4 }) });                    // never jumped back
+  const r = K.evaluate([{ type: 'deckPhase', deck: 'A', at: 24 }], [], off);
+  assert.strictEqual(r.total, 0); assert.match(r.notes[0], /4 beats ahead of the phrase/);
+});
+
+test('Skills: tempo matched, and a listening quiz', () => {
+  const S = sim({ to: 40, ctl: () => ({ B: { bpm: 128.3 } }) }); S.forEach(s => s.C = { beat: s.A.beat });
+  let r = K.evaluate([{ type: 'bpmMatch', at: 32, tol: 0.05 }], [], S);
+  assert.ok(r.total < 90); assert.match(r.notes[0], /0\.30 BPM faster/);
+  const T = sim({ to: 40 }); T.forEach(s => s.C = { beat: s.A.beat });
+  assert.strictEqual(K.evaluate([{ type: 'bpmMatch', at: 32 }], [], T).total, 100);
+  assert.strictEqual(K.evaluate([{ type: 'quiz', answer: 'second', given: 'second' }], [], []).total, 100);
+  r = K.evaluate([{ type: 'quiz', answer: 'second', given: 'first', msg: 'The second blend clashed: 2A against 8A.' }], [], []);
+  assert.strictEqual(r.total, 0); assert.strictEqual(r.notes[0], 'The second blend clashed: 2A against 8A.');
+});

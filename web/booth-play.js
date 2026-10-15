@@ -19,7 +19,7 @@
     return '';
   }
   function drawProblem() { var b = el('libProblem'); if (b) b.innerHTML = problemHtml(); }
-  var settings = null, padMode = { A: 'hotcue', B: 'hotcue' }, lastLoop = { A: '', B: '' };
+  var settings = null, padMode = { A: 'hotcue', B: 'hotcue' }, lastLoop = { A: '', B: '' }, listeners = [];
   var LOOP_SIZES = [1 / 4, 1 / 2, 1, 2, 4, 8, 16, 32], JUMPS = [-1, 1, -2, 2, -4, 4, -8, 8];
   var PAD_NAMES = { hotcue: 'Hot cue', loop: 'Loop', slicer: 'Slicer', slicerloop: 'Slicer loop', sampler: 'Sampler', beatjump: 'Beatjump', toneplay: 'Toneplay', fx: 'FX' };
   var FX_PADS = [['echo', 0.5, 'Echo ½'], ['echo', 0.75, 'Echo ¾'], ['echo', 1, 'Echo 1'], ['echo', 2, 'Echo 2'], ['reverb', 0, 'Reverb']];
@@ -78,6 +78,7 @@
   function control(e) {
     if (!e || !e.id) return;
     if (view.onControl && E) { try { view.onControl(e); } catch (err) { console.error(err); } }
+    if (E) listeners.forEach(function (f) { try { f(e); } catch (err) { console.error(err); } });
     if (!E) { if (e.kind === 'button' && e.down && S.screen() === 'free') S.toast('Click "Turn the sound on" first: Chrome needs one click before it plays sound.'); return; }   // positions are kept in S.values and applied when the sound starts
     var m = /^([AB])\.(.+)$/.exec(e.id);
     if (!m) {
@@ -605,6 +606,18 @@
     shell: function () { return S; }, heardAt: heardAt,
     padMode: padMode, setPadMode: setPadMode, beatsText: beatsText,
     leave: function (next) { if (next !== 'free' && gridDeck) gridDeck = ''; },
-    engine: function () { return E; }
+    engine: function () { return E; },
+    /** Every control, in any mode (the Academy watches Free mix and Set mode for techniques). */
+    listen: function (fn) { listeners.push(fn); },
+    /** Put the mixer back where the hardware actually is (after a demo moved things on screen). */
+    applyHardware: function () {
+      if (!E) return;
+      ['A', 'B'].forEach(function (d) {
+        ['trim', 'eqLow', 'eqMid', 'eqHigh', 'filter', 'volume'].forEach(function (n) { var v = S.values[d + '.' + n]; E.decks[d].set(n, v !== undefined ? v : n === 'volume' ? 0 : n === 'trim' ? 0.5 : 0.5); });
+        var p = S.values[d + '.pitch']; if (p !== undefined) E.decks[d].pitchFader(settings.invertPitch ? 1 - p : p);
+        E.decks[d].setFx(null);
+      });
+      ui.dirty = true;
+    }
   };
 })();

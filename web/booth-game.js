@@ -19,7 +19,7 @@
   function rng(seed) { var h = 2166136261; for (var i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); } return function () { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return ((h >>> 0) % 100000) / 100000; }; }
 
   // ---------- sampling: every control and the master level, 20 times a second ----------
-  function deckSample(d) { return { on: d.playing && !!d.track, vol: d.vals.volume, low: d.vals.eqLow, mid: d.vals.eqMid, high: d.vals.eqHigh, filter: d.vals.filter, beat: d.track ? d.beatPos() : 0, bpm: d.track ? d.bpm() : 0 }; }
+  function deckSample(d) { return { on: d.playing && !!d.track, vol: d.vals.volume, low: d.vals.eqLow, mid: d.vals.eqMid, high: d.vals.eqHigh, filter: d.vals.filter, beat: d.track ? d.beatPos() : 0, bpm: d.track ? d.bpm() : 0, loop: d.loop ? d.loopLen() : 0, fx: d.fxLabel ? d.fxLabel() : '' }; }
   setInterval(function () {
     var e = E(); if (!e || !S) return;
     var sc = S.screen(); if (sc !== 'play' && sc !== 'free') return;
@@ -465,7 +465,7 @@
   // ---------- daily challenge (same for both of you) ----------
   function dailySpec(ymd) {
     var r = rng('booth-daily-' + ymd), techs = ['bass', 'eq', 'filter', 'volume', 'cut', 'bass', 'eq'], tech = techs[Math.floor(r() * techs.length)];
-    var L = BoothLibrary.LOOPS.filter(function (x) { return x.id !== 'loop:kick125'; }), a = L[Math.floor(r() * L.length)], cands = L.filter(function (x) { return x.id !== a.id && Math.abs(x.bpm / a.bpm - 1) < 0.06; }), b = cands[Math.floor(r() * cands.length)] || L[0];
+    var L = BoothLibrary.LOOPS.filter(function (x) { return x.id !== 'loop:kick125' && !x.breakdown && !x.root; }), a = L[Math.floor(r() * L.length)], cands = L.filter(function (x) { return x.id !== a.id && Math.abs(x.bpm / a.bpm - 1) < 0.06; }), b = cands[Math.floor(r() * cands.length)] || L[0];
     return { tech: tech, a: a.id, b: b.id, title: TECH[tech].name + ': ' + a.name.replace('Built-in: ', '') + ' into ' + b.name.replace('Built-in: ', '') };
   }
   function apiCall(fn, args) {
@@ -585,7 +585,7 @@
   // ---------- lights and the energy meter (2D, cheap: never in the way of MIDI, audio or scoring) ----------
   // Energy reacts to the mix as it happens: bass clashes and volume holes pull it down, clean transitions and drops push it up.
   var aids = null;   // ear-training toggles (Academy): which helpers are hidden
-  function aid(name) { if (!aids) aids = S.load('aids', { phrase: true, waves: true, energy: true }); return aids[name] !== false; }
+  function aid(name) { aids = S.load('aids', { phrase: true, waves: true, energy: true }); return aids[name] !== false; }
   function sizeClub() { var c = el('club'); if (!c) return; var r = c.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1); c.width = Math.round(r.width * dpr); c.height = Math.round(r.height * dpr); }
   window.addEventListener('resize', function () { sizeClub(); sizeLanes(); });
   var dbHist = [];
@@ -679,8 +679,9 @@
     init: function (shell) { S = shell; },
     topBar: topBar, freeTop: freeTop, aid: aid,
     screens: { lessons: drawTutorials, drills: drawDrills, ghost: drawGhostPick, beatmatch: drawBeatmatchPick, set: drawSetPick, daily: drawDaily, stats: drawStats, recordings: drawRecordings,
-      play: function () { if (!sess) { location.hash = 'menu'; } } },
+      play: function () { if (!sess && !(window.BoothAcademy && BoothAcademy.active())) { location.hash = 'menu'; } } },
     leave: function (next) { if (next !== 'play' && sess) stopSession(); },
-    session: function () { return sess; }, samples: function () { return samples; }, TECH: TECH, dailySpec: dailySpec
+    session: function () { return sess; }, samples: function () { return samples; }, TECH: TECH, dailySpec: dailySpec,
+    stop: function () { if (sess) stopSession(); }, topBarHtml: topBar, sizeClub: function () { sizeClub(); }
   };
 })();
