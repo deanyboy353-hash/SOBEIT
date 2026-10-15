@@ -86,6 +86,17 @@ function addCash_(who, what, amount, kind) {
   return amount;
 }
 
+/** Where the cash came from: £10 per XP earned (and the one-off starting payout), business income, and what was spent. */
+function cashBreakdown_(who) {
+  var b = { fromXp: 0, start: 0, income: 0, spent: 0, sold: 0 };
+  rowsBetween_('cash', '0000', '9999').forEach(function (r) {
+    if (r['Who'] !== who) return;
+    var a = Number(r['Amount']) || 0, k = String(r['Kind']);
+    if (k === 'earned') b.fromXp += a; else if (k === 'start') b.start += a; else if (k === 'income') b.income += a; else if (k === 'sell') b.sold += a; else if (a < 0) b.spent -= a; else b.fromXp += a;
+  });
+  b.total = b.fromXp + b.start + b.income + b.sold - b.spent; b.perXp = CASH_PER_XP;
+  return b;
+}
 function cashOf_(who) {
   return rowsBetween_('cash', '0000', '9999').reduce(function (s, r) { return r['Who'] === who ? s + (Number(r['Amount']) || 0) : s; }, 0);
 }
@@ -117,7 +128,7 @@ function empireState_(who) {
   var otherOwned = other.owned.map(function (o) { return ownedValue_(o); });
   var name = function (id) { var it = empireItem_(id); return it ? it.name : ''; };
   return {
-    cash: cashOf_(who), owned: owned, income: sum(owned, 'income'), worth: sum(owned, 'worth'),
+    cash: cashOf_(who), breakdown: cashBreakdown_(who), owned: owned, income: sum(owned, 'income'), worth: sum(owned, 'worth'),
     ride: e.ride, rideName: name(e.ride), home: e.home, homeName: name(e.home),
     other: { worth: otherOwned.reduce(function (s, v) { return s + v.worth; }, 0), count: other.owned.length, rideName: name(other.ride), homeName: name(other.home) }
   };

@@ -559,7 +559,7 @@ nav.tabs button { max-width: 92px; font-size: 11px; }
 .w-together { border-color: var(--amber); } .w-together em { color: var(--amber); }
 .ppl.w-together { background: var(--amber-soft); color: var(--amber); }
 .ppl.w-anyone { background: var(--raised); }
-.item.tog .check { border-color: var(--amber); }
+.tag.tog { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 650; vertical-align: 2px; color: var(--lilac); background: var(--lilac-soft); }
 .nx { padding: 8px 0; }
 .nx .bar { margin-top: 6px; }
 
@@ -870,7 +870,9 @@ body.dress-open { overflow: hidden; }
 .hedit { border: 2px dashed var(--lilac-mid); border-radius: 22px; padding: 8px 8px 0; margin-bottom: 12px; }
 .hedit-bar { display: flex; align-items: center; gap: 6px; padding: 2px 4px 8px; }
 .hedit-body { opacity: .9; }
-.hedit-top { position: sticky; top: calc(6px + env(safe-area-inset-top)); z-index: 4; }
+.hedit-top { position: fixed; left: 12px; right: 12px; bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 7; margin: 0; max-width: 536px; margin-inline: auto; box-shadow: 0 10px 30px rgba(0, 0, 0, .35); }
+@media (min-width: 960px) { .hedit-top { bottom: 16px; left: 236px; } }
+body.homeedit .fab { display: none; }
 .rstep { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
 .rstep input { flex: 1; min-width: 0; }
 .rstep .iconbtn { width: 36px; height: 36px; flex: none; }
@@ -1062,14 +1064,20 @@ body { isolation: isolate; }
 :root.calm :is(.pet .pet-b, .pet-z text, .flame.lit, .burst, .burst *) { animation: none !important; }
 @media (prefers-reduced-motion: reduce) { :is(.pet .pet-b, .pet-z text, .flame.lit, .burst, .burst *) { animation: none !important; } }
 
-/* thumb-reach action button (phones only) */
-.fab { position: fixed; right: 14px; bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 7; display: inline-flex; align-items: center; gap: 8px; padding: 0 18px; height: 52px; border: 0; border-radius: 26px;
-  font: inherit; font-weight: 650; color: #12091f; background: linear-gradient(135deg, var(--ring-a, #ff7cc2), var(--ring-b, #a98bff)); box-shadow: 0 8px 24px rgba(0, 0, 0, .28), 0 0 22px color-mix(in srgb, var(--lilac) 35%, transparent); }
+/* the screen's main action: docked to the top of the tab bar (part of the frame, never floating over content) */
+.fab { position: fixed; left: 0; right: 0; bottom: var(--navh, 64px); z-index: 5; display: flex; align-items: center; justify-content: center; gap: 8px; height: 46px; padding: 0 16px;
+  border: 0; border-top: 1px solid var(--line); border-radius: 0; font: inherit; font-size: 15px; font-weight: 650; color: var(--lilac);
+  background: color-mix(in srgb, var(--surface) 94%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); transition: transform .22s ease, opacity .22s ease; }
 .fab .i { stroke: currentColor; }
+.fab:active { background: var(--lilac-soft); }
 .fab[hidden] { display: none; }
+.fab.away { transform: translateY(100%); opacity: 0; pointer-events: none; }
 body.sheetopen .fab, body.dress-open .fab { display: none; }
-@media (max-width: 959px) { main { padding-bottom: calc(150px + env(safe-area-inset-bottom)); } }
 @media (min-width: 960px) { .fab { display: none; } }
+
+/* the action button: an icon while you scroll, out of the way while you type, never over the last card */
+body:has(input:focus, textarea:focus, select:focus) .fab, body.wizopen .fab, body:has(#bgfx ~ .burst) .fab { opacity: 0; pointer-events: none; transform: translateY(12px); }
+@media (max-width: 959px) { main { padding-bottom: calc(130px + env(safe-area-inset-bottom)); } }
 
 </style>
 </head>
@@ -3686,7 +3694,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     var meta = q.doneToday ? ['Done' + (q.doneBy ? ' by ' + (q.doneBy === S.who ? 'you' : names().other) : '')] : [q.minutes + ' min', q.xp + ' XP'];
     if (!q.doneToday && q.overdue > 0) meta.push(q.overdue <= 6 ? 'carried over from ' + new Date(now() - q.overdue * 864e5).toLocaleDateString('en-GB', { weekday: 'short' }) : 'been a little while');   // no guilt, just a note
     var theirs = q.who !== 'anyone' && q.who !== 'together' && q.who !== S.who;
-    if (q.who === 'together' && !q.doneToday) meta.push('2× XP together');
+    var togTag = q.who === 'together' && !q.doneToday && !S.solo ? ' <span class="tag tog">Together · 2× XP</span>' : '';
     if (theirs && !q.doneToday) meta.unshift(names().other + '\'s, cover for bonus XP');
     var claim = '';
     if (!q.doneToday && opts.claim) {
@@ -3695,7 +3703,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
       else claim = '<button class="iconbtn" type="button" data-claim="' + esc(q.name) + '" aria-label="Claim">' + icon('flag', 's') + '</button>';
     }
     return '<div class="item' + (q.doneToday ? ' done' : '') + (q.who === 'together' ? ' tog' : '') + '"><button class="check" type="button" ' + (q.who === 'together' ? 'data-qtog' : 'data-qdone') + '="' + esc(q.name) + '"' + (q.doneToday ? ' disabled' : '') + ' aria-label="Mark done">' + icon('check') + '</button>' +
-      '<div class="grow"><div class="t">' + esc(q.name) + '</div><div class="m">' + esc(meta.join(' · ')) + '</div></div>' +
+      '<div class="grow"><div class="t">' + esc(q.name) + togTag + '</div><div class="m">' + esc(meta.join(' · ')) + '</div></div>' +
       (!q.doneToday ? '<div class="row" style="gap:6px">' + claim + '<button class="iconbtn soft" type="button" data-qstart="' + esc(q.name) + '" aria-label="Start a timer">' + icon('play', 's') + '</button></div>' : '') + '</div>';
   }
 
@@ -3743,12 +3751,19 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     var t = NudgeFmt.xpGoal(xp, goal);
     return '<div class="num" style="font-size:' + (t.hit ? 18 : 24) + 'px;font-weight:700">' + esc(t.big) + '</div><div class="tiny muted">' + esc(t.small) + '</div>';
   }
+  /** Under the date: what today needs, in plain words. */
+  function dayStatus() {
+    if (S.game && S.game.streak && S.game.streak.todayDone) return ' · <span class="good">Today counts</span>';
+    var q = S.quests || {}, must = (q.board || []).filter(function (x) { return x.must && !x.doneToday; }).length;
+    if (q.planned && must) return ' · ' + must + ' job' + (must === 1 ? '' : 's') + ' to win the day';
+    return '';
+  }
   function renderHome() {
     var g = S.game, n = names(), h = '', parts = {};
     function seg(id) { parts[id] = h; h = ''; }
     var d = new Date(now());
     h += '<div class="top"><div><h1>' + greeting() + (n.me ? ', ' + esc(n.me) : '') + '</h1><div class="sub">' +
-      d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) + (S.fun && S.fun.era ? ' · ' + esc(S.fun.era) : '') + '</div></div>' + meButton() + '</div>';
+      d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) + dayStatus() + '</div></div>' + meButton() + '</div>';
     if (MODE === 'gas' && S.fun && S.fun.appBase) h += '<a class="getapp" target="_top" href="' + esc(S.fun.appBase + '?key=' + KEY) + '">' + icon('download') + '<span class="grow"><b>Get the app</b><br><span class="small muted">Notifications, live games, faster</span></span>' + icon('chevron', 's') + '</a>';
     if (MODE === 'web' && S.push && S.push.configured && 'Notification' in window && 'serviceWorker' in navigator && (Notification.permission !== 'granted' || !S.push.devices || (load('pushErr') && !load('pushTok')))) {
       h += '<section class="card pushwarn"><div class="row" style="gap:10px;align-items:flex-start">' + icon('bell') + '<div class="grow"><b>Notifications are off on this ' + (/Android|iPhone|iPad/.test(navigator.userAgent) ? 'phone' : 'device') + '</b><div class="small">' +
@@ -5112,8 +5127,8 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
   document.addEventListener('click', function (ev) {
     var t = ev.target.closest('button'); if (!t || !S) return;
     var d = t.dataset;
-    if (t.id === 'homeEdit') { homeEditing = true; renderHome(); window.scrollTo(0, 0); return; }
-    if (t.id === 'homeDone' || t.id === 'homeDone2') { homeEditing = false; renderHome(); toast('Home screen saved'); return; }
+    if (t.id === 'homeEdit') { homeEditing = true; document.body.classList.add('homeedit'); renderHome(); window.scrollTo(0, 0); return; }
+    if (t.id === 'homeDone' || t.id === 'homeDone2') { homeEditing = false; document.body.classList.remove('homeedit'); renderHome(); toast('Home screen saved'); return; }
     if (d.redit !== undefined) return routineEditor(d.redit);
     if (d.hm) {
       var list = homeOrder(), shown = list.filter(function (x) { return !x.hide; }), i = shown.map(function (x) { return x.id; }).indexOf(d.hm), j = i + Number(d.dir);
@@ -5383,7 +5398,12 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     h += '<div class="top"><div class="row"><button class="iconbtn" type="button" data-goto="you" aria-label="Back">' + icon('back') + '</button><h1>Empire</h1></div></div>';
     h += '<section class="card bank"><div class="eyebrow">Cash</div><div class="num big">' + money(e.cash) + '</div>' +
       '<div class="small">' + (e.income ? '+' + money(e.income) + ' a day from your businesses · ' : '') + 'worth ' + money(e.worth) + '</div>' +
-      '<div class="tiny" style="margin-top:8px;opacity:.85">Every XP you earn pays $10. Businesses pay every morning.</div></section>';
+      '<div class="tiny" style="margin-top:8px;opacity:.85">Every XP you earn pays ' + money(10) + '. Businesses pay every morning.</div></section>';
+    var bd = e.breakdown;
+    if (bd) h += '<section class="card"><div class="head"><h3>How your cash adds up</h3></div>' + [
+      ['From XP (' + money(bd.perXp) + ' each)', bd.fromXp], ['Starting payout for XP before cash existed', bd.start], ['Business income', bd.income], ['Sold', bd.sold], ['Spent', -bd.spent]
+    ].filter(function (r) { return r[1]; }).map(function (r) { return '<div class="stat"><span>' + esc(r[0]) + '</span><b class="num">' + (r[1] < 0 ? '−' + money(-r[1]) : money(r[1])) + '</b></div>'; }).join('') +
+      '<div class="stat" style="border-top:1px solid var(--line);margin-top:6px;padding-top:8px"><span><b>Cash now</b></span><b class="num">' + money(bd.total) + '</b></div></section>';
     h += '<div class="small muted" style="margin:-4px 0 12px">' + esc(n.other) + ': worth ' + money(e.other.worth) + (e.other.rideName ? ' · rides a ' + esc(e.other.rideName) : '') + (e.other.homeName ? ' · lives at ' + esc(e.other.homeName) : '') + '</div>';
     h += '<div class="seg">' + [['owned', 'Yours'], ['property', 'Property'], ['vehicles', 'Vehicles']].map(function (o) { return '<button type="button" data-empview="' + o[0] + '" aria-pressed="' + (empView === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
     if (empView === 'owned') {
@@ -5834,14 +5854,25 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     train: ['check', 'Next set', function () { var b = [].slice.call(document.querySelectorAll('#tab-train button.check:not(.on), #tab-train [data-set]:not(.done)')).filter(function (x) { return x.offsetParent; })[0]; if (b) { b.scrollIntoView({ block: 'center' }); b.focus(); } return !!b; }],
     work: ['plus', 'Add a block', function () { var w = el('wkText'); if (w) { w.scrollIntoView({ block: 'center' }); w.focus(); } return !!w; }]
   };
+  // slides away while you scroll down, back when you scroll up or reach the end
+  var lastY = 0;
+  window.addEventListener('scroll', function () {
+    var f = el('fab'); if (!f) return;
+    var y = window.scrollY, end = y + innerHeight >= document.documentElement.scrollHeight - 4;
+    if (y > lastY + 4 && y > 60 && !end) f.classList.add('away'); else if (y < lastY - 4 || end || y <= 60) f.classList.remove('away');
+    lastY = y;
+  }, { passive: true });
+  function navHeight() { var n = el('nav'); if (n) document.documentElement.style.setProperty('--navh', n.getBoundingClientRect().height + 'px'); }
+  window.addEventListener('resize', navHeight);
   function updateFab() {
     var f = el('fab'), cfg = FAB[current];
     if (!f) { f = document.createElement('button'); f.id = 'fab'; f.type = 'button'; f.className = 'fab'; document.body.appendChild(f); f.addEventListener('click', function () { var c = FAB[current]; buzz(10); if (c && !c[2]()) toast('Nothing to do here right now'); }); }
     if (!cfg || !S || (current === 'food' && !ME)) { f.hidden = true; return; }
-    f.hidden = false; f.innerHTML = icon(cfg[0], 's') + '<span>' + cfg[1] + '</span>'; f.setAttribute('aria-label', cfg[1]);
+    f.hidden = false; f.classList.remove('away'); f.innerHTML = icon(cfg[0], 's') + '<span>' + cfg[1] + '</span>'; f.setAttribute('aria-label', cfg[1]); navHeight();
   }
   function showTab(name) {
     if (!ME && (name === 'train' || name === 'food')) name = 'home';
+    if (name !== 'home' && homeEditing) { homeEditing = false; document.body.classList.remove('homeedit'); renderHome(); }
     current = name;
     document.querySelectorAll('section.tab').forEach(function (s) { s.hidden = s.id !== 'tab-' + name; });
     el('nav').querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-current', b.dataset.tab === name ? 'page' : 'false'); });
