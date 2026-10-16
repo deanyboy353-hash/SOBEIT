@@ -1,7 +1,7 @@
 /**
  * AI.gs: Claude helping out around the app.
  *
- *   Morning brief   a few calm sentences each morning: what matters today and a first move
+ *   Today brief     a few short sentences, four times a day at most (and once when the day is won)
  *   Ask             type anything ("I'm overwhelmed", "add milk", "plan my evening");
  *                   Claude answers and can add shopping, chores, to-dos and parked
  *                   notes, or suggest a job to start
@@ -15,7 +15,7 @@
 var BRIEF_SCHEMA = {
   type: 'object',
   properties: {
-    brief: { type: 'string', description: '2 or 3 short, warm sentences. No emojis, no lists.' },
+    brief: { type: 'string', description: '2 or 3 short sentences. Dry, direct, British. No emojis, no lists, no exclamation marks.' },
     first: { type: 'string', description: 'One small first action, under 8 words' }
   },
   required: ['brief', 'first'],
@@ -33,7 +33,9 @@ function dayContext_(who) {
   var g = gameState_(who);
   var w = g.win || {};
   var lines = ['Date: ' + todayYmd_() + ' (' + DAY_NAMES[dayOfWeek_(todayYmd_())] + ')',
-    w.won ? 'WIN THE DAY: ALREADY WON today (' + w.done + ' of ' + w.need + '). Do not suggest more chores or say anything still needs doing to win; congratulate them and suggest rest, fun or the non-chore things still ahead.' : 'Win the day: ' + (w.done || 0) + ' of ' + (w.need || 0) + ' so far.',
+    g.lazy && g.lazy.today ? 'LAZY DAY: they chose a lazy day. Nothing to win or lose today and the streak is safe. Keep it relaxed: no chores, no targets, one gentle optional suggestion at most (a glass of water, some fresh air).' :
+    w.won ? 'WIN THE DAY: ALREADY WON today (' + w.done + ' of ' + w.need + '). Do not suggest more chores or say anything still needs doing to win; say so briefly (no gushing) and suggest rest, fun or the non-chore things still ahead.' : 'Win the day: ' + (w.done || 0) + ' of ' + (w.need || 0) + ' so far.',
+    (g.lazy && g.lazy.missed && !g.lazy.missed.back ? 'They missed their minimum yesterday (' + g.lazy.missed.xp + ' XP went). Winning today gets it back. Mention it once, plainly, no guilt.\n' : '') +
     'Streak: ' + g.streak.count + ' days. XP today ' + g.xpToday + ' of ' + g.goal + '.',
     'Today\'s work plan: ' + (blockRows_(who, todayYmd_()).map(function (b) { return '[' + b.id + '] ' + clockMin_(b.start) + '-' + clockMin_(b.start + b.mins) + ' ' + b.task + ' (' + b.status + ')'; }).join('; ') || 'empty'),
     'Today\'s chores: ' + (q.board.map(function (x) { return x.name + (x.must ? ' [must-do]' : q.planned ? ' [bonus]' : '') + (x.doneToday ? ' (done)' : '') + ' ~' + x.minutes + 'min'; }).join('; ') || 'none') +
@@ -60,8 +62,10 @@ function dayContext_(who) {
   return lines.join('\n');
 }
 
-var AI_VOICE = 'You are a calm, kind helper inside an app for someone with ADHD (and their partner) in Glenboig, Scotland. ' +
-  'Be brief, concrete and encouraging, never preachy or guilt-tripping. Plain British English. No emojis. ';
+var AI_VOICE = 'You are the voice of Nudge, an app for someone with ADHD (and their partner) in Glenboig, Scotland. ' +
+  'Voice: direct, British and quietly funny; dry humour, never corny. Short sentences. Start instructions with the action ("Put a wash on", not "Maybe you could..."). ' +
+  'UK spelling and words, £, 24-hour or "3pm" times, dates like "Friday 16 October". Firm, never needy, never guilt-tripping, never preachy. ' +
+  'Exclamation marks only for a real win, and rarely. No emojis. Never say: awesome, amazing, crush it, you got this, let\'s go, yay, super, rockstar, level up. ';
 
 /** The part of the day, the same way the app's header greets you: night (before 5am), morning, afternoon, evening (from 6pm). */
 function dayPart(min) { return min < 300 ? 'night' : min < 720 ? 'morning' : min < 1080 ? 'afternoon' : 'evening'; }
@@ -71,7 +75,7 @@ function briefSlot(min) { return min < 720 ? 'morning' : min < 900 ? 'midday' : 
 function makeBrief_(who) {
   var n = names_()[who], part = dayPart(minutesNow_()), slot = briefSlot(minutesNow_());
   var res = callClaudeJson_(AI_VOICE + 'Write this person\'s brief for the rest of today. It is ' + part + ' now (' + now_('HH:mm') + '): only talk about what is still ahead today' +
-    (part === 'night' ? ' and gently suggest bed' : '') + '. Do not greet them or say good morning/afternoon: the app already greets them. Use the facts below exactly (a training day is a training day; only say rest day if it says rest day). Kept light, plus the easiest good next move.',
+    (part === 'night' ? ' and gently suggest bed' : '') + '. Do not greet them or say good morning/afternoon: the app already greets them. Use the facts below exactly (a training day is a training day; only say rest day if it says rest day). Keep it short, plus the easiest good next move.',
     'Name: ' + n + '\nTime now: ' + now_('HH:mm') + ' (' + part + ')\n' + dayContext_(who), BRIEF_SCHEMA, claudeModel_(), 4000);
   var b = { date: todayYmd_(), part: slot, at: now_('HH:mm'), ts: new Date().getTime(), sig: briefSig_(who), won: !!(gameState_(who).win || {}).won, brief: String(res.brief || ''), first: String(res.first || '') };
   setProp_('BRIEF_' + who, JSON.stringify(b));
@@ -93,7 +97,7 @@ function clockMin_(m) { m = ((Math.round(m) % 1440) + 1440) % 1440; return ('0' 
 var ASK_SCHEMA = {
   type: 'object',
   properties: {
-    reply: { type: 'string', description: 'Your answer to show in the app: short, warm, practical. No emojis.' },
+    reply: { type: 'string', description: 'Your answer to show in the app: short, direct, practical. No emojis.' },
     actions: {
       type: 'array',
       description: 'Things to do in the app because the person asked or clearly wants them. Empty if none.',
@@ -210,7 +214,7 @@ var MEAL_SCHEMA = {
       type: 'array',
       items: {
         type: 'object',
-        properties: { name: { type: 'string' }, kcal: { type: 'integer' }, protein_g: { type: 'integer' }, why: { type: 'string', description: 'Under 12 words' } },
+        properties: { name: { type: 'string' }, kcal: { type: 'integer' }, protein_g: { type: 'integer' }, why: { type: 'string', description: 'Under 12 words, plain and dry' } },
         required: ['name', 'kcal', 'protein_g', 'why'],
         additionalProperties: false
       }
@@ -244,7 +248,7 @@ function logIdea(key, idea) {
 function weeklyReviewAI_(summaryText) {
   if (!claudeKey_()) return '';
   try {
-    var res = callClaudeJson_(AI_VOICE + 'Write a short weekly review (3-4 sentences) for this couple from their numbers: notice real wins, be honest but kind about what slipped, and end with one focus for next week.',
+    var res = callClaudeJson_(AI_VOICE + 'Write a short weekly review (3 sentences) for this couple from their numbers: name the real wins plainly, say what slipped without guilt, and end with one focus for next week, starting with the action.',
       summaryText, { type: 'object', properties: { review: { type: 'string' } }, required: ['review'], additionalProperties: false }, claudeModel_(), 6000);
     return String(res.review || '');
   } catch (e) {

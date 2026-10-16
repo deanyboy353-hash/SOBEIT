@@ -12,13 +12,11 @@
 var DEADLINE_XP = { onTime: 15, late: 5, extend: -3, park: -10 };
 
 var NAG_LINES = {
-  before: ['{task}: due at {due}. {left} left.', 'Heads up: {task} by {due}. You\'ve got this.', '{left} until {task} is due. Start now and it\'s easy.'],
+  before: ['{task}: due at {due}. {left} left.', 'Coming up: {task} by {due}.', '{left} until {task} is due. Start now and it\'s easy.'],
   due: ['{task} is due now.', 'Time\'s up: {task}. Done, or park it?', 'It\'s {due}. {task}?'],
-  late: ['{task} was due at {due}. {late} late.', 'Still waiting on {task}. It won\'t do itself.', '{task}. {late} overdue. Tap Done or park it.',
-    'These reminders won\'t stop until {task} is done.', '{char} is looking at you. {task}, {late} late.', 'You could finish {task} in less time than you\'ve spent ignoring this.',
-    '{task}. Five minutes. Go.', 'Still here. Still {task}.',
-    '{other} finished their stuff ages ago. Just saying. {task}?', 'Future you is going to be so annoyed about {task}.',
-    'This is the {nth} reminder about {task}.', 'Imagine how good ticking off {task} will feel. Now imagine doing it.']
+  late: ['{task} was due at {due}. {late} late.', 'Still open: {task}.', '{task}. {late} overdue. Tap Done or park it.',
+    'This keeps going until {task} is done or parked.', '{task}, {late} late. Five minutes gets it moving.', '{task}. Five minutes. Start.', 'Still here. Still {task}.',
+    '{nth} reminder: {task}.', 'Done with {task}? Tap Done. Not today? Park it.']
 };
 
 function deadlineRows_(who) {

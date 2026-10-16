@@ -333,7 +333,7 @@ function healthInsight(key, ymd) {
     'Steps ' + h.steps + ' of ' + h.goals.steps + '. 7-day sleep debt ' + h.week.debt + ' min, bedtime spread ' + (h.week.spread === null ? '?' : h.week.spread + ' min') + '.',
     'Last 14 days (date, sleep min, score, steps, resting HR, HRV): ' + h.trend.filter(function (t) { return t.sleep || t.steps; }).map(function (t) { return [t.date.slice(5), t.sleep, t.score, t.steps, t.rhr, t.hrv].join(' '); }).join('; ')
   ].join('\n');
-  var res = callClaudeJson_(AI_VOICE + 'You read sleep and fitness data like a friendly coach. Compare with their own baseline, never diagnose, and keep it encouraging. If something looks off for days, suggest seeing a GP gently.',
+  var res = callClaudeJson_(AI_VOICE + 'Read their sleep and fitness data like a sensible coach. Compare with their own baseline, never diagnose, keep it short and plain. If something looks off for days, suggest seeing a GP, calmly.',
     text, HEALTH_AI_SCHEMA, claudeModel_(), 6000);
   var out = { date: h.date, headline: String(res.headline || ''), insight: String(res.insight || ''), tip: String(res.tip || '') };
   setProp_('HEALTH_AI_' + who, JSON.stringify(out));

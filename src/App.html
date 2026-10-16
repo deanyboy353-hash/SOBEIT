@@ -3236,7 +3236,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     unlock().then(function (ok) {
       if (!ok) return A.toast('Chat stays locked.', true);
       var box = document.createElement('div'); box.id = 'chat'; box.className = 'chat'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'Chat with ' + A.names().other);
-      box.innerHTML = '<header class="chat-head" id="chatHead"></header><div class="chat-conn" id="chatConn" hidden></div><div class="chat-stats" id="chatStats"></div><div class="chat-list" id="chatList" aria-live="polite"></div><div class="chat-reply" id="chatReply" hidden></div><div class="chat-specials"><button type="button" class="btn soft sm" data-cs="wink">\uD83D\uDE09 Wink</button><button type="button" class="btn soft sm" data-cs="tonight">Tonight?</button><button type="button" class="btn soft sm" data-cs="dice">\uD83C\uDFB2 Dice</button></div><form class="chat-comp" id="chatComp" autocomplete="off"></form>';
+      box.innerHTML = '<header class="chat-head" id="chatHead"></header><div class="chat-conn" id="chatConn" hidden></div><div class="chat-stats" id="chatStats"></div><div class="chat-list" id="chatList" aria-live="polite"></div><div class="chat-reply" id="chatReply" hidden></div><div class="chat-specials"><button type="button" class="btn soft sm" data-cs="wink">' + A.icon('heart', 's') + 'Wink</button><button type="button" class="btn soft sm" data-cs="tonight">Tonight?</button><button type="button" class="btn soft sm" data-cs="dice">' + A.icon('shuffle', 's') + 'Dice</button></div><form class="chat-comp" id="chatComp" autocomplete="off"></form>';
       document.body.appendChild(box); document.body.classList.add('chat-open'); open = true;
       head(); drawComposer(); draw(); drawWaiting(); status(); scrollEnd(); receipts(); fitKeyboard();
       if (!started) init(A).then(function () { draw(); });
@@ -3876,7 +3876,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
   var box = window.NudgeOutbox ? NudgeOutbox.create({
     key: 'outbox-' + KEY.slice(0, 6),
     send: function (items) { var t0 = Date.now(); return rpc('batch', [items]).then(function (r) { perfNote('batch×' + items.length, Date.now() - t0); return r; }); },
-    onReject: function (it, err) { toast(err || 'That didn\'t save.', true); },
+    onReject: function (it, err) { toast(err || 'That didn\'t save. Try again.', true); },
     onState: function (st, more) {
       if (!st || !st.game) return;
       if (more || inflight || (document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))) { pendingState = st; return; }
@@ -3890,7 +3890,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
   function drawSync() {
     var p = el('syncPill');
     if (!p) { p = document.createElement('div'); p.id = 'syncPill'; p.className = 'syncpill'; p.setAttribute('role', 'status'); document.body.appendChild(p); }
-    var s = syncState, txt = s.offline ? 'Offline: saved on this phone, will sync' : s.pending ? 'Saving…' : '';
+    var s = syncState, txt = s.offline ? 'Offline. Saved on this phone; it\'ll sync.' : s.pending && s.failing ? 'That didn\'t save. Trying again.' : s.pending ? 'Saving…' : '';
     if (s.pending && !syncShownAt) syncShownAt = Date.now();
     if (!s.pending) syncShownAt = 0;
     p.textContent = txt;
@@ -4055,7 +4055,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     if (b.team && a.team && !a.team.todayDone && b.team.todayDone) setTimeout(function () { highFive(S.solo ? 'Day won' : 'You both won the day'); }, b.level.level > a.level.level ? 2600 : 900);
     if (b.level.level > a.level.level) {
       confetti(true); chime([660, 880, 1100, 1320]); buzz([60, 40, 60, 40, 120]); levelBurst(b.level.level);
-      openSheet('<div class="center" style="padding:10px 0 4px">' + icon('star', 'l') + '<h2 style="margin:8px 0 4px">Level ' + b.level.level + '</h2><p class="muted">' + fmt(b.total) + ' XP so far. Nicely done.</p><button class="btn primary wide" type="button" data-close>Continue</button></div>');
+      openSheet('<div class="center" style="padding:10px 0 4px">' + icon('star', 'l') + '<h2 style="margin:8px 0 4px">Level ' + b.level.level + '</h2><p class="muted">' + fmt(b.total) + ' XP so far. Nice one.</p><button class="btn primary wide" type="button" data-close>Continue</button></div>');
     } else if (wonB && !wonA) {
       confetti(true); chime([660, 880, 1100]); buzz([50, 40, 120]);
       minBurst(b.streak.count);
@@ -4330,7 +4330,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     // brief
     maybeBrief();
     if (S.brief && S.brief.brief && S.brief.part !== briefSlotNow()) S.brief = null;    // written for an earlier slot: a fresh one is on its way
-    if (S.brief && S.brief.brief) h += '<section class="card tint"><div class="eyebrow" style="color:var(--lilac);display:flex;gap:6px;align-items:center">' + icon('sparkles', 's') + 'Today' + (S.brief.ts || S.brief.at ? '<span class="muted" style="font-weight:500"> · updated <span data-briefago>' + esc(S.brief.ts ? NudgeFmt.ago(S.brief.ts, now()) : 'at ' + S.brief.at) + '</span></span>' : '') + '</div><p class="brief' + (NudgeFmt.briefBehind(S.brief, S) ? ' behind' : '') + '" style="margin:8px 0 10px">' + (NudgeFmt.briefBehind(S.brief, S) && S.game.win && S.game.win.won ? 'Day won. Nice work. Updating your brief…' : esc(S.brief.brief)) + '</p>' +
+    if (S.brief && S.brief.brief) h += '<section class="card tint"><div class="eyebrow" style="color:var(--lilac);display:flex;gap:6px;align-items:center">' + icon('sparkles', 's') + 'Today' + (S.brief.ts || S.brief.at ? '<span class="muted" style="font-weight:500"> · updated <span data-briefago>' + esc(S.brief.ts ? NudgeFmt.ago(S.brief.ts, now()) : 'at ' + S.brief.at) + '</span></span>' : '') + '</div><p class="brief' + (NudgeFmt.briefBehind(S.brief, S) ? ' behind' : '') + '" style="margin:8px 0 10px">' + (NudgeFmt.briefBehind(S.brief, S) && S.game.win && S.game.win.won ? 'Day won. Nice one. Updating your brief…' : esc(S.brief.brief)) + '</p>' +
       (S.brief.first && !NudgeFmt.briefBehind(S.brief, S) ? '<div class="row small"><span class="chip lilac">First move</span><span>' + esc(S.brief.first) + '</span></div>' : '') + '</section>';
 
     seg('brief');
@@ -4409,7 +4409,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
 
   function focusView(s) {
     var up = now() >= s.endsAt, cur = s.steps[s.step];
-    return (up ? '<div class="alert">Time\'s up for ' + esc(s.task) + '. ' + (s.taster ? 'You started, and that counts. Keep going?' : 'Done, or five more minutes?') + '</div>' : '') +
+    return (up ? '<div class="alert">Time\'s up for ' + esc(s.task) + '. ' + (s.taster ? 'You started. That counts. Five more minutes?' : 'Done, or five more minutes?') + '</div>' : '') +
       '<section class="card focus"><div class="eyebrow">' + (s.taster ? 'Just five minutes' : 'Only this') + '</div><h2 style="margin:6px 0 2px">' + esc(s.task) + '</h2>' + musicBar() +
       '<div class="ring">' + ring(Math.max(0, (s.endsAt - now()) / (s.endsAt - s.startedAt)), 210, 7) + '<div class="t"><div><div class="time" id="left">' + clock(Math.abs(s.endsAt - now())) + '</div><div class="small muted">' + (up ? 'over' : 'left') + '</div></div></div></div>' +
       (s.steps.length ? (cur ? '<div class="now"><div class="eyebrow">Now</div><div style="font-size:19px;font-weight:650;margin:4px 0 10px">' + esc(cur) + '</div><button class="btn primary wide" type="button" data-step="' + s.step + '">' + icon('check') + 'Step done</button></div>' : '<div class="now"><b>All steps done.</b></div>') +
@@ -4452,7 +4452,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
       h += '<section class="card"><div class="head"><h3>Bonus</h3><span class="muted small">only if you\'ve got energy' + (q.energy ? ' (yours peaks in the ' + esc(q.energy) + ')' : '') + '</span></div>' + (bonusL.length ? bonusL.map(function (x) { return questRow(x, { claim: true }); }).join('') : '<p class="empty">No bonus jobs today.</p>') + '</section>';
     } else
     h += '<section class="card spot"><div class="head"><h3>Today</h3><span class="muted small num">' + q.board.filter(function (x) { return x.doneToday; }).length + '/' + q.board.length + '</span></div>' +
-      (q.board.length ? q.board.map(function (x) { return questRow(x, { claim: true }); }).join('') : '<p class="empty">Nothing due today.</p>') + '</section>';
+      (q.board.length ? q.board.map(function (x) { return questRow(x, { claim: true }); }).join('') : '<p class="empty">Nothing due today. Enjoy it.</p>') + '</section>';
     if (q.more.length) h += '<section class="card"><details><summary class="small muted" style="cursor:pointer">' + (q.planned ? 'Other jobs (' + q.more.length + '): ' + esc(names().other) + '\'s, or coming up soon. Doing one counts.' : 'Also due (' + q.more.length + '), only if you feel like it') + '</summary><div style="margin-top:8px">' + q.more.map(function (x) { return questRow(x, { claim: true }); }).join('') + '</div></details></section>';
     if (q.doneExtra.length) h += '<section class="card"><div class="head"><h3>Bonus today</h3></div>' + q.doneExtra.map(function (x) { return questRow(x); }).join('') + '</section>';
     if (q.upcoming.length) h += '<section class="card"><div class="head"><h3>Coming up</h3></div>' + q.upcoming.slice(0, 8).map(function (x) {
@@ -4757,7 +4757,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
   function armRest() {
     if (!rest) return later('clearTimer', ['rest']);
     var secs = Math.round((rest.until - now()) / 1000);
-    if (secs >= 5) later('setTimer', ['rest', secs, 'Rest over', 'Next set: you\'ve got this.', 'train']);
+    if (secs >= 5) later('setTimer', ['rest', secs, 'Rest over', 'Next set.', 'train']);
   }
   function startRest(secs) { if (!(secs > 0)) return; rest = { until: now() + secs * 1000 }; save('rest', rest); drawRest(); armRest(); }
   function endRest() { rest = null; save('rest', null); drawRest(); }
@@ -4777,7 +4777,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
       '<div class="rotmeta"><span class="tiny muted">Next is the one you\'ve gone longest without. Logging any session moves it on.</span>' +
       (t.sessions.filter(function (s) { return t.rotation.indexOf(s) === -1; }).length ? '<label class="tiny rotpick">Other session <select data-tselect="1" aria-label="Pick a different session"><option value="">Choose…</option>' + t.sessions.filter(function (s) { return t.rotation.indexOf(s) === -1; }).map(function (s) { return '<option value="' + esc(s) + '"' + (s === tsel ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('') + '</select></label>' : '') + '</div>' + '</section>';
     h += '<div id="restSlot"></div>';
-    if (t.doneToday) h += '<div class="note">Today\'s workout is logged. Great work. You can log another below.</div>';
+    if (t.doneToday) h += '<div class="note">Today\'s workout is logged. Log another below if you did one.</div>';
     else {
       if (tsel !== t.today) h += '<div class="swap"><div class="grow"><b>Doing ' + esc(tsel) + ' today?</b><div class="tiny muted">' + (t.today ? 'Planned: ' + esc(t.today) : 'Today is a rest day') + '. Switching moves your calendar and gym task too.</div></div><button class="btn primary sm" type="button" data-setsession="' + esc(tsel) + '">Switch</button></div>';
       else if (t.changed) h += '<div class="swap"><div class="grow small">Changed from ' + (t.planned ? esc(t.planned) : 'a rest day') + '.</div><button class="btn line sm" type="button" data-setsession="' + esc(t.planned) + '" data-undo="1">Undo</button></div>';
@@ -4932,7 +4932,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
       '<p class="small muted" style="margin:8px 0 0">This month you\'ve done ' + Math.round(mo[me] / tot * 100) + '% of the shared XP.</p></section>';
     h += '<section class="card"><div class="head"><h3 class="row" style="gap:8px">' + icon('cart', 's') + 'Shopping</h3></div><form class="inline" id="shopForm" autocomplete="off"><input type="text" id="shopText" placeholder="Eggs, bin bags…" aria-label="Add to the list"><button class="btn primary" type="submit">Add</button></form>' +
       (ME && S.food && S.food.totals.protein < S.food.targets.proteinMin ? '<div class="chips" style="margin-top:10px">' + ['Greek yogurt', 'Chicken breast', 'Eggs', 'Tinned tuna', 'Cottage cheese'].map(function (x) { return '<button class="chip pink" type="button" data-addshop="' + x + '">' + icon('plus', 's') + x + '</button>'; }).join('') + '</div>' : '') +
-      '<div style="margin-top:6px">' + (S.shopping.length ? S.shopping.map(function (it) { return '<div class="item' + (it.got ? ' done' : '') + '"><button class="check' + (it.got ? ' on' : '') + '" type="button" data-shop="' + esc(it.id) + '" aria-label="Got it">' + icon('check') + '</button><div class="t grow" style="font-weight:500">' + esc(it.item) + '</div><button class="iconbtn sm" type="button" data-shopdel="' + esc(it.id) + '" aria-label="Remove ' + esc(it.item) + '">' + icon('x', 's') + '</button></div>'; }).join('') : '<p class="empty">The list is empty.</p>') + '</div></section>';
+      '<div style="margin-top:6px">' + (S.shopping.length ? S.shopping.map(function (it) { return '<div class="item' + (it.got ? ' done' : '') + '"><button class="check' + (it.got ? ' on' : '') + '" type="button" data-shop="' + esc(it.id) + '" aria-label="Got it">' + icon('check') + '</button><div class="t grow" style="font-weight:500">' + esc(it.item) + '</div><button class="iconbtn sm" type="button" data-shopdel="' + esc(it.id) + '" aria-label="Remove ' + esc(it.item) + '">' + icon('x', 's') + '</button></div>'; }).join('') : '<p class="empty">Nothing on the list. Add something above.</p>') + '</div></section>';
     h += laterCard();
     // settings
     if (window.NudgeSetup) h += NudgeSetup.settingsCard();
@@ -5090,7 +5090,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
       (f.era ? '<div class="era l3">Level ' + g.level.level + ' · ' + esc(f.era) + '</div>' : '') +
       '<div class="istats l4"><div><b class="num">' + g.streak.count + '</b><span>day streak</span></div><div><b class="num">' + g.team.count + '</b><span>together</span></div><div><b class="num">' + (g.xpToday >= g.goal ? g.xpToday : g.goal - g.xpToday) + '</b><span>' + (g.xpToday >= g.goal ? 'XP today' : 'XP to go') + '</span></div></div>' +
       (S.brief ? '<p class="l6 small">' + esc(S.brief.first ? 'First move: ' + S.brief.first : S.brief.brief) + '</p>' : '') +
-      '<button class="btn primary big wide l7" type="button" data-fun="introGo">Let\'s go</button></div></div>';
+      '<button class="btn primary big wide l7" type="button" data-fun="introGo">Start the day</button></div></div>';
     document.body.insertAdjacentHTML('beforeend', h);
     chime([523, 659, 784]);
   }
@@ -6939,7 +6939,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     if (rest) {
       var left = rest.until - now();
       if (el('restLeft')) el('restLeft').textContent = clock(left);
-      if (left <= 0) { endRest(); chime([880, 1175, 1568]); buzz([120, 60, 120]); toast('Rest over. Next set.'); if (document.hidden && swReg && swReg.showNotification) swReg.showNotification('Rest over', { body: 'Next set: you\'ve got this.', tag: 'timer-rest', renotify: true, vibrate: [200, 100, 200] }).catch(function () {}); }
+      if (left <= 0) { endRest(); chime([880, 1175, 1568]); buzz([120, 60, 120]); toast('Rest over. Next set.'); if (document.hidden && swReg && swReg.showNotification) swReg.showNotification('Rest over', { body: 'Next set.', tag: 'timer-rest', renotify: true, vibrate: [200, 100, 200] }).catch(function () {}); }
     }
     var tb = el('dotTrain'); if (tb) tb.textContent = rest ? clock(rest.until - now()) : '';
     document.querySelectorAll('[data-due]').forEach(function (x) { x.textContent = dueLabel(+x.getAttribute('data-due')); });

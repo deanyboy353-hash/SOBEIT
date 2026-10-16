@@ -20,7 +20,7 @@
 
   // ---------- track selection ----------
   function cam(c) { var m = /^(\d{1,2})([AB])$/.exec(c || ''); return m ? { n: +m[1], l: m[2] } : null; }
-  /** Key relation on the Camelot wheel: 'same', 'adjacent' (±1), 'relative' (A↔B same number), 'boost' (+2, an energy lift), 'clash' or 'unknown'. */
+  /** Key relation on the Camelot wheel: 'same', 'adjacent' (±1), 'relative' (A/B same number), 'boost' (+2, an energy lift), 'clash' or 'unknown'. */
   function keyRelation(a, b) {
     var x = cam(a), y = cam(b); if (!x || !y) return 'unknown';
     var up = (y.n - x.n + 12) % 12, down = (x.n - y.n + 12) % 12, d = Math.min(up, down);

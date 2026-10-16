@@ -54,25 +54,23 @@ function hhmm_(v) {
 // ---------- reminders (every 10 minutes) ----------
 
 var STREAK_LINES = [
-  'Your {n}-day streak ends at midnight. {x} XP saves it.',
-  'Five minutes now keeps your {n}-day streak alive.',
-  'Your streak is looking at you. {x} XP to go.'
+  'Your {n}-day streak ends at midnight. {x} XP keeps it.',
+  'Five minutes now keeps the {n}-day streak.',
+  'Streak: {n} days. {x} XP to go.'
 ];
 var PUSHY_LINES = [
   '{x} XP to go today. One chore does it.',
-  'Your {n}-day streak is not going to save itself.',
   'Still {x} XP short. Pick the smallest job.',
   'Quick one: {x} XP and the day counts.',
-  'The streak misses you. {x} XP.',
-  'Ten minutes. That is all it takes. {x} XP to go.',
-  '{other} has {ox} XP today. You have {mx}.',
-  'Your {n}-day streak trusted you.',
-  '{char} didn\'t get where they are by sitting on the sofa. {x} XP.'
+  'Ten minutes. That\'s all it takes. {x} XP to go.',
+  '{other}: {ox} XP today. You: {mx}.',
+  '{n}-day streak. {x} XP keeps it.',
+  'Not happening today? Take a lazy day in the app. Otherwise, {x} XP.'
 ];
 var LATE_LINES = [
-  'These reminders don\'t seem to be working. One small job and the streak lives.',
-  'Last call for your {n}-day streak. Dishes count.',
-  'It\'s getting late and your streak is getting nervous. {x} XP.'
+  'Last call for the {n}-day streak. Dishes count.',
+  'Getting late. {x} XP keeps the {n}-day streak, or take a lazy day.',
+  'One small job and the {n}-day streak stays.'
 ];
 
 /** Inside someone's quiet hours (from setup)? [start, end] in minutes; may wrap midnight. */
@@ -119,7 +117,7 @@ function heartbeat_() {
         var slot = Math.floor(m / 30), pool = PUSHY_LINES.filter(function (l) { return (st.count || l.indexOf('{n}') === -1) && (oxp > xp || l.indexOf('{ox}') === -1); });
         if (sent[who].indexOf('streak-' + slot) === -1 && !quietFor_(who, m)) {
           sent[who].push('streak-' + slot);
-          push_(who, st.count ? 'Your streak needs you' : 'Today still counts', fill(pool[slot % pool.length]), 'chores', false, { persist: true, tag: 'streak' });
+          push_(who, st.count ? 'Streak check' : 'Today still counts', fill(pool[slot % pool.length]), 'chores', false, { persist: true, tag: 'streak' });
         }
       }
       if (!calm && m >= 17 * 60 && xpOn_(other, ymd) >= xp + 20) once(who, 'ahead', nk[other] + ' is ahead today', nk[other] + ' has ' + (xpOn_(other, ymd) - xp) + ' more XP than you today. Just saying.', 'home');
@@ -177,7 +175,7 @@ function logUs(key) {
     setProp_('US_LAST', String(now));
     PEOPLE.forEach(function (p) { addXp_(p, 'Quality time', US_XP, 'spice'); });
     var other = who === 'me' ? 'partner' : 'me';
-    push_(other, nicks_()[who] + ' logged it', '+' + US_XP + ' XP each. Nice work, team.', 'home');
+    push_(other, nicks_()[who] + ' logged it', '+' + US_XP + ' XP each.', 'home');
     return appState_(who);
   });
 }

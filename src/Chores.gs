@@ -210,6 +210,7 @@ function planChore(key, text) {
   if (!claudeKey_()) return { name: text, minutes: 15, steps: [], guessed: true };
   var plan = callClaudeJson_(
     'You help someone with ADHD do one household job without drifting onto other jobs. Given a job, give a realistic time ' +
+    'and steps that start with the action, in UK English. ' +
     'for one person at a steady pace (UK home) and 3 to 6 short, concrete steps in order. Keep steps inside this one job: ' +
     'no "while you are there" extras.', text, CHORE_SCHEMA, claudeModel_());
   return {

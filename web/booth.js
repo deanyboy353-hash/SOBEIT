@@ -177,7 +177,7 @@
     s += '<g class="c" data-id="' + d + '.jogTop" data-also="' + d + '.jogTouch" transform="translate(' + jx + ' 245)"><circle class="shape" r="96"/><line class="ind spin" x1="0" y1="-50" x2="0" y2="-92"/><text y="5" text-anchor="middle">JOG</text></g>';
     s += tri(d + '.phaseLeft', jx - 26, 102, 'left') + '<circle class="glight" data-glight="' + d + '.phaseOk" cx="' + jx + '" cy="102" r="5"/>' + tri(d + '.phaseRight', jx + 26, 102, 'right');
     // transport
-    s += button(d + '.shift', tx, 420, 64, 30, 'SHIFT') + button(d + '.sync', tx, 462, 64, 30, 'SYNC') + button(d + '.cue', tx, 504, 64, 30, 'CUE').replace('data-id="' + d + '.cue"', 'data-id="' + d + '.cue" data-also="' + d + '.shiftCue"') + button(d + '.play', tx, 546, 64, 30, 'PLAY ▶');
+    s += button(d + '.shift', tx, 420, 64, 30, 'SHIFT') + button(d + '.sync', tx, 462, 64, 30, 'SYNC') + button(d + '.cue', tx, 504, 64, 30, 'CUE').replace('data-id="' + d + '.cue"', 'data-id="' + d + '.cue" data-also="' + d + '.shiftCue"') + button(d + '.play', tx, 546, 64, 30, 'PLAY');
     s += '<text x="' + tx + '" y="580" text-anchor="middle">SHIFT+CUE: START</text>';
     // pad modes and pads
     for (var i = 0; i < 4; i++) s += button(d + '.mode' + (i + 1), padX + 45 + i * 90, 418, 78, 22, MAP.padModes[i].toUpperCase(), 11);
@@ -191,7 +191,7 @@
     [['A', 640], ['B', 760]].forEach(function (c) {
       var d = c[0], x = c[1];
       s += knob(d + '.trim', x, 172, 15, 'TRIM') + knob(d + '.eqHigh', x, 224, 15, 'HIGH') + knob(d + '.eqMid', x, 276, 15, 'MID') + knob(d + '.eqLow', x, 328, 15, 'LOW') + knob(d + '.filter', x, 384, 17, 'FILTER');
-      s += button(d + '.pfl', x, 432, 46, 22, '🎧 CUE') + vfader(d + '.volume', x, 458, 570, 'VOLUME ' + d);
+      s += button(d + '.pfl', x, 432, 46, 22, 'CUE') + vfader(d + '.volume', x, 458, 570, 'VOLUME ' + d);
     });
     s += hfader('xfader', 630, 770, 610, 'CROSSFADER');
     s += '<g class="c" data-id="browsePush" transform="translate(700 62)"><circle class="shape" r="7" style="opacity:.6"/></g>';
@@ -253,7 +253,7 @@
   function showVal(id) {
     var v = document.querySelector('[data-val="' + id + '"]'); if (!v) return;
     var c = control(id); if (!c) return;
-    v.textContent = c.kind === 'relative' ? (spins[id] ? (spins[id] > 0 ? '+' : '') + spins[id] : '') : c.kind === 'button' ? (values[id] ? 'down' : '') : values[id] === undefined ? '' : c.kind === 'center' ? (values[id] < .5 ? '◀ ' : values[id] > .5 ? '▶ ' : '') + Math.round(Math.abs(values[id] - .5) * 200) + '%' : Math.round(values[id] * 100) + '%';
+    v.textContent = c.kind === 'relative' ? (spins[id] ? (spins[id] > 0 ? '+' : '') + spins[id] : '') : c.kind === 'button' ? (values[id] ? 'down' : '') : values[id] === undefined ? '' : c.kind === 'center' ? (values[id] < .5 ? '‹ ' : values[id] > .5 ? '› ' : '') + Math.round(Math.abs(values[id] - .5) * 200) + '%' : Math.round(values[id] * 100) + '%';
   }
   function drawLog() {
     var l = el('log'); if (!l) return;

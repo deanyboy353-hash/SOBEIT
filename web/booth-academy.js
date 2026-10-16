@@ -48,7 +48,7 @@
         { at: 12, say: 'Left again on {bar:12}: 2 beats.', ids: ['A.loopKnob'], act: [{ at: 12, id: 'A.loopKnob', delta: -1 }], rules: [{ type: 'turn', id: 'A.loopKnob', dir: -1, at: 12, tol: Q }] },
         { at: 14, say: 'Left on beat 3: 1 beat.', ids: ['A.loopKnob'], act: [{ at: 14, id: 'A.loopKnob', delta: -1 }], rules: [{ type: 'turn', id: 'A.loopKnob', dir: -1, at: 14, tol: Q }] },
         { at: 15, say: 'Left on beat 4: half a beat.', ids: ['A.loopKnob'], act: [{ at: 15, id: 'A.loopKnob', delta: -1 }], rules: [{ type: 'turn', id: 'A.loopKnob', dir: -1, at: 15, tol: Q }, { type: 'loop', deck: 'A', len: 0.5, at: 15.6 }] },
-        { at: 16, say: 'Push the LOOP knob on the 1 of {bar:16}: drop!', ids: ['A.loopPush'], act: tap('A.loopPush', 16), rules: [press('A.loopPush', 16, { say: 'Loop released' }), { type: 'loop', deck: 'A', len: 0, at: 17, msg: 'The loop was still on after the drop.' }] }
+        { at: 16, say: 'Push the LOOP knob on the 1 of {bar:16}: drop.', ids: ['A.loopPush'], act: tap('A.loopPush', 16), rules: [press('A.loopPush', 16, { say: 'Loop released' }), { type: 'loop', deck: 'A', len: 0, at: 17, msg: 'The loop was still on after the drop.' }] }
       ], len: 20 },
     { id: 'rolls', mod: 'loops', name: 'Loop rolls as fills', tracks: ['loop:groove128'], from: 32,
       why: 'Hold SHIFT and a loop pad for a roll: it stutters, and when you let go the track is exactly where it would have been. Shorter rolls on the last beats of a phrase make a fill.',
@@ -76,7 +76,7 @@
         { at: 0, say: 'Press Deck B PLAY on the 1 of {bar:0}, then straight away pad 8 (32-beat loop) on Deck B.', ids: ['B.play', 'B.mode2', 'B.pad.hotcue.8'], act: tap('B.play', 0).concat(tap('B.pad.loop.8', 0.3)), rules: [press('B.play', 0), press('B.pad.loop.8', 0.25, { tol: 0.5, say: 'Loop set' }), { type: 'loop', deck: 'B', len: 32, at: 4 }] },
         { at: 8, say: 'Bring Deck B volume up slowly over the next 4 bars. Its intro is looping.', ids: ['B.volume'], act: [knob('B.volume', [[8, 0], [24, 0.85]])], rules: [] },
         { at: 32, say: 'Deck B is still looping its intro. Let go on {bar:48}.', ids: [] },
-        { at: 48, say: 'Pad 8 on Deck B on the 1 of {bar:48}: the loop lets go.', ids: ['B.pad.hotcue.8'], act: tap('B.pad.loop.8', 48), rules: [press('B.pad.loop.8', 48, { say: 'Loop released' }), { type: 'loop', deck: 'B', len: 0, at: 50 }, { type: 'align', at: 52, tol: 0.25 }] }
+        { at: 48, say: 'Pad 8 on Deck B on the 1 of {bar:48}: the loop releases.', ids: ['B.pad.hotcue.8'], act: tap('B.pad.loop.8', 48), rules: [press('B.pad.loop.8', 48, { say: 'Loop released' }), { type: 'loop', deck: 'B', len: 0, at: 50 }, { type: 'align', at: 52, tol: 0.25 }] }
       ], len: 54 },
     { id: 'beatjump', mod: 'loops', name: 'Shift a loop, then beat-jump back to the phrase', tracks: ['loop:acid132'], from: 32,
       why: 'Beat jump moves the track (and any loop) by whole beats. Move a loop to a better part, then jump back so the track is on the phrase again: count where you are, jump the difference.',
@@ -192,7 +192,7 @@
       need: { 'A.volume': '>', 'B.volume': '<', 'B.eqLow': 'kill', 'B.sync': 'on' },
       steps: [
         { at: 16, say: 'Deck B is cued at its bar 9. Press Deck B PLAY on the 1 of {bar:32}.', ids: ['B.play'] },
-        { at: 32, say: 'Deck B PLAY now!', ids: ['B.play'], act: tap('B.play', 32), rules: [press('B.play', 32)] },
+        { at: 32, say: 'Deck B PLAY now.', ids: ['B.play'], act: tap('B.play', 32), rules: [press('B.play', 32)] },
         { at: 64, say: 'The breakdown (both tracks). Bring Deck B volume up for the drop on {bar:96}.', ids: ['B.volume'], act: [knob('B.volume', [[64, 0], [90, 1]])], rules: [] },
         { at: 96, say: 'The drop: both tracks, one bass.', ids: [], rules: [{ type: 'dropTogether', at: 96, tol: 0.25, w: 3 }, { type: 'state', deck: 'B', key: 'volume', op: '>', v: 0.6, at: 98, msg: 'Deck B wasn\'t up for the drop.' }] }
       ], len: 100, absolute: true },

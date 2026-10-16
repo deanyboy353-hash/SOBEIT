@@ -62,7 +62,7 @@
       plan: { start: 0, swap: 68, end: 128 }, len: 128, prepLow: true },
     cut: { name: 'Quick cut', blurb: 'A hard cut on the 1: one fader down and the other up in the same instant.',
       lines: [['in', 'vol', [[-0.05, 0], [0, 1]]], ['out', 'vol', [[-0.05, 1], [0, 0]]]],
-      steps: [[-4, 'On bar {b0} (the 1): pull {out} volume down and push {in} volume up at the same instant.', ['out.volume', 'in.volume']], [0, 'Cut now!', ['out.volume', 'in.volume']], [8, 'Done.', []]],
+      steps: [[-4, 'On bar {b0} (the 1): pull {out} volume down and push {in} volume up at the same instant.', ['out.volume', 'in.volume']], [0, 'Cut now.', ['out.volume', 'in.volume']], [8, 'Done.', []]],
       plan: { start: 0 }, len: 8 }
   };
   var TECH_ORDER = ['volume', 'bass', 'eq', 'filter', 'cut', 'long'];
@@ -203,7 +203,7 @@
         stepTxt = prep.length ? 'Get ready: ' + prep.join(', ') + '.' : 'Press Deck ' + to + ' PLAY right on bar ' + bar(playAt) + ' (it starts silent, fader down).';
         if (prep.length) ids = (T.prepLow ? [to + '.eqLow'] : []).concat(T.prepHigh ? [to + '.eqHigh'] : []).concat([to + '.volume']);
         sub = countdown(toPlay, playAt);
-      } else { stepTxt = 'Press Deck ' + to + ' PLAY now!'; warn = toPlay < -2 ? 'Deck ' + to + ' should have started on bar ' + bar(playAt) + '. Press PLAY now, then follow the line.' : ''; }
+      } else { stepTxt = 'Press Deck ' + to + ' PLAY now.'; warn = toPlay < -2 ? 'Deck ' + to + ' should have started on bar ' + bar(playAt) + '. Press PLAY now, then follow the line.' : ''; }
     } else {
       var st = null; T.steps.forEach(function (s) { if (g2 >= Pb + s[0] - (s[0] === 0 ? 4 : 0)) st = s; });
       if (!st || g2 < Pb - 4) { stepTxt = 'Deck ' + to + ' is playing silently. Wait for bar ' + bar(Pb) + '.'; sub = countdown(Pb - g2, Pb); ids = []; }
