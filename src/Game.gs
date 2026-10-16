@@ -278,6 +278,7 @@ function gameState_(who) {
     team: streakNow_('team', today, goal),
     pet: petState(streakNow_('team', today, goal), minutesNow_(), solo_()),
     total: total,
+    badges: [], rewards: [], balance: total,   // empty stand-ins so a phone still running an older cached app (which drew these) doesn't crash before it updates
     level: levelFor(total),
     week: { me: xpBetween_('me', monday, today), partner: xpBetween_('partner', monday, today) },
     month: { me: xpBetween_('me', today.slice(0, 8) + '01', today), partner: xpBetween_('partner', today.slice(0, 8) + '01', today) },

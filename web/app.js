@@ -2342,12 +2342,22 @@
   });
 
   // ---------- rendering + tabs ----------
+  var reported = {};
+  function safeRender(name, fn) {
+    try { fn(); } catch (e) {
+      var msg = (e && e.message) || String(e), t = name && el('tab-' + name);
+      if (t) t.innerHTML = '<section class="card" style="margin-top:16px"><b>This screen didn\'t load.</b><p class="small muted" style="margin:6px 0 10px">' + esc(msg) + '</p><button class="btn primary sm" type="button" onclick="location.reload()">Reload</button></section>';
+      if (!reported[name + msg]) { reported[name + msg] = 1; rpc('clientError', [name || 'prefs', msg, String((e && e.stack) || '').slice(0, 800)]).catch(function () {}); }
+      if (window.console) console.error(e);
+    }
+  }
   function renderAll() {
     if (!S) return;
     var keep = {}, focused = document.activeElement && document.activeElement.id;
     document.querySelectorAll('main input[id], main textarea[id]').forEach(function (i) { if (i.type !== 'password') keep[i.id] = i.value; });
-    renderHome(); renderChores(); renderWork(); renderPlay(); renderYou(); renderHealth(); renderCustom(); renderEmpire(); applyPrefs();
-    if (ME) { renderTrain(); renderFood(); }
+    // each screen on its own: one that breaks shows what went wrong instead of blanking the rest
+    [['home', renderHome], ['chores', renderChores], ['work', renderWork], ['play', renderPlay], ['you', renderYou], ['health', renderHealth], ['custom', renderCustom], ['empire', renderEmpire], ['', applyPrefs]]
+      .concat(ME ? [['train', renderTrain], ['food', renderFood]] : []).forEach(function (r) { safeRender(r[0], r[1]); });
     Object.keys(keep).forEach(function (id) { var i = el(id); if (i && keep[id]) i.value = keep[id]; });
     if (focused && el(focused)) el(focused).focus();
     keepAwake(!!mySession());

@@ -18,7 +18,7 @@ function rpcTable_() {
     appState: appState, batch: batch, choresState: choresState, questDone: questDone, claimQuest: claimQuest, whatNow: whatNow,
     brainDump: brainDump, saveBrainDump: saveBrainDump, addQuest: addQuest, addShopping: addShopping, toggleShopping: toggleShopping,
     askToJoin: askToJoin, planChore: planChore, startChore: startChore, stepDone: stepDone, extendChore: extendChore,
-    finishChore: finishChore, parkThing: parkThing, clearLater: clearLater, highFive: highFive, lazyDay: lazyDay,
+    finishChore: finishChore, parkThing: parkThing, clearLater: clearLater, highFive: highFive, lazyDay: lazyDay, clientError: clientError,
     routineStep: routineStep, saveRoutine: saveRoutine, setupState: setupState, saveSetup: saveSetup, previewChores: previewChores, buildChores: buildChores, saveChore: saveChore, choreAction: choreAction, deleteRoutine: deleteRoutine, chatPing: chatPing, setDayOff: setDayOff, setDayOffLeave: setDayOffLeave, addWater: addWater, setTheme: setTheme, todayState: todayState, gymDone: gymDone,
     logWeightNow: logWeightNow, foodState: foodState, logPreset: logPreset, quickAdd: quickAdd, quickAddPhoto: quickAddPhoto, importWorkoutCsv: importWorkoutCsv, backupStatus: backupStatus, backupNow: backupNow, exportAll: exportAll, importBackup: importBackup, undoLast: undoLast,
     saveClaudeKey: saveClaudeKey, trainState: trainState, setTrainingMax: setTrainingMax, saveWorkout: saveWorkout,
@@ -234,4 +234,11 @@ function validKey_(key) {
 
 function json_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+
+/** A screen in the app failed to draw: noted in the Log tab (what broke, where), nothing else. */
+function clientError(key, where, msg, stack) {
+  var who = who_(key);
+  log_('WARN', 'App screen "' + String(where).slice(0, 20) + '" (' + who + '): ' + String(msg).slice(0, 300) + ' | ' + String(stack || '').replace(/\s+/g, ' ').slice(0, 600));
+  return true;
 }

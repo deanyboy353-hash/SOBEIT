@@ -55,7 +55,7 @@ test('retired extras: no challenges, double XP, Wrapped, XP rewards or badges, a
   // nothing in the state or the server for them
   const st = plain(g.ctx.appState(me));
   ['challenges', 'boost'].forEach(k => assert.ok(!(k in st.fun), k));
-  ['balance', 'badges', 'rewards'].forEach(k => assert.ok(!(k in st.game), k));
+  assert.deepStrictEqual([st.game.badges, st.game.rewards], [[], []], 'only empty stand-ins for older cached apps');
   ['getWrapped', 'redeemReward', 'submitMix', 'boostActive_', 'checkChallenges_'].forEach(f => assert.strictEqual(typeof g.ctx[f], 'undefined', f));
   // XP adds up: every job is its own XP, nothing doubled, no bonus rows
   const q = st.quests.board.filter(x => x.who !== 'partner').slice(0, 2);
