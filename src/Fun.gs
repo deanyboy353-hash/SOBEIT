@@ -237,7 +237,8 @@ function funState_(who, g) {
     prefs: prefs_(who),
     chars: { me: prefs_('me').char, partner: prefs_('partner').char },
     looks: { me: prefs_('me').look, partner: prefs_('partner').look },
-    titles: String(readConfig_().settings[who === 'me' ? 'Your level titles' : 'Partner level titles'] || 'None')
+    titles: String(readConfig_().settings[who === 'me' ? 'Your level titles' : 'Partner level titles'] || 'None'),
+    afters: aftersState_(who)
   };
 }
 

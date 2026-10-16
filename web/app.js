@@ -58,7 +58,7 @@
   // Reads, AI and big uploads go straight to the server; every other change is saved on the phone first and sent in batches.
   var DIRECT = { appState: 1, gamesState: 1, workState: 1, setupState: 1, previewChores: 1, healthDay: 1, backupStatus: 1, exportAll: 1, getBrief: 1, whatNow: 1, mealIdeas: 1,
     healthInsight: 1, trainState: 1, foodState: 1, choresState: 1, quickAdd: 1, quickAddPhoto: 1, ask: 1, brainDump: 1, importBackup: 1, importHealth: 1, importWorkoutCsv: 1, registerDevice: 1,
-    testPush: 1, saveClaudeKey: 1, backupNow: 1, guessWord: 1, submitTarget: 1, submitRecall: 1, submitTempo: 1, submitSet: 1, undoAction: 1, undoLast: 1, addDeadline: 1, chatPing: 1 };
+    testPush: 1, saveClaudeKey: 1, backupNow: 1, guessWord: 1, submitTarget: 1, submitRecall: 1, submitTempo: 1, undoAction: 1, undoLast: 1, addDeadline: 1, chatPing: 1 };
   var syncState = { pending: 0, failing: 0, offline: false }, syncShownAt = 0;
   var box = window.NudgeOutbox ? NudgeOutbox.create({
     key: 'outbox-' + KEY.slice(0, 6),
@@ -788,12 +788,12 @@
   function renderPlay() {
     var G = S.games, n = names(), h = '<div class="top"><div><h1>Play</h1><div class="sub">Same puzzles for you both. Live scores.</div></div>' + meButton() + '</div>';
     h += '<section class="card spot"><div class="vs"><div>' + avatarOf(S.who, 40) + '<div class="small muted">You</div><div class="num" style="font-size:28px;font-weight:700">' + G.stats.you + '</div></div><div class="center small muted">head to head<br><span class="tiny">' + G.stats.draws + ' draws</span></div><div class="right">' + avatarOf(S.who === 'me' ? 'partner' : 'me', 40, true) + '<div class="small muted">' + esc(n.other) + '</div><div class="num" style="font-size:28px;font-weight:700">' + G.stats.them + '</div></div></div></section>';
-    h += '<div class="seg six">' + [['word', 'Word'], ['target', 'Numbers'], ['recall', 'Recall'], ['tempo', 'Tempo'], ['mix', 'Booth'], ['stats', 'Stats']].map(function (o) { return '<button type="button" data-pview="' + o[0] + '" aria-pressed="' + (playView === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
+    h += '<div class="seg six">' + [['word', 'Word'], ['target', 'Numbers'], ['recall', 'Recall'], ['tempo', 'Tempo'], ['mix', 'Mix practice'], ['stats', 'Stats']].map(function (o) { return '<button type="button" data-pview="' + o[0] + '" aria-pressed="' + (playView === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
     if (playView === 'word') h += wordView(G.word, n);
     else if (playView === 'target') h += targetView(G.target, n);
     else if (playView === 'recall') h += recallView(G.recall, n);
     else if (playView === 'tempo') h += tempoView(G.tempo, n);
-    else if (playView === 'mix') h += setCard(G.set, n);
+    else if (playView === 'mix') h += mixPracticeCard();
     else h += statsView(G.stats);
     el('tab-play').innerHTML = h;
   }
@@ -1626,7 +1626,8 @@
     if (who === 'me' && S.today && S.today.gym && !o.mood) o.wear = 'gym';
     var wx = S.today && S.today.gym && S.today.gym.weather, rain = wx && /rain chance up to (\d+)%/.exec(wx);
     if (rain && +rain[1] >= 60) o.wear = 'rain';
-    if (who === S.who) { try { var bs = JSON.parse(localStorage.getItem('booth-stats') || 'null'), k = ymdOf(new Date(now())); if (bs && bs.secs && bs.secs[k] >= 60) o.wear = o.wear || 'dj'; } catch (e) {} }
+    var af = S.fun && S.fun.afters;
+    if (who === S.who && af && af.today >= 1) o.wear = o.wear || 'dj';    // practised in Afters today
     return o;
   }
   function reducedMotion() { return window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches || (S && S.fun && S.fun.prefs && S.fun.prefs.motion === false); }
@@ -2224,32 +2225,28 @@
   document.addEventListener('change', function (ev) { if (ev.target.id === 'ownFiles' && ev.target.files.length) playOwn([].slice.call(ev.target.files)); });
   document.addEventListener('submit', function (ev) { if (ev.target.id !== 'spotForm') return; ev.preventDefault(); var q = el('spotText').value.trim(); if (q) openSpotify(q); else toast('Type an album, artist or playlist'); });
 
-  // ---------- BOOTH (the DJ game lives in booth.html; the old Mix game is retired) ----------
-  function boothUrl(screen) { var base = MODE === 'gas' && S.fun && S.fun.appBase ? S.fun.appBase.replace(/[?#].*$/, '').replace(/\/?$/, '/') : ''; return base + 'booth.html' + (MODE === 'gas' && KEY ? '?key=' + encodeURIComponent(KEY) : '') + '#' + screen; }
-  function setCard(set, n) {
-    var bo = S.games && S.games.booth, m = bo && bo.mine, o = bo && bo.other;
-    var line = function (x) { return x && x.tries ? '<b>' + esc(x.grade || '-') + '</b> ' + x.score : '<span class="muted">not yet</span>'; };
-    return '<section class="card djset-card"><div class="between"><div><div class="eyebrow">The mixing game · today\'s challenge</div><h3 style="margin:2px 0 0">Afterhours: Booth</h3></div>' +
-      '<div class="right small">You ' + line(m) + '<br>' + esc(n.other) + ' ' + line(o) + '</div></div>' +
-      '<p class="small muted" style="margin:8px 0 10px">Tutorials, transition drills, manual beatmatching, a ghost-line rhythm game and set mode, scored on bass clashes, volume, timing and smoothness. Best on your PC with the Inpulse 500.' + (m && m.title ? ' Today: ' + esc(m.title) + '.' : '') + '</p>' +
-      '<a class="btn primary wide" target="_top" href="' + boothUrl('menu') + '">' + icon('disc', 's') + 'Open Booth</a>' +
-      '<div class="grid2" style="margin-top:8px"><a class="btn line" target="_top" href="' + boothUrl('daily') + '">Today\'s challenge</a><button class="btn line" type="button" data-mix="set">First version</button></div></section>';
+  // ---------- MIX PRACTICE (the DJ game is Afters, its own app; this card opens it) ----------
+  var AFTERS_URL = 'https://afters-dj.web.app/';
+  /** Afters, with the link it needs to report practice back (the app's address and your key, in the #fragment so it never reaches a server). */
+  function aftersUrl() {
+    var a = S.fun && S.fun.afters, api = (a && a.api) || CFG.api || '';
+    var moved = MODE === 'web' && (load('afters-moved') || {}).ok;
+    // until this browser's old game data has moved, go via the move page at the old address (it skips itself if there's nothing to move)
+    if (!moved && S.fun && (S.fun.appBase || MODE === 'web')) {
+      var base = MODE === 'gas' ? S.fun.appBase.replace(/[?#].*$/, '').replace(/\/?$/, '/') : '';
+      return base + 'booth.html?key=' + encodeURIComponent(KEY);
+    }
+    return AFTERS_URL + '#menu&link=' + encodeURIComponent(btoa(JSON.stringify({ api: api, key: KEY })));
   }
-  function openSet() {
-    if (!window.LQDJ || !M()) return toast('The DJ game isn\'t available here.', true);
-    if (M().now()) M().stop(true);
-    stopWeb(); stopOwn();
-    LQDJ.open({
-      otherName: names().other, toast: toast,
-      best: function () { var s = S.games && S.games.set; return s ? { mine: s.mine, other: s.other } : null; },
-      submit: function (r) { return rpc('submitSet', [r.acc, r.score, r.mixes, r.grade]).then(function (g) { S.games = g; renderPlay(); if (g.last && g.last.firstXp) refreshQuiet(); return g.last; }); },
-      onClose: function () { renderPlay(); }
-    });
+  function mixPracticeCard() {
+    var a = (S.fun && S.fun.afters) || {};
+    return '<section class="card afters-card"><div class="between"><div><div class="eyebrow">Mix practice</div><h3 style="margin:2px 0 0">Afters</h3></div>' + icon('disc') + '</div>' +
+      '<p class="small muted" style="margin:8px 0 10px">The DJ game, in its own app: tutorials, the Academy, beatmatching and your own tracks on the Inpulse 500. Practice time and finished lessons come back here as XP.</p>' +
+      '<p class="small" style="margin:0 0 10px">' + (a.today ? '<b>' + a.today + ' min</b> today' : 'Not practised today') + (a.week ? ' · ' + a.week + ' min this week' : '') + (a.lessons ? ' · ' + a.lessons + ' lesson' + (a.lessons === 1 ? '' : 's') + ' finished' : '') + '</p>' +
+      '<a class="btn primary wide" target="_blank" rel="noopener" href="' + esc(aftersUrl()) + '">' + icon('disc', 's') + 'Open Afters</a></section>';
   }
-  document.addEventListener('click', function (ev) {
-    var t = ev.target.closest('[data-mix]');
-    if (t && S && t.dataset.mix === 'set') openSet();
-  });
+
+
 
   // ---------- SOUNDCLOUD and YOUTUBE (official players, faded out with your timer) ----------
   var web = null;   // { kind, url, title, endAt, frame, widget/player, timer, fading }
@@ -2747,7 +2744,7 @@
     else if (f.mood === 'happy') t = S.solo ? 'Day won. Look at you go.' : 'You both won the day. Look at them go.';
     else if (f.wear === 'rain') t = 'Rain later. Jackets on.';
     else if (f.wear === 'gym') t = 'Gym kit on: ' + esc(S.today.gym.session) + ' today.';
-    else if (f.wear === 'dj') t = 'Headphones on after Booth.';
+    else if (f.wear === 'dj') t = 'Headphones on after Afters.';
     return t ? '<p class="small center stage-line" style="margin:6px 0 0">' + t + '</p>' : '';
   }
   function mountHome3d() { var o = S && S.who === 'me' ? 'partner' : 'me'; if (S && S.wardrobe && el('av3dHome')) mount3d('av3dHome', S.solo ? [S.wardrobe.look] : [S.wardrobe.look, S.wardrobe.other], { theme: 'vice', h: 200, states: [faceState(S.who), faceState(o)] }); }
@@ -3242,7 +3239,7 @@
   function moreSheet() {
     var prim = PRIMARY[S.who] || PRIMARY.partner, items = [];
     el('nav').querySelectorAll('button[data-tab]').forEach(function (b) { if (prim.indexOf(b.dataset.tab) === -1) items.push('<button class="moreitem' + (current === b.dataset.tab ? ' on' : '') + '" type="button" data-moretab="' + b.dataset.tab + '">' + b.innerHTML.replace(/<span class="dot"[^>]*>.*?<\/span>/, '') + '</button>'); });
-    items.push('<a class="moreitem" href="' + esc(boothUrl('menu')) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/></svg>Booth (DJ)</a>');
+    items.push('<a class="moreitem" target="_blank" rel="noopener" href="' + esc(aftersUrl()) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/></svg>Afters (DJ)</a>');
     openSheet('<h2 style="margin:0 0 12px">More</h2><div class="moregrid">' + items.join('') + '</div>');
   }
   document.addEventListener('click', function (ev) {
@@ -3273,11 +3270,6 @@
     if (hash.indexOf(':') > 0) { sub = hash.split(':')[1]; hash = hash.split(':')[0]; history.replaceState(null, '', location.pathname + location.search + '#' + hash); }
     if (!ME && /^(food|train)$/.test(hash)) hash = 'home';
     showTab(['home', 'chores', 'work', 'play', 'train', 'food', 'health', 'you', 'custom', 'empire'].indexOf(hash) !== -1 ? hash : (window.LQ_TAB || load('tab') || 'home'));
-    if (hash === 'djset') {   // straight to the first-version DJ game
-      playView = 'mix'; save('playView', 'mix'); showTab('play');
-      history.replaceState(null, '', location.pathname + location.search + '#play');
-      setTimeout(openSet, 300);
-    }
     var na = location.hash.match(/dl=(\w+):(\w+)/);
     if (na) { history.replaceState(null, '', location.pathname + location.search + '#home'); setTimeout(function () { handleNoteAction(na[1], na[2]); }, 400); }
     // setup comes first: anyone who hasn't finished it gets the wizard before anything else
@@ -3285,9 +3277,8 @@
     if (needSetup) setTimeout(function () { if (!NudgeSetup.isOpen()) NudgeSetup.open({ required: true }); }, 200);
     else if (hash === 'us') setTimeout(function () { if (window.NudgeChat) NudgeChat.open(chatApi); }, 600);
     else if (sub) setTimeout(function () { shortcut(hash, sub); }, 350);
-    else if (hash !== 'djset') setTimeout(intro, 250);
+    else setTimeout(intro, 250);
     maybeBrief();
-    try { if (JSON.parse(localStorage.getItem('booth-mastered') || '""') && S.wardrobe && !(S.wardrobe.ach || {}).booth1) rpc('unlockAch', ['booth1']).then(function (res) { apply(res); toast('Unlocked: Gold DJ headphones'); }, function () {}); } catch (e) {}
   }
   if (!KEY) {
     el('tab-home').innerHTML = '<div class="loading"><h2>Open your app link</h2><p class="muted">Paste your link from the Config tab of your Google Sheet (Your app link, or Partner app link). It has your private key in it.</p>' +

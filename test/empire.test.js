@@ -245,28 +245,24 @@ test('plan the week: pair jobs with people; together jobs pay both double XP', (
   assert.strictEqual(g.ctx.xpOn_('me', '2026-10-14') - before, g.ctx.readChores_().find(x => x.name === 'Food shop').xp);
 });
 
-test('DJ Set: grades and points; replayable, best score counts, XP once', () => {
-  const { g, me, partner } = ready();
-  assert.deepStrictEqual([96, 90, 75, 55, 40].map(a => g.ctx.setGrade(a)), ['S', 'A', 'B', 'C', 'D']);
-  assert.deepStrictEqual([g.ctx.setPoints(96, 3), g.ctx.setPoints(96, 2), g.ctx.setPoints(88, 4), g.ctx.setPoints(72, 2), g.ctx.setPoints(55, 3), g.ctx.setPoints(30, 5)], [10, 9, 8, 5, 4, 0]);
-  const xp = () => g.tab('XP log').rows().filter(r => r[2] === 'me' && r[5] === 'game').length;
-  let s = g.ctx.submitSet(me, 35, 1200, 3, 'D');
-  assert.strictEqual(s.set.mine.points, 0);
-  assert.strictEqual(xp(), 0, 'a train wreck earns nothing');
-  s = g.ctx.submitSet(me, 78, 9000, 3, 'B');
-  assert.strictEqual(s.last.firstXp, 11);
-  s = g.ctx.submitSet(me, 60, 4000, 3, 'C');
-  assert.strictEqual(s.set.mine.grade, 'B', 'best counts');
-  assert.strictEqual(s.set.mine.tries, 3);
-  s = g.ctx.submitSet(me, 97, 20000, 3, 'X');
-  assert.strictEqual(s.set.mine.grade, 'S', 'bad grade text is replaced');
-  assert.strictEqual(s.set.mine.points, 10);
-  assert.strictEqual(s.last.firstXp, 0);
-  assert.strictEqual(xp(), 1);
-  assert.throws(() => g.ctx.submitSet(partner, 150, 1, 3, 'S'), /didn't register/);
-  s = g.ctx.submitSet(partner, 90, 15000, 2, 'A');
-  assert.strictEqual(s.set.other.score, 20000);
-  assert.strictEqual(s.set.mine.grade, 'A');
+test('Afters link: practice minutes become XP (1 per 2 minutes, up to 30 a day); a report sent twice counts once', () => {
+  const { g, me } = ready();
+  const xp = () => g.tab('XP log').rows().filter(r => r[2] === 'me' && r[5] === 'practice').reduce((a, r) => a + Number(r[4]), 0);
+  let r = g.ctx.aftersReport(me, { id: 'rep-aaaa01', day: '2026-10-14', minutes: 9, lessons: [] });
+  assert.deepStrictEqual([r.xp, r.today, xp()], [4, 9, 4]);
+  r = g.ctx.aftersReport(me, { id: 'rep-aaaa01', day: '2026-10-14', minutes: 9, lessons: [] });
+  assert.strictEqual(r.duplicate, true);
+  assert.strictEqual(xp(), 4, 'the retry of the same report is ignored');
+  g.ctx.aftersReport(me, { id: 'rep-aaaa02', day: '2026-10-14', minutes: 1, lessons: [] });
+  assert.strictEqual(xp(), 5, '10 minutes: 5 XP');
+  g.ctx.aftersReport(me, { id: 'rep-aaaa03', day: '2026-10-14', minutes: 200, lessons: [] });
+  assert.strictEqual(xp(), 30, 'capped at 30 a day');
+  assert.throws(() => g.ctx.aftersReport(me, { id: 'x', minutes: 5 }), /no id/);
+  assert.throws(() => g.ctx.aftersReport(me, { id: 'rep-bad001', minutes: 5000 }), /doesn't look right/);
+  assert.throws(() => g.ctx.aftersReport('wrong-key', { id: 'rep-aaaa04', minutes: 5 }));
+  const st = JSON.parse(JSON.stringify(g.ctx.appState(me)));
+  assert.deepStrictEqual([st.fun.afters.today, st.fun.afters.week], [210, 210]);
+  assert.match(st.fun.afters.api, /^https:\/\/script\.google\.com\//);
 });
 
 test('earned outfits: shown with their requirement, unlock free on the achievement, never for sale', () => {
@@ -284,9 +280,15 @@ test('earned outfits: shown with their requirement, unlock free on the achieveme
   W = g.ctx.appState(me).wardrobe;
   assert.ok(W.owned.includes('streakhoodie'));
   assert.ok(!W.owned.includes('goldphones'));
-  W = g.ctx.unlockAch(me, 'booth1').wardrobe;
+  // the gold headphones: the first Afters lesson finished at Solid or better, reported by Afters
+  const r = g.ctx.aftersReport(me, { id: 'lesson-01', day: '2026-10-13', minutes: 0, lessons: [{ id: 'drift', name: 'Riding the pitch', level: 'Solid' }] });
+  assert.strictEqual(r.xp, 10);
+  g.ctx.aftersReport(me, { id: 'lesson-02', day: '2026-10-13', minutes: 0, lessons: [{ id: 'drift', name: 'Riding the pitch', level: 'Solid' }] });
+  assert.strictEqual(g.tab('XP log').rows().filter(x => /Afters lesson/.test(x[3])).length, 1, 'each lesson pays once');
+  g.state.cache = {};
+  W = g.ctx.appState(me).wardrobe;
   assert.ok(W.owned.includes('goldphones'));
-  assert.throws(() => g.ctx.unlockAch(me, 'gym10'), /Unknown/);
+  assert.strictEqual(g.ctx.unlockAch, undefined, 'the old way in is gone');
   g.ctx.setLook3d(me, { top: 'streakhoodie', acc: ['goldphones'] });
   assert.strictEqual(g.ctx.appState(me).wardrobe.look.top, 'streakhoodie');
 });

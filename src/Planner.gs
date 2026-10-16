@@ -579,20 +579,6 @@ function tempoPoints(tapped, bpm) {
   return d <= 1 ? 10 : d <= 2 ? 8 : d <= 4 ? 6 : d <= 7 ? 3 : 0;
 }
 
-/** DJ Set grade from accuracy (%). */
-function setGrade(acc) {
-  acc = Number(acc);
-  return acc >= 95 ? 'S' : acc >= 85 ? 'A' : acc >= 70 ? 'B' : acc >= 50 ? 'C' : 'D';
-}
-
-/** Points for a DJ Set (0-10): accuracy, with a little extra for longer sets. */
-function setPoints(acc, mixes) {
-  acc = Number(acc); mixes = Number(mixes) || 1;
-  if (!isFinite(acc) || acc < 50) return 0;   // a train wreck: no points, no XP
-  var base = acc >= 95 ? 9 : acc >= 85 ? 7 : acc >= 70 ? 5 : 3;
-  return Math.min(10, base + (mixes >= 3 ? 1 : 0));
-}
-
 // ---- Gym transport: hourly buses, timetable in the Config tab ----
 
 /** "Mon-Fri", "Sat", "Mon, Wed", "Weekdays", "Daily" -> [1..5] etc. */

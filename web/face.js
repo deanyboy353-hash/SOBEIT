@@ -3,7 +3,7 @@
  * character on Home), so you look like you everywhere: Play, the feed, the menu, the dressing room.
  * Pure SVG, a few hundred bytes each: no images, no lag. Moods and outfits react to the day:
  *   mood: 'happy' (bouncing, both hit the minimum) | 'sleepy' (after midnight) | 'proud' | ''
- *   wear: 'gym' (training day) | 'rain' (raining) | 'dj' (after a Booth session, headphones) | ''
+ *   wear: 'gym' (training day) | 'rain' (raining) | 'dj' (practised in Afters today, headphones) | ''
  */
 (function (root) {
   'use strict';

@@ -16,7 +16,6 @@ const shell = index.split('<!--SHELL-->')[1].split('<!--/SHELL-->')[0].trim();
 const css = web('app.css');
 const app = web('app.js');
 const music = web('music.js');
-const djset = web('djset.js');
 const avatar3d = web('avatar3d.js');
 const setupJs = web('setup.js');
 const faceJs = web('face.js');
@@ -33,7 +32,7 @@ const gasCfg = '<script>self.LQ_CONFIG = Object.assign(' + JSON.stringify({ fire
 
 // ---- Google page ----
 // (No word list here to keep the page light: the server checks guesses.)
-for (const [name, src] of [['app.css', css], ['music.js', music], ['djset.js', djset], ['face.js', faceJs], ['figure.js', figureJs], ['look.js', lookJs], ['outbox.js', outboxJs], ['chat.js', chatJs], ['fmt.js', fmtJs], ['setup.js', setupJs], ['app.js', app]]) {
+for (const [name, src] of [['app.css', css], ['music.js', music], ['face.js', faceJs], ['figure.js', figureJs], ['look.js', lookJs], ['outbox.js', outboxJs], ['chat.js', chatJs], ['fmt.js', fmtJs], ['setup.js', setupJs], ['app.js', app]]) {
   if (src.includes('<?') || src.includes('</script') || src.includes('</style')) throw new Error(name + ' contains text that would break the Google page template');
 }
 const gas = `<!DOCTYPE html>
@@ -59,7 +58,6 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
 ${music}
 </script>
 <script>
-${djset}
 </script>
 <script>
 </script>

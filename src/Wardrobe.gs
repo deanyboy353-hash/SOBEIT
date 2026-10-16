@@ -7,7 +7,7 @@
  * Styles (all original): street (sa), neon (vc) and runway glam (drag).
  */
 
-var ACH_TEXT = { streak7: 'Hit a 7-day streak', gym10: 'Log 10 gym sessions', booth1: 'Master your first Booth lesson (Solid or better)', pet30: 'Grow your pet to Legend (30 days you both win)' };
+var ACH_TEXT = { streak7: 'Hit a 7-day streak', gym10: 'Log 10 gym sessions', booth1: 'Finish your first Afters lesson (Solid or better)', pet30: 'Grow your pet to Legend (30 days you both win)' };
 var WARDROBE = [
   // hair
   ['fade', 'hair', 'Fade', 0, 0, 'basic'], ['buzz', 'hair', 'Buzz cut', 0, 0, 'basic'], ['bob', 'hair', 'Bob', 0, 0, 'basic'], ['bald', 'hair', 'Clean head', 0, 0, 'basic'],
@@ -58,15 +58,13 @@ function achievements_(who) {
   JSON.parse(prop_('ACH_' + who) || '[]').forEach(function (k) { got[k] = true; });
   return got;
 }
-/** The app tells us about achievements that live on the phone (Booth lessons). */
-function unlockAch(key, id) {
-  var who = who_(key);
-  if (['booth1'].indexOf(id) === -1) throw new Error('Unknown achievement.');
-  return withLock_(function () {
-    var a = JSON.parse(prop_('ACH_' + who) || '[]');
-    if (a.indexOf(id) === -1) { a.push(id); setProp_('ACH_' + who, JSON.stringify(a)); addFeed_(who, 'Unlocked the ' + wardrobeItem_('goldphones').name, 'empire'); }
-    return appState_(who);
-  });
+/** Achievements earned outside the Sheet (Afters lessons: see Afters.gs). Call inside withLock_. True if it's new. */
+function grantAch_(who, id) {
+  var a = JSON.parse(prop_('ACH_' + who) || '[]');
+  if (a.indexOf(id) !== -1) return false;
+  a.push(id); setProp_('ACH_' + who, JSON.stringify(a));
+  if (id === 'booth1') addFeed_(who, 'Unlocked the ' + wardrobeItem_('goldphones').name, 'empire');
+  return true;
 }
 
 function owned3d_(who) {

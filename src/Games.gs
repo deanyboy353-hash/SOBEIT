@@ -18,8 +18,6 @@ function gamesDay_(ymd) {
   var g = JSON.parse(prop_('GAMES_' + ymd) || 'null') ||
     { word: { me: null, partner: null }, target: { me: null, partner: null }, recall: { me: null, partner: null } };
   g.tempo = g.tempo || { me: null, partner: null };
-  g.set = g.set || { me: null, partner: null };
-  g.booth = g.booth || { me: null, partner: null };
   g.stake = g.stake || null;
   return g;
 }
@@ -72,8 +70,6 @@ function gamesState_(who) {
     },
     recall: { mine: g.recall[who], other: g.recall[other] },
     tempo: tempoState_(today, g.tempo[who], g.tempo[other]),
-    set: { mine: g.set[who], other: g.set[other] ? { points: g.set[other].points, score: g.set[other].score, grade: g.set[other].grade, acc: g.set[other].acc, tries: g.set[other].tries } : null },
-    booth: { mine: g.booth[who], other: g.booth[other] ? { points: g.booth[other].points, score: g.booth[other].score, grade: g.booth[other].grade, title: g.booth[other].title, tries: g.booth[other].tries } : null },
     stake: g.stake ? { text: g.stake.text, by: g.stake.by === who ? 'you' : 'them', result: stakeResult_(w[who], w[other]) } : null,
     stats: gameStats_(who)
   };
@@ -264,39 +260,6 @@ function submitTempo(key, bpm) {
       function (me) { return me.bpm + ' BPM (' + pz.bpm + ')'; }, 'Tempo', 'kept time in Tempo');
     var st = gamesState_(who);
     st.last = { points: pts, bpm: bpm, firstXp: res.first ? 5 + pts : 0 };
-    return st;
-  });
-}
-
-/** A DJ Set: accuracy (0-100), score, how many mixes and the grade, from the rhythm game. */
-function submitSet(key, acc, score, mixes, grade) {
-  var who = who_(key);
-  acc = Math.round(Number(acc) * 10) / 10; score = Math.round(Number(score)); mixes = Math.round(Number(mixes));
-  grade = /^(S|A|B|C|D)$/.test(String(grade)) ? String(grade) : setGrade(acc);
-  if (!(acc >= 0 && acc <= 100) || !(score >= 0 && score < 1e7) || !(mixes >= 1 && mixes <= 8)) throw new Error('That set didn\'t register. Try again.');
-  return withLock_(function () {
-    var pts = setPoints(acc, mixes);
-    var res = replayable_(who, 'set', pts, { acc: acc, score: score, mixes: mixes, grade: grade }, function (me) { return score > (me.score || 0); },
-      function (me) { return me.grade + ' ' + me.acc + '% (' + me.mixes + ' mixes, ' + me.score + ')'; }, 'Booth', 'played a set in Booth');
-    var st = gamesState_(who);
-    st.last = { points: pts, acc: acc, score: score, grade: grade, firstXp: res.first ? 5 + pts : 0 };
-    return st;
-  });
-}
-
-/** Booth's daily challenge: the same challenge for both of you each day (worked out from the date in the game). Best score counts. */
-function submitBooth(key, score, grade, title) {
-  var who = who_(key);
-  score = Math.round(Number(score));
-  grade = /^(S|A|B|C|D)$/.test(String(grade)) ? String(grade) : 'D';
-  title = String(title || 'Daily challenge').slice(0, 60);
-  if (!(score >= 0 && score <= 100)) throw new Error('That score didn\'t register. Try again.');
-  return withLock_(function () {
-    var pts = Math.round(score / 10);
-    var res = replayable_(who, 'booth', pts, { score: score, grade: grade, title: title }, function (me) { return score > (me.score || 0); },
-      function (me) { return me.grade + ' ' + me.score + ' (' + me.title + ')'; }, 'Booth challenge', 'did today\'s Booth challenge');
-    var st = gamesState_(who);
-    st.last = { points: pts, score: score, grade: grade, firstXp: res.first ? 5 + pts : 0 };
     return st;
   });
 }

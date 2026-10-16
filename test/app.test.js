@@ -343,5 +343,7 @@ test('Real-look portraits: every hair style, mood and outfit draws; the tab bar 
   const app = require('fs').readFileSync(__dirname + '/../web/app.js', 'utf8');
   const prim = JSON.parse(app.match(/var PRIMARY = (\{[^;]+\});/)[1].replace(/(\w+):/g, '"$1":').replace(/'/g, '"'));
   Object.values(prim).forEach(l => assert.ok(l.length <= 4, 'four main tabs plus More'));
-  assert.ok(app.includes("['mix', 'Booth']"), 'Play has a Booth tab instead of the old Mix game');
+  assert.ok(app.includes("['mix', 'Mix practice']"), 'Play has a Mix practice tab that opens Afters');
+  assert.ok(app.includes("var AFTERS_URL = 'https://afters-dj.web.app/'"));
+  assert.ok(!/LQDJ|BoothPlay|djset/.test(app), 'no game code left in the app');
 });

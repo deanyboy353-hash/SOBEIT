@@ -2,37 +2,93 @@
 <html lang="en-GB">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Afterhours: Booth</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Moving to Afters</title>
 <meta name="theme-color" content="#07030f">
 <meta name="color-scheme" content="dark">
 <link rel="icon" href="favicon-32.png" sizes="32x32">
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="booth.css">
+<style>
+  body { margin: 0; min-height: 100vh; background: #07030f; color: #f3eefe; font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; display: grid; place-items: center; }
+  main { max-width: 560px; padding: 32px 20px; }
+  h1 { font-size: 30px; margin: 0 0 8px; letter-spacing: -.01em; }
+  .muted { color: #b7aed0; }
+  .panel { background: #140b26; border: 1px solid #2a1d47; border-radius: 16px; padding: 18px; margin: 18px 0; }
+  button, .btn { display: inline-block; font: inherit; font-weight: 650; padding: 12px 18px; border-radius: 12px; border: 0; background: linear-gradient(110deg, #ff4fb3, #8a6bff); color: #fff; cursor: pointer; text-decoration: none; }
+  button:disabled { opacity: .5; cursor: default; }
+  .ok { color: #49e3a1; } .bad { color: #ff8a7a; }
+  ol { padding-left: 20px; } li { margin: 4px 0; }
+</style>
 </head>
 <body>
-<div id="booth" class="booth">
-  <header class="bh">
-    <a class="brand" href="#menu" aria-label="Booth menu"><span class="logo-dot"></span><span><b>AFTERHOURS</b><i>Booth</i></span></a>
-    <nav class="bnav" id="bnav"></nav>
-    <div class="conn" id="conn"><span class="led"></span><span id="connText">Controller not connected</span><button type="button" class="bbtn sm" id="connect">Connect controller</button></div>
-  </header>
-  <main id="screen" class="screen"></main>
-</div>
-<div id="btoast" class="btoast" role="status" aria-live="polite"></div>
+<main>
+  <h1>Booth is now Afters</h1>
+  <p class="muted">The DJ game has its own home now. This page moves everything it kept in this browser across: your tracks and their analysis, beat grid fixes, controller mapping, latency calibration, Academy progress and mastery, stats and recordings.</p>
+  <div class="panel" id="state">Looking for your game data in this browser…</div>
+  <p class="muted" style="font-size:14px">Nothing here is deleted: the old copy stays in this browser until you clear it yourself.</p>
+</main>
 <script src="config.js"></script>
-<script src="booth-map.js"></script>
-<script src="booth-midi.js"></script>
-<script src="booth-dsp.js"></script>
-<script src="booth-cue.js"></script>
-<script src="booth-pro.js"></script>
-<script src="booth-audio.js"></script>
-<script src="booth-lib.js"></script>
-<script src="booth-play.js"></script>
-<script src="booth-score.js"></script>
-<script src="booth-game.js"></script>
-<script src="booth-skills.js"></script>
-<script src="booth-academy.js"></script>
-<script src="booth.js"></script>
+<script src="https://afters-dj.web.app/bundle.js"></script>
+<script>
+/* Nudge's old Booth address: moves the game's data to Afters (backup file first, then a checked copy). */
+(function () {
+  'use strict';
+  var AFTERS = 'https://afters-dj.web.app/';
+  var B = window.AftersBundle, box = document.getElementById('state');
+  function keep(k) { return /^booth-/.test(k) || k === 'lq-djset'; }
+  function lsGet(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }
+  var qs = new URLSearchParams(location.search), key = qs.get('key') || lsGet('lq-key') || '';
+  if (qs.get('key')) try { localStorage.setItem('lq-key', JSON.stringify(key)); } catch (e) {}
+  var api = (window.LQ_CONFIG && LQ_CONFIG.api) || '';
+  var link = api && key ? { api: api, key: key } : null;
+  function aftersUrl(hash) {
+    var h = hash || '#menu';
+    if (link && hash !== '#import') h += '&link=' + encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(link)))));
+    return AFTERS + h;
+  }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  if (!B) { box.innerHTML = '<p class="bad">Afters didn\'t load. Check your connection and reload this page.</p>'; return; }
+
+  var mine = null, bundle = null, win = null, ready = false, sent = false;
+  B.collect(['lq-dj', 'booth'], keep).then(function (b) {
+    bundle = b; mine = B.summary(b);
+    var any = Object.keys(mine.stores).some(function (k) { return mine.stores[k].count; }) || mine.ls;
+    var moved = lsGet('lq-afters-moved');
+    if (!any || moved && moved.ok && JSON.stringify(moved.summary) === JSON.stringify(mine)) { box.innerHTML = 'Opening Afters…'; location.replace(aftersUrl('#menu')); return; }
+    box.innerHTML = '<p><b>Found:</b> ' + esc(B.human(mine)) + '.</p><ol><li>A backup file of all of it downloads first.</li><li>Afters opens in a new tab and copies it in.</li><li>Both sides count everything, so you\'ll know nothing was lost.</li></ol>' +
+      '<button type="button" id="go">Back up and move to Afters</button>';
+    document.getElementById('go').onclick = start;
+  }, function (e) { box.innerHTML = '<p class="bad">Couldn\'t read the game data: ' + esc(e.message || e) + '. Close any other Booth tabs and reload.</p>'; });
+
+  function start() {
+    win = window.open(AFTERS + '#import', 'afters');           // opened straight from the tap, so it isn't blocked
+    box.innerHTML = 'Making the backup file…';
+    var blob = B.pack(bundle), a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'afters-from-nudge-' + new Date().toISOString().slice(0, 10) + '.aftersbackup';
+    document.body.appendChild(a); a.click(); a.remove();
+    box.innerHTML = '<p class="ok">Backup saved to your downloads (' + (blob.size / 1048576).toFixed(1) + ' MB).</p><p>Copying to Afters… keep both tabs open.</p>' +
+      (win ? '' : '<p>Your browser blocked the new tab. <a class="btn" href="' + AFTERS + '#import" target="afters" id="open">Open Afters</a></p>');
+    var o = document.getElementById('open'); if (o) o.onclick = function () { setTimeout(function () { win = window.open('', 'afters'); send(); }, 300); };
+    send();
+  }
+  function send() {
+    if (sent || !ready || !win) return;
+    sent = true;
+    win.postMessage({ type: 'afters-bundle', bundle: bundle, link: link }, AFTERS.replace(/\/$/, ''));
+  }
+  window.addEventListener('message', function (ev) {
+    if (ev.origin !== AFTERS.replace(/\/$/, '') || !ev.data) return;
+    if (ev.data.type === 'afters-ready') { ready = true; win = win || ev.source; send(); }
+    if (ev.data.type === 'afters-imported') {
+      var r = ev.data.result || {}, problems = (r.problems || []).slice();
+      // our own count against theirs, store by store
+      Object.keys(mine.stores).forEach(function (s) { var g = r.got && r.got.stores[s]; if (!g || g.count < mine.stores[s].count || g.bytes < mine.stores[s].bytes) if (problems.indexOf(s) === -1) problems.push(s + ' doesn\'t match'); });
+      var ok = r.ok && !problems.length;
+      try { localStorage.setItem('lq-afters-moved', JSON.stringify({ at: new Date().toISOString(), ok: ok, summary: mine })); } catch (e) {}
+      box.innerHTML = ok ? '<p class="ok"><b>Moved and checked.</b> ' + esc(B.human(mine)) + '. Nothing lost.</p><p>Afters is open in the other tab. From now on, Nudge\'s Mix practice card takes you straight there.</p><a class="btn" href="' + aftersUrl('#menu') + '">Go to Afters</a>'
+        : '<p class="bad"><b>Not everything came across:</b> ' + esc(problems.join('; ')) + '.</p><p>Your data is still here, and in the backup file. Close Afters and try again, or open Afters, Backup, and restore the file.</p><button type="button" onclick="location.reload()">Try again</button>';
+    }
+  });
+})();
+</script>
 </body>
 </html>
