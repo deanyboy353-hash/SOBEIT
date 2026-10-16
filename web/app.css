@@ -1279,3 +1279,9 @@ body.chat-open { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) { .cspecial.wink, .cspecial.dice .die, .ctyping i { animation: none; } }
 .us-line { justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .us-badges summary { cursor: pointer; margin-top: 4px; }
+.dayoff { gap: 10px; padding: 10px 14px; margin: 0 0 12px; border-radius: 14px; background: var(--raised); }
+.dayoff.on { background: color-mix(in srgb, var(--good) 14%, var(--raised)); }
+.card.win.compact { padding: 14px 16px; }
+.wonbadge { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--good); color: var(--bg); flex: none; }
+.wonbadge svg { width: 22px; height: 22px; stroke-width: 3; }
+.brief.behind { opacity: .7; }

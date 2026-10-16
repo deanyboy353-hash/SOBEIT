@@ -17,10 +17,11 @@
     return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.floor(m / 60) + ' h ago';
   }
   /** Should the brief be rewritten? 'stale' (new part of the day, or 3 hours old), 'big' (something big got done, 15+ min since the last one) or ''. */
-  function briefDue(b, part, nowMs, dirtyAt) {
+  function briefDue(b, part, nowMs, dirtyAt, sig) {
     if (!b || !b.brief || b.part !== part) return 'stale';
     var age = nowMs - (Number(b.ts) || 0);
     if (age >= 3 * 3600000) return 'stale';
+    if (sig && b.sig && b.sig !== sig && age >= 60000) return 'big';   // a job was done since: catch up
     if (dirtyAt && dirtyAt > (Number(b.ts) || 0) && age >= 15 * 60000) return 'big';
     return '';
   }
@@ -58,7 +59,14 @@
     w.both = w.won && (!w.partner || w.partner.won);
     return w;
   }
-  var api = { winStep: winStep, homeOrder: homeOrder, HOME_DEFAULT: HOME_DEFAULT, winText: winText, ago: ago, briefDue: briefDue, bigMoment: bigMoment };
+  /** The same fingerprint as the server's briefSig_: jobs done, day won, gym done, open deadlines. */
+  function briefSig(S) {
+    var w = (S.game && S.game.win) || {}, gym = (S.today && S.today.gym) || {};
+    return [w.done || 0, w.won ? 1 : 0, gym.done ? 1 : 0, (S.deadlines || []).length].join('|');
+  }
+  /** Is the brief behind what's on screen (a job got done since it was written)? */
+  function briefBehind(b, S) { return !!(b && b.sig && b.sig !== briefSig(S)); }
+  var api = { briefSig: briefSig, briefBehind: briefBehind, winStep: winStep, homeOrder: homeOrder, HOME_DEFAULT: HOME_DEFAULT, winText: winText, ago: ago, briefDue: briefDue, bigMoment: bigMoment };
   root.NudgeFmt = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

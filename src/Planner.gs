@@ -689,16 +689,21 @@ function planTransport(o) {
     first = candidates.filter(function (b) { return b.route === pref; })[0];
   }
   var plan = first ? pairFor(first, o.dayOff ? o.sessionMins : 0) : null;
+  // a day off with only after-work buses in the timetable: never quietly plan the after-work bus instead
+  if (plan && o.dayOff && Math.abs(plan.leaveBy - o.free) > 90) {
+    res.late = plan; plan = null; res.noDaytime = true;
+    res.problem = 'Your bus times only cover after work, so there\'s no bus near ' + formatClock(o.free) + ' yet. Add the daytime times for the ' + pref + ' (it runs through the day) under Transport in the Config tab, or pick another time.';
+  }
   if (plan) {
     Object.assign(res, plan, { ok: true });
-    if (o.dayOff && Math.abs(plan.leaveBy - o.free) > 60) res.notes.push('No bus near ' + formatClock(o.free) + ' in the timetable yet; this is the nearest. Add the full timetable in the Transport section.');
+    if (o.dayOff && Math.abs(plan.leaveBy - o.free) > 45) res.notes.push('The nearest bus to ' + formatClock(o.free) + ' in your timetable.');
     if (!o.dayOff && plan.leaveBy < o.free) { res.finishBy = plan.leaveBy; res.notes.push('Wrap up work a few minutes early: you need to be out the door at ' + formatClock(plan.leaveBy) + '.'); }
     if (plan.gymMins < o.minGym) res.notes.push('Short session: only ' + plan.gymMins + ' min in the gym before the last bus back.');
     // missed it? the next bus out
     var next = outs.filter(function (b) { return b.dep > first.dep && (b.route === pref || !outs.some(function (x) { return x.dep > first.dep && x.route === pref; })); })[0];
     var nb = next ? pairFor(next, o.dayOff ? o.sessionMins : 0) : null;
     if (nb) res.missed = nb;
-  } else {
+  } else if (!res.noDaytime) {
     // no preferred bus you can make: the fallback bus, if one works
     var fb = candidates.map(function (b) { return pairFor(b, o.dayOff ? o.sessionMins : 0); }).filter(function (p) { return p && p.gymMins >= o.minGym; })[0];
     if (fb && o.dayOff) { Object.assign(res, fb, { ok: true, fallback: true }); res.notes.push('No ' + pref + ' near then, so the ' + fb.out.route + '.'); }

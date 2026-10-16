@@ -125,7 +125,7 @@ function removeTaggedEvents_(ymd, kind) {
  */
 function transportPlan_(ymd, dow, day, cfg, sessionMinutes) {
   var s = cfg.settings, tick = function (v) { return v === true || /^(true|yes|y|x|✓)$/i.test(String(v).trim()); };
-  var dayOff = parseDayRange(s['Days off work'] === undefined ? 'Fri, Sat, Sun' : s['Days off work']).indexOf(dow) !== -1;
+  var dayOff = dayOffWork_('me', ymd, cfg);
   var free, earlyBy = num_(s, 'Can leave work early by (min)', 5);
   if (dayOff) free = cellClock_(s['Day off: leave around']) || 720;
   else {
@@ -163,4 +163,39 @@ function previewTransport_(ymd, thursdayEarly) {
   if (thursdayEarly !== undefined) cfg = Object.assign({}, cfg, { settings: Object.assign({}, cfg.settings, { 'Thursday early finish': thursdayEarly ? 'TRUE' : 'FALSE' }) });
   var dow = dayOfWeek_(ymd), day = Object.assign({ freeFrom: null, alertAt: null }, cfg.schedule[dow] || {});
   return transportPlan_(ymd, dow, day, cfg, 90);
+}
+
+/** A day off work: your usual days off (Config: Days off work), the days Yaz doesn't work (from setup), or a day marked off in the app. */
+function dayOffWork_(who, ymd, cfg) {
+  ymd = ymd || todayYmd_();
+  var mark = JSON.parse(prop_('OFFDAYS_' + who) || '{}');
+  if (mark[ymd] !== undefined) return !!mark[ymd];
+  var dow = dayOfWeek_(ymd);
+  if (who === 'me') { var st = (cfg || readConfig_()).settings; return parseDayRange(st['Days off work'] === undefined ? 'Fri, Sat, Sun' : st['Days off work']).indexOf(dow) !== -1; }
+  var w = profile_(who).work || {};
+  return Object.keys(w).length ? !w[dow] : false;
+}
+/** Mark today (or a date) as a day off, or as a work day after all. The gym plan is rebuilt around it. */
+function setDayOff(key, off, ymd) {
+  var who = who_(key);
+  ymd = /^\d{4}-\d{2}-\d{2}$/.test(String(ymd || '')) ? ymd : todayYmd_();
+  return withLock_(function () {
+    var m = JSON.parse(prop_('OFFDAYS_' + who) || '{}'); m[ymd] = !!off;
+    Object.keys(m).sort().slice(0, -30).forEach(function (k) { delete m[k]; });   // keep the last 30
+    setProp_('OFFDAYS_' + who, JSON.stringify(m));
+    if (who === 'me' && ymd === todayYmd_()) { try { planGymDay_(ymd, readConfig_()); } catch (e) { log_('WARN', 'Gym re-plan: ' + e); } }
+    return appState_(who);
+  });
+}
+/** When you'd like to head to the gym on a day off (HH:MM). The plan for today is rebuilt with it. */
+function setDayOffLeave(key, hhmm) {
+  var who = who_(key), m = parseClock(String(hhmm || ''));
+  if (who !== 'me') throw new Error('The gym plan is Dean\'s.');
+  if (m === null || m < 360 || m > 1260) throw new Error('Pick a time between 06:00 and 21:00.');
+  return withLock_(function () {
+    setSetting_('Day off: leave around', formatClock(m));
+    forget_('config'); configCache_ = null;
+    try { planGymDay_(todayYmd_(), readConfig_()); } catch (e) { log_('WARN', 'Gym re-plan: ' + e); }
+    return appState_(who);
+  });
 }

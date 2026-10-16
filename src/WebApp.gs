@@ -19,7 +19,7 @@ function rpcTable_() {
     brainDump: brainDump, saveBrainDump: saveBrainDump, addQuest: addQuest, addShopping: addShopping, toggleShopping: toggleShopping,
     askToJoin: askToJoin, planChore: planChore, startChore: startChore, stepDone: stepDone, extendChore: extendChore,
     finishChore: finishChore, parkThing: parkThing, clearLater: clearLater, redeemReward: redeemReward, highFive: highFive,
-    routineStep: routineStep, saveRoutine: saveRoutine, setupState: setupState, saveSetup: saveSetup, previewChores: previewChores, buildChores: buildChores, saveChore: saveChore, choreAction: choreAction, deleteRoutine: deleteRoutine, chatPing: chatPing, addWater: addWater, setTheme: setTheme, todayState: todayState, gymDone: gymDone,
+    routineStep: routineStep, saveRoutine: saveRoutine, setupState: setupState, saveSetup: saveSetup, previewChores: previewChores, buildChores: buildChores, saveChore: saveChore, choreAction: choreAction, deleteRoutine: deleteRoutine, chatPing: chatPing, setDayOff: setDayOff, setDayOffLeave: setDayOffLeave, addWater: addWater, setTheme: setTheme, todayState: todayState, gymDone: gymDone,
     logWeightNow: logWeightNow, foodState: foodState, logPreset: logPreset, quickAdd: quickAdd, quickAddPhoto: quickAddPhoto, importWorkoutCsv: importWorkoutCsv, backupStatus: backupStatus, backupNow: backupNow, exportAll: exportAll, importBackup: importBackup, undoLast: undoLast,
     saveClaudeKey: saveClaudeKey, trainState: trainState, setTrainingMax: setTrainingMax, saveWorkout: saveWorkout,
     respreadSchedule: respreadSchedule, saveQuest: saveQuest, deleteQuest: deleteQuest,
@@ -145,6 +145,7 @@ function appState_(who) {
   s.health = healthState_(who);
   s.deadlines = deadlinesState_(who);
   s.chat = chatConfig_(who);
+  try { s.briefSig = briefSig_(who); } catch (e) { s.briefSig = ''; }
   s.work = workState_(who);
   s.wardrobe = wardrobeState_(who);
   s.undo = undoInfo_(who);

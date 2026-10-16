@@ -270,5 +270,21 @@ test('Transport: Thursday plan with and without the early finish; wet vs dry; Fr
   assert.match(t, /It's wet, so move this session to Friday/);
   const fri = g.ctx.previewTransport_('2026-10-16');
   assert.strictEqual(fri.dayOff, true);
-  assert.match(fri.lines.join('\n'), /No bus near 12:00 in the timetable yet/);
+  const fl = fri.lines.join('\n');
+  assert.match(fl, /only cover after work, so there's no bus near 12:00/, 'a day off never quietly plans the after-work bus');
+  assert.ok(!/^Leave by 14:59/m.test(fl), fl);
+});
+
+test('Day off: with daytime buses, the best pair for a ~90 minute session around midday (or your time)', () => {
+  const g = { ctx: P };
+  const tt = [{ route: '3', way: 'out', days: [5], times: [541, 601, 661, 721, 781, 841, 901, 961], door: 13 },
+    { route: '3', way: 'back', days: [5], times: [585, 645, 705, 765, 825, 885, 945, 1005, 1035], door: 14 }];
+  const base = { dow: 5, dayOff: true, tt, walkToStop: 2, gymToStance: 4, buffer: 3, minGym: 60, maxGym: 120, preferred: '3', sessionMins: 90, bikeMins: 17 };
+  let p = g.ctx.planTransport(Object.assign({ free: 720 }, base));
+  assert.strictEqual(p.ok, true);
+  assert.strictEqual(p.out.dep, 721, 'the 12:01, nearest to 12:00');
+  assert.ok(p.gymMins >= 90 && p.gymMins < 150, 'about 90 minutes in the gym: ' + p.gymMins);
+  assert.ok(!p.noDaytime);
+  p = g.ctx.planTransport(Object.assign({ free: 600 }, base));
+  assert.strictEqual(p.out.dep, 601, 'your own time (10:00) moves it');
 });

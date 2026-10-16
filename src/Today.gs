@@ -19,6 +19,7 @@ function todayState_() {
       leaveAt: hhmm_(row['Leave at']),
       bus: String(row['Bus'] || ''), window: String(row['Gym window'] || ''), homeBy: hhmm_(row['Home by']), plan: String(row['Plan'] || ''),
       weather: String(row['Weather'] || ''),
+      dayOff: dayOffWork_('me', ymd, cfg), leaveAround: hhmm_(cfg.settings['Day off: leave around']) || '12:00', noDaytime: /only cover after work/.test(String(row['Plan'] || '')),
       done: /^Done/.test(String(row['Status'] || '')),
       exercises: (cfg.sessions[session] || []).map(function (ex) {
         return { exercise: String(ex.exercise), sets: String(ex.sets), reps: String(ex.reps), rpe: String(ex.rpe), rest: String(ex.rest), notes: String(ex.notes || '') };

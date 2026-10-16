@@ -23,10 +23,17 @@ var BRIEF_SCHEMA = {
 };
 
 /** The day at a glance, as text for Claude. */
+/** What the brief was written against: jobs done, the day won, the gym, open deadlines. Same formula as the phone (fmt.js). */
+function briefSig_(who) {
+  var g = gameState_(who), w = g.win || {}, gym = who === 'me' ? (todayState_().gym || {}) : {};
+  return [w.done || 0, w.won ? 1 : 0, gym.done ? 1 : 0, deadlinesState_(who).length].join('|');
+}
 function dayContext_(who) {
   var q = questsState_(who);
   var g = gameState_(who);
+  var w = g.win || {};
   var lines = ['Date: ' + todayYmd_() + ' (' + DAY_NAMES[dayOfWeek_(todayYmd_())] + ')',
+    w.won ? 'WIN THE DAY: ALREADY WON today (' + w.done + ' of ' + w.need + '). Do not suggest more chores or say anything still needs doing to win; congratulate them and suggest rest, fun or the non-chore things still ahead.' : 'Win the day: ' + (w.done || 0) + ' of ' + (w.need || 0) + ' so far.',
     'Streak: ' + g.streak.count + ' days. XP today ' + g.xpToday + ' of ' + g.goal + '.',
     'Today\'s work plan: ' + (blockRows_(who, todayYmd_()).map(function (b) { return '[' + b.id + '] ' + clockMin_(b.start) + '-' + clockMin_(b.start + b.mins) + ' ' + b.task + ' (' + b.status + ')'; }).join('; ') || 'empty'),
     'Today\'s chores: ' + (q.board.map(function (x) { return x.name + (x.must ? ' [must-do]' : q.planned ? ' [bonus]' : '') + (x.doneToday ? ' (done)' : '') + ' ~' + x.minutes + 'min'; }).join('; ') || 'none') +
@@ -64,7 +71,7 @@ function makeBrief_(who) {
   var res = callClaudeJson_(AI_VOICE + 'Write this person\'s brief for the rest of today. It is ' + part + ' now (' + now_('HH:mm') + '): only talk about what is still ahead today' +
     (part === 'night' ? ' and gently suggest bed' : '') + '. Do not greet them or say good morning/afternoon: the app already greets them. Use the facts below exactly (a training day is a training day; only say rest day if it says rest day). Kept light, plus the easiest good next move.',
     'Name: ' + n + '\nTime now: ' + now_('HH:mm') + ' (' + part + ')\n' + dayContext_(who), BRIEF_SCHEMA, claudeModel_(), 4000);
-  var b = { date: todayYmd_(), part: part, at: now_('HH:mm'), ts: new Date().getTime(), brief: String(res.brief || ''), first: String(res.first || '') };
+  var b = { date: todayYmd_(), part: part, at: now_('HH:mm'), ts: new Date().getTime(), sig: briefSig_(who), brief: String(res.brief || ''), first: String(res.first || '') };
   setProp_('BRIEF_' + who, JSON.stringify(b));
   return b;
 }
@@ -181,16 +188,18 @@ function clearAsk(key) {
  * After something big gets done (force) it's rewritten too, but never more than every 15 minutes.
  */
 var BRIEF_MAX_AGE = 3 * 3600000, BRIEF_MIN_GAP = 15 * 60000;
-function briefStale(b, ymd, part, nowMs, force) {
+var BRIEF_SIG_GAP = 60000;
+function briefStale(b, ymd, part, nowMs, force, sig) {
   if (!b || !b.brief || b.date !== ymd || b.part !== part) return true;
   var age = nowMs - (Number(b.ts) || 0);
+  if (sig && b.sig !== sig && age >= BRIEF_SIG_GAP) return true;   // something got done since it was written
   return age >= (force ? BRIEF_MIN_GAP : BRIEF_MAX_AGE);
 }
 
 function getBrief(key, force) {
   var who = who_(key);
   var b = JSON.parse(prop_('BRIEF_' + who) || 'null');
-  if (!briefStale(b, todayYmd_(), dayPart(minutesNow_()), new Date().getTime(), !!force)) return b;
+  if (!briefStale(b, todayYmd_(), dayPart(minutesNow_()), new Date().getTime(), !!force, briefSig_(who))) return b;
   if (!claudeKey_()) return null;
   return makeBrief_(who);
 }

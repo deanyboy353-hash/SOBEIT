@@ -1288,6 +1288,12 @@ body.chat-open { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) { .cspecial.wink, .cspecial.dice .die, .ctyping i { animation: none; } }
 .us-line { justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .us-badges summary { cursor: pointer; margin-top: 4px; }
+.dayoff { gap: 10px; padding: 10px 14px; margin: 0 0 12px; border-radius: 14px; background: var(--raised); }
+.dayoff.on { background: color-mix(in srgb, var(--good) 14%, var(--raised)); }
+.card.win.compact { padding: 14px 16px; }
+.wonbadge { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--good); color: var(--bg); flex: none; }
+.wonbadge svg { width: 22px; height: 22px; stroke-width: 3; }
+.brief.behind { opacity: .7; }
 
 </style>
 </head>
@@ -3339,10 +3345,11 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.floor(m / 60) + ' h ago';
   }
   /** Should the brief be rewritten? 'stale' (new part of the day, or 3 hours old), 'big' (something big got done, 15+ min since the last one) or ''. */
-  function briefDue(b, part, nowMs, dirtyAt) {
+  function briefDue(b, part, nowMs, dirtyAt, sig) {
     if (!b || !b.brief || b.part !== part) return 'stale';
     var age = nowMs - (Number(b.ts) || 0);
     if (age >= 3 * 3600000) return 'stale';
+    if (sig && b.sig && b.sig !== sig && age >= 60000) return 'big';   // a job was done since: catch up
     if (dirtyAt && dirtyAt > (Number(b.ts) || 0) && age >= 15 * 60000) return 'big';
     return '';
   }
@@ -3380,7 +3387,14 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     w.both = w.won && (!w.partner || w.partner.won);
     return w;
   }
-  var api = { winStep: winStep, homeOrder: homeOrder, HOME_DEFAULT: HOME_DEFAULT, winText: winText, ago: ago, briefDue: briefDue, bigMoment: bigMoment };
+  /** The same fingerprint as the server's briefSig_: jobs done, day won, gym done, open deadlines. */
+  function briefSig(S) {
+    var w = (S.game && S.game.win) || {}, gym = (S.today && S.today.gym) || {};
+    return [w.done || 0, w.won ? 1 : 0, gym.done ? 1 : 0, (S.deadlines || []).length].join('|');
+  }
+  /** Is the brief behind what's on screen (a job got done since it was written)? */
+  function briefBehind(b, S) { return !!(b && b.sig && b.sig !== briefSig(S)); }
+  var api = { briefSig: briefSig, briefBehind: briefBehind, winStep: winStep, homeOrder: homeOrder, HOME_DEFAULT: HOME_DEFAULT, winText: winText, ago: ago, briefDue: briefDue, bigMoment: bigMoment };
   root.NudgeFmt = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -3931,9 +3945,9 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
   /** The brief rewrites itself every few hours, for each part of the day, and soon after something big gets done. */
   function maybeBrief() {
     if (!S || !S.hasClaudeKey) return;
-    var due = NudgeFmt.briefDue(S.brief, dayPartNow(), now(), briefDirty);
+    var due = NudgeFmt.briefDue(S.brief, dayPartNow(), now(), briefDirty, NudgeFmt.briefSig(S));
     if (!due) return;
-    var want = due + ':' + dayPartNow() + ':' + (due === 'big' ? briefDirty : Math.floor(now() / 3600000));
+    var want = due + ':' + dayPartNow() + ':' + (due === 'big' ? briefDirty + NudgeFmt.briefSig(S) : Math.floor(now() / 3600000));
     if (briefAsked === want) return;
     briefAsked = want;
     rpc('getBrief', [due === 'big']).then(function (b) { if (b) { if (due === 'big') briefDirty = 0; S.brief = b; if (current === 'home') renderHome(); } }, function () {});
@@ -4171,6 +4185,11 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     var g = S.game, n = names(), W = winOf(), t = NudgeFmt.winText(W), P = W.partner, Q = S.quests;
     var mine = Q.planned ? Q.board : Q.board.filter(function (q) { return q.who === 'anyone' || q.who === 'together' || q.who === S.who; });
     var open = mine.filter(function (q) { return !q.doneToday; }), ch = S.fun && S.fun.challenges, chDone = ch ? ch.list.filter(function (x) { return x.done; }).length : 0;
+    if (W.won && !open.length) {   // everything done: a small "Day won" line frees up the screen
+      return '<section class="card spot win compact"><div class="row" style="gap:12px"><span class="wonbadge">' + icon('check') + '</span><div class="grow"><b>Day won</b><div class="small muted">' +
+        (P ? (P.won ? 'You both won · the pet is fed' : esc(n.other) + ': ' + P.done + ' of ' + P.need) + ' · ' : '') + g.streak.count + ' day' + (g.streak.count === 1 ? '' : 's') + ' in a row · ' + g.xpToday + ' XP today</div></div>' +
+        '<button class="btn ghost sm" type="button" data-goto="chores">Bonus' + icon('chevron', 's') + '</button></div></section>';
+    }
     var h = '<section class="card spot today win' + (W.won ? ' won' : '') + '"><div class="between" style="margin-bottom:10px"><div class="eyebrow">Win the day</div><button class="btn ghost sm" type="button" data-goto="chores">All jobs' + icon('chevron', 's') + '</button></div>';
     h += '<div class="hero"><div class="ring" style="width:112px;height:112px">' + ring(W.need ? W.done / W.need : 1, 112, 10) +
       '<div class="t"><div><div class="num display-num" style="font-size:' + (t.big.length > 4 ? 19 : 30) + 'px">' + esc(t.big) + '</div><div class="tiny muted">' + esc(t.small) + '</div></div></div></div><div class="grow">';
@@ -4236,6 +4255,23 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
       (count ? '<path d="M12 10c.5 2 3 3 3 6a3 3 0 0 1-6 0c0-1.5 1-2.5 1.5-3 .2 1 .8 1.5 1.5 1.5 0-2-.5-3 0-4.5z" fill="' + hot + '" transform="scale(' + k + ') translate(' + (12 / k - 12) + ' ' + (22 / k - 22) + ')"/>' : '') + '</svg>';
   }
 
+  function leaveOptions(cur) {
+    var o = '';
+    for (var m = 540; m <= 1080; m += 30) { var t = ('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + m % 60).slice(-2); o += '<option value="' + t + '"' + (t === cur ? ' selected' : '') + '>' + t + '</option>'; }
+    return o;
+  }
+  document.addEventListener('change', function (ev) {
+    var sl = ev.target.closest && ev.target.closest('[data-dayleave]'); if (!sl || !S) return;
+    if (S.today.gym) { S.today.gym.leaveAround = sl.value; S.today.gym.plan = ''; }
+    toast('Planning the gym around ' + sl.value + '…');
+    call('setDayOffLeave', [sl.value], function (res) { apply(res, 'Gym planned around ' + sl.value); });
+  });
+  document.addEventListener('click', function (ev) {
+    var b = ev.target.closest && ev.target.closest('[data-dayoff]'); if (!b || !S) return;
+    var off = b.dataset.dayoff === '1'; S.work.off = off; renderAll();
+    toast(off ? 'Day off. Work cards are hidden.' : 'A work day after all.');
+    call('setDayOff', [off]);
+  });
   /** Under the date: what today needs, in plain words. */
   function dayStatus() {
     if (S.game && (S.game.win ? S.game.win.won : S.game.streak && S.game.streak.todayDone)) return ' · <span class="good">Day won</span>';
@@ -4270,8 +4306,8 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     // brief
     maybeBrief();
     if (S.brief && S.brief.brief && S.brief.part !== dayPartNow()) S.brief = null;    // written for an earlier part of the day: a fresh one is on its way
-    if (S.brief && S.brief.brief) h += '<section class="card tint"><div class="eyebrow" style="color:var(--lilac);display:flex;gap:6px;align-items:center">' + icon('sparkles', 's') + 'Today' + (S.brief.ts || S.brief.at ? '<span class="muted" style="font-weight:500"> · updated <span data-briefago>' + esc(S.brief.ts ? NudgeFmt.ago(S.brief.ts, now()) : 'at ' + S.brief.at) + '</span></span>' : '') + '</div><p class="brief" style="margin:8px 0 10px">' + esc(S.brief.brief) + '</p>' +
-      (S.brief.first ? '<div class="row small"><span class="chip lilac">First move</span><span>' + esc(S.brief.first) + '</span></div>' : '') + '</section>';
+    if (S.brief && S.brief.brief) h += '<section class="card tint"><div class="eyebrow" style="color:var(--lilac);display:flex;gap:6px;align-items:center">' + icon('sparkles', 's') + 'Today' + (S.brief.ts || S.brief.at ? '<span class="muted" style="font-weight:500"> · updated <span data-briefago>' + esc(S.brief.ts ? NudgeFmt.ago(S.brief.ts, now()) : 'at ' + S.brief.at) + '</span></span>' : '') + '</div><p class="brief' + (NudgeFmt.briefBehind(S.brief, S) ? ' behind' : '') + '" style="margin:8px 0 10px">' + (NudgeFmt.briefBehind(S.brief, S) && S.game.win && S.game.win.won ? 'Day won. Nice work. Updating your brief…' : esc(S.brief.brief)) + '</p>' +
+      (S.brief.first && !NudgeFmt.briefBehind(S.brief, S) ? '<div class="row small"><span class="chip lilac">First move</span><span>' + esc(S.brief.first) + '</span></div>' : '') + '</section>';
 
     seg('brief');
     h += '<button class="askbar" type="button" id="openAsk">' + icon('sparkles') + '<span class="grow">Ask anything, or tell me what\'s on your mind</span>' + icon('chevron', 's') + '</button>';
@@ -4299,10 +4335,12 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
         if (mins > 0 && mins < 300) leave = 'Leave in ' + (mins >= 60 ? Math.floor(mins / 60) + 'h ' : '') + (mins % 60) + 'm';
       }
       h += '<section class="card blush"><div class="between"><div><div class="eyebrow" style="color:var(--pink)">Gym today</div><h2 style="margin-top:4px">' + esc(gy.session) + '</h2><div class="small muted row" style="gap:6px;margin-top:4px">' +
-        (gy.travel === 'Move' ? icon('bus', 's') + 'No bus after work' : gy.travel ? icon(gy.travel === 'Bike' ? 'bike' : 'bus', 's') + (gy.bus ? 'Bus ' + esc(gy.bus.split(' / ')[0]) : esc(gy.travel === 'Bike' ? 'E-bike' : gy.travel)) + ' · leave ' + esc(gy.leaveAt) + (gy.homeBy ? ' · home ' + esc(gy.homeBy) : '') : 'Plan arrives at 6am') + '</div>' +
+        (gy.dayOff && gy.noDaytime ? icon('bus', 's') + (gy.travel === 'Bike' ? 'E-bike · leave ' + esc(gy.leaveAt) : 'No daytime bus times yet') : gy.travel === 'Move' ? icon('bus', 's') + 'No bus after work' : gy.travel ? icon(gy.travel === 'Bike' ? 'bike' : 'bus', 's') + (gy.bus ? 'Bus ' + esc(gy.bus.split(' / ')[0]) : esc(gy.travel === 'Bike' ? 'E-bike' : gy.travel)) + ' · leave ' + esc(gy.leaveAt) + (gy.homeBy ? ' · home ' + esc(gy.homeBy) : '') : 'Plan arrives at 6am') + '</div>' +
         (gy.window ? '<div class="small muted" style="margin-top:2px">Gym ' + esc(gy.window) + (gy.bus ? ' · back on the ' + esc(gy.bus.split(' / ')[1] || '') : '') + '</div>' : '') +
         (leave ? '<div class="small" style="font-weight:650;margin-top:4px">' + leave + '</div>' : '') + '</div>' +
         (gy.done ? '<span class="chip good">' + icon('check', 's') + 'Done</span>' : '<div class="stack right"><button class="btn primary sm" type="button" data-goto="train">Log it</button><button class="btn ghost sm" type="button" data-goto="train" style="padding:4px 8px">Change</button></div>') + '</div>' +
+        (gy.dayOff && !gy.done ? '<div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap"><span class="tiny muted">Day off · leave around</span><select data-dayleave="1" aria-label="When to head to the gym today">' + leaveOptions(gy.leaveAround) + '</select></div>' +
+          (gy.noDaytime ? '<p class="tiny muted" style="margin:6px 0 0">Your bus times only cover after work. Add the daytime times for the 3 under Transport in the Config tab and I\'ll pick the best pair for a 90-minute session.</p>' : '') : '') +
         (gy.plan && !gy.done ? '<details class="gymplan"><summary class="small">Travel plan</summary><ul class="small">' + gy.plan.split('\n').map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ul></details>' : '') + '</section>';
     }
 
@@ -6459,6 +6497,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     var sec = el('tab-work'); if (!sec || !S || !S.work) return;
     var w = W(), n = names(), sw = S.work, h = '';
     h += '<div class="top"><div><h1>Work</h1><div class="sub">' + (sw.total ? sw.done + ' of ' + sw.total + ' blocks done · ' + dur(sw.doneMins) + ' of ' + dur(sw.planned) : 'Time-block your day, get paid for sticking to it') + '</div></div>' + meButton() + '</div>';
+    h += '<div class="between dayoff' + (sw.off ? ' on' : '') + '"><span class="small">' + (sw.off ? '<b>Day off today.</b> Work cards are hidden on Home.' : 'A work day.') + '</span><button class="btn ' + (sw.off ? 'soft' : 'line') + ' sm" type="button" data-dayoff="' + (sw.off ? '0' : '1') + '">' + (sw.off ? 'It\'s a work day' : 'Mark today off') + '</button></div>';
     h += '<div class="wk-grid"><div class="wk-a">' + wkNowCard();
     h += '<section class="card"><form class="inline" id="wkForm" autocomplete="off"><input type="text" id="wkText" placeholder="Write the report 10-11:30, Emails 30m…" aria-label="Add a block"><button class="btn primary" type="submit">Add</button></form>' +
       '<p class="tiny muted" style="margin:8px 0 0">Give it a time ("10-11:30", "at 3pm") and a length ("45m", "2h"), or a number to hit ("Queue 40 emails", "Edit 3 videos"). No time and it goes in the next free slot.</p></section>' + wkKitCard() + '</div>';
@@ -6624,7 +6663,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
   });
   setInterval(function () { if (S && S.work && current === 'work' && !wkDrag) { var nw = el('wkNow'); if (nw) nw.outerHTML = wkNowCard(); var w = W(), nl = el('wkNowl'), tl = el('wkTl'); if (nl && tl) { var m = nowMin(); nl.style.top = Math.round((m - +tl.dataset.from) * ppm()) + 'px'; nl.querySelector('span').textContent = hm(m); } } }, 20000);
   function workMini() {
-    var w = S.work; if (!w) return '';
+    var w = S.work; if (!w || w.off) return '';          // days off: no work cards at all
     var c = curBlock(w), nx = nextBlock(w), d = new Date(now()), wd = d.getDay() > 0 && d.getDay() < 6, n = nowMin();
     if (!c && !nx && !w.blocks.length && !(wd && n < w.hours.end)) return '';
     var h = '<section class="card wk-mini"><div class="between"><div class="grow"><div class="eyebrow">Work' + (w.total ? ' · ' + w.done + ' of ' + w.total + ' blocks' : '') + '</div>';

@@ -53,7 +53,7 @@ function workState_(who, ymd) {
     date: ymd, today: ymd === todayYmd_(), blocks: b, hours: workHours_(who), kinds: BLOCK_KINDS,
     planned: sum(work), doneMins: sum(done), done: done.length, total: work.length,
     clean: cleanDays_(who).indexOf(ymd) !== -1, cleanXp: CLEAN_SHEET_XP, xp: b.reduce(function (s, x) { return s + x.xp; }, 0), streak: workStreak_(who),
-    week: workWeek_(who), kit: workKit_(who)
+    week: workWeek_(who), kit: workKit_(who), off: dayOffWork_(who, ymd)
   };
 }
 
