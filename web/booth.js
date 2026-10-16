@@ -140,6 +140,7 @@
       ['academy', 'Advanced Academy', 'Loops, filters, fast EQ, FX exits, hot cues, tempo and key, beatmatching by ear. Explain, demo, practice, test.', 'Level up', true],
       ['beatmatch', 'Manual beatmatching', 'Sync off. The incoming track starts at a random tempo and phase. Match it by hand.', 'Core skill', true],
       ['ghost', 'Ghost line', 'Follow the target fader and EQ curves as they scroll with the music.', 'Rhythm game'],
+      ['select', 'Next track', 'Pick what to play next: tempo, key on the Camelot wheel and energy. The skill that makes a set flow.', 'Selection', true],
       ['set', 'Set mode', 'Pick 3 or 4 tracks in order and get scored on the whole run.', 'Perform'],
       ['free', 'Free mix', 'No scoring, just play.', 'Play'],
       ['daily', 'Daily challenge', 'Same challenge for you and Yaz today, head to head in Nudge.', 'Today'],

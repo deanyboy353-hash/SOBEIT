@@ -260,3 +260,9 @@ input.vert { writing-mode: vertical-lr; direction: rtl; width: 34px; height: 150
 #resultSlot .result { margin-top: 0; }
 @keyframes resIn { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }
 @media (prefers-reduced-motion: reduce) { #resultSlot:not(:empty) { animation: none; } }
+/* Next track */
+.mode.sel { text-align: left; gap: 4px; }
+.mode.sel.right { outline: 2px solid var(--green, #4ff0b4); }
+.mode.sel.wrong { outline: 2px solid #ff6b98; }
+.mode.sel.dim { opacity: .75; }
+.mode.sel .good { color: var(--green, #4ff0b4); } .mode.sel .warn { color: #ff9ab8; }

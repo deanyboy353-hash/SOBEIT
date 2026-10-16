@@ -168,7 +168,7 @@
     if (this.sync && o.track && o.playing && !(o.sync && this.playing && (o.startedAt > this.startedAt || (o.startedAt === this.startedAt && this.id === 'A')))) return Math.max(0.84, Math.min(1.16, o.bpm() / this.track.bpm));
     return 1 + this.pitch;
   };
-  D.rate = function () { return this.baseRate() * (1 + this.nudge); };
+  D.rate = function () { return this.baseRate() * (1 + this.nudge) * (this.tone || 1); };   // tone: toneplay pads
   D.bpm = function () { return this.track ? this.track.bpm * this.baseRate() : 0; };
   D.time = function (t) {
     t = t === undefined ? this.c.currentTime : t;
@@ -300,7 +300,21 @@
     if (!this.track) return '';
     if (del) { this.hot[n] = null; return 'deleted'; }
     if (this.hot[n] === null || this.hot[n] === undefined) { this.hot[n] = this.snap(this.time()); return 'set'; }
-    this.seek(this.hot[n]); return 'jump';
+    // Q on: land at the same point in the beat (stays in time with the other deck). SLIP on: the track carries on underneath until the pad is let go.
+    if (this.slip && this.playing) this.slipStart();
+    var to = this.quant && this.playing && root.BoothPro ? BoothPro.quantJump(this.time(), this.hot[n], this.track.first, this.track.bpm) : this.hot[n];
+    this.seek(to); return 'jump';
+  };
+  D.hotcueUp = function () { if (this.slip) this.slipEnd(); };
+  /** Toneplay: play from hot cue 1 at +/- semitones while the pad is held (vinyl style, like the hardware's Toneplay). */
+  D.toneplay = function (semi, down) {
+    if (!this.track) return '';
+    if (!down) { this.tone = 1; this.applyRate(); if (this.slip) this.slipEnd(); return 'up'; }
+    var from = this.hot[0]; if (from === null || from === undefined) return 'nocue';
+    if (this.slip && this.playing) this.slipStart();
+    this.tone = root.BoothPro ? BoothPro.toneRate(semi) : 1;
+    this.seek(from); if (!this.playing) this.play(); this.applyRate();
+    return 'play';
   };
   /** Pitch fader 0..1 (top = slower, bottom = faster, like the hardware arrows). Soft takeover after SYNC is turned off. */
   D.pitchFader = function (v) {

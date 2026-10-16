@@ -677,10 +677,46 @@
   document.addEventListener('input', function (ev) { if (ev.target.id === 'scrub') drawReplay(+ev.target.value / 1000); });
   function stopSession() { sess = null; result = null; resetView(); var e = E(); if (e) { e.decks.A.clearOffset(); e.decks.B.clearOffset(); } }
 
+  // ---------- Next track: the selection trainer (tempo, key, energy) ----------
+  var selRound = null, selPick = -1, selSrc = 'crate', selCrate = null;
+  function drawSelect() {
+    var own = lib().items.filter(function (x) { return x.own && x.bpm && x.camelot; }), pool;
+    if (selSrc === 'mine' && own.length < 6) selSrc = 'crate';
+    pool = selSrc === 'mine' ? own : (selCrate || (selCrate = BoothPro.crate()));
+    if (!selRound) { var wants = ['hold', 'up', 'down', 'hold']; selRound = BoothPro.quizRound(pool, Math.random, wants[Math.floor(Math.random() * wants.length)]); selPick = -1; }
+    var st = S.load('selStats', { right: 0, total: 0, run: 0, best: 0 }), r = selRound;
+    var meta = function (t) { return '<span class="mono small">' + Math.round(t.bpm) + ' BPM · ' + esc(t.camelot) + (t.energy ? ' · energy ' + t.energy : '') + '</span>'; };
+    var h = '<h1>Next track</h1><p class="sub">Choosing what to play next is half of DJing. Read the tempo, the key on the Camelot wheel and the energy, and pick the one that works. ' +
+      st.right + ' of ' + st.total + ' right · run of ' + st.run + ' (best ' + st.best + ').</p>' +
+      '<div class="row" style="margin-bottom:12px"><span class="small">Tracks:</span><button type="button" class="bbtn sm' + (selSrc === 'crate' ? ' on' : '') + '" data-selsrc="crate">Practice crate</button><button type="button" class="bbtn sm' + (selSrc === 'mine' ? ' on' : '') + '" data-selsrc="mine"' + (own.length >= 6 ? '' : ' disabled title="Needs 6 analysed tracks in your library"') + '>My tracks</button></div>';
+    if (!r) { S.el('screen').innerHTML = h + '<p class="muted">Not enough tracks with a tempo and key to make a round. Add and analyse a few more in Library.</p>'; return; }
+    h += '<section class="panel"><div class="eyebrow">Now playing</div><h2 style="margin:4px 0">' + esc(r.now.name) + '</h2>' + meta(r.now) +
+      '<p class="small" style="margin:10px 0 0">The floor: <b>' + ({ hold: 'keep it where it is', up: 'build it up', down: 'bring it down a bit' })[r.want] + '</b>. Which one next?</p></section><div class="modes">';
+    r.options.forEach(function (o, i) {
+      var cls = selPick < 0 ? '' : i === r.answer ? ' right' : i === selPick ? ' wrong' : ' dim';
+      h += '<button type="button" class="mode sel' + cls + '" data-selpick="' + i + '"' + (selPick >= 0 ? ' disabled' : '') + '><b>' + esc(o.track.name) + '</b>' + meta(o.track) +
+        (selPick >= 0 ? '<span class="small">' + o.result.score + ' / 100</span>' + o.result.good.map(function (g) { return '<span class="small good">' + esc(g) + '</span>'; }).join('') + o.result.why.map(function (w) { return '<span class="small warn">' + esc(w) + '</span>'; }).join('') : '') + '</button>';
+    });
+    h += '</div>' + (selPick >= 0 ? '<p><b>' + (selPick === r.answer ? 'Right.' : 'Not quite: the best was ' + esc(r.options[r.answer].track.name) + '.') + '</b></p><div class="row wrap"><button type="button" class="bbtn primary" data-selnext="1">Next round</button>' +
+      (selSrc === 'mine' ? '<button type="button" class="bbtn" data-go="free">Try it in Free mix</button>' : '') + '</div>' : '');
+    h += '<details class="panel" style="margin-top:14px"><summary>The Camelot wheel in one minute</summary><p class="small">Every key has a number (1 to 12) and a letter (A minor, B major). Same number and letter: perfect. One step either way (8A to 7A or 9A): smooth. Same number, other letter (8A to 8B): same notes, brighter or darker. Two steps up (8A to 10A): an energy lift if you mix it quickly. Anything further: the basslines fight, so only with a cut. Tempo: within 2-3% is easy; past 6% sounds stretched.</p></details>';
+    S.el('screen').innerHTML = h;
+  }
+  document.addEventListener('click', function (ev) {
+    var t = ev.target.closest('[data-selsrc], [data-selpick], [data-selnext]'); if (!t || !S || S.screen() !== 'select') return;
+    if (t.dataset.selsrc) { selSrc = t.dataset.selsrc; selRound = null; selCrate = null; return drawSelect(); }
+    if (t.dataset.selnext) { selRound = null; return drawSelect(); }
+    if (selPick >= 0 || !selRound) return;
+    selPick = +t.dataset.selpick;
+    var st = S.load('selStats', { right: 0, total: 0, run: 0, best: 0 }), ok = selPick === selRound.answer;
+    st.total++; if (ok) { st.right++; st.run++; st.best = Math.max(st.best, st.run); } else st.run = 0;
+    S.save('selStats', st); drawSelect();
+  });
+
   window.BoothGame = {
     init: function (shell) { S = shell; },
     topBar: topBar, freeTop: freeTop, aid: aid,
-    screens: { lessons: drawTutorials, drills: drawDrills, ghost: drawGhostPick, beatmatch: drawBeatmatchPick, set: drawSetPick, daily: drawDaily, stats: drawStats, recordings: drawRecordings,
+    screens: { select: drawSelect, lessons: drawTutorials, drills: drawDrills, ghost: drawGhostPick, beatmatch: drawBeatmatchPick, set: drawSetPick, daily: drawDaily, stats: drawStats, recordings: drawRecordings,
       play: function () { if (!sess && !(window.BoothAcademy && BoothAcademy.active())) { location.hash = 'menu'; } } },
     leave: function (next) { if (next !== 'play' && sess) stopSession(); },
     session: function () { return sess; }, samples: function () { return samples; }, TECH: TECH, dailySpec: dailySpec,
