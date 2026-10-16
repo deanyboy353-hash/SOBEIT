@@ -1150,16 +1150,20 @@
     var u = S.fun && S.fun.us;
     if (!u || S.solo) return '';
     var n = names();
-    return '<button class="card us usopen" type="button" data-fun="chat"><span class="row" style="gap:10px">' + avatarOf(S.who === 'me' ? 'partner' : 'me', 40) +
-      '<span class="grow" style="text-align:left"><b>Us</b> <span class="chip">' + icon('lock', 's') + 'Private</span><br><span class="small muted">' + (chatUnread ? chatUnread + ' new message' + (chatUnread === 1 ? '' : 's') + ' from ' + esc(n.other) : 'Chat with ' + esc(n.other) + ' · ' + u.week + ' this week') + '</span></span>' +
-      (chatUnread ? '<span class="badge">' + chatUnread + '</span>' : icon('chevron', 's')) + '</span></button>';
+    return '<section class="card us"><button class="usopen-in" type="button" data-fun="chat"><span class="row" style="gap:10px">' + avatarOf(S.who === 'me' ? 'partner' : 'me', 40) +
+      '<span class="grow" style="text-align:left"><b>Us</b> <span class="chip">' + icon('lock', 's') + 'Private</span><br><span class="small muted">' + (chatUnread ? chatUnread + ' new message' + (chatUnread === 1 ? '' : 's') + ' from ' + esc(n.other) : 'Open the chat with ' + esc(n.other)) + '</span></span>' +
+      (chatUnread ? '<span class="badge">' + chatUnread + '</span>' : icon('chevron', 's')) + '</span></button>' + usLogRow(u) + '</section>';
+  }
+  /** The Us streak (weeks in a row) and the button that logs it: on Home and at the top of the chat. */
+  function usLogRow(u) {
+    return '<div class="row us-line"><span class="small">' + icon('flame', 's') + ' <b>' + u.heat + '</b> week' + (u.heat === 1 ? '' : 's') + ' running · <b>' + u.week + '</b> this week' + (u.last === ymdOf(new Date(now())) ? ' · logged today' : '') + '</span>' +
+      '<button class="btn soft sm" type="button" data-fun="usLog">' + icon('heart', 's') + 'Log it · +20 XP each</button></div>';
   }
   /** The Us stats and badges, shown at the top of the chat. */
   function usStats() {
     var u = S.fun && S.fun.us; if (!u) return '';
     var got = u.badges.filter(function (b) { return b.earned; }).length;
-    return '<div class="row us-line"><span class="small"><b>' + u.week + '</b> this week · <b>' + u.month + '</b> this month · <b>' + u.heat + '</b> wk' + (u.heat === 1 ? '' : 's') + ' running</span>' +
-      '<button class="btn soft sm" type="button" data-fun="usLog">' + icon('flame', 's') + '+20 XP</button></div>' +
+    return usLogRow(u) + '<div class="tiny muted" style="margin:2px 0 4px"><b>' + u.month + '</b> this month</div>' +
       '<details class="us-badges"><summary class="tiny muted">Badges · ' + got + ' of ' + u.badges.length + '</summary><div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px">' + u.badges.map(function (b) { return '<span class="chip' + (b.earned ? ' pink' : '') + '" title="' + esc(b.desc) + '">' + esc(b.name) + '</span>'; }).join('') + '</div></details>';
   }
   var chatApi = {
@@ -1293,7 +1297,7 @@
     if (f === 'usToggle') { usOpen = !usOpen; return renderHome(); }
     if (f === 'dice') { var d; do { d = DICE[Math.floor(Math.random() * DICE.length)]; } while (d === diceIdea && DICE.length > 1); diceIdea = d; buzz(15); return renderHome(); }
     if (f === 'tap') return tempoTap();
-    if (f === 'usLog') return call('logUs', [], function (res) { confetti(true); chime([523, 784, 1047]); apply(res, 'Logged. +20 XP each.'); });
+    if (f === 'usLog') return call('logUs', [], function (res) { confetti(true); chime([523, 784, 1047]); apply(res, 'Logged. +20 XP each.'); var st = el('chatStats'); if (st) st.innerHTML = usStats(); });
     if (f === 'wink') return call('sendWink', ['wink'], function (res) { apply(res, 'Wink sent'); });
     if (f === 'tonight') return call('sendWink', ['tonight'], function (res) { apply(res, 'Asked. Waiting for ' + names().other + '…'); });
     if (f === 'tonightYes' || f === 'tonightNo') return call('answerTonight', [f === 'tonightYes'], function (res) { apply(res, f === 'tonightYes' ? 'Said yes' : 'Rain check sent'); });

@@ -1264,3 +1264,5 @@ body.chat-open { overflow: hidden; }
   body * { cursor: pointer; }
   input, select, textarea { font-size: 16px !important; }
 }
+.card.us .usopen-in { display: block; width: 100%; padding: 0; border: 0; background: none; text-align: left; font: inherit; color: var(--ink); cursor: pointer; }
+.card.us .us-line { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); align-items: center; }
