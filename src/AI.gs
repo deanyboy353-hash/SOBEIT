@@ -65,13 +65,15 @@ var AI_VOICE = 'You are a calm, kind helper inside an app for someone with ADHD 
 
 /** The part of the day, the same way the app's header greets you: night (before 5am), morning, afternoon, evening (from 6pm). */
 function dayPart(min) { return min < 300 ? 'night' : min < 720 ? 'morning' : min < 1080 ? 'afternoon' : 'evening'; }
+/** The brief's four slots a day: morning (to 12:00), midday (to 15:00), after work (to 19:00), evening. Same as fmt.js. */
+function briefSlot(min) { return min < 720 ? 'morning' : min < 900 ? 'midday' : min < 1140 ? 'after work' : 'evening'; }
 
 function makeBrief_(who) {
-  var n = names_()[who], part = dayPart(minutesNow_());
+  var n = names_()[who], part = dayPart(minutesNow_()), slot = briefSlot(minutesNow_());
   var res = callClaudeJson_(AI_VOICE + 'Write this person\'s brief for the rest of today. It is ' + part + ' now (' + now_('HH:mm') + '): only talk about what is still ahead today' +
     (part === 'night' ? ' and gently suggest bed' : '') + '. Do not greet them or say good morning/afternoon: the app already greets them. Use the facts below exactly (a training day is a training day; only say rest day if it says rest day). Kept light, plus the easiest good next move.',
     'Name: ' + n + '\nTime now: ' + now_('HH:mm') + ' (' + part + ')\n' + dayContext_(who), BRIEF_SCHEMA, claudeModel_(), 4000);
-  var b = { date: todayYmd_(), part: part, at: now_('HH:mm'), ts: new Date().getTime(), sig: briefSig_(who), brief: String(res.brief || ''), first: String(res.first || '') };
+  var b = { date: todayYmd_(), part: slot, at: now_('HH:mm'), ts: new Date().getTime(), sig: briefSig_(who), won: !!(gameState_(who).win || {}).won, brief: String(res.brief || ''), first: String(res.first || '') };
   setProp_('BRIEF_' + who, JSON.stringify(b));
   return b;
 }
@@ -79,7 +81,7 @@ function makeBrief_(who) {
 /** Daily job: briefs for both of you. */
 function planBriefs_(ymd, cfg) {
   if (!claudeKey_()) return 'no Claude key';
-  PEOPLE.forEach(function (w) { try { makeBrief_(w); } catch (e) { log_('WARN', 'Brief: ' + e); } });
+  PEOPLE.forEach(function (w) { if (w === 'partner' && solo_()) return; try { makeBrief_(w); } catch (e) { log_('WARN', 'Brief: ' + e); } });
   return 'briefs written';
 }
 
@@ -181,24 +183,20 @@ function clearAsk(key) {
   return true;
 }
 
-/** Morning brief on demand (the app asks for it after loading if 6am didn't make one). */
 /**
- * Does the brief need rewriting? Yes for a new day or part of the day, or once it's 3 hours old.
- * After something big gets done (force) it's rewritten too, but never more than every 15 minutes.
+ * Does the brief need rewriting? At most once per slot (morning, midday, after work, evening) and once more
+ * when the day is won: five Claude calls a day per person at the very most.
  */
-var BRIEF_MAX_AGE = 3 * 3600000, BRIEF_MIN_GAP = 15 * 60000;
-var BRIEF_SIG_GAP = 60000;
-function briefStale(b, ymd, part, nowMs, force, sig) {
-  if (!b || !b.brief || b.date !== ymd || b.part !== part) return true;
-  var age = nowMs - (Number(b.ts) || 0);
-  if (sig && b.sig !== sig && age >= BRIEF_SIG_GAP) return true;   // something got done since it was written
-  return age >= (force ? BRIEF_MIN_GAP : BRIEF_MAX_AGE);
+function briefStale(b, ymd, slot, won) {
+  if (!b || !b.brief || b.date !== ymd || b.part !== slot) return true;
+  return !!won && !b.won;
 }
 
-function getBrief(key, force) {
+/** The brief on demand (the app asks after loading, at each new slot and once when the day is won). */
+function getBrief(key) {
   var who = who_(key);
   var b = JSON.parse(prop_('BRIEF_' + who) || 'null');
-  if (!briefStale(b, todayYmd_(), dayPart(minutesNow_()), new Date().getTime(), !!force, briefSig_(who))) return b;
+  if (!briefStale(b, todayYmd_(), briefSlot(minutesNow_()), !!(gameState_(who).win || {}).won)) return b;
   if (!claudeKey_()) return null;
   return makeBrief_(who);
 }

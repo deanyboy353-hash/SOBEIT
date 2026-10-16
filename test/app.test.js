@@ -294,7 +294,7 @@ test('Money is shown in pounds everywhere', () => {
   assert.doesNotMatch(gs, /You need \$|' \$' \+/);
 });
 
-test('Today brief: written for the part of the day, never greets, regenerated when the part of the day changes', () => {
+test('Today brief: told the part of the day, never greets, rewritten when the slot changes', () => {
   const { g, me } = ready();
   assert.strictEqual(g.ctx.dayPart(4 * 60), 'night'); assert.strictEqual(g.ctx.dayPart(9 * 60), 'morning');
   assert.strictEqual(g.ctx.dayPart(13 * 60), 'afternoon'); assert.strictEqual(g.ctx.dayPart(19 * 60), 'evening');
@@ -311,11 +311,11 @@ test('Today brief: written for the part of the day, never greets, regenerated wh
   assert.match(req.body.messages[0].content, /Training day: Push session/);
   assert.doesNotMatch(req.body.messages[0].content, /Rest day/);
   const n = g.state.claudeRequests.length;
-  g.ctx.getBrief(me); assert.strictEqual(g.state.claudeRequests.length, n, 'same part of the day: kept');
+  g.ctx.getBrief(me); assert.strictEqual(g.state.claudeRequests.length, n, 'same slot: kept');
   g.state.now = new Date('2026-10-13T14:00:00Z');            // 15:00
   b = plain(g.ctx.getBrief(me));
-  assert.strictEqual(b.part, 'afternoon'); assert.strictEqual(g.state.claudeRequests.length, n + 1);
-  assert.strictEqual(plain(g.ctx.appState(me)).brief.part, 'afternoon');
+  assert.strictEqual(b.part, 'after work'); assert.strictEqual(g.state.claudeRequests.length, n + 1);
+  assert.strictEqual(plain(g.ctx.appState(me)).brief.part, 'after work');
   g.state.now = new Date('2026-10-15T14:00:00Z');            // Thu: a rest day (fixed training days) names the next session
   g.ctx.setSetting_('Train any day I can make the bus', 'FALSE'); g.state.cache = {};
   g.ctx.getBrief(me);

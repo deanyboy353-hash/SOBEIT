@@ -134,18 +134,17 @@
     var n = S.names || {}, f = S.fun || {};
     return { me: f.nick || (n[S.who] && n[S.who] !== 'Your partner' ? n[S.who] : ''), other: f.otherNick || n[S.who === 'me' ? 'partner' : 'me'] || 'Your partner', team: f.team || 'Together' };
   }
-  // the Today brief is written for the part of the day it's for (morning, afternoon, evening, night), like the greeting
-  var briefAsked = '', briefDirty = 0;
-  function dayPartNow() { var hr = new Date(now()).getHours(); return hr < 5 ? 'night' : hr < 12 ? 'morning' : hr < 18 ? 'afternoon' : 'evening'; }
-  /** The brief rewrites itself every few hours, for each part of the day, and soon after something big gets done. */
+  // the Today brief: one per slot (morning, midday, after work, evening) and one more when the day is won
+  var briefAsked = '';
+  function briefSlotNow() { var d = new Date(now()); return NudgeFmt.briefSlot(d.getHours() * 60 + d.getMinutes()); }
   function maybeBrief() {
     if (!S || !S.hasClaudeKey) return;
-    var due = NudgeFmt.briefDue(S.brief, dayPartNow(), now(), briefDirty, NudgeFmt.briefSig(S));
+    var won = !!(S.game && S.game.win && S.game.win.won), due = NudgeFmt.briefDue(S.brief, briefSlotNow(), won);
     if (!due) return;
-    var want = due + ':' + dayPartNow() + ':' + (due === 'big' ? briefDirty + NudgeFmt.briefSig(S) : Math.floor(now() / 3600000));
+    var want = due + ':' + briefSlotNow() + ':' + new Date(now()).toDateString();
     if (briefAsked === want) return;
     briefAsked = want;
-    rpc('getBrief', [due === 'big']).then(function (b) { if (b) { if (due === 'big') briefDirty = 0; S.brief = b; if (current === 'home') renderHome(); } }, function () {});
+    rpc('getBrief', []).then(function (b) { if (b) { S.brief = b; if (current === 'home') renderHome(); } }, function () {});
   }
   setInterval(function () { if (S && current === 'home' && !homeEditing && !document.hidden) { maybeBrief(); var u = document.querySelector('[data-briefago]'); if (u && S.brief && S.brief.ts) u.textContent = NudgeFmt.ago(S.brief.ts, now()); } }, 60000);
   function greeting() { var hr = new Date(now()).getHours(); return hr < 5 ? 'Late one' : hr < 12 ? 'Morning' : hr < 18 ? 'Afternoon' : 'Evening'; }
@@ -240,7 +239,6 @@
     if (!prev || !next || !prev.game || !next.game) return;
     var a = prev.game, b = next.game;
     var wonA = a.win ? a.win.won : a.streak && a.streak.todayDone, wonB = b.win ? b.win.won : b.streak && b.streak.todayDone;
-    if (NudgeFmt.bigMoment(prev, next)) briefDirty = now();   // something big: the brief catches up (at most every 15 min)
     if (b.team && a.team && !a.team.todayDone && b.team.todayDone) setTimeout(function () { highFive(S.solo ? 'Day won' : 'You both won the day'); }, b.level.level > a.level.level ? 2600 : 900);
     if (b.level.level > a.level.level) {
       confetti(true); chime([660, 880, 1100, 1320]); buzz([60, 40, 60, 40, 120]); levelBurst(b.level.level);
@@ -371,6 +369,7 @@
     var g = S.game, n = names(), W = winOf(), t = NudgeFmt.winText(W), P = W.partner, Q = S.quests;
     var mine = Q.planned ? Q.board : Q.board.filter(function (q) { return q.who === 'anyone' || q.who === 'together' || q.who === S.who; });
     var open = mine.filter(function (q) { return !q.doneToday; });
+    if (W.lazy) return lazyCard();
     if (W.won && !open.length) {   // everything done: a small "Day won" line frees up the screen
       return '<section class="card spot win compact"><div class="row" style="gap:12px"><span class="wonbadge">' + icon('check') + '</span><div class="grow"><b>Day won</b><div class="small muted">' +
         (P ? (P.won ? 'You both won · the pet is fed' : esc(n.other) + ': ' + P.done + ' of ' + P.need) + ' · ' : '') + g.streak.count + ' day' + (g.streak.count === 1 ? '' : 's') + ' in a row · ' + g.xpToday + ' XP today</div></div>' +
@@ -380,7 +379,7 @@
     h += '<div class="hero"><div class="ring" style="width:112px;height:112px">' + ring(W.need ? W.done / W.need : 1, 112, 10) +
       '<div class="t"><div><div class="num display-num" style="font-size:' + (t.big.length > 4 ? 19 : 30) + 'px">' + esc(t.big) + '</div><div class="tiny muted">' + esc(t.small) + '</div></div></div></div><div class="grow">';
     if (P) h += '<div class="stat"><span>' + esc(n.other) + '</span><b>' + (P.won ? 'Won' : P.done + ' of ' + P.need) + '</b></div>';
-    h += '<div class="stat"><span class="row" style="gap:6px">' + flame(g.streak.count, 16) + 'Days won in a row</span><b>' + g.streak.count + (g.streak.freezes ? ' · ' + g.streak.freezes + ' freeze' + (g.streak.freezes > 1 ? 's' : '') : '') + '</b></div>' +
+    h += '<div class="stat"><span class="row" style="gap:6px">' + flame(g.streak.count, 16) + 'Days won in a row</span><b>' + g.streak.count + '</b></div>' +
       (S.solo ? '' : '<div class="stat"><span class="row" style="gap:6px">' + icon('heart', 's') + 'Both won</span><b>' + g.team.count + ' day' + (g.team.count === 1 ? '' : 's') + '</b></div>') +
       '<div class="stat"><span>XP today</span><b>' + g.xpToday + '</b></div>' +
       (S.empire ? '<button class="stat cashrow" type="button" data-goto="empire"><span class="row" style="gap:6px">' + icon('gift', 's') + 'Cash</span><b>' + money(S.empire.cash) + '</b></button>' : '') +
@@ -389,7 +388,35 @@
       W.by === 'jobs' ? 'Do any ' + W.need + ' job' + (W.need === 1 ? '' : 's') + ' today and the day is won.' : 'Earn ' + W.need + ' XP today to win: chores, the gym and food all count.') + '</p>';
     if (open.length) h += open.slice(0, 3).map(function (q) { return questRow(q); }).join('');
     else if (mine.length) h += '<p class="empty">All of today\'s jobs are done.</p>';
+    if (!W.won) h += lazyRow();
     return h + '</section>';
+  }
+  /** The lazy-day button and how many are left (two a week, back on Monday). */
+  function lazyRow() {
+    var L = S.game.lazy; if (!L) return '';
+    var late = new Date(now()).getHours() >= 20;
+    return '<div class="lazyrow' + (late && L.left ? ' nudge' : '') + '"><div class="grow"><div class="small">' + (late && L.left ? 'Not happening today? A lazy day keeps the streak.' : 'Lazy days left this week: ' + L.left + ' of ' + L.perWeek) + '</div>' +
+      (L.left ? '' : '<div class="tiny muted">None left. They reset on Monday.</div>') + '</div>' +
+      '<button class="btn line sm" type="button" data-lazy="today"' + (L.left ? '' : ' disabled') + '>' + icon('moon', 's') + 'Take a lazy day</button></div>';
+  }
+  /** A lazy day: neither won nor lost. One small optional thing instead of the minimum. */
+  function lazyCard() {
+    var R = S.routines || {}, L = S.game.lazy, water = R.waterGoal && R.water < R.waterGoal;
+    return '<section class="card spot win lazy"><div class="row" style="gap:12px;align-items:flex-start"><span class="wonbadge soft">' + icon('moon') + '</span><div class="grow"><b>Lazy day</b>' +
+      '<div class="small muted">Streak on hold at ' + S.game.streak.count + '. Nothing to win, nothing to lose.</div>' +
+      '<div class="small" style="margin-top:8px"><b>Optional:</b> ' + (water ? 'have a glass of water. That\'s it.' : 'get some fresh air. Or don\'t.') + '</div>' +
+      '<div class="tiny muted" style="margin-top:6px">Lazy days left this week: ' + L.left + ' of ' + L.perWeek + '</div></div>' +
+      '<button class="btn ghost sm" type="button" data-lazy="undo">Undo</button></div></section>';
+  }
+  /** The morning after a missed day: what it cost, how to get it back, and (until noon) the lazy-day way out. */
+  function missedNote() {
+    var L = S.game.lazy; if (!L) return '';
+    var o = L.offerYesterday, m = L.missed, h = '';
+    if (m && m.back) return '<div class="note">' + icon('check', 's') + 'Comeback: yesterday\'s ' + (m.xp ? m.xp + ' XP' : money(m.cash)) + ' is back.</div>';
+    if (m) h += '<div class="note"><b>Missed yesterday: −' + (m.xp ? m.xp + ' XP' : money(m.cash)) + '.</b> Win today to get it back.</div>';
+    if (o) h += '<section class="card quiet"><div class="between" style="gap:10px"><div class="small">Make yesterday a lazy day instead? ' + (o.streak ? 'The streak goes back to ' + o.streak + (o.xp ? ' and the ' + o.xp + ' XP comes back' : '') : o.xp ? 'The ' + o.xp + ' XP comes back' : 'It stays off the record') + '. Until noon.</div>' +
+      '<button class="btn soft sm" type="button" data-lazy="yesterday">' + icon('moon', 's') + 'Use one</button></div></section>';
+    return h;
   }
   /** Your characters on a little stage, with the pet at their feet. */
   function stageCard() {
@@ -479,7 +506,7 @@
       h += '<section class="card pushwarn"><b>Get notifications on iPhone</b><div class="small">Tap Share, then Add to Home Screen. Open Nudge from your home screen and turn notifications on there.</div></section>';
     }
     if (S.chores.invite) h += '<div class="note">' + esc(n.other) + ' wants company for chores. Pick a job in Chores.</div>';
-    if (g.streak.frozeYesterday) h += '<div class="note">A streak freeze covered yesterday. Your streak is safe.</div>';
+    h += missedNote();
 
     if (S.setup && !S.setup.done) h += '<section class="card tint"><b>Set up your chores</b><p class="small" style="margin:4px 0 10px">A few quick taps about you and your home, and Nudge plans each day for you: a small must-do minimum, the rest a bonus. About 5 minutes.</p><button class="btn primary wide" type="button" data-setup="run">' + (S.setup.built ? 'Finish my part of setup' : 'Start setup') + '</button></section>';
     seg('header');
@@ -489,7 +516,7 @@
     seg('work');
     // brief
     maybeBrief();
-    if (S.brief && S.brief.brief && S.brief.part !== dayPartNow()) S.brief = null;    // written for an earlier part of the day: a fresh one is on its way
+    if (S.brief && S.brief.brief && S.brief.part !== briefSlotNow()) S.brief = null;    // written for an earlier slot: a fresh one is on its way
     if (S.brief && S.brief.brief) h += '<section class="card tint"><div class="eyebrow" style="color:var(--lilac);display:flex;gap:6px;align-items:center">' + icon('sparkles', 's') + 'Today' + (S.brief.ts || S.brief.at ? '<span class="muted" style="font-weight:500"> · updated <span data-briefago>' + esc(S.brief.ts ? NudgeFmt.ago(S.brief.ts, now()) : 'at ' + S.brief.at) + '</span></span>' : '') + '</div><p class="brief' + (NudgeFmt.briefBehind(S.brief, S) ? ' behind' : '') + '" style="margin:8px 0 10px">' + (NudgeFmt.briefBehind(S.brief, S) && S.game.win && S.game.win.won ? 'Day won. Nice work. Updating your brief…' : esc(S.brief.brief)) + '</p>' +
       (S.brief.first && !NudgeFmt.briefBehind(S.brief, S) ? '<div class="row small"><span class="chip lilac">First move</span><span>' + esc(S.brief.first) + '</span></div>' : '') + '</section>';
 
@@ -2878,6 +2905,7 @@
     var ds = t.dataset;
     if (ds.tab) { t.blur(); return showTab(ds.tab); }
     if (ds.goto) return showTab(ds.goto);
+    if (ds.lazy) return call('lazyDay', [ds.lazy], function (res) { apply(res, ds.lazy === 'undo' ? 'Lazy day cancelled.' : ds.lazy === 'yesterday' ? 'Yesterday\'s a lazy day now. Streak back.' : 'Lazy day. Streak\'s safe.'); });
     // quick, optimistic taps
     if (ds.qtog) { var tq = questByName(ds.qtog); if (tq) togetherSheet(tq); return; }
     if (ds.qdone) return quick(function () {

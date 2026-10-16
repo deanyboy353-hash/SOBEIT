@@ -17,7 +17,7 @@ function built(iso) {
 }
 const claude = (g, brief) => { g.state.claudeReply = { body: { stop_reason: 'end_turn', content: [{ type: 'text', text: JSON.stringify({ brief, first: 'Make the bed' }) }] } }; };
 
-test('Brief matches the day: once the day is won the AI is told so, and the brief is rewritten after a job is done', () => {
+test('Brief matches the day: once the day is won the AI is told so, and it is rewritten once for the win', () => {
   const { g, C, me } = built();
   g.state.props.ANTHROPIC_API_KEY = 'k'; C.resetRun_();
   claude(g, 'Start with the bed.');
@@ -39,13 +39,25 @@ test('Brief matches the day: once the day is won the AI is told so, and the brie
   const prompt = JSON.stringify(g.state.claudeRequests[n].body);
   assert.match(prompt, /ALREADY WON/, 'the AI is told the day is won');
   assert.match(prompt, /Do not suggest more chores/);
-  assert.strictEqual(F.briefDue(b, 'morning', b.ts + 1000, 0, F.briefSig(s)), '', 'the new brief matches the screen');
+  assert.strictEqual(F.briefDue(b, 'morning', true), '', 'the win brief is the last one this slot');
 });
 
-test('Brief: a fresh brief isn\'t rewritten for every tap (a minute apart at most)', () => {
-  const t0 = 1e12, b = { date: 'd', part: 'morning', brief: 'x', ts: t0, sig: '0|0|0|0' };
-  assert.strictEqual(F.briefDue(b, 'morning', t0 + 30000, 0, '1|0|0|0'), '', 'too soon');
-  assert.strictEqual(F.briefDue(b, 'morning', t0 + 61000, 0, '1|0|0|0'), 'big');
+test('Brief: a whole day of taps costs at most five Claude calls per person', () => {
+  const { g, C, me } = built('2026-10-14T06:00:00Z');   // Wed 07:00
+  g.state.props.ANTHROPIC_API_KEY = 'k'; C.resetRun_();
+  claude(g, 'Plenty of time.');
+  const n0 = g.state.claudeRequests.length;
+  const jobs = plain(C.appState(me)).quests.board.filter(q => q.who !== 'partner').map(q => q.name);
+  for (let h = 7; h <= 23; h++) {
+    for (const m of [0, 20, 40]) {
+      at(g, '2026-10-14T' + String(h - 1).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':00Z');
+      if (jobs.length && m === 20) { try { C.questDone(me, jobs.shift()); } catch (e) { /* already done */ } }
+      C.getBrief(me);
+    }
+  }
+  const calls = g.state.claudeRequests.length - n0;
+  assert.ok(calls <= 5, calls + ' calls');
+  assert.ok(calls >= 4, 'one per slot');
 });
 
 test('Days off: Fri to Sun (or a day you mark) hide the work cards; the gym plan on a day off never uses the after-work bus', () => {

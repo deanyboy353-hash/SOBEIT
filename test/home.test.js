@@ -115,28 +115,23 @@ test('Routines: "Look at the Home tab" is gone from the default and from existin
 
 // ---------- the brief ----------
 
-test('Brief: rewritten for a new part of the day, every 3 hours, and after something big (at most every 15 min)', () => {
-  const { C } = ready();
-  const t0 = Date.UTC(2026, 9, 14, 8, 0), b = { date: '2026-10-14', part: 'morning', brief: 'x', ts: t0 };
-  assert.strictEqual(C.briefStale(b, '2026-10-14', 'morning', t0 + 60000, false), false);
-  assert.strictEqual(C.briefStale(b, '2026-10-14', 'afternoon', t0 + 60000, false), true);
-  assert.strictEqual(C.briefStale(b, '2026-10-15', 'morning', t0 + 60000, false), true);
-  assert.strictEqual(C.briefStale(b, '2026-10-14', 'morning', t0 + 3 * 3600000, false), true);
-  assert.strictEqual(C.briefStale(b, '2026-10-14', 'morning', t0 + 10 * 60000, true), false, 'too soon after the last one');
-  assert.strictEqual(C.briefStale(b, '2026-10-14', 'morning', t0 + 16 * 60000, true), true);
-  // the page's side
-  assert.strictEqual(F.briefDue(null, 'morning', t0, 0), 'stale');
-  assert.strictEqual(F.briefDue(b, 'morning', t0 + 60000, 0), '');
-  assert.strictEqual(F.briefDue(b, 'morning', t0 + 20 * 60000, t0 + 5 * 60000), 'big');
-  assert.strictEqual(F.briefDue(b, 'morning', t0 + 5 * 60000, t0 + 4 * 60000), '');
-  assert.strictEqual(F.briefDue(b, 'morning', t0 + 3 * 3600000 + 1, 0), 'stale');
-  assert.strictEqual(F.ago(t0, t0 + 30000), 'just now');
-  assert.strictEqual(F.ago(t0, t0 + 12 * 60000), '12 min ago');
-  assert.strictEqual(F.ago(t0, t0 + 125 * 60000), '2 h ago');
-  // what counts as big
-  const st = (won, gym) => ({ game: { win: { won } }, today: { gym: { done: gym } }, routines: { routines: [] }, deadlines: [] });
-  assert.strictEqual(F.bigMoment(st(false, false), st(true, false)), true);
-  assert.strictEqual(F.bigMoment(st(true, false), st(true, true)), true);
-  assert.strictEqual(F.bigMoment(st(true, true), st(true, true)), false);
+test('Brief: at most four a day (morning, midday, after work, evening) plus one when the day is won', () => {
+  const C = loadProject({ now: new Date('2026-10-14T08:00:00Z') }).ctx;
+  const b = { date: '2026-10-14', part: 'morning', brief: 'x', ts: 1 };
+  assert.deepStrictEqual([0, 600, 719, 720, 899, 900, 1139, 1140, 1439].map(m => C.briefSlot(m)), ['morning', 'morning', 'morning', 'midday', 'midday', 'after work', 'after work', 'evening', 'evening']);
+  assert.deepStrictEqual([0, 719, 720, 900, 1140].map(m => F.briefSlot(m)), [0, 719, 720, 900, 1140].map(m => C.briefSlot(m)), 'phone and server agree');
+  assert.strictEqual(C.briefStale(b, '2026-10-14', 'morning', false), false, 'no refresh for jobs or time passing');
+  assert.strictEqual(C.briefStale(b, '2026-10-14', 'midday', false), true);
+  assert.strictEqual(C.briefStale(b, '2026-10-15', 'morning', false), true);
+  assert.strictEqual(C.briefStale(b, '2026-10-14', 'morning', true), true, 'the day just won');
+  assert.strictEqual(C.briefStale(Object.assign({}, b, { won: true }), '2026-10-14', 'morning', true), false, 'only once');
+  assert.strictEqual(F.briefDue(null, 'morning', false), 'stale');
+  assert.strictEqual(F.briefDue(b, 'morning', false), '');
+  assert.strictEqual(F.briefDue(b, 'morning', true), 'won');
+  assert.strictEqual(F.briefDue(Object.assign({}, b, { won: true }), 'morning', true), '');
+  assert.strictEqual(F.briefDue(b, 'evening', false), 'stale');
+  assert.strictEqual(F.ago(0, 30000), 'just now');
+  assert.strictEqual(F.ago(0, 12 * 60000), '12 min ago');
+  assert.strictEqual(F.ago(0, 125 * 60000), '2 h ago');
 });
 

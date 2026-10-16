@@ -16,23 +16,12 @@
     var m = Math.max(0, Math.floor((nowMs - (Number(ts) || 0)) / 60000));
     return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.floor(m / 60) + ' h ago';
   }
-  /** Should the brief be rewritten? 'stale' (new part of the day, or 3 hours old), 'big' (something big got done, 15+ min since the last one) or ''. */
-  function briefDue(b, part, nowMs, dirtyAt, sig) {
-    if (!b || !b.brief || b.part !== part) return 'stale';
-    var age = nowMs - (Number(b.ts) || 0);
-    if (age >= 3 * 3600000) return 'stale';
-    if (sig && b.sig && b.sig !== sig && age >= 60000) return 'big';   // a job was done since: catch up
-    if (dirtyAt && dirtyAt > (Number(b.ts) || 0) && age >= 15 * 60000) return 'big';
-    return '';
-  }
-  /** Something worth rewriting the brief for: the day won, the gym done, a routine or deadline finished. */
-  function bigMoment(prev, next) {
-    if (!prev || !next) return false;
-    var won = function (st) { return !!(st.game && (st.game.win ? st.game.win.won : st.game.streak && st.game.streak.todayDone)); };
-    var gym = function (st) { return !!(st.today && st.today.gym && st.today.gym.done); };
-    var fin = function (st) { return ((st.routines && st.routines.routines) || []).filter(function (r) { return r.finished; }).length; };
-    var dl = function (st) { return Array.isArray(st.deadlines) ? st.deadlines.length : 0; };
-    return won(next) && !won(prev) || gym(next) && !gym(prev) || fin(next) > fin(prev) || dl(next) < dl(prev);
+  /** The brief's four slots a day, by minutes since midnight. Same as the server's briefSlot. */
+  function briefSlot(min) { return min < 720 ? 'morning' : min < 900 ? 'midday' : min < 1140 ? 'after work' : 'evening'; }
+  /** Should the brief be rewritten? 'stale' (a new slot), 'won' (the day was just won, once a day) or ''. */
+  function briefDue(b, slot, won) {
+    if (!b || !b.brief || b.part !== slot) return 'stale';
+    return won && !b.won ? 'won' : '';
   }
   // Home's cards, in the order Home starts with. Anything can be moved or hidden in Edit home screen.
   var HOME_DEFAULT = ['brief', 'win', 'deadlines', 'routine', 'tiles', 'stage', 'ask', 'gym', 'work', 'us', 'feed'];
@@ -66,7 +55,7 @@
   }
   /** Is the brief behind what's on screen (a job got done since it was written)? */
   function briefBehind(b, S) { return !!(b && b.sig && b.sig !== briefSig(S)); }
-  var api = { briefSig: briefSig, briefBehind: briefBehind, winStep: winStep, homeOrder: homeOrder, HOME_DEFAULT: HOME_DEFAULT, winText: winText, ago: ago, briefDue: briefDue, bigMoment: bigMoment };
+  var api = { briefSig: briefSig, briefBehind: briefBehind, winStep: winStep, homeOrder: homeOrder, HOME_DEFAULT: HOME_DEFAULT, winText: winText, ago: ago, briefDue: briefDue, briefSlot: briefSlot };
   root.NudgeFmt = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
