@@ -50,7 +50,15 @@
     HOME_DEFAULT.forEach(function (id) { if (!seen[id]) out.push({ id: id, hide: hid[id] !== undefined ? hid[id] : !!HOME_QUIET[id] }); });
     return out;
   }
-  var api = { homeOrder: homeOrder, HOME_DEFAULT: HOME_DEFAULT, winText: winText, ago: ago, briefDue: briefDue, bigMoment: bigMoment };
+  /** Win the day after one more job or some XP (the phone's guess until the server confirms). */
+  function winStep(w, d) {
+    if (w.by === 'jobs' && d.job) { if (w.done < w.need) w.done++; else w.extra = (w.extra || 0) + 1; }
+    if (w.by === 'xp' && d.xp) { var t = w.done + (w.extra || 0) + d.xp; w.done = Math.min(t, w.need); w.extra = Math.max(0, t - w.need); }
+    w.won = w.done >= w.need;
+    w.both = w.won && (!w.partner || w.partner.won);
+    return w;
+  }
+  var api = { winStep: winStep, homeOrder: homeOrder, HOME_DEFAULT: HOME_DEFAULT, winText: winText, ago: ago, briefDue: briefDue, bigMoment: bigMoment };
   root.NudgeFmt = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

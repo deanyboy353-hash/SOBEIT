@@ -15,11 +15,11 @@ var POST_ROUTES = {
 // What the installable app may call, by name. Everything checks the key itself.
 function rpcTable_() {
   return {
-    appState: appState, choresState: choresState, questDone: questDone, claimQuest: claimQuest, whatNow: whatNow,
+    appState: appState, batch: batch, choresState: choresState, questDone: questDone, claimQuest: claimQuest, whatNow: whatNow,
     brainDump: brainDump, saveBrainDump: saveBrainDump, addQuest: addQuest, addShopping: addShopping, toggleShopping: toggleShopping,
     askToJoin: askToJoin, planChore: planChore, startChore: startChore, stepDone: stepDone, extendChore: extendChore,
     finishChore: finishChore, parkThing: parkThing, clearLater: clearLater, redeemReward: redeemReward, highFive: highFive,
-    routineStep: routineStep, saveRoutine: saveRoutine, setupState: setupState, saveSetup: saveSetup, previewChores: previewChores, buildChores: buildChores, saveChore: saveChore, choreAction: choreAction, deleteRoutine: deleteRoutine, addWater: addWater, setTheme: setTheme, todayState: todayState, gymDone: gymDone,
+    routineStep: routineStep, saveRoutine: saveRoutine, setupState: setupState, saveSetup: saveSetup, previewChores: previewChores, buildChores: buildChores, saveChore: saveChore, choreAction: choreAction, deleteRoutine: deleteRoutine, chatPing: chatPing, addWater: addWater, setTheme: setTheme, todayState: todayState, gymDone: gymDone,
     logWeightNow: logWeightNow, foodState: foodState, logPreset: logPreset, quickAdd: quickAdd, quickAddPhoto: quickAddPhoto, importWorkoutCsv: importWorkoutCsv, backupStatus: backupStatus, backupNow: backupNow, exportAll: exportAll, importBackup: importBackup, undoLast: undoLast,
     saveClaudeKey: saveClaudeKey, trainState: trainState, setTrainingMax: setTrainingMax, saveWorkout: saveWorkout,
     respreadSchedule: respreadSchedule, saveQuest: saveQuest, deleteQuest: deleteQuest,
@@ -32,6 +32,31 @@ function rpcTable_() {
     workState: workState, addBlock: addBlock, planDay: planDay, updateBlock: updateBlock, blockAction: blockAction, shiftBlocks: shiftBlocks, copyPlan: copyPlan,
     buyWear: buyWear, unlockAch: unlockAch, setLook3d: setLook3d, saveLookSlot: saveLookSlot, wearLookSlot: wearLookSlot, deleteLookSlot: deleteLookSlot, testPush: testPush, countBlock: countBlock, undoAction: undoAction, removeFood: removeFood, editFood: editFood, removeShopping: removeShopping, setTimer: setTimer, clearTimer: clearTimer, saveTemplate: saveTemplate, deleteTemplate: deleteTemplate, logCardio: logCardio, deleteCardio: deleteCardio
   };
+}
+
+/**
+ * Several taps in one request (the phone's outbox): each runs in order and on its own (one failing doesn't stop
+ * the rest), then the screen is built once. → { results: [{ id, ok, result | error }], state }.
+ */
+var BATCH_MAX = 40;
+function batch(key, items) {
+  who_(key);
+  items = (items || []).slice(0, BATCH_MAX);
+  var table = rpcTable_(), results = [];
+  DEFER_STATE_ = true;
+  try {
+    items.forEach(function (it) {
+      var fn = it && table[it.fn];
+      if (!fn || it.fn === 'batch' || it.fn === 'appState') { results.push({ id: it && it.id, ok: false, error: 'Unknown action.' }); return; }
+      try {
+        var r = fn.apply(null, [key].concat(it.args || []));
+        if (r && r.deferred) r = null; else if (r && r.state && r.state.deferred) { delete r.state; r.stateDeferred = true; }
+        results.push({ id: it.id, ok: true, result: r });
+      } catch (e) { results.push({ id: it.id, ok: false, error: String(e && e.message || e) }); }
+    });
+  } finally { DEFER_STATE_ = false; }
+  clearStateCache_();
+  return { results: results, state: appState(key) };
 }
 
 /** {fn, key, args} from the installable app → {ok, result} or {ok: false, error}. */
@@ -104,7 +129,10 @@ function doGet(e) {
   return out;
 }
 
+// While a batch runs, actions skip building the whole screen; the batch builds it once at the end.
+var DEFER_STATE_ = false;
 function appState_(who) {
+  if (DEFER_STATE_) return { deferred: true };
   prefetchTabs_(Object.keys(TABS).filter(function (k) { return k !== 'inbox' && k !== 'log'; }));
   var brief = JSON.parse(prop_('BRIEF_' + who) || 'null');
   var s = {
@@ -116,6 +144,7 @@ function appState_(who) {
   s.fun = funState_(who, s.game);
   s.health = healthState_(who);
   s.deadlines = deadlinesState_(who);
+  s.chat = chatConfig_(who);
   s.work = workState_(who);
   s.wardrobe = wardrobeState_(who);
   s.undo = undoInfo_(who);

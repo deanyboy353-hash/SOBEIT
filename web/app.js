@@ -37,6 +37,13 @@
   // a refresh only counts if nothing was changed while it was on its way (or it would bring back what you just deleted)
   function fresh(fn) { var g0 = gen; return function (res) { if (g0 === gen && !busy && !inflight) fn(res); }; }
   document.addEventListener('click', function (ev) { lastTap = ev.target.closest && ev.target.closest('button'); }, { capture: true });
+  // feedback on touch-down, before the tap even finishes: a visible press and a tiny buzz
+  document.addEventListener('pointerdown', function (ev) {
+    var b = ev.target.closest && ev.target.closest('button, .check'); if (!b || b.disabled) return;
+    b.classList.add('pressed'); buzz(8);
+    var up = function () { setTimeout(function () { b.classList.remove('pressed'); }, 90); document.removeEventListener('pointerup', up); document.removeEventListener('pointercancel', up); };
+    document.addEventListener('pointerup', up); document.addEventListener('pointercancel', up);
+  }, { capture: true, passive: true });
   function send(fn, args) {
     var k = fn + JSON.stringify(args || []);
     if (saving[k]) return null;
@@ -47,10 +54,57 @@
     var done = function () { delete saving[k]; nSaving--; busy = nSaving > 0; if (btn) btn.classList.remove('saving'); };
     return p.then(function (r) { done(); return r; }, function (e) { done(); throw e; });
   }
-  function call(fn, args, ok, fail) {
-    var p = send(fn, args); if (!p) return;
-    p.then(function (res) { ok && ok(res); }, function (err) { fail && fail(); toast(err.message || String(err), true); renderAll(); });
+  // ---------- the outbox: saves never make you wait ----------
+  // Reads, AI and big uploads go straight to the server; every other change is saved on the phone first and sent in batches.
+  var DIRECT = { appState: 1, gamesState: 1, workState: 1, setupState: 1, previewChores: 1, healthDay: 1, backupStatus: 1, exportAll: 1, getBrief: 1, whatNow: 1, mealIdeas: 1, getWrapped: 1,
+    healthInsight: 1, trainState: 1, foodState: 1, choresState: 1, quickAdd: 1, quickAddPhoto: 1, ask: 1, brainDump: 1, importBackup: 1, importHealth: 1, importWorkoutCsv: 1, registerDevice: 1,
+    testPush: 1, saveClaudeKey: 1, backupNow: 1, guessWord: 1, submitTarget: 1, submitRecall: 1, submitTempo: 1, submitMix: 1, submitSet: 1, undoAction: 1, undoLast: 1, addDeadline: 1, chatPing: 1 };
+  var syncState = { pending: 0, failing: 0, offline: false }, syncShownAt = 0;
+  var box = window.NudgeOutbox ? NudgeOutbox.create({
+    key: 'outbox-' + KEY.slice(0, 6),
+    send: function (items) { var t0 = Date.now(); return rpc('batch', [items]).then(function (r) { perfNote('batch×' + items.length, Date.now() - t0); return r; }); },
+    onReject: function (it, err) { toast(err || 'That didn\'t save.', true); },
+    onState: function (st, more) {
+      if (!st || !st.game) return;
+      if (more || inflight || (document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))) { pendingState = st; return; }
+      var hadUndo = S && S.undo; S = st; ME = S.who === 'me'; offset = st.now - Date.now(); save('state-' + KEY.slice(0, 6), S); renderAll();
+      if (st.undo && (!hadUndo || hadUndo.id !== st.undo.id) && Date.now() + offset - st.undo.at < 20000) offerUndo(st.undo);
+    },
+    onStatus: function (st) { syncState = st; drawSync(); }
+  }) : null;
+  var pendingState = null;
+  /** A small pill only when saving takes a while or you're offline (your change is already on screen and on the phone). */
+  function drawSync() {
+    var p = el('syncPill');
+    if (!p) { p = document.createElement('div'); p.id = 'syncPill'; p.className = 'syncpill'; p.setAttribute('role', 'status'); document.body.appendChild(p); }
+    var s = syncState, txt = s.offline ? 'Offline: saved on this phone, will sync' : s.pending ? 'Saving…' : '';
+    if (s.pending && !syncShownAt) syncShownAt = Date.now();
+    if (!s.pending) syncShownAt = 0;
+    p.textContent = txt;
+    p.classList.toggle('on', !!txt && (s.offline || Date.now() - syncShownAt > 1500));
+    if (txt && !s.offline) setTimeout(function () { if (syncState.pending) p.classList.toggle('on', Date.now() - syncShownAt > 1500); }, 1600);
   }
+  var perfLog = [];
+  function perfNote(what, ms) { perfLog.push([what, ms]); if (perfLog.length > 50) perfLog.shift(); window.NUDGE_PERF = perfLog; }
+  /** A change: the screen already shows it; this saves it (outbox), and ok/fail run once the server has answered. */
+  function call(fn, args, ok, fail) {
+    if (!box || DIRECT[fn]) {
+      var p = send(fn, args); if (!p) return;
+      p.then(function (res) { ok && ok(res); }, function (err) { fail && fail(); toast(err.message || String(err), true); renderAll(); });
+      return;
+    }
+    var btn = lastTap; if (btn) btn.classList.add('saving');
+    var h = box.add(fn, args);
+    h.done.then(function (v) {
+      if (btn) btn.classList.remove('saving');
+      var r = v.result;
+      if (r === null || r === undefined || typeof r !== 'object') r = v.state;
+      else if (r.stateDeferred) { delete r.stateDeferred; r.state = v.state; }
+      ok && ok(r);
+    }, function () { if (btn) btn.classList.remove('saving'); fail && fail(); renderAll(); });
+  }
+  /** Save in the background with no callback (the change is already on screen). */
+  function later(fn, args) { if (box && !DIRECT[fn]) box.add(fn, args); else rpc(fn, args).catch(function (e) { toast(e.message, true); }); }
 
   // ---------- helpers ----------
   function load(k) { try { var v = localStorage.getItem('lq-' + k); return v === null ? null : JSON.parse(v); } catch (e) { return mem[k] === undefined ? null : mem[k]; } }
@@ -236,15 +290,14 @@
   }
   // Quick taps: update the screen now, save in the background, undo if it fails.
   function quick(change, fn, args, msg) {
-    var before = JSON.stringify(S);
+    var t0 = performance.now();
     change();
     renderAll();
+    perfNote('screen:' + fn, Math.round(performance.now() - t0));
     if (msg) toast(msg);
-    inflight++; gen++;
-    rpc(fn, args).then(function (res) {
-      inflight--;
-      if (!inflight && !busy && res && res.game) { var hadUndo = S.undo; S = res; offset = res.now - Date.now(); save('state-' + KEY.slice(0, 6), S); renderAll(); if (res.undo && (!hadUndo || hadUndo.id !== res.undo.id)) offerUndo(res.undo, msg); }
-    }, function (err) { inflight--; S = JSON.parse(before); renderAll(); toast(err.message || String(err), true); });
+    gen++;
+    save('state-' + KEY.slice(0, 6), S);      // the change survives closing the app before it syncs
+    later(fn, args);
   }
   if (window.NudgeSetup) NudgeSetup.init({
     S: function () { return S; }, esc: esc, rpc: rpc, send: send, call: call, toast: toast, names: names, now: now, showTab: showTab,
@@ -254,14 +307,16 @@
     chars: function () { return CHARS; }, avatar: function (id, size) { return avatar(id, size); }, setChar: function (id) { savePrefs({ char: id }); },
     renderChores: function () { renderChores(); }
   });
-  function addXpLocal(xp) {
+  function addXpLocal(xp, job) {
     if (boostLeft()) xp *= 2;
     var prev = JSON.parse(JSON.stringify(S));
     S.game.xpToday += xp; S.game.total += xp; S.game.balance += xp;
     var into = S.game.level.into + xp;
     if (into >= S.game.level.need) S.game.level = { level: S.game.level.level + 1, into: into - S.game.level.need, need: S.game.level.need + 100 };
     else S.game.level.into = into;
-    if (prev.game.xpToday < prev.game.goal && S.game.xpToday >= S.game.goal) S.game.streak.count += 1;
+    var w = S.game.win;
+    if (w) NudgeFmt.winStep(w, { xp: xp, job: !!job });            // Win the day moves on screen straight away
+    if (w ? w.won && !(prev.game.win && prev.game.win.won) : prev.game.xpToday < prev.game.goal && S.game.xpToday >= S.game.goal) { S.game.streak.count += 1; S.game.streak.todayDone = true; if (w && w.both) { S.game.team.todayDone = true; S.game.team.count += 1; } }
     celebrate(prev, S);
   }
 
@@ -855,9 +910,9 @@
     r.innerHTML = rest ? '<div class="rest"><span>Rest <b id="restLeft">' + clock(rest.until - now()) + '</b></span><span class="row" style="gap:6px"><button type="button" data-restadd="-15">−15s</button><button type="button" data-restadd="15">+15s</button><button type="button" id="restSkip">Skip</button></span></div>' : '';
   }
   function armRest() {
-    if (!rest) return rpc('clearTimer', ['rest']).catch(function () {});
+    if (!rest) return later('clearTimer', ['rest']);
     var secs = Math.round((rest.until - now()) / 1000);
-    if (secs >= 5) rpc('setTimer', ['rest', secs, 'Rest over', 'Next set: you\'ve got this.', 'train']).catch(function () {});
+    if (secs >= 5) later('setTimer', ['rest', secs, 'Rest over', 'Next set: you\'ve got this.', 'train']);
   }
   function startRest(secs) { if (!(secs > 0)) return; rest = { until: now() + secs * 1000 }; save('rest', rest); drawRest(); armRest(); }
   function endRest() { rest = null; save('rest', null); drawRest(); }
@@ -1801,7 +1856,8 @@
     S.fun.prefs = Object.assign({}, prefs(), change);
     if (change.char !== undefined) S.fun.chars[S.who] = change.char;
     applyPrefs(); renderAll();
-    rpc('setPrefs', [change]).then(function (res) { if (!inflight && !busy) apply(res, msg); }, function (e) { toast(e.message, true); });
+    if (msg) toast(msg);
+    save('state-' + KEY.slice(0, 6), S); later('setPrefs', [change]);
   }
 
   var charGame = 'sa';
@@ -1960,9 +2016,14 @@
   });
   function deadlineAct(id, act, fromNote) {
     if (act === 'park' && !fromNote && !confirm('Park it? That costs 10 XP. It goes to Saved for later.')) return;
-    call('deadlineAction', [id, act], function (r) {
-      apply(r.state, act === 'done' ? (r.xp >= 15 ? 'Done on time. +15 XP' : 'Done. +' + r.xp + ' XP') : act === 'park' ? 'Parked. −10 XP' : 'Thirty more minutes. −3 XP');
-    });
+    // on screen now; the XP lands when the server confirms
+    var d0 = (S.deadlines || []).filter(function (x) { return x.id === id; })[0];
+    if (act === 'done' || act === 'park') S.deadlines = (S.deadlines || []).filter(function (x) { return x.id !== id; });
+    else if (d0) { d0.due += 30 * 60000; d0.dueText = d0.dueText.slice(0, 11) + new Date(d0.due).toTimeString().slice(0, 5); }
+    if (act === 'done') { addXpLocal(d0 && d0.due >= now() ? 15 : 5); buzz([20, 30, 20]); }
+    renderAll(); save('state-' + KEY.slice(0, 6), S);
+    toast(act === 'done' ? 'Done. Nice.' : act === 'park' ? 'Parked. −10 XP' : 'Thirty more minutes. −3 XP');
+    call('deadlineAction', [id, act]);
   }
   document.addEventListener('submit', function (ev) {
     if (ev.target.id !== 'dlForm' || !S) return;
@@ -2951,7 +3012,8 @@
       return rpc('saveLookSlot', [slot, nm, L]).then(function (res) { apply(res); renderDress(); toast('Saved as ' + (S.wardrobe.saved[slot] || {}).name); }, function (e) { toast(e.message, true); });
     }
     if (d.dress === 'save') {
-      return rpc('setLook3d', [L]).then(function (res) { apply(res); closeDress(); toast('Looking good. Saved.'); chime([523, 659, 784]); }, function (e) { toast(e.message, true); });
+      S.wardrobe.look = JSON.parse(JSON.stringify(L)); closeDress(); renderAll(); toast('Looking good. Saved.'); chime([523, 659, 784]);
+      save('state-' + KEY.slice(0, 6), S); return later('setLook3d', [S.wardrobe.look]);
     }
     if (d.dtab) { dress.tab = d.dtab; return renderDress(); }
     if (d.dpat) { dress.patFor = d.dpat; return renderDress(); }
@@ -2967,13 +3029,16 @@
       return changed(true);
     }
     if (d.dbuy) {
-      var item = S.wardrobe.catalog.filter(function (w) { return w.id === d.dbuy; })[0];
-      t.disabled = true;
-      return rpc('buyWear', [d.dbuy]).then(function (res) {
-        apply(res); renderDress();
-        if (item.style === 'drag') { confetti(true); toast('The ' + item.name + ' is yours. Work it.'); } else { confetti(false); toast('Bought the ' + item.name); }
-        chime([659, 784, 1047]);
-      }, function (e) { t.disabled = false; toast(e.message, true); });
+      var item = S.wardrobe.catalog.filter(function (w) { return w.id === d.dbuy; })[0], cash = S.empire ? S.empire.cash : 0;
+      // checked here first, so a "no" is instant too; the server checks again
+      if (S.wardrobe.chores < item.chores) return toast('Do ' + (item.chores - S.wardrobe.chores) + ' more chores to unlock the ' + item.name + '.', true);
+      if (cash < item.price) return toast('You need ' + money(item.price - cash) + ' more.', true);
+      S.wardrobe.owned.push(item.id); if (S.empire) S.empire.cash -= item.price;
+      renderDress(); buzz([20, 30, 40]);
+      if (item.style === 'drag') { confetti(true); toast('The ' + item.name + ' is yours. Work it.'); } else { confetti(false); toast('Bought the ' + item.name); }
+      chime([659, 784, 1047]);
+      save('state-' + KEY.slice(0, 6), S);
+      return call('buyWear', [d.dbuy], null, function () { if (dress) renderDress(); });
     }
   });
   document.addEventListener('input', function (ev) {
@@ -2994,7 +3059,7 @@
     if (ds.qdone) return quick(function () {
       var q = questByName(ds.qdone);
       [S.quests.board, S.quests.more, S.quests.all].forEach(function (l) { l.forEach(function (x) { if (x.name === ds.qdone) { x.doneToday = true; x.doneBy = S.who; } }); });
-      if (q) addXpLocal(q.xp + (q.who !== 'anyone' && q.who !== 'together' && q.who !== S.who ? Math.round(q.xp / 2) : 0));
+      if (q) addXpLocal(q.xp + (q.who !== 'anyone' && q.who !== 'together' && q.who !== S.who ? Math.round(q.xp / 2) : 0), true);
       buzz([20, 30, 20]);
     }, 'questDone', [ds.qdone], ds.qdone + ': done');
     if (ds.claim) return quick(function () { S.quests.board.concat(S.quests.more).forEach(function (x) { if (x.name === ds.claim) x.claimedBy = x.claimedBy === S.who ? '' : S.who; }); }, 'claimQuest', [ds.claim]);
@@ -3009,7 +3074,7 @@
     if (ds.clear) return quick(function () { S.chores.later = S.chores.later.filter(function (l) { return l.id !== ds.clear; }); }, 'clearLater', [ds.clear]);
     if (ds.skin) { buzz(10); savePrefs({ skin: ds.skin }); return; }
     if (ds.mode) { savePrefs({ mode: ds.mode }); return; }
-    if (ds.theme) { S.theme = ds.theme; save('theme', ds.theme); document.documentElement.setAttribute('data-theme', ds.theme); renderYou(); renderCustom(); rpc('setTheme', [ds.theme]).catch(function () {}); return; }
+    if (ds.theme) { S.theme = ds.theme; save('theme', ds.theme); document.documentElement.setAttribute('data-theme', ds.theme); renderYou(); renderCustom(); later('setTheme', [ds.theme]); return; }
     // home
     if (t.id === 'whatNow') { wn.skip = []; wn.pick = undefined; return whatNowSheet(); }
     if (ds.wn) { wn[ds.wn] = ds.wn === 'minutes' ? +ds.v : ds.v; save(ds.wn === 'minutes' ? 'wnMinutes' : 'wnEnergy', wn[ds.wn]); wn.skip = []; return whatNowSheet(); }
@@ -3221,7 +3286,7 @@
   }, 1000);
   var lastBoost = false;
   function refresh() {
-    if (!S || busy || inflight || parking || !el('sheetbg').hidden || document.visibilityState !== 'visible') return;
+    if (!S || busy || inflight || parking || !el('sheetbg').hidden || document.visibilityState !== 'visible' || (box && box.pending().length)) return;
     if (document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
     if (current === 'train' || current === 'food' || (current === 'play' && (recallGame || (mix && mix.on) || tempo))) return;
     rpc('appState', []).then(fresh(apply), function () {});

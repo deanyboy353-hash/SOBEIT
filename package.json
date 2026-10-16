@@ -10,6 +10,8 @@
     "publish": "node scripts/build.js && firebase deploy --only hosting"
   },
   "devDependencies": {
-    "fake-indexeddb": "^6.0.0"
+    "@firebase/rules-unit-testing": "^3.0.4",
+    "fake-indexeddb": "^6.0.0",
+    "firebase": "^10.14.1"
   }
 }

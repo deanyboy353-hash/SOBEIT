@@ -220,6 +220,7 @@ function loadProject(opts = {}) {
           return /dead/.test(msg.token) ? { getResponseCode: () => 404, getContentText: () => '{"error":{"status":"NOT_FOUND","details":[{"errorCode":"UNREGISTERED"}]}}' }
             : { getResponseCode: () => 200, getContentText: () => '{"name":"ok"}' };
         }
+        if (/firestore\.googleapis/.test(url)) { state.firestore = state.firestore || []; state.firestore.push({ url, opts }); return { getResponseCode: () => 200, getContentText: () => '{}' }; }
         if (state.weatherDown) return { getResponseCode: () => 503, getContentText: () => 'down' };
         const ymd = url.match(/start_date=([\d-]+)/)[1];
         return { getResponseCode: () => 200, getContentText: () => JSON.stringify(forecastJson(ymd, state.rainy)) };

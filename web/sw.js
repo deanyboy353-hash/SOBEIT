@@ -1,6 +1,6 @@
 /* Nudge service worker: opens instantly (cached shell) and shows push notifications. */
-var CACHE = 'lq-v6';
-var SHELL = ['./', 'index.html', 'app.css', 'app.js', 'setup.js', 'face.js', 'figure.js', 'look.js', 'fmt.js', 'music.js', 'djset.js', 'avatar3d.js', 'words.js', 'booth.html', 'booth.css', 'booth.js', 'booth-map.js', 'booth-midi.js', 'booth-dsp.js', 'booth-cue.js', 'booth-audio.js', 'booth-lib.js', 'booth-play.js', 'booth-score.js', 'booth-game.js', 'booth-skills.js', 'booth-academy.js', 'config.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
+var CACHE = 'lq-v7';
+var SHELL = ['./', 'index.html', 'app.css', 'app.js', 'setup.js', 'face.js', 'figure.js', 'look.js', 'outbox.js', 'fmt.js', 'music.js', 'djset.js', 'words.js', 'booth.html', 'booth.css', 'booth.js', 'booth-map.js', 'booth-midi.js', 'booth-dsp.js', 'booth-cue.js', 'booth-audio.js', 'booth-lib.js', 'booth-play.js', 'booth-score.js', 'booth-game.js', 'booth-skills.js', 'booth-academy.js', 'config.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 
 importScripts('config.js');
 

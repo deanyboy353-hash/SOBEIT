@@ -23,13 +23,14 @@ function b64url_(bytesOrString) {
 }
 
 /** OAuth token for FCM from the service account (signed JWT), reused for 50 minutes. */
-function fcmAccessToken_(sa) {
-  var cached = JSON.parse(prop_('FCM_TOKEN') || 'null');
+function fcmAccessToken_(sa, scope) {
+  var ck = scope ? 'SA_TOKEN_' + scope.split('/').pop() : 'FCM_TOKEN';
+  var cached = JSON.parse(prop_(ck) || 'null');
   var now = Math.floor(new Date().getTime() / 1000);
   if (cached && cached.exp > now + 60) return cached.token;
   var header = b64url_(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
   var claims = b64url_(JSON.stringify({
-    iss: sa.client_email, scope: 'https://www.googleapis.com/auth/firebase.messaging',
+    iss: sa.client_email, scope: scope || 'https://www.googleapis.com/auth/firebase.messaging',
     aud: 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600
   }));
   var sig = b64url_(Utilities.computeRsaSha256Signature(header + '.' + claims, sa.private_key));
@@ -39,7 +40,7 @@ function fcmAccessToken_(sa) {
   });
   if (res.getResponseCode() !== 200) throw new Error('Push sign-in failed: ' + res.getContentText().slice(0, 200));
   var tok = JSON.parse(res.getContentText());
-  setProp_('FCM_TOKEN', JSON.stringify({ token: tok.access_token, exp: now + (tok.expires_in || 3600) - 600 }));
+  setProp_(ck, JSON.stringify({ token: tok.access_token, exp: now + (tok.expires_in || 3600) - 600 }));
   return tok.access_token;
 }
 
