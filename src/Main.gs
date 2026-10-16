@@ -86,7 +86,7 @@ function prepareSheet_() {
   ensurePresets_();
   ensureRotation_();
   Object.keys(HEADERS).forEach(ensureTab_);
-  ensureSplits_();
+  try { ensureSplits_(); } catch (e) { log_('WARN', 'Training splits move: ' + e); }
   var blank = ss.getSheetByName('Sheet1');
   if (blank && blank.getLastRow() === 0 && ss.getSheets().length > 1) ss.deleteSheet(blank);
 

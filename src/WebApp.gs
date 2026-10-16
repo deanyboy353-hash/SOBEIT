@@ -169,11 +169,16 @@ function appState_(who) {
  * either of you clears it (withLock_), so refreshes are near-instant and never stale.
  */
 var STATE_TTL = 300, STATE_PART = 90000;
+// Bump when the screen's shape changes, so a deploy never serves a screen saved by the old code.
+var STATE_VERSION = 'splits-1';
 function appState(key) {
   var who = who_(key);
-  if (!prop_('TRAIN_V3')) try { withLock_(ensureSplits_); } catch (e) { log_('WARN', 'Training splits move: ' + e); }   // once: back up the gym data, then templates
+  // once: back up the gym data, then templates (a failure is logged and retried at most hourly, never in the way)
+  if (!prop_('TRAIN_V3') && new Date().getTime() - Number(prop_('TRAIN_V3_TRY') || 0) > 3600000) {
+    try { withLock_(ensureSplits_); } catch (e) { setProp_('TRAIN_V3_TRY', String(new Date().getTime())); log_('WARN', 'Training splits move: ' + e); }
+  }
   var cache = stateCache_(), hit = cache && getCachedState_(cache, who);
-  var stamp = todayYmd_() + '|' + dayPart(minutesNow_());          // never serve yesterday's (or this morning's) screen after midnight / the next part of the day
+  var stamp = todayYmd_() + '|' + dayPart(minutesNow_()) + '|' + STATE_VERSION;   // never serve yesterday's (or this morning's, or the old code's) screen
   if (hit && hit.cacheStamp === stamp) { hit.now = new Date().getTime(); return hit; }
   var state = withLock_(function () { if (!prop_('TITLES_V2')) { try { var st0 = readConfig_().settings; ['Your level titles', 'Partner level titles'].forEach(function (k) { var v = String(st0[k] || '').trim().toLowerCase(); if (v === 'ye' || v === 'kanye') setSetting_(k, 'Glam'); else if (v === 'gta') setSetting_(k, 'City'); }); setProp_('TITLES_V2', '1'); } catch (e) { log_('WARN', 'Titles: ' + e); } } if ((!prop_('LIFTOFF_V1') || !prop_('STRONG_V1') || !prop_('IMPORT_XP_V2')) && !instance_()) { try { ensureLiftoffImport_(); } catch (e) { log_('WARN', 'Liftoff import: ' + e); } } if (!prop_('BINS_V2') && !instance_()) { try { ensureHomeBins_(); } catch (e) { log_('WARN', 'Bins: ' + e); } } if (!prop_('ROUTINE_V2')) { try { tidyRoutines_(); } catch (e) { log_('WARN', 'Routines: ' + e); } } if (!prop_('TRANSPORT_V1')) { try { ensureTransport_(); } catch (e) { log_('WARN', 'Transport setup: ' + e); } } if (!prop_('PRESETS_V1')) { try { ensurePresets_(); } catch (e) { log_('WARN', 'Presets: ' + e); } } if (!prop_('TRAIN_V2')) { try { ensureRotation_(); } catch (e) { log_('WARN', 'Training rotation: ' + e); } } return appState_(who); });
   state.cacheStamp = stamp;
