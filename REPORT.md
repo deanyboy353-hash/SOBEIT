@@ -1,98 +1,86 @@
-# Report: Win the day, Booth fixes, design roll-out, character creator
+# Report: speed, the private chat, days off, Booth phase 6
 
-Everything is on `claude/adhd-automation-system-htcfxg` and deployed: the website, Apps Script @47, and Dylz's copy @6. **235 tests pass.** No stored data was deleted. Two pieces of stored text changed: the "Look at the Home tab" step was removed from existing morning routines, and the free starter wardrobe was widened.
+Everything is on `claude/adhd-automation-system-htcfxg` and deployed: the website, Apps Script @49, and Dylz's copy @7. **260 tests pass**, including the chat's privacy rules checked against Google's own Firestore emulator. No stored data was deleted or moved.
 
-## What changed
+## 1. Speed
 
-**1. Characters (quick fix).** The 3D mannequins are replaced everywhere by 2D illustrated figures: full body on Home, You and the dressing room, and heads in small spots. These all still work:
-- gym kit on training days
-- rain jacket when it's raining
-- headphones after Booth
-- sleepy after midnight
-- bouncing when you've both won the day
-- the Jheri curl unlock
+### What was slow, and why
+I measured every common action by counting the Google service calls each one makes (each is a network hop inside Apps Script) and timing taps in a real browser.
 
-The 3D code is kept for the creator.
+- **Every tap returned the whole app.** That's a 70 KB state built from ~75 cache lookups, plus up to 24 sheet reads when the cache is cold. That is roughly 1–4.7 s of server time per tap, on top of about 1 s of Apps Script start-up and the phone's network.
+- **Taps waited in a queue.** Saves ran strictly one after another, so three quick taps could take 10 s or more to settle.
+- **Some actions froze the screen until the server answered.** These were saving a look, buying, logging weight, deadline buttons, Empire purchases and chore timers.
 
-**2. Booth**
-- **No more jump to the bottom.** Results dock over the bottom of the screen, so the page and the decks stay exactly where they were (checked in a real browser: scroll position 260 → 260). The buttons are Try again, Next lesson and Keep playing (which closes the panel and leaves the decks running).
-- **Back to the start of a track:**
-  - CUE while paused returns to the cue point, which is the first beat unless you set one. Straight after scrubbing with the jog wheel, CUE sets the cue there instead.
-  - SHIFT + CUE jumps to 0:00, and keeps playing if it was.
-  - Each deck has an on-screen ⏮ Start button.
-  - Keys **3** / **4** (Deck A / B), or Shift + the deck's CUE key.
-  - Beatjump pads: back 1, 4, 8, 16 and 32 beats, and pad 8 = Start. With SHIFT: forward jumps, and pad 8 = back to cue.
-  - SHIFT + CUE is mapped on the Inpulse 500 and labelled on the controller diagram.
+### Before → after
+Measured in a browser, with the server deliberately slowed to 3 s per request:
 
-**3. Home**
-- **Win the day** is the one score. It counts your daily minimum of jobs, or the XP goal until setup has planned your day. The streak, the couple streak and the pet all follow it. XP, challenges, streaks and cash sit inside the same hero card, and "Goal hit" is gone.
-- **New order:**
-  1. Today brief
-  2. Win the day
-  3. Next deadline, or a small "+ Add deadline" link when there are none
-  4. The routine for now
-  5. Water and weight
-  6. Characters with the pet at their feet
-  7. Everything else
+| Tap | Before | After |
+|---|---|---|
+| Save look (dressing room) | 4,733 ms | 26 ms |
+| Water +1 / routine step / job done | 26–31 ms | 23–29 ms |
+| Accent colour | 24 ms | 33 ms |
+| Buy an item | waited for the server | 8 ms |
+| Six taps reaching the server | 12 requests, one after another | 9 requests: the three Home taps went as one batch |
 
-  Every card can be moved or hidden in Edit home screen. Old saved orders were reset to this one, but anything you'd hidden stays hidden.
-- **Routines:**
-  - The morning routine folds to one line after noon (for example "Morning routine 3/6"), and you can tap it to open.
-  - The evening routine appears at 6pm. If you have none, there's "Add an evening routine" or "Not for me".
-  - "Look at the Home tab" is removed.
-- **The brief** rewrites itself every 3 hours, for each part of the day, and after something big: the day won, the gym done, a routine finished, or a deadline done (at most every 15 minutes). It shows "updated X min ago".
-- **Rotation:** checked against your imported history. Next is **Shoulders & Arms**, and logging it moves the rotation on. Train shows one rotation strip.
+The before figures for water, routine, job done and accent were already fast, because those taps updated the screen locally. Server cost for five taps: ~2.2 s batched vs ~8 s one at a time. There is a test for this budget.
 
-**4. Design.** The After Dark and Glam looks (each light and dark, following the phone) are now on every screen. Each screen has one hero:
-- Chores: your jobs
-- Train: the rotation
-- Food: calories
-- Play: head to head
-- Work: the day plan
-- Empire: cash
-- You: your look
-- Customise: the look picker
+### What changed
+- **An outbox on the phone (IndexedDB).** Every change is saved on the phone first and the screen updates at once. Changes go to the server in the background, in batches, and the server builds the screen once per batch.
+- **Retries.** If the server can't be reached, the app retries quietly (1 s, 3 s, 8 s, 20 s, then every minute) and shows "Offline: saved on this phone" after three failures. A change is only dropped if the server says no (for example "You need £550 more"), and then you see why.
+- **Instant feedback on every button:** a pressed state and a tiny buzz on touch-down, a tick animation, and a small "Saving…" pill if a save takes longer than 1.5 s.
+- **Lazy-loading.** The old 3D character code no longer loads at start, and the chat's database code loads only when needed.
+- **Live updates through Firebase (Firestore, London, free tier).** It carries the chat and live partner scores, so Yaz sees your XP and Win the day change within about a second. Apps Script stays the source of truth for everything else, so **no data was migrated** and nothing moved.
 
-An automated check of all 34 screen and look combinations at phone size found no overlaps, no clipped text and no sideways scroll. It found one real bug, now fixed: the cash amount was invisible in Glam light.
+## 2. Us: the private chat
+Tap the Us card on Home.
 
-**5. Character creator (2D now, 3D waiting for your OK)**
-- **The dressing room now has:**
-  - eight tabs: Body, Face, Hair, Tops, Bottoms, Shoes, Accessories, Details
-  - colour palettes and an any-colour picker
-  - Randomise, which only uses things you own and never changes your body
-  - Undo and Redo
-  - **three saved looks each**
-  - Stand, Runway and Happy poses, and zoom
-- The free starter set is much bigger (30+ pieces). Showpieces still unlock with chores and cash, the four earned outfits still come from achievements, and the Jheri curl is still a 3-chore unlock.
-- **3D quality gate.** The 3D body is rebuilt as one continuous skinned mesh with no ball joints. Clothes are painted into low-res textures the way PS2-era games did it. There are 2,000–2,300 triangles per character, a relaxed weight-on-one-leg stance, and bending that works (see the dance pose).
+**What's in it:**
+- Real-time messages, with receipts: Sent ✓ → Delivered ✓✓ → Read (with the time).
+- A typing indicator and online / last seen.
+- Wink, Tonight? and Dice as animated messages. Tonight? has quick replies: "Yes 😏", "Maybe later", "Not tonight".
+- Emoji reactions, reply-to, photos (compressed on the phone), voice notes (up to 60 s), and delete for both.
+- Disappearing messages: off, 24 hours or 7 days, for both of you.
+- Your Us stats and badges at the top, with "+20 XP" to log.
 
-  See `docs/screens/characters-v2-five.png`, `-dance.png` and `-ps2-mode.png`. **It is not rolled out.** The 2D figures stay until you say yes.
+**Tested on two phones:** Yaz's Home showed the new message 247 ms after you sent it, and you saw "Read 10:14" as soon as she opened the chat.
 
-## Screenshots (`docs/screens/`)
-- **Home:**
-  - `home-v3-afterdark-dark.png`, `home-v3-afterdark-light.png`, `home-v3-glam-dark.png`, `home-v3-glam-light.png`
-  - afternoon (routine folded): `home-afternoon-routine-folded.png`
-  - evening: `home-evening-routine.png`
-  - before: `home-before-after.png` (from the last round)
-- **Every screen:** `all-afterdark-dark.png`, `all-glam-light.png`, `all-mixed.png`
-- **Booth:** `booth-result-docked.png`
-- **Creator:** `creator-2d.png` (2D), `characters-v2-*.png` (3D)
+**Privacy:**
+- **The database locks it, not just the app.** The chat lives in a "room" named by a 64-character random secret, created by your server and given only to your two phones. The secret is stored where no phone can read it. The database refuses any request that doesn't name the exact room, and rooms can't be listed. Tested against Google's emulator.
+- **Notifications** say only "New message from Yazzy". The server is never sent the words.
+- **The chat never reaches the server**, so it can't appear in the feed, the brief, emails, backups or any AI feature. There's a test that fails if server code ever reads messages. The room secret is also kept out of backups (a test caught that, and it's fixed).
+- **Chat lock:** fingerprint, face or phone PIN, on each phone (chat settings: ⋯).
 
-## Decisions I made
-1. **Win the day stays "your minimum of jobs"** (the XP goal before setup). XP, challenges and streaks feed into it on the card rather than changing what counts as a win, so your streak history means the same thing.
-2. **CUE while paused goes back to the cue**, as you asked. You can still set a new cue: scrub with the jog wheel, then press CUE within 3 seconds.
-3. **Results dock as a panel** rather than appearing inline, so nothing on the page ever moves.
-4. **The evening routine shows from 6pm whatever time it's set for.** A morning routine that you finish before noon also folds.
-5. **The creator's 3D stays switched off until you approve the five characters.**
+## 3. Small fixes
+- **The brief matches the day.** It knows when the day is won (the AI is told not to suggest more chores) and rewrites itself a minute after any job is done. Until then it says "Day won. Updating your brief…" rather than showing old advice.
+- **Days off:**
+  - Work cards are hidden on Fri–Sun, on Yaz's non-work days, and on any day marked off with "Mark today off" in Work.
+  - The gym plan on a day off never falls back to the after-work 15:01. There's a "leave around" picker on the gym card, and Change still works.
+- **A compact "Day won" card** when all of today's jobs are done.
 
-## Needs you
-- **Approve (or not) the five 3D characters** in `docs/screens/characters-v2-five.png`. On a yes I switch Home, Play, the feed and the dressing room over, keep 2D portraits in small spots, and fall back to 2D on slow phones.
-- **CC0 packs.** I couldn't download Quaternius or Kenney models: this environment's network blocks quaternius.com, kenney.nl and opengameart.org. To let me use them, add those hosts under Network access → Allowed domains in the cloud environment's settings (environment menu → Edit). Mixamo needs an Adobe login, so I can't use it from here.
+**About the midday bus:** your Transport timetable only has the after-work buses, so there's no midday pair to pick from. On days off it now says so and offers the e-bike when it's dry. **To get the midday bus pair, add the 3's daytime times** under Transport in the Config tab. I couldn't fetch the real timetable from here (the network blocks bustimes.org) and didn't want to guess.
 
-## Check on the phone
-- [ ] Home order: brief, Win the day, deadline link, routine, water/weight, characters.
-- [ ] After 12:00 the morning routine is one line; after 18:00 the evening one shows.
-- [ ] The brief says "updated X min ago" and refreshes after you win the day.
-- [ ] Booth: finish a lesson and the page doesn't move. Try CUE (paused), SHIFT + CUE, the Start button and the beatjump pads on the Inpulse.
-- [ ] Dressing room: Randomise, Undo, save a look in a slot, then wear it again.
-- [ ] Both looks in light and dark (You → Customise → Light or dark).
+## 4. Booth, phase 6: real-world skills
+- **Quantise (Q):** hot cue jumps land at the same point in the beat, so you stay in time.
+- **Slip:** let go of a hot cue or toneplay pad and the track is where it would have been. Tested: 20.1 s → 21.46 s after a 1.3 s toneplay.
+- **Toneplay pads** (the mode that wasn't in Booth yet): play from hot cue 1 at ±1–4 semitones.
+- **Next track**, a selection trainer: three candidates and a floor to read (hold it, build it, bring it down). Each choice is scored on tempo, Camelot key and energy, with a DJ's reasons ("two steps up: an energy lift, mix it quickly"). It uses a practice crate or your own analysed tracks, keeps a running score, and has the Camelot wheel explained in one minute.
+
+## Tests added
+- Optimistic outbox: saved before sending, batching, back-off retry, survives a restart, only a server "no" undoes a change.
+- Performance budget on the server.
+- Chat: read receipts, presence and typing, disappearing messages, discreet notifications, and privacy rules (emulator).
+- Server never reads chat content.
+- Brief and state consistency.
+- Days off and the day-off gym plan.
+- Quantise, toneplay and next-track scoring.
+
+## What you and Yaz need to do on your phones
+1. **Open Nudge once and tap "Reload"** when it says a new version is ready (or close and reopen it).
+2. **Allow notifications** if Home shows the "Notifications are off" card. Chat notifications need it.
+3. **Optional chat lock:** Us → ⋯ → Lock the chat → Turn on (fingerprint or PIN). Do it on each phone.
+4. **Voice notes:** allow the microphone the first time you tap the mic.
+5. **You:** add the 3's daytime bus times under Transport in the Config tab, so days off get a midday bus pair.
+
+## Still waiting on you
+- **The five 3D characters** from last round (`docs/screens/characters-v2-five.png`): yes or no before I roll them out.
+- **Firebase features that need billing.** Auto-deleting expired messages on the server needs billing. Without it, disappearing messages are hidden and deleted by your phones instead.
