@@ -5849,7 +5849,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
         return '<div class="item shop">' + itemArt(it, 46) + '<div class="grow"><b>' + esc(it.name) + '</b><div class="tiny muted">' + esc(it.area) + ' · ' + TYPE_NAME[it.type] + '</div>' + (it.income ? '<div class="tiny" style="color:var(--good);font-weight:650">+' + money(it.income) + ' a day</div>' : '') + '</div>' +
           (have[it.id] ? '<span class="chip good">Owned</span>' : '<button class="btn ' + (ok ? 'primary' : 'line') + ' sm" type="button" data-buy="' + it.id + '"' + (ok ? '' : ' disabled') + '>' + money(it.price) + '</button>') + '</div>';
       }).join('') + '</section>';
-      if (items.length && !items.some(function (it) { return e.cash >= it.price && !have[it.id]; })) h += '<p class="small muted center">Keep earning XP: every 1 XP is $10.</p>';
+      if (items.length && !items.some(function (it) { return e.cash >= it.price && !have[it.id]; })) h += '<p class="small muted center">Keep earning XP: every 1 XP is £10.</p>';
     }
     el('tab-empire').innerHTML = h;
   }

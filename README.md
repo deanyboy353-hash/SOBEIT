@@ -45,7 +45,7 @@ Your partner's link opens the same app without Train and Food.
 - How hard it pushes: Customise, then Reminders: Gentle, Normal or Duolingo (also a streak nag every half hour from 6pm until you hit your goal). Quiet from 10:30pm to 8am.
 
 **Cash and your empire**
-- Every XP also pays $10. Spend it under You, then **Your empire**: San Andreas and Vice City homes and businesses (the Grove Street house, the Malibu Club, the Vercetti Estate…), cars, bikes, a boat, a helicopter, even a jump jet.
+- Every XP also pays £10. Spend it under You, then **Your empire**: San Andreas and Vice City homes and businesses (the Grove Street house, the Malibu Club, the Vercetti Estate…), cars, bikes, a boat, a helicopter, even a jump jet.
 - Upgrade places (a music studio and DJ booth, an art wall, a pool…) and vehicles (respray, hydraulics, nitro…). Businesses pay out every morning. Sell anything back for 60%.
 - Your character card shows your ride, your home and your net worth.
 
