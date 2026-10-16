@@ -38,17 +38,6 @@ function todayState_() {
   };
 }
 
-/** Marks today's tracked task of this type (and ref) as done, ticking it in Google Tasks too. */
-function completeTracked_(type, ymd, ref) {
-  var t = tracked_();
-  Object.keys(t).forEach(function (id) {
-    if (t[id].type !== type || t[id].date !== ymd || t[id].done || (ref && t[id].ref !== ref)) return;
-    t[id].done = true;
-    try { Tasks.Tasks.patch({ status: 'completed' }, TASK_LIST, id); } catch (e) { /* deleted already */ }
-  });
-  saveTracked_(t);
-}
-
 // ---- called from the page ----
 
 function todayState(key) {
@@ -60,8 +49,7 @@ function gymDone(key) {
   requireKey_(key);
   return withLock_(function () {
     var ymd = todayYmd_();
-    completeTracked_('gym', ymd);
-    onGymTaskDone_({ completed: new Date().toISOString() }, { date: ymd });
+    markGymDone_(ymd);
     return todayState_();
   });
 }
@@ -72,7 +60,6 @@ function logWeightNow(key, text) {
   if (!w) throw new Error("Couldn't read a weight from that. Try 82.4, 13st 2 or 185 lb.");
   return withLock_(function () {
     var ymd = todayYmd_();
-    completeTracked_('weigh', ymd);
     logWeight_(ymd, now_('HH:mm'), w);
     return todayState_();
   });

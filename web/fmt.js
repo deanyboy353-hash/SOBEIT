@@ -35,8 +35,8 @@
     return won(next) && !won(prev) || gym(next) && !gym(prev) || fin(next) > fin(prev) || dl(next) < dl(prev);
   }
   // Home's cards, in the order Home starts with. Anything can be moved or hidden in Edit home screen.
-  var HOME_DEFAULT = ['brief', 'win', 'deadlines', 'routine', 'tiles', 'stage', 'ask', 'gym', 'challenges', 'whatnow', 'work', 'next', 'make', 'us', 'feed'];
-  var HOME_QUIET = { next: 1, make: 1, feed: 1 };
+  var HOME_DEFAULT = ['brief', 'win', 'deadlines', 'routine', 'tiles', 'stage', 'ask', 'gym', 'work', 'us', 'feed'];
+  var HOME_QUIET = { feed: 1 };
   /**
    * The order to draw Home in. A saved order from before Win the day (no 'win' in it) is replaced by the new
    * default, but what you'd hidden stays hidden. Cards that were merged (ring, chores -> win; pet, wardrobe -> stage) show.

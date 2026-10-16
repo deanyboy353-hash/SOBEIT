@@ -1,13 +1,11 @@
 /**
  * Quests.gs: everything that keeps the house running. Recurring quests come
  * from the Chores tab (Every / Who / Energy / XP columns). Each morning up to
- * "Quests per day" due ones go on a shared daily board, arrive in your
- * Google Tasks, and (if you've given an email) in your partner's inbox.
- * Ticking one anywhere counts everywhere.
+ * "Quests per day" due ones go on a shared daily board in the app and (if
+ * you've given an email) in your partner's inbox.
  *
  * Also here: claiming and covering each other's jobs, "What now?", the brain
- * dump, the shopping list, prep reminders for tomorrow's appointments and
- * email nudges for your partner.
+ * dump, the shopping list and email nudges for your partner.
  */
 
 // ---------- the daily board ----------
@@ -29,7 +27,7 @@ function saveBoard_(b) {
   PROPS.setProperty('BOARD', JSON.stringify(b));
 }
 
-/** Daily job: build the board, send your quests to Google Tasks, email your partner theirs. */
+/** Daily job: build the board and tell your partner theirs. */
 function planQuests_(ymd, cfg) {
   if (setupOn_()) return planChoresDay_(ymd);
   var props = PROPS;
@@ -38,21 +36,11 @@ function planQuests_(ymd, cfg) {
   var quests = readChores_();
   var byName = {};
   quests.forEach(function (q) { byName[q.name] = q; });
-  b.items.forEach(function (name) {
-    var q = byName[name];
-    if (q && q.who !== 'partner') createTrackedTask_('quest', ymd, '' + name, (q.minutes ? '~' + q.minutes + ' min · ' : '') + q.xp + ' XP. Tick here or in the app.', name);
-  });
   var mine = b.items.filter(function (n) { return byName[n] && byName[n].who !== 'me'; });
   if (mine.length) {
     push_('partner', 'Today: ' + mine.length + ' quest' + (mine.length === 1 ? '' : 's'), mine.slice(0, 4).join(', ') + (mine.length > 4 ? '…' : ''), 'quests', true);
   }
   return b.items.length + ' quests on the board';
-}
-
-function onQuestTaskDone_(task, info) {
-  var q = readChores_().filter(function (x) { return x.name === info.ref; })[0];
-  if (q && q.lastDone !== info.date) completeQuest_('me', info.ref, {});
-  return false;
 }
 
 /**
@@ -77,13 +65,11 @@ function completeQuest_(who, name, opts) {
     var xpT = addXp_(who, name + ' (together)', both, 'quest');
     addXp_(other, name + ' (together)', both, 'quest');
     push_(other, nicks_()[who] + ' logged ' + name.toLowerCase() + ' with you', '+' + both + ' XP each for doing it together.', 'home');
-    completeTracked_('quest', today, name);
     return xpT;
   }
   var xp = addXp_(who, name, q.xp, 'quest');
   var owner = q.who === 'me' || q.who === 'partner' ? q.who : null;
   if (owner && owner !== who) addXp_(who, 'Covered: ' + name, Math.round(q.xp / 2), 'cover');
-  completeTracked_('quest', today, name);
   return xp;
 }
 
@@ -207,10 +193,7 @@ function saveBrainDump(key, items) {
       if (it.kind === 'shopping') addShopping_(who, t);
       else if (it.kind === 'park') park_(who, t);
       else if (it.kind === 'recurring') addQuestRow_(t, Number(it.minutes) || 10, it.every || 'weekly', who === 'me' ? 'Anyone' : 'Anyone');
-      else {
-        park_(who, '' + t);
-        if (who === 'me') Tasks.Tasks.insert({ title: t, due: todayYmd_() + 'T00:00:00.000Z' }, TASK_LIST);
-      }
+      else park_(who, '' + t);
     });
     addXp_(who, 'Brain dump: ' + (items || []).length + ' things sorted', 5, 'brain');
     return appState_(who);
@@ -274,24 +257,6 @@ function toggleShopping(key, id) {
   });
 }
 
-// ---------- appointments: a prep reminder the day before ----------
-
-function planPrep_(ymd, cfg) {
-  var tomorrow = addDays_(ymd, 1);
-  var events = CalendarApp.getDefaultCalendar().getEvents(atTime_(tomorrow, 0), atTime_(addDays_(tomorrow, 1), 0))
-    .filter(function (ev) { return !ev.getTag(EVENT_TAG) && !(ev.isAllDayEvent && ev.isAllDayEvent()); });
-  events.slice(0, 5).forEach(function (ev) {
-    createTrackedTask_('prep', ymd, 'Prep for tomorrow: ' + ev.getTitle() + ' at ' + Utilities.formatDate(ev.getStartTime(), TZ, 'HH:mm'),
-      'What do you need? Travel time, documents, clothes, questions to ask.', ev.getTitle());
-  });
-  return events.length + ' things tomorrow';
-}
-
-function onPrepTaskDone_(task, info) {
-  addXp_('me', 'Prepped for ' + info.ref, 5, 'prep');
-  return false;
-}
-
 // ---------- partner email ----------
 
 function partnerUrl_() {
@@ -340,12 +305,8 @@ function planQuestsState_(who) {
   };
 }
 
-/** Daily job (setup on): roll late jobs on, plan the day, Dean's jobs into Google Tasks. The morning list arrives by notification at wake time (heartbeat). */
+/** Daily job (setup on): roll late jobs on and plan the day. The morning list arrives by notification at wake time (heartbeat). */
 function planChoresDay_(ymd) {
-  var msg = cpDaily_(ymd), plan = cpToday_(), byName = {};
-  readChores_().forEach(function (q) { byName[q.name] = q; });
-  plan.me.must.concat(plan.me.bonus).forEach(function (name) {
-    var q = byName[name]; if (q) createTrackedTask_('quest', ymd, name, (q.minutes ? '~' + q.minutes + ' min · ' : '') + q.xp + ' XP. Tick here or in the app.', name);
-  });
+  var msg = cpDaily_(ymd); cpToday_();
   return msg;
 }

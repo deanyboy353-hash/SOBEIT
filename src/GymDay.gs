@@ -66,7 +66,7 @@ function planGymDay_(ymd, cfg) {
   var lines = tp.lines.concat(tp.weather ? ['Weather: ' + tp.weather] : []).concat(warnings.map(function (w) { return 'Note: ' + w; }));
   lines.push('', day.session.toUpperCase());
   exercises.forEach(function (ex, i) { lines.push(formatExercise(ex, i)); });
-  lines.push('', 'Log it in the app\'s Train tab (or tick "Gym done" in Google Tasks).');
+  lines.push('', 'Log it in the app\'s Train tab.');
 
   removeTaggedEvents_(ymd, 'gym');
   var event = CalendarApp.getDefaultCalendar().createEvent(title, atTime_(ymd, start), atTime_(ymd, end), {
@@ -81,8 +81,6 @@ function planGymDay_(ymd, cfg) {
   event.setColor(t.mode === 'bike' ? CalendarApp.EventColor.GREEN : t.ok ? CalendarApp.EventColor.BLUE : CalendarApp.EventColor.ORANGE);
   var text = { title: title };
 
-  createTrackedTask_('gym', ymd, 'Gym done: ' + day.session, 'Tick when you finish. That logs it.');
-
   var row = {
     'Date': ymd, 'Day': DAY_NAMES[dow], 'Session': day.session, 'Travel': t.mode === 'bike' ? 'Bike' : t.ok ? 'Bus' : 'Move',
     'Leave at': hm(start), 'Weather': tp.weather || 'no forecast',
@@ -96,20 +94,23 @@ function planGymDay_(ymd, cfg) {
   return text.title;
 }
 
-function onGymTaskDone_(task, info) {
-  var r = findRow_('gym', 'Date', info.date);
-  var before = r ? readRow_('gym', r) : {}, session = String(before['Session'] || '') || todaySession_(info.date) || '';
+/** Each morning: a gym day from before that wasn't logged is marked as not done. */
+/** Gym done (from the app): log it once with its XP, and record the session so the rotation moves on. */
+function markGymDone_(ymd) {
+  var r = findRow_('gym', 'Date', ymd);
+  var before = r ? readRow_('gym', r) : {}, session = String(before['Session'] || '') || todaySession_(ymd) || '';
   if (!/^Done/.test(String(before['Status'] || ''))) addXp_('me', 'Gym: ' + (session || 'session done'), 50, 'gym');
-  var update = { 'Status': 'Done', 'Ticked at': completedAt_(task) };
+  var update = { 'Status': 'Done', 'Ticked at': now_('HH:mm') };
   if (session && !before['Session']) update['Session'] = session;     // so the rotation knows what was done
   if (r) updateRow_('gym', r, update);
-  else appendRow_('gym', Object.assign({ 'Date': info.date, 'Day': DAY_NAMES[dayOfWeek_(info.date)] }, update));
-  return false;
+  else appendRow_('gym', Object.assign({ 'Date': ymd, 'Day': DAY_NAMES[dayOfWeek_(ymd)] }, update));
 }
 
-function onGymTaskExpired_(task, info) {
-  var r = findRow_('gym', 'Date', info.date);
-  if (r && readRow_('gym', r)['Status'] === 'Planned') updateRow_('gym', r, { 'Status': 'Not ticked' });
+function closeOldGymDays_(todayYmd) {
+  rowsBetween_('gym', addDays_(todayYmd, -7), addDays_(todayYmd, -1)).forEach(function (row) {
+    if (row['Status'] !== 'Planned') return;
+    var r = findRow_('gym', 'Date', String(row['Date'])); if (r) updateRow_('gym', r, { 'Status': 'Not done' });
+  });
 }
 
 /** Delete events this script made for that day (so re-running replaces rather than duplicates). */

@@ -36,8 +36,6 @@ var DEFAULT_SETTINGS = [
   ['Partner level titles', 'Glam', 'Names for your partner\'s levels: DJ, Glam, City or None'],
   ['Step goal', '7000', 'Steps a day (Health page)'],
   ['Sleep goal (hours)', '8', 'Hours of sleep you aim for (Health page and sleep score)'],
-  ['Daily challenges', 'TRUE', 'Three small goals a day each, for bonus XP'],
-  ['Double XP', 'TRUE', 'A surprise half hour of double XP each day, with a notification'],
   ['Reminders', 'TRUE', 'Evening nudges when a streak is at risk'],
   ['Your app link', '', 'Filled in automatically. Open it on your phone, then install it (see the README). Keep it private.'],
   ['Partner app link', '', 'Filled in automatically. Send this to your partner. It opens everything except Train and Food.'],
@@ -45,7 +43,6 @@ var DEFAULT_SETTINGS = [
   ['Daily XP goal', '30', 'XP each of you aims for per day. Hitting it keeps your streak going.'],
   ['Quests per day', '6', 'Most quests put on the daily board, so it never feels like a wall'],
   ['Water goal (glasses)', '8', 'Shown on the Home tab. Set to 0 to hide it.'],
-  ['Meds reminder', '', 'Optional time, e.g. 08:30, for a daily calendar alert. Leave blank for none.'],
   ['Plate step (kg)', '2.5', 'Gym weights are rounded to this'],
   ['Email me if something breaks', 'TRUE', 'Untick to stop error emails'],
   ['Web app URL', '', 'Filled in automatically. Used later by HC Webhook and MacroDroid.'],
@@ -327,15 +324,7 @@ function ensureQuests_() {
   props.setProperty('QUESTS_V2', '1');
 }
 
-// ---------- Rewards, routines ----------
-
-var DEFAULT_REWARDS = [
-  ['Fancy coffee', '100', 'Anyone'],
-  ['Guilt-free gaming or TV hour', '150', 'Anyone'],
-  ['Lie-in (the other one does the morning)', '300', 'Anyone'],
-  ['Takeaway night', '600', 'Anyone'],
-  ['New gym top', '1000', 'Me']
-];
+// ---------- Routines ----------
 
 var DEFAULT_ROUTINES = [
   ['Morning', 'Me', '08:30', 'Meds (if you take them); Glass of water; Teeth; Get dressed'],

@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { loadProject } = require('./fakes');
 
-// Tue 13 Oct 2026, 10:00 in Glenboig. Extras (double XP, challenges) are switched on per test.
+// Tue 13 Oct 2026, 10:00 in Glenboig. Extras (reminders) are switched on per test.
 function ready(iso) {
   const g = loadProject({ now: new Date(iso || '2026-10-13T09:00:00Z') });
   g.ctx.setup();
@@ -31,55 +31,44 @@ test('names, team and level eras: Deany the bedroom DJ, Yazzy the fresh face', (
   assert.strictEqual(g.ctx.eraTitle_('me', 12), 'Legend 3');
 });
 
-test('daily challenges: each one done is +5 XP, all three opens the chest', () => {
+test('retired extras: no challenges, double XP, Wrapped, XP rewards or badges, and their old data goes to the Archive tab', () => {
   const { g, me, partner } = ready();
   delete g.state.props.EXTRAS_OFF;
-  // Yazzy: 2 chores, 10 XP before noon, daily goal before 8pm
-  const board = g.ctx.appState(partner).quests.board.filter(q => q.who !== 'me');
-  // The chore schedule is random, so 3 chores might not reach the 30 XP goal: keep ticking until every challenge is done
-  // (the last chore on the board is kept for the "never award twice" check below).
-  const spare = board[board.length - 1];
-  for (const q of board.slice(0, -1)) {
-    g.ctx.questDone(partner, q.name);
-    if (board.indexOf(q) >= 2 && g.ctx.appState(partner).fun.challenges.list.every(c => c.done)) break;
-  }
-  const ch = g.ctx.appState(partner).fun.challenges;
-  assert.deepStrictEqual(plain(ch.list.map(c => c.id).sort()), ['chores2', 'early', 'goal8']);
-  assert.ok(ch.list.every(c => c.done), JSON.stringify(ch));
-  assert.ok(ch.chest);
-  const bonus = xpRows(g).filter(r => r.who === 'partner' && r.kind === 'bonus');
-  assert.strictEqual(bonus.length, 4);
-  assert.strictEqual(bonus.reduce((s, r) => s + r.xp, 0), 3 * 5 + 15);
-  // Deany: water, word, goal by 8pm
-  for (let i = 0; i < 8; i++) g.ctx.addWater(me, 1);
-  g.ctx.guessWord(me, g.ctx.todaysWord_('2026-10-13'));
-  const mine = g.ctx.appState(me).fun.challenges;
-  assert.ok(mine.list.find(c => c.id === 'water').done);
-  assert.ok(mine.list.find(c => c.id === 'word').done);
-  // challenges never award twice
-  g.ctx.questDone(partner, spare.name);
-  assert.strictEqual(xpRows(g).filter(r => r.who === 'partner' && r.kind === 'bonus').length, 4);
-});
-
-test('double XP: a surprise half hour where everything counts twice, announced once', () => {
-  const { g, me } = ready();
-  delete g.state.props.EXTRAS_OFF;
   withPush(g);
-  const w = g.ctx.boostWindow_('2026-10-13');
-  assert.ok(w.start >= 12 * 60 && w.end <= 21 * 60);
-  const q = g.ctx.appState(me).quests.board.filter(x => x.who !== 'partner');
-  g.ctx.questDone(me, q[0].name);
-  assert.strictEqual(xpRows(g).find(r => r.what === q[0].name).xp, q[0].xp);
-  at(g, '2026-10-13T' + String(Math.floor(w.start / 60) - 1).padStart(2, '0') + ':' + String(w.start % 60 + 1).padStart(2, '0') + ':00Z'); // BST: UTC+1
-  assert.ok(g.ctx.boostActive_());
-  g.ctx.nagRun();
-  g.ctx.nagRun();
-  assert.strictEqual(pushesTo(g, 'me-phone-token-0123456789').filter(p => /Double XP/.test(p.title)).length, 1);
-  assert.strictEqual(pushesTo(g, 'yaz-phone-token-0123456789').filter(p => /Double XP/.test(p.title)).length, 1);
-  g.ctx.questDone(me, q[1].name);
-  const row = xpRows(g).find(r => r.what.startsWith(q[1].name));
-  assert.strictEqual(row.xp, q[1].xp * 2);
-  assert.match(row.what, /\(double XP\)$/);
+  // old data from before the change
+  g.state.props.CHAL_partner = JSON.stringify({ '2026-10-12': { chores2: true } });
+  g.tab('Config').rows();
+  const cfg = g.ss.getSheetByName('Config');
+  cfg.appendRow(['Daily challenges', 'TRUE', 'old']); cfg.appendRow(['Double XP', 'TRUE', 'old']); cfg.appendRow(['Meds reminder', '08:30', 'old']);
+  const rw = g.ss.insertSheet('Rewards'); rw.appendRow(['Reward', 'Cost (XP)', 'Who']); rw.appendRow(['Fancy coffee', '100', 'Anyone']);
+  assert.ok(!g.ss.getSheetByName('Archive'), 'a fresh install has nothing to archive');
+  delete g.state.props.EXTRAS_RETIRED;
+  g.ctx.retireExtras_();
+  g.ctx.retireExtras_();   // runs once
+  const arch = g.tab('Archive').rows().slice(1);
+  assert.deepStrictEqual(arch.map(r => r[0]).sort(), ['Daily challenges', 'Rewards', 'Settings']);
+  assert.match(arch.find(r => r[0] === 'Rewards')[2], /Fancy coffee/);
+  assert.match(arch.find(r => r[0] === 'Settings')[2], /Meds reminder/);
+  assert.ok(!g.state.props.CHAL_partner);
+  assert.ok(g.ss.getSheetByName('Old Rewards'), 'the Rewards tab is kept, renamed');
+  assert.ok(!g.ss.getSheetByName('Config').getDataRange().getValues().some(r => /^(Daily challenges|Double XP|Meds reminder)$/.test(r[0])));
+  // nothing in the state or the server for them
+  const st = plain(g.ctx.appState(me));
+  ['challenges', 'boost'].forEach(k => assert.ok(!(k in st.fun), k));
+  ['balance', 'badges', 'rewards'].forEach(k => assert.ok(!(k in st.game), k));
+  ['getWrapped', 'redeemReward', 'submitMix', 'boostActive_', 'checkChallenges_'].forEach(f => assert.strictEqual(typeof g.ctx[f], 'undefined', f));
+  // XP adds up: every job is its own XP, nothing doubled, no bonus rows
+  const q = st.quests.board.filter(x => x.who !== 'partner').slice(0, 2);
+  for (let h = 12; h <= 20; h += 4) {
+    at(g, '2026-10-13T' + String(h).padStart(2, '0') + ':10:00Z');
+    g.ctx.nagRun();
+  }
+  q.forEach(x => g.ctx.questDone(me, x.name));
+  q.forEach(x => assert.strictEqual(xpRows(g).find(r => r.what === x.name).xp, x.xp));
+  assert.strictEqual(xpRows(g).filter(r => r.kind === 'bonus').length, 0);
+  assert.strictEqual(g.ctx.xpOn_('me', '2026-10-13'), q.reduce((s, x) => s + x.xp, 0));
+  assert.ok(!g.state.pushes.some(p => /Double XP|challenge/i.test(p.title + p.body)));
+  void partner;
 });
 
 test('evening reminders (normal level): streak saver at 19:30, last call at 21:30, never twice, quiet at night', () => {
@@ -189,7 +178,7 @@ test('Tempo: replay as often as you like; best counts; XP once, only when you sc
   assert.strictEqual(Number(rows.find(r => r[2] === 'me')[4]), 10);
 });
 
-test('make something: a studio session on the timer earns creative XP and a badge', () => {
+test('a studio session on the timer earns creative XP', () => {
   const { g, me } = ready();
   g.ctx.startChore(me, { name: 'Make a beat', minutes: 20, steps: ['Make a loop'], creative: 'music' });
   at(g, '2026-10-13T09:22:00Z');
@@ -197,29 +186,7 @@ test('make something: a studio session on the timer earns creative XP and a badg
   const row = xpRows(g).find(r => r.kind === 'create');
   assert.strictEqual(row.what, 'Make a beat');
   assert.strictEqual(row.xp, 11);
-  assert.ok(s.game.badges.find(b => b.id === 'create-1').earned);
   assert.strictEqual(g.tab('Later').rows().length, 1, 'nothing parked');
-});
-
-test('wrapped: the week as a story', () => {
-  const { g, me, partner } = ready();
-  const board = g.ctx.appState(me).quests.board;
-  const mine = board.filter(q => q.who !== 'partner'), theirs = board.filter(q => q.who !== 'me' && q.name !== mine[0].name && q.name !== mine[1].name);
-  g.ctx.questDone(me, mine[0].name);
-  g.ctx.questDone(me, mine[1].name);
-  g.ctx.questDone(partner, theirs[0].name);
-  g.ctx.guessWord(me, g.ctx.todaysWord_('2026-10-13'));
-  g.ctx.guessWord(partner, g.ctx.todaysWord_('2026-10-13'));
-  g.ctx.logUs(me);
-  const w = plain(g.ctx.getWrapped(me));
-  assert.strictEqual(w.team.name, 'Yazzy & Deany');
-  assert.strictEqual(w.you.name, 'Deany');
-  assert.strictEqual(w.you.chores, 2);
-  assert.strictEqual(w.them.chores, 1);
-  assert.ok(w.you.xp > 0 && w.them.xp > 0);
-  assert.strictEqual(w.games.bestWord, 1);
-  assert.strictEqual(w.team.us, 1);
-  assert.strictEqual(w.from, '2026-10-07');
 });
 
 test('speed: the app\'s refresh is served from cache until something changes', () => {

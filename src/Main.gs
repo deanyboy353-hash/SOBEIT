@@ -3,7 +3,6 @@
  *
  *   setup()      run once by hand: builds the Sheet tabs, the web app key and the triggers
  *   dailyRun()   about 6am every day: tidies yesterday, then runs every job in dailyJobs_()
- *   pollTasks()  every 10 minutes: logs ticked tasks (see Tasks.gs)
  *   foodCheck()  ~10:40pm, booked each morning: "what's left today" alert (see Food.gs)
  *   weeklySummary() Sunday 6–7pm: the week in numbers (see WeeklySummary.gs)
  *   doGet/doPost web app: food page + phone data endpoint (see WebApp.gs)
@@ -20,8 +19,6 @@ function dailyJobs_() {
   return [
     { name: 'Streaks', run: function (ymd) { updateStreaks_(ymd); return 'settled'; } },
     { name: 'Quests', run: planQuests_ },
-    { name: 'Routines', run: planRoutines_ },
-    { name: 'Appointments', run: planPrep_ },
     { name: 'Gym plan', run: planGymDay_ },
     { name: 'Weigh-in', run: planWeighIn_ },
     { name: 'Food check', run: scheduleFoodCheck_ },
@@ -82,7 +79,6 @@ function prepareSheet_() {
   ensureSchedule_();
   ensureTogether_();
   upgradeSessions_();
-  seedSimple_('rewards', ['Reward', 'Cost (XP)', 'Who'], DEFAULT_REWARDS, [320]);
   seedSimple_('routines', ['Routine', 'Who', 'Time', 'Steps (separate with ;)'], DEFAULT_ROUTINES, [120, 0, 0, 600]);
   seedSimple_('lifts', ['Lift', 'Training max (kg)', 'Body'], DEFAULT_LIFTS, [180, 150]);
   seedSimple_('programme', ['Session', 'T1 lift', 'T1 sets', 'T2 lift', 'T2 % of', 'T2 sets'], DEFAULT_PROGRAMME, [0, 140, 380, 160, 140, 380]);
@@ -123,7 +119,7 @@ function prepareSheet_() {
   if (settings['Partner app link'] !== theirs) setSetting_('Partner app link', theirs);
 }
 
-var RECURRING_TRIGGERS = ['dailyRun', 'pollTasks', 'weeklySummary', 'nagRun'];
+var RECURRING_TRIGGERS = ['dailyRun', 'pollTasks', 'weeklySummary', 'nagRun'];   // pollTasks: old, removed by retireTasks_
 
 function installTriggers_() {
   ScriptApp.getProjectTriggers().forEach(function (t) {
@@ -136,7 +132,6 @@ function installTriggers_() {
 function ensureTriggers_() {
   var have = ScriptApp.getProjectTriggers().map(function (t) { return t.getHandlerFunction(); });
   if (have.indexOf('dailyRun') === -1) ScriptApp.newTrigger('dailyRun').timeBased().everyDays(1).atHour(6).inTimezone(TZ).create();
-  if (have.indexOf('pollTasks') === -1) ScriptApp.newTrigger('pollTasks').timeBased().everyMinutes(10).create();
   if (have.indexOf('nagRun') === -1) ScriptApp.newTrigger('nagRun').timeBased().everyMinutes(5).create();
   if (have.indexOf('weeklySummary') === -1) ScriptApp.newTrigger('weeklySummary').timeBased().onWeekDay(ScriptApp.WeekDay.SUNDAY).atHour(18).inTimezone(TZ).create();
 }
@@ -146,7 +141,9 @@ function dailyRun() {
   withLock_(function () {
     var today = todayYmd_();
     try { prepareSheet_(); ensureTriggers_(); } catch (e) { problems.push('Updating the Sheet: ' + e); }
-    try { sweepOldTasks_(today); } catch (e) { problems.push('Tidying old tasks: ' + e); }
+    try { retireTasks_(); } catch (e) { problems.push('Retiring Google Tasks: ' + e); }
+    try { retireExtras_(); } catch (e) { problems.push('Archiving retired extras: ' + e); }
+    try { closeOldGymDays_(today); } catch (e) { problems.push('Old gym days: ' + e); }
     var cfg = readConfig_();
     dailyJobs_().forEach(function (job) {
       try {
@@ -184,7 +181,6 @@ function withLock_(fn) {
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('Automation')
     .addItem('Plan today again (after changing settings)', 'dailyRun')
-    .addItem('Check ticked tasks now', 'pollTasks')
     .addItem('Repair (re-run setup)', 'setup')
     .addToUi();
 }

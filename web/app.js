@@ -56,9 +56,9 @@
   }
   // ---------- the outbox: saves never make you wait ----------
   // Reads, AI and big uploads go straight to the server; every other change is saved on the phone first and sent in batches.
-  var DIRECT = { appState: 1, gamesState: 1, workState: 1, setupState: 1, previewChores: 1, healthDay: 1, backupStatus: 1, exportAll: 1, getBrief: 1, whatNow: 1, mealIdeas: 1, getWrapped: 1,
+  var DIRECT = { appState: 1, gamesState: 1, workState: 1, setupState: 1, previewChores: 1, healthDay: 1, backupStatus: 1, exportAll: 1, getBrief: 1, whatNow: 1, mealIdeas: 1,
     healthInsight: 1, trainState: 1, foodState: 1, choresState: 1, quickAdd: 1, quickAddPhoto: 1, ask: 1, brainDump: 1, importBackup: 1, importHealth: 1, importWorkoutCsv: 1, registerDevice: 1,
-    testPush: 1, saveClaudeKey: 1, backupNow: 1, guessWord: 1, submitTarget: 1, submitRecall: 1, submitTempo: 1, submitMix: 1, submitSet: 1, undoAction: 1, undoLast: 1, addDeadline: 1, chatPing: 1 };
+    testPush: 1, saveClaudeKey: 1, backupNow: 1, guessWord: 1, submitTarget: 1, submitRecall: 1, submitTempo: 1, submitSet: 1, undoAction: 1, undoLast: 1, addDeadline: 1, chatPing: 1 };
   var syncState = { pending: 0, failing: 0, offline: false }, syncShownAt = 0;
   var box = window.NudgeOutbox ? NudgeOutbox.create({
     key: 'outbox-' + KEY.slice(0, 6),
@@ -177,9 +177,6 @@
     lock: 'M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4', car: 'M4 16h16M5.5 16l1.6-5.2A2 2 0 0 1 9 9.4h6a2 2 0 0 1 1.9 1.4L18.5 16M7.5 19.5a1.5 1.5 0 1 0 0-.01M16.5 19.5a1.5 1.5 0 1 0 0-.01M4 16v2.5M20 16v2.5', boat: 'M3 16.5l2 3.5h14l2-3.5zM12 4v12M12 4l6 9h-6', plane: 'M21 15.5l-8-4.5V5a1.5 1.5 0 0 0-3 0v6l-7 4.5V17l7-2v4l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-4l8 2z', building: 'M4 21V8l8-5 8 5v13M9 21v-5h6v5M8 11h.01M12 11h.01M16 11h.01', pulse: 'M3 12h4l2-5 4 10 2-5h6', walk: 'M13 5.5a1.5 1.5 0 1 0 0-.01M10 21l2-6 3 3v3M8 12l3-4 4 2 2 3M11 8l-3 1-1 3', bolt: 'M13 3 5 14h6l-1 7 8-11h-6z', wave: 'M3 12h2M7 8v8M11 5v14M15 9v6M19 7v10M21 12h0'
   };
   function icon(n, cls) { return '<svg class="i' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24" aria-hidden="true"><path d="' + (ICONS[n] || '') + '"/></svg>'; }
-  var BADGE_ICON = { 'first-quest': 'check', 'quests-25': 'home', 'quests-100': 'home', 'streak-3': 'flame', 'streak-7': 'flame', 'streak-30': 'flame', 'streak-100': 'flame',
-    'gym-1': 'dumbbell', 'gym-10': 'dumbbell', 'gym-50': 'dumbbell', pr: 'trophy', 'weigh-8': 'scale', 'routine-7': 'sun', 'protein-7': 'food', 'cover-5': 'heart', 'hi5-10': 'heart', brain: 'bulb', 'level-5': 'star', 'level-10': 'star', 'create-1': 'music', 'create-20': 'disc', 'chest-7': 'gift', boost: 'bolt' };
-
   var toastTimer;
   function toast(msg, isErr, action) {
     var t = el('toast');
@@ -254,12 +251,6 @@
     } else if (b.xpToday > a.xpToday) {
       confetti(false); chime([880, 1175]); buzz(25);
     }
-    var cd = function (st) { var c = st.fun && st.fun.challenges; return c ? c.list.filter(function (x) { return x.done; }).length : 0; };
-    if (cd(next) > cd(prev)) { buzz([30, 50, 30, 50, 60]); toast('Challenge beaten'); }
-    var seen = load('badges-' + S.who);
-    var list = seen || [];
-    b.badges.forEach(function (bd) { if (bd.earned && list.indexOf(bd.id) === -1) { list.push(bd.id); if (seen) toast('New badge: ' + bd.name); } });
-    save('badges-' + S.who, list);
   }
   // big moments: a full-screen burst that fades by itself and never blocks a tap
   function overlay(cls, html, ms) {
@@ -309,9 +300,8 @@
     renderChores: function () { renderChores(); }
   });
   function addXpLocal(xp, job) {
-    if (boostLeft()) xp *= 2;
     var prev = JSON.parse(JSON.stringify(S));
-    S.game.xpToday += xp; S.game.total += xp; S.game.balance += xp;
+    S.game.xpToday += xp; S.game.total += xp;
     var into = S.game.level.into + xp;
     if (into >= S.game.level.need) S.game.level = { level: S.game.level.level + 1, into: into - S.game.level.need, need: S.game.level.need + 100 };
     else S.game.level.into = into;
@@ -372,7 +362,7 @@
     return '<section class="card petcard"><div class="row" style="gap:12px">' + petSvg(p, 96) + '<div class="grow"><div class="eyebrow">' + esc(names().team) + '\'s pet</div><h3 style="margin:2px 0">' + esc(p.name) + ' · ' + p.days + ' day' + (p.days === 1 ? '' : 's') + '</h3>' +
       '<p class="small muted" style="margin:0 0 6px">' + esc(p.line) + '</p><div class="tiny muted">' + esc(nx) + '</div></div></div></section>';
   }
-  /** The one daily score. Jobs (your minimum) once setup has planned the day, otherwise the XP goal. XP, challenges and streaks sit under it. */
+  /** The one daily score. Jobs (your minimum) once setup has planned the day, otherwise the XP goal. XP and streaks sit under it. */
   function winOf() {
     var g = S.game;
     return g.win || { by: 'xp', done: Math.min(g.xpToday, g.goal), need: g.goal, extra: Math.max(0, g.xpToday - g.goal), won: g.xpToday >= g.goal, partner: null, both: false };
@@ -380,7 +370,7 @@
   function winCard() {
     var g = S.game, n = names(), W = winOf(), t = NudgeFmt.winText(W), P = W.partner, Q = S.quests;
     var mine = Q.planned ? Q.board : Q.board.filter(function (q) { return q.who === 'anyone' || q.who === 'together' || q.who === S.who; });
-    var open = mine.filter(function (q) { return !q.doneToday; }), ch = S.fun && S.fun.challenges, chDone = ch ? ch.list.filter(function (x) { return x.done; }).length : 0;
+    var open = mine.filter(function (q) { return !q.doneToday; });
     if (W.won && !open.length) {   // everything done: a small "Day won" line frees up the screen
       return '<section class="card spot win compact"><div class="row" style="gap:12px"><span class="wonbadge">' + icon('check') + '</span><div class="grow"><b>Day won</b><div class="small muted">' +
         (P ? (P.won ? 'You both won · the pet is fed' : esc(n.other) + ': ' + P.done + ' of ' + P.need) + ' · ' : '') + g.streak.count + ' day' + (g.streak.count === 1 ? '' : 's') + ' in a row · ' + g.xpToday + ' XP today</div></div>' +
@@ -393,11 +383,10 @@
     h += '<div class="stat"><span class="row" style="gap:6px">' + flame(g.streak.count, 16) + 'Days won in a row</span><b>' + g.streak.count + (g.streak.freezes ? ' · ' + g.streak.freezes + ' freeze' + (g.streak.freezes > 1 ? 's' : '') : '') + '</b></div>' +
       (S.solo ? '' : '<div class="stat"><span class="row" style="gap:6px">' + icon('heart', 's') + 'Both won</span><b>' + g.team.count + ' day' + (g.team.count === 1 ? '' : 's') + '</b></div>') +
       '<div class="stat"><span>XP today</span><b>' + g.xpToday + '</b></div>' +
-      (ch ? '<div class="stat"><span>Challenges</span><b>' + chDone + '/' + ch.list.length + '</b></div>' : '') +
       (S.empire ? '<button class="stat cashrow" type="button" data-goto="empire"><span class="row" style="gap:6px">' + icon('gift', 's') + 'Cash</span><b>' + money(S.empire.cash) + '</b></button>' : '') +
       '<div class="bar" style="margin-top:8px"><i style="width:' + Math.round(g.level.into / g.level.need * 100) + '%"></i></div><div class="tiny muted" style="margin-top:4px">Level ' + g.level.level + ' · ' + (g.level.need - g.level.into) + ' XP to the next</div></div></div>';
     h += '<p class="small muted winhow">' + (W.won ? (W.both && P ? 'You\'ve both won today. The pet\'s fed and your joint streak grows.' : P ? 'You\'ve won today. When ' + esc(n.other) + ' wins too, the pet\'s fed.' : 'Won. Anything more is a bonus.') :
-      W.by === 'jobs' ? 'Do any ' + W.need + ' job' + (W.need === 1 ? '' : 's') + ' today and the day is won.' : 'Earn ' + W.need + ' XP today to win: chores, the gym, food and challenges all count.') + '</p>';
+      W.by === 'jobs' ? 'Do any ' + W.need + ' job' + (W.need === 1 ? '' : 's') + ' today and the day is won.' : 'Earn ' + W.need + ' XP today to win: chores, the gym and food all count.') + '</p>';
     if (open.length) h += open.slice(0, 3).map(function (q) { return questRow(q); }).join('');
     else if (mine.length) h += '<p class="empty">All of today\'s jobs are done.</p>';
     return h + '</section>';
@@ -489,7 +478,6 @@
     } else if (/iPhone|iPad/.test(navigator.userAgent) && MODE === 'web' && !standalone()) {
       h += '<section class="card pushwarn"><b>Get notifications on iPhone</b><div class="small">Tap Share, then Add to Home Screen. Open Nudge from your home screen and turn notifications on there.</div></section>';
     }
-    h += boostBanner() + wrappedCard();
     if (S.chores.invite) h += '<div class="note">' + esc(n.other) + ' wants company for chores. Pick a job in Chores.</div>';
     if (g.streak.frozeYesterday) h += '<div class="note">A streak freeze covered yesterday. Your streak is safe.</div>';
 
@@ -513,14 +501,6 @@
     seg('win');
     h += stageCard();
     seg('stage');
-    h += challengesCard();
-    seg('challenges');
-    h += nextCard();
-    seg('next');
-
-    h += '<button class="btn primary big wide" type="button" id="whatNow" style="margin-bottom:12px">' + icon('sparkles') + 'What should I do now?</button>';
-
-    seg('whatnow');
     h += routineCards();
     seg('routine');
     if (ME && S.today.gym) {
@@ -557,7 +537,6 @@
     h += '</div>';
 
     seg('tiles');
-    h += creativeCard(); seg('make');
     h += usCard(); seg('us');
     h += '<section class="card"><div class="head"><h3>' + esc(n.other) + '</h3><button class="btn soft sm" type="button" id="nudge">' + icon('send', 's') + 'Nudge</button></div>';
     var feed = S.game.feed.slice(0, 6);
@@ -782,12 +761,12 @@
   function renderPlay() {
     var G = S.games, n = names(), h = '<div class="top"><div><h1>Play</h1><div class="sub">Same puzzles for you both. Live scores.</div></div>' + meButton() + '</div>';
     h += '<section class="card spot"><div class="vs"><div>' + avatarOf(S.who, 40) + '<div class="small muted">You</div><div class="num" style="font-size:28px;font-weight:700">' + G.stats.you + '</div></div><div class="center small muted">head to head<br><span class="tiny">' + G.stats.draws + ' draws</span></div><div class="right">' + avatarOf(S.who === 'me' ? 'partner' : 'me', 40, true) + '<div class="small muted">' + esc(n.other) + '</div><div class="num" style="font-size:28px;font-weight:700">' + G.stats.them + '</div></div></div></section>';
-    h += '<div class="seg six">' + [['word', 'Word'], ['target', 'Numbers'], ['recall', 'Recall'], ['tempo', 'Tempo'], ['mix', 'Mix'], ['stats', 'Stats']].map(function (o) { return '<button type="button" data-pview="' + o[0] + '" aria-pressed="' + (playView === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
+    h += '<div class="seg six">' + [['word', 'Word'], ['target', 'Numbers'], ['recall', 'Recall'], ['tempo', 'Tempo'], ['mix', 'Booth'], ['stats', 'Stats']].map(function (o) { return '<button type="button" data-pview="' + o[0] + '" aria-pressed="' + (playView === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
     if (playView === 'word') h += wordView(G.word, n);
     else if (playView === 'target') h += targetView(G.target, n);
     else if (playView === 'recall') h += recallView(G.recall, n);
     else if (playView === 'tempo') h += tempoView(G.tempo, n);
-    else if (playView === 'mix') h += setCard(G.set, n) + mixView(G.mix, n);
+    else if (playView === 'mix') h += setCard(G.set, n);
     else h += statsView(G.stats);
     el('tab-play').innerHTML = h;
   }
@@ -1093,7 +1072,7 @@
     el('tab-food').innerHTML = h;
   }
 
-  // ---------- YOU (profile, lists, rewards, settings) ----------
+  // ---------- YOU (profile, lists, settings) ----------
   var deferredInstall = null;
   window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferredInstall = e; var ni = el('navInstall'); if (ni) ni.hidden = false; if (current === 'you') renderYou(); });
   window.addEventListener('appinstalled', function () { deferredInstall = null; var ni = el('navInstall'); if (ni) ni.hidden = true; toast('Installed. Open Nudge from your apps.'); });
@@ -1104,9 +1083,8 @@
     h += charCard();
     if (S.wardrobe) h += '<section class="card spot av-card"><div class="av3d tall" id="av3dYou"><div class="av3d-msg small muted center">Loading…</div></div><button class="btn primary wide" type="button" data-dress="open">' + icon('sparkles', 's') + 'Dressing room</button></section>';
     h += '<div class="grid2" style="margin-bottom:12px"><button class="btn soft" type="button" data-goto="empire">' + icon('building', 's') + 'Your empire</button><button class="btn soft" type="button" data-goto="custom">' + icon('sparkles', 's') + 'Customise</button></div>';
-    h += '<section class="card tint"><div class="between"><div><div class="eyebrow" style="color:var(--lilac)">Level ' + g.level.level + (S.fun && S.fun.era ? ' · ' + esc(S.fun.era) : '') + '</div><div class="num" style="font-size:28px;font-weight:700">' + fmt(g.total) + ' XP</div></div><div class="right"><div class="eyebrow">To spend</div><div class="num" style="font-size:22px;font-weight:700">' + fmt(g.balance) + '</div></div></div>' +
+    h += '<section class="card tint"><div class="between"><div><div class="eyebrow" style="color:var(--lilac)">Level ' + g.level.level + (S.fun && S.fun.era ? ' · ' + esc(S.fun.era) : '') + '</div><div class="num" style="font-size:28px;font-weight:700">' + fmt(g.total) + ' XP</div></div></div>' +
       '<div class="bar" style="margin-top:10px;background:var(--surface)"><i style="width:' + Math.round(g.level.into / g.level.need * 100) + '%"></i></div><div class="tiny muted" style="margin-top:6px">' + (g.level.need - g.level.into) + ' XP to level ' + (g.level.level + 1) + ' · best streak ' + g.streak.best + (g.streak.best === 1 ? ' day' : ' days') + '</div>' + (S.fun && S.fun.nextEra && S.fun.nextEra !== S.fun.era ? '<div class="tiny muted" style="margin-top:2px">Next era: ' + esc(S.fun.nextEra) + '</div>' : '') + '</section>';
-    h += '<button class="wrapped-btn" type="button" data-fun="wrapped">' + icon('wave') + '<span class="grow"><b>Your week, wrapped</b><br><span class="small">The last seven days of ' + esc(n.team) + '</span></span>' + icon('chevron', 's') + '</button>';
     var wk = g.week, mo = g.month, me = S.who, ot = S.who === 'me' ? 'partner' : 'me', mxw = Math.max(wk.me, wk.partner, 1), tot = Math.max(1, mo.me + mo.partner);
     h += '<section class="card"><div class="head"><h3>This week</h3></div>' +
       '<div class="score"><span>You</span><span class="bar"><i style="width:' + (wk[me] / mxw * 100) + '%"></i></span><b class="num right">' + wk[me] + '</b></div>' +
@@ -1115,20 +1093,7 @@
     h += '<section class="card"><div class="head"><h3 class="row" style="gap:8px">' + icon('cart', 's') + 'Shopping</h3></div><form class="inline" id="shopForm" autocomplete="off"><input type="text" id="shopText" placeholder="Eggs, bin bags…" aria-label="Add to the list"><button class="btn primary" type="submit">Add</button></form>' +
       (ME && S.food && S.food.totals.protein < S.food.targets.proteinMin ? '<div class="chips" style="margin-top:10px">' + ['Greek yogurt', 'Chicken breast', 'Eggs', 'Tinned tuna', 'Cottage cheese'].map(function (x) { return '<button class="chip pink" type="button" data-addshop="' + x + '">' + icon('plus', 's') + x + '</button>'; }).join('') + '</div>' : '') +
       '<div style="margin-top:6px">' + (S.shopping.length ? S.shopping.map(function (it) { return '<div class="item' + (it.got ? ' done' : '') + '"><button class="check' + (it.got ? ' on' : '') + '" type="button" data-shop="' + esc(it.id) + '" aria-label="Got it">' + icon('check') + '</button><div class="t grow" style="font-weight:500">' + esc(it.item) + '</div><button class="iconbtn sm" type="button" data-shopdel="' + esc(it.id) + '" aria-label="Remove ' + esc(it.item) + '">' + icon('x', 's') + '</button></div>'; }).join('') : '<p class="empty">The list is empty.</p>') + '</div></section>';
-    h += '<section class="card"><div class="head"><h3 class="row" style="gap:8px">' + icon('gift', 's') + 'Rewards</h3></div>' + g.rewards.map(function (r) {
-      return '<div class="item"><div class="grow t" style="font-weight:500">' + esc(r.name) + '</div><button class="btn ' + (g.balance >= r.cost ? 'primary' : 'line') + ' sm" type="button" data-reward="' + esc(r.name) + '"' + (g.balance >= r.cost ? '' : ' disabled') + '>' + r.cost + ' XP</button></div>';
-    }).join('') + '<p class="tiny muted" style="margin:8px 0 0">Add your own treats in the Rewards tab of your Sheet. Spending never lowers your level.</p></section>';
-    h += '<section class="card"><div class="head"><h3>Badges</h3><span class="small muted">' + g.badges.filter(function (b) { return b.earned; }).length + ' of ' + g.badges.length + '</span></div><div class="badges">' + g.badges.map(function (b) {
-      return '<div class="badge' + (b.earned ? '' : ' locked') + '" title="' + esc(b.desc) + '">' + icon(BADGE_ICON[b.id] || 'star', 'l') + esc(b.name) + '</div>';
-    }).join('') + '</div></section>';
     h += laterCard();
-    if (!/Android|iPhone|iPad/.test(navigator.userAgent)) {   // on a computer: offer the Chrome add-on
-      var zipUrl = (MODE === 'gas' && S.fun && S.fun.appBase ? S.fun.appBase.replace(/[?#].*$/, '').replace(/\/?$/, '/') : '') + 'nudge-chrome.zip';
-      h += '<section class="card"><div class="head"><h3 class="row" style="gap:8px">' + icon('download', 's') + 'Nudge for Chrome</h3></div>' +
-        '<p class="small muted" style="margin:0 0 8px">For your PC: the app in a side panel while you work, right-click any text to make it a deadline, a count of open deadlines on the icon, and desktop nags with Done and +30 min.</p>' +
-        '<ol class="small howto"><li>Download it and unzip it (right-click, Extract all).</li><li>In Chrome, go to <b>chrome://extensions</b> and turn on <b>Developer mode</b> (top right).</li><li>Click <b>Load unpacked</b> and pick the <b>nudge</b> folder.</li><li>Pin it (the jigsaw icon), click it and paste your app link once.</li></ol>' +
-        '<a class="btn primary wide" href="' + esc(zipUrl) + '" download target="_top">' + icon('download', 's') + 'Download the add-on</a></section>';
-    }
     // settings
     if (window.NudgeSetup) h += NudgeSetup.settingsCard();
     h += '<section class="card"><div class="head"><h3>Settings</h3></div>';
@@ -1141,43 +1106,12 @@
     if (MODE !== 'gas' && S.push && S.push.configured) h += pushDetails();
     if (MODE === 'web' && !standalone()) h += '<div class="between" style="margin-bottom:12px"><span class="small">Install as an app</span>' + (deferredInstall ? '<button class="btn primary sm" type="button" id="install">' + icon('download', 's') + 'Install</button>' : '<span class="tiny muted right">' + (/iPhone|iPad/.test(navigator.userAgent) ? 'Share, then Add to Home Screen' : 'Menu, then Install app') + '</span>') + '</div>';
     if (ME) h += '<div class="eyebrow" style="margin:6px 0">Claude API key</div><form class="inline" id="keyForm" autocomplete="off"><input type="password" id="keyText" placeholder="' + (S.hasClaudeKey ? 'Saved. Paste a new one to replace it' : 'sk-ant-…') + '" aria-label="Claude API key"><button class="btn primary" type="submit">Save</button></form><p class="tiny muted" style="margin:6px 0 0">Powers Ask, the morning brief, meal ideas and food quick-add. Get one at console.anthropic.com.</p>';
-    h += '</section><p class="small muted center">Chores, routines, rewards, lifts and targets can all be changed in your Google Sheet.</p>';
+    h += '</section><p class="small muted center">Chores, routines, lifts and targets can all be changed in your Google Sheet.</p>';
     el('tab-you').innerHTML = h;
     mountYou3d();
   }
 
-  // ---------- FUN: boost, challenges, making things, Us, stakes, Tempo, intro, Wrapped ----------
-  function boostLeft() {
-    var b = S && S.fun && S.fun.boost, t = now();
-    return b && t >= b.startsAt && t < b.endsAt ? Math.max(1, Math.ceil((b.endsAt - t) / 60000)) : 0;
-  }
-  function boostBanner() {
-    var left = boostLeft();
-    return left ? '<div class="boost">' + icon('bolt', 's') + '<b>Double XP</b><span class="grow">Everything counts twice</span><span class="num" id="boostLeft">' + left + ' min</span></div>' : '';
-  }
-  function challengesCard() {
-    var c = S.fun && S.fun.challenges;
-    if (!c) return '';
-    var done = c.list.filter(function (x) { return x.done; }).length;
-    return '<section class="card"><div class="head"><h3>Daily challenges</h3><span class="small muted num">' + done + '/3</span></div>' +
-      c.list.map(function (x) {
-        return '<div class="item' + (x.done ? ' done' : '') + '"><span class="check' + (x.done ? ' on' : '') + '">' + icon('check') + '</span><div class="grow t" style="font-weight:500">' + esc(x.text) + '</div><span class="chip ' + (x.done ? 'good' : 'lilac') + '">+' + x.xp + ' XP</span></div>';
-      }).join('') +
-      '<div class="chest' + (c.chest ? ' open' : '') + '">' + icon('gift', 's') + '<span>' + (c.chest ? 'Chest opened: +' + c.chestXp + ' XP' : 'Finish all three to open today\'s chest: +' + c.chestXp + ' XP') + '</span></div></section>';
-  }
-
-  var CREATE = [
-    ['music', 'Make a beat', 20, 'music', ['Open a project or start fresh', 'Make a loop you like', 'Add one more layer', 'Save or bounce it']],
-    ['mix', 'Mix practice', 30, 'disc', ['Pick five tracks', 'Beatmatch two of them by ear', 'Practise one transition until it\'s smooth', 'Record a short mix']],
-    ['art', 'Draw or paint', 25, 'brush', ['Set up your space', 'Warm up: five minutes of anything', 'Pick one idea', 'Keep going until the timer ends']]
-  ];
-  function creativeCard() {
-    if (mySession()) return '';
-    return '<section class="card"><div class="head"><h3>Make something</h3><span class="small muted">Studio time counts</span></div><div class="grid3">' + CREATE.map(function (c, i) {
-      return '<button class="tile make" type="button" data-fun="create" data-v="' + i + '">' + icon(c[3]) + '<div class="small" style="font-weight:650">' + c[1] + '</div><div class="tiny muted">' + c[2] + ' min</div></button>';
-    }).join('') + '</div></section>';
-  }
-
+  // ---------- FUN: Us, stakes, Tempo, intro ----------
   var usOpen = false, diceIdea = '';
   var DICE = ['Candles on, phones in a drawer', 'Ten-minute massage each, then see what happens', 'Shower together', 'Slow dance in the kitchen: one song each',
     'Make tonight\'s playlist together', 'Recreate your first date', 'Lights on', 'Somewhere other than the bedroom', 'Blindfold taste test',
@@ -1224,11 +1158,6 @@
     if (!window.NudgeChat || !S || !S.game) return;
     clearTimeout(pulseT);
     pulseT = setTimeout(function () { var w = S.game.win || {}; NudgeChat.pulse({ xpToday: S.game.xpToday, win: { done: w.done || 0, need: w.need || 0, won: !!w.won, by: w.by || 'jobs' } }); }, 250);
-  }
-  function wrappedCard() {
-    var d = new Date(now()), day = d.getDay();
-    if (!(day === 0 && d.getHours() >= 12) && day !== 1) return '';
-    return '<button class="wrapped-btn" type="button" data-fun="wrapped">' + icon('wave') + '<span class="grow"><b>Your week, wrapped</b><br><span class="small">' + esc(names().team) + ', the last seven days</span></span>' + icon('play', 's') + '</button>';
   }
 
   // ---- word stakes ----
@@ -1312,7 +1241,7 @@
     var dn = new Date(now()), day = dn.getFullYear() + '-' + ('0' + (dn.getMonth() + 1)).slice(-2) + '-' + ('0' + dn.getDate()).slice(-2);
     if (load('intro-' + S.who) === day) return;
     save('intro-' + S.who, day);
-    var f = S.fun, g = S.game, n = names(), c = f.challenges;
+    var f = S.fun, g = S.game, n = names();
     var bars = ''; for (var i = 0; i < 24; i++) bars += '<i style="animation-delay:' + (-i * 0.13).toFixed(2) + 's"></i>';
     var h = '<div class="intro" id="intro" role="dialog" aria-label="Welcome"><div class="in">' +
       '<div class="eq">' + bars + '</div>' +
@@ -1320,58 +1249,10 @@
       '<h1 class="l2">' + greeting() + ',<br>' + esc(n.me || 'you') + '</h1>' +
       (f.era ? '<div class="era l3">Level ' + g.level.level + ' · ' + esc(f.era) + '</div>' : '') +
       '<div class="istats l4"><div><b class="num">' + g.streak.count + '</b><span>day streak</span></div><div><b class="num">' + g.team.count + '</b><span>together</span></div><div><b class="num">' + (g.xpToday >= g.goal ? g.xpToday : g.goal - g.xpToday) + '</b><span>' + (g.xpToday >= g.goal ? 'XP today' : 'XP to go') + '</span></div></div>' +
-      (c ? '<div class="ich l5"><div class="eyebrow">Today\'s challenges</div>' + c.list.map(function (x) { return '<div>' + icon(x.done ? 'check' : 'star', 's') + esc(x.text) + '</div>'; }).join('') + '</div>' : '') +
-      (f.boost ? '<p class="l6 small">Double XP is hiding somewhere between noon and 9pm. Keep notifications on.</p>' : '') +
       (S.brief ? '<p class="l6 small">' + esc(S.brief.first ? 'First move: ' + S.brief.first : S.brief.brief) + '</p>' : '') +
       '<button class="btn primary big wide l7" type="button" data-fun="introGo">Let\'s go</button></div></div>';
     document.body.insertAdjacentHTML('beforeend', h);
     chime([523, 659, 784]);
-  }
-
-  // ---- Wrapped: your week as a story ----
-  var story = null;
-  function wrappedSlides(w) {
-    var y = w.you, t = w.them, out = [];
-    var dayName = function (ymd) { return ymd ? new Date(ymd + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long' }) : ''; };
-    var fmtD = function (ymd) { return new Date(ymd + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }); };
-    out.push(['a', '<div class="eyebrow">' + fmtD(w.from) + ' to ' + fmtD(w.to) + '</div><h1>' + esc(w.team.name) + '</h1><p>Your week, wrapped.</p>']);
-    var lead = y.xp === t.xp ? 'Dead even.' : (y.xp > t.xp ? 'You' : esc(t.name)) + ' took the week.';
-    out.push(['b', '<div class="eyebrow">XP earned</div><div class="huge num">' + fmt(y.xp) + '</div><p>' + esc(t.name) + ': ' + fmt(t.xp) + '. ' + lead + '</p>']);
-    out.push(['c', '<div class="eyebrow">Chores done between you</div><div class="huge num">' + (y.chores + t.chores) + '</div>' + (y.top ? '<p>Your most played track: <b>' + esc(y.top) + '</b>, ' + y.topCount + ' time' + (y.topCount === 1 ? '' : 's') + '.</p>' : '<p>Next week\'s set is wide open.</p>')]);
-    if (y.bestDay) out.push(['a', '<div class="eyebrow">Your peak-time set</div><h1>' + dayName(y.bestDay) + '</h1><p>' + y.bestDayXp + ' XP in one day.</p>']);
-    out.push(['b', '<div class="eyebrow">Head to head</div><div class="huge num">' + w.games.you + '<span class="dim"> to </span>' + w.games.them + '</div><p>' + (w.games.bestWord ? 'Your best word: ' + w.games.bestWord + '/6. ' : '') + (w.games.theirBestWord ? esc(t.name) + '\'s: ' + w.games.theirBestWord + '/6.' : '') + '</p>']);
-    var extra = [];
-    if (y.gym) extra.push(y.gym + ' gym session' + (y.gym === 1 ? '' : 's') + (y.prs ? ', ' + y.prs + ' PR' + (y.prs === 1 ? '' : 's') : ''));
-    if (y.create + t.create) extra.push((y.create + t.create) + ' studio session' + (y.create + t.create === 1 ? '' : 's'));
-    if (y.challenges) extra.push(y.challenges + ' challenge' + (y.challenges === 1 ? '' : 's') + ' beaten');
-    if (extra.length) out.push(['c', '<div class="eyebrow">Also</div>' + extra.map(function (x) { return '<h2>' + esc(x) + '</h2>'; }).join('')]);
-    if (w.team.us) out.push(['a', '<div class="eyebrow">And</div><div class="huge num">' + w.team.us + '</div><p>time' + (w.team.us === 1 ? '' : 's') + ' you made time for each other.</p>']);
-    out.push(['b', '<div class="eyebrow">' + esc(w.team.name) + '</div><h1>' + w.team.streak + '-day team streak.</h1><p>Same time next week?</p><button class="btn primary big wide" type="button" data-fun="storyClose" style="margin-top:18px">Done</button>']);
-    return out;
-  }
-  function showStory(i) {
-    if (!story) return;
-    story.i = Math.max(0, Math.min(story.slides.length - 1, i));
-    var s = story.slides[story.i];
-    if (!el('story')) { clearTimeout(story.timer); story = null; return; }
-    el('story').className = 'story g' + s[0];
-    el('storyBars').innerHTML = story.slides.map(function (x, j) { return '<i class="' + (j < story.i ? 'done' : j === story.i ? 'on' : '') + '"></i>'; }).join('');
-    el('storyBody').innerHTML = '<div class="slide">' + s[1] + '</div>';
-    clearTimeout(story.timer);
-    if (story.i < story.slides.length - 1) story.timer = setTimeout(function () { showStory(story.i + 1); }, 5000);
-  }
-  function openWrapped() {
-    toast('Wrapping your week…');
-    call('getWrapped', [], function (w) {
-      story = { slides: wrappedSlides(w), i: 0 };
-      document.body.insertAdjacentHTML('beforeend', '<div class="story" id="story"><div class="bars" id="storyBars"></div><button class="iconbtn sx" type="button" data-fun="storyClose" aria-label="Close">' + icon('x') + '</button><div id="storyBody"></div></div>');
-      el('story').addEventListener('click', function (e) {
-        if (e.target.closest('button')) return;
-        showStory(story.i + (e.clientX < innerWidth / 3 ? -1 : 1));
-      });
-      showStory(0);
-      chime([523, 659, 784, 1047]);
-    });
   }
 
   // ---- taps for all of the above ----
@@ -1381,14 +1262,10 @@
     var f = t.dataset.fun, v = t.dataset.v;
     if (t.dataset.stake) return call('setStake', [t.dataset.stake], function (g) { closeSheet(); S.games = g; renderPlay(); toast('Stakes set. ' + names().other + ' knows.'); });
     if (f === 'introGo') { var x = el('intro'); if (x) { x.classList.add('out'); setTimeout(function () { x.remove(); }, 350); } return; }
-    if (f === 'storyClose') { if (story) clearTimeout(story.timer); story = null; var st = el('story'); if (st) st.remove(); return; }
-    if (f === 'wrapped') return openWrapped();
     if (f === 'chat') return window.NudgeChat ? NudgeChat.open(chatApi) : toast('The chat didn\'t load. Check your connection.', true);
     if (f === 'usToggle') { usOpen = !usOpen; return renderHome(); }
     if (f === 'dice') { var d; do { d = DICE[Math.floor(Math.random() * DICE.length)]; } while (d === diceIdea && DICE.length > 1); diceIdea = d; buzz(15); return renderHome(); }
     if (f === 'tap') return tempoTap();
-    if (f === 'create' && CREATE[+v] && CREATE[+v][0] === 'mix') { location.href = boothUrl('menu'); return; }   // Mix practice is Booth
-    if (f === 'create') { var c = CREATE[+v]; return startPlan({ name: c[1], minutes: c[2], steps: c[4].slice(), creative: c[0] }, c[1] + ' for ' + c[2] + ' minutes. Make something.'); }
     if (f === 'usLog') return call('logUs', [], function (res) { confetti(true); chime([523, 784, 1047]); apply(res, 'Logged. +20 XP each.'); });
     if (f === 'wink') return call('sendWink', ['wink'], function (res) { apply(res, 'Wink sent'); });
     if (f === 'tonight') return call('sendWink', ['tonight'], function (res) { apply(res, 'Asked. Waiting for ' + names().other + '…'); });
@@ -1838,7 +1715,7 @@
     }
   });
 
-  var HOME_NAMES = { brief: 'Today brief', win: 'Win the day', deadlines: 'Next deadline', routine: 'Routine for now', tiles: 'Water and weight', stage: 'Characters and pet', ask: 'Ask anything', gym: 'Gym today', challenges: 'Daily challenges', whatnow: 'What should I do now?', work: 'Work: now and next', next: 'Next up', make: 'Make something', us: 'Us', feed: 'Partner feed' };
+  var HOME_NAMES = { brief: 'Today brief', win: 'Win the day', deadlines: 'Next deadline', routine: 'Routine for now', tiles: 'Water and weight', stage: 'Characters and pet', ask: 'Ask anything', gym: 'Gym today', work: 'Work: now and next', us: 'Us', feed: 'Partner feed' };
   function homeOrder() { return NudgeFmt.homeOrder(S.fun && S.fun.prefs && S.fun.prefs.home); }
   function prefs() { return (S && S.fun && S.fun.prefs) || {}; }
   // ---------- the look: After Dark or Glam, light or dark (follows the phone unless overridden) ----------
@@ -2203,23 +2080,6 @@
       '<button class="btn line wide" type="button" data-together="0" data-name="' + esc(q.name) + '">Just me: +' + q.xp + ' XP</button>');
   }
 
-  // ---------- NEXT UP (the carrot) ----------
-  function nextCard() {
-    var g = S.game, rows = [], tiers = [1, 3, 7, 14, 30, 60];
-    rows.push(['Level ' + (g.level.level + 1) + (S.fun && S.fun.nextEra ? ': ' + S.fun.nextEra : ''), g.level.into / g.level.need, (g.level.need - g.level.into) + ' XP to go']);
-    var nextTier = tiers.filter(function (t) { return t > g.streak.count; })[0];
-    if (nextTier) rows.push([(tiers.indexOf(nextTier) + 1) + '-star wanted level', g.streak.count / nextTier, (nextTier - g.streak.count) + ' more day' + (nextTier - g.streak.count === 1 ? '' : 's') + ' of streak']);
-    if (S.empire && S.catalog) {
-      var have = {}; S.empire.owned.forEach(function (o) { have[o.id] = 1; });
-      var goal = S.catalog.filter(function (it) { return !have[it.id] && it.price > S.empire.cash; }).sort(function (a, b) { return a.price - b.price; })[0];
-      if (goal) rows.push([goal.name, S.empire.cash / goal.price, money(goal.price - S.empire.cash) + ' to go (about ' + Math.ceil((goal.price - S.empire.cash) / 10) + ' XP)']);
-    }
-    var c = S.fun && S.fun.challenges;
-    if (c && !c.chest) rows.push(['Today\'s chest', c.list.filter(function (x) { return x.done; }).length / 3, (3 - c.list.filter(function (x) { return x.done; }).length) + ' challenge' + (3 - c.list.filter(function (x) { return x.done; }).length === 1 ? '' : 's') + ' left']);
-    return '<section class="card"><div class="head"><h3 class="row" style="gap:8px">' + icon('flag', 's') + 'Next up</h3><button class="btn ghost sm" type="button" data-goto="empire">Empire' + icon('chevron', 's') + '</button></div>' +
-      rows.map(function (r) { return '<div class="nx"><div class="between"><b>' + esc(r[0]) + '</b><span class="tiny muted">' + esc(r[2]) + '</span></div><div class="bar"><i style="width:' + Math.max(3, Math.min(100, Math.round(r[1] * 100))) + '%"></i></div></div>'; }).join('') + '</section>';
-  }
-
   // ---------- MUSIC (mixes that last as long as the job) ----------
   var musicMins = 20, musicNow = null;
   function M() { return window.LQMusic; }
@@ -2333,29 +2193,7 @@
   document.addEventListener('change', function (ev) { if (ev.target.id === 'ownFiles' && ev.target.files.length) playOwn([].slice.call(ev.target.files)); });
   document.addEventListener('submit', function (ev) { if (ev.target.id !== 'spotForm') return; ev.preventDefault(); var q = el('spotText').value.trim(); if (q) openSpotify(q); else toast('Type an album, artist or playlist'); });
 
-  // ---------- MIX (the DJ game: beatmatch deck B to deck A) ----------
-  var mix = null;
-  function stationOf(id) { return M() ? M().STATIONS.filter(function (s) { return s.id === id; })[0] : null; }
-  function mixView(mx, n) {
-    var m = mx.mine || { points: 0, tries: 0, final: false }, o = mx.other, pz = mx.puzzle, A = stationOf(pz.a) || {}, B = stationOf(pz.b) || {};
-    var h = '<section class="card"><div class="between"><div><div class="eyebrow">Best today</div><div class="num" style="font-size:28px;font-weight:700">' + (m.tries ? m.points : 0) + '<span class="small muted"> pts</span></div></div><div class="right"><div class="small muted">' + esc(n.other) + '</div><div class="num" style="font-size:28px;font-weight:700">' + (o && o.tries ? o.points : 0) + '<span class="small muted"> pts</span></div><div class="tiny muted">' + (!o ? 'not yet' : o.scored ? o.tries + ' plays' : 'mixing') + '</div></div></div>';
-    if (m.scored && !(mix && mix.on)) h += '<p class="small muted" style="margin:8px 0 0">Your best: tempos ' + m.bpm + ' BPM apart, beats ' + m.phase + ' ms apart. Go again to beat it.</p>';
-    var on = mix && mix.on;
-    h += '<div class="decks">' + [['A', A, pz.bpmA + ' BPM', 'Playing'], ['B', B, on ? pitchText() : 'Off', 'Your deck']].map(function (d) {
-      return '<div class="deck"><div class="platter' + (on ? ' spin' : '') + '" id="plat' + d[0] + '" style="--c1:' + (d[1].c1 || '#888') + ';--c2:' + (d[1].c2 || '#444') + '"><span>' + d[0] + '</span></div><div class="led" id="led' + d[0] + '"></div><b>' + esc(d[1].name || '') + '</b><span class="tiny muted">' + esc(d[1].style || '') + ' · ' + d[3] + '</span><span class="small num" id="read' + d[0] + '">' + d[2] + '</span></div>';
-    }).join('') + '</div>';
-    if (!on) {
-      h += '<p class="small muted center" style="margin:10px 0">Deck A plays at ' + pz.bpmA + ' BPM. Deck B starts off-tempo and out of time. Match its pitch until the beats stop drifting, nudge it until they hit together, then lock it in. Play as often as you like.</p>' +
-        '<button class="btn primary wide" type="button" data-mix="start">' + icon('play', 's') + (m.tries ? 'Play again' : 'Load the decks') + '</button>';
-    } else {
-      h += '<label class="mixlab">Pitch (deck B)<input type="range" id="mixPitch" min="-10" max="10" step="0.1" value="' + mix.pitch + '"></label>' +
-        '<div class="grid3" style="margin:6px 0"><button class="btn soft" type="button" data-nudge-hold="-1">Slow down</button><button class="btn soft" type="button" data-mix="cue">Cue to beat</button><button class="btn soft" type="button" data-nudge-hold="1">Speed up</button></div>' +
-        '<label class="mixlab">Crossfader<input type="range" id="mixXf" min="0" max="1" step="0.01" value="' + mix.xf + '"></label>' +
-        '<button class="btn primary wide" type="button" data-mix="lock">Lock in the mix</button>' +
-        '<p class="tiny muted center" style="margin:8px 0 0">The lights flash on each beat. When both flash together and stay together, you\'ve got it.</p>';
-    }
-    return h + '</section>';
-  }
+  // ---------- BOOTH (the DJ game lives in booth.html; the old Mix game is retired) ----------
   function boothUrl(screen) { var base = MODE === 'gas' && S.fun && S.fun.appBase ? S.fun.appBase.replace(/[?#].*$/, '').replace(/\/?$/, '/') : ''; return base + 'booth.html' + (MODE === 'gas' && KEY ? '?key=' + encodeURIComponent(KEY) : '') + '#' + screen; }
   function setCard(set, n) {
     var bo = S.games && S.games.booth, m = bo && bo.mine, o = bo && bo.other;
@@ -2369,7 +2207,7 @@
   function openSet() {
     if (!window.LQDJ || !M()) return toast('The DJ game isn\'t available here.', true);
     if (M().now()) M().stop(true);
-    stopWeb(); stopOwn(); mixStop();
+    stopWeb(); stopOwn();
     LQDJ.open({
       otherName: names().other, toast: toast,
       best: function () { var s = S.games && S.games.set; return s ? { mine: s.mine, other: s.other } : null; },
@@ -2377,72 +2215,9 @@
       onClose: function () { renderPlay(); }
     });
   }
-  function pitchText() { return (mix.pitch > 0 ? '+' : '') + mix.pitch.toFixed(1) + '%'; }
-  function rateB() { return 1 + mix.pitch / 100 + mix.nudge; }
-  function bpmB() { return mix.bpmB0 * rateB(); }
-  function syncPos() { var t = mix.ctx.currentTime; mix.posB += (t - mix.lastT) * bpmB() / 60; mix.lastT = t; }
-  function mixStart() {
-    if (!M()) return toast('Music isn\'t available here.', true);
-    var pz = S.games.mix.puzzle, c = M().audio();
-    toast('Loading the decks…');
-    Promise.all([M().loop(pz.a, pz.bpmA, 8, 'mixA' + S.games.date), M().loop(pz.b, pz.bpmB, 8, 'mixB' + S.games.date)]).then(function (bufs) {
-      mixStop();
-      var gA = c.createGain(), gB = c.createGain(), t = c.currentTime + 0.2, offBeats = 0.25 + Math.random() * 0.5;
-      var a = c.createBufferSource(), b = c.createBufferSource();
-      a.buffer = bufs[0]; b.buffer = bufs[1]; a.loop = b.loop = true;
-      a.connect(gA); b.connect(gB); gA.connect(c.destination); gB.connect(c.destination);
-      a.start(t); b.start(t, offBeats * 60 / pz.bpmB);
-      mix = { on: true, ctx: c, a: a, b: b, gA: gA, gB: gB, t0: t, bpmA: pz.bpmA, bpmB0: pz.bpmB, pitch: 0, nudge: 0, xf: 0.5, posB: offBeats, lastT: t, raf: 0 };
-      setXf(0.5);
-      renderPlay();
-      (function frame() {
-        if (!mix || !mix.on) return;
-        var tt = mix.ctx.currentTime, pa = Math.max(0, (tt - mix.t0) * mix.bpmA / 60), pb = mix.posB + (tt - mix.lastT) * bpmB() / 60;
-        var la = el('ledA'), lb = el('ledB');
-        if (la) la.classList.toggle('on', pa % 1 < 0.14);
-        if (lb) lb.classList.toggle('on', pb % 1 < 0.14);
-        mix.raf = requestAnimationFrame(frame);
-      })();
-    });
-  }
-  function setXf(v) { mix.xf = v; mix.gA.gain.value = Math.cos(v * Math.PI / 2) * 0.9; mix.gB.gain.value = Math.sin(v * Math.PI / 2) * 0.9; }
-  // Call after changing pitch or nudge; the position up to now was already counted (syncPos) at the old speed.
-  function setRate() { mix.b.playbackRate.value = rateB(); var r = el('readB'); if (r) r.textContent = pitchText(); var pl = el('platB'); if (pl) pl.style.animationDuration = (240 / bpmB()).toFixed(2) + 's'; }
-  function mixStop() { if (!mix) return; try { mix.a.stop(); mix.b.stop(); } catch (e) {} cancelAnimationFrame(mix.raf); mix = null; }
-  function mixLock() {
-    syncPos();
-    var tt = mix.ctx.currentTime, pa = (tt - mix.t0) * mix.bpmA / 60, d = ((pa - mix.posB) % 1 + 1.5) % 1 - 0.5;
-    var bpmDiff = Math.abs(bpmB() - mix.bpmA), phaseMs = Math.abs(d) * 60000 / mix.bpmA;
-    mixStop();
-    call('submitMix', [bpmDiff, phaseMs], function (g) {
-      S.games = g; renderPlay();
-      var l = g.last || { points: 0 }, m = g.mix.mine;
-      toast((bpmDiff < 0.5 ? 'Tempo spot on' : bpmDiff.toFixed(1) + ' BPM out') + ', beats ' + Math.round(phaseMs) + ' ms apart: ' + (l.points ? l.points + ' points' : 'not matched yet, no points') + (l.firstXp ? '. +' + l.firstXp + ' XP' : '') + (m.points > l.points ? '. Best today: ' + m.points : ''));
-      if (l.points >= 8) { confetti(true); chime([523, 659, 784, 1047]); }
-      if (l.firstXp) refreshQuiet();
-    });
-  }
   document.addEventListener('click', function (ev) {
     var t = ev.target.closest('[data-mix]');
-    if (!t || !S) return;
-    if (t.dataset.mix === 'set') return openSet();
-    if (t.dataset.mix === 'start') return mixStart();
-    if (!mix) return;
-    if (t.dataset.mix === 'lock') return mixLock();
-    if (t.dataset.mix === 'cue') { // jump deck B to the nearest beat of A, keeping its tempo (costs nothing, but you still need the tempo right)
-      syncPos(); var pa = (mix.ctx.currentTime - mix.t0) * mix.bpmA / 60, d = ((pa - mix.posB) % 1 + 1.5) % 1 - 0.5;
-      mix.nudge = d > 0 ? 0.08 : -0.08; setRate();
-      setTimeout(function () { if (mix) { syncPos(); mix.nudge = 0; setRate(); } }, Math.abs(d) * 60 / mix.bpmB0 / 0.08 * 1000);
-    }
-  });
-  function nudgeStart(dir) { if (mix) { syncPos(); mix.nudge = dir * 0.04; setRate(); } }
-  function nudgeEnd() { if (mix && mix.nudge) { syncPos(); mix.nudge = 0; setRate(); } }
-  document.addEventListener('pointerdown', function (ev) { var t = ev.target.closest('[data-nudge-hold]'); if (t) nudgeStart(+t.dataset.nudgeHold); });
-  ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (e) { document.addEventListener(e, function (ev) { if (ev.target.closest && ev.target.closest('[data-nudge-hold]')) nudgeEnd(); }); });
-  document.addEventListener('input', function (ev) {
-    if (!mix) return;
-    if (ev.target.id === 'mixPitch') { syncPos(); mix.pitch = +ev.target.value; setRate(); }
-    if (ev.target.id === 'mixXf') setXf(+ev.target.value);
+    if (t && S && t.dataset.mix === 'set') openSet();
   });
 
   // ---------- SOUNDCLOUD and YOUTUBE (official players, faded out with your timer) ----------
@@ -2550,7 +2325,7 @@
   }
   // one big thumb-reach button per screen, bottom right on phones, for the thing you came to do
   var FAB = {
-    home: ['sparkles', 'What now?', function () { var b = el('whatNow'); if (b) b.click(); return !!b; }],
+    home: ['sparkles', 'What now?', function () { wn.skip = []; wn.pick = undefined; whatNowSheet(); return true; }],
     chores: ['play', 'Start a job', function () { var vis = function (q) { return [].slice.call(document.querySelectorAll(q)).filter(function (x) { return x.offsetParent && !x.disabled; })[0]; }; var b = vis('#tab-chores .btn.primary.big') || vis('#tab-chores [data-qstart]') || vis('#tab-chores .btn.primary'); if (b) b.click(); return !!b; }],
     food: ['food', 'Log food', function () { var q = el('quickText'); if (q && !q.disabled) { q.scrollIntoView({ block: 'center' }); q.focus(); return true; } var ph = el('foodPhoto'); if (ph) { ph.click(); return true; } return false; }],
     train: ['check', 'Next set', function () { var b = [].slice.call(document.querySelectorAll('#tab-train button.check:not(.on), #tab-train [data-set]:not(.done)')).filter(function (x) { return x.offsetParent; })[0]; if (b) { b.scrollIntoView({ block: 'center' }); b.focus(); } return !!b; }],
@@ -2580,7 +2355,6 @@
     el('nav').querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-current', b.dataset.tab === name ? 'page' : 'false'); });
     var mb = el('navMore'); if (mb) mb.setAttribute('aria-current', S && (PRIMARY[S.who] || PRIMARY.partner).indexOf(name) === -1 ? 'page' : 'false');
     if (['you', 'custom', 'empire'].indexOf(name) === -1) save('tab', name);
-    if (name !== 'play') mixStop();
     window.scrollTo(0, 0);
     if (name === 'play') { loadWords(); pollGames(); }
     updateFab();
@@ -3126,7 +2900,6 @@
     if (ds.mode) { savePrefs({ mode: ds.mode }); return; }
     if (ds.theme) { S.theme = ds.theme; save('theme', ds.theme); document.documentElement.setAttribute('data-theme', ds.theme); renderYou(); renderCustom(); later('setTheme', [ds.theme]); return; }
     // home
-    if (t.id === 'whatNow') { wn.skip = []; wn.pick = undefined; return whatNowSheet(); }
     if (ds.wn) { wn[ds.wn] = ds.wn === 'minutes' ? +ds.v : ds.v; save(ds.wn === 'minutes' ? 'wnMinutes' : 'wnEnergy', wn[ds.wn]); wn.skip = []; return whatNowSheet(); }
     if (t.id === 'wnFind' || t.id === 'wnSkip') {
       if (t.id === 'wnSkip' && wn.pick) wn.skip.push(wn.pick.name);
@@ -3171,7 +2944,7 @@
     if (t.id === 'eSave') { readEditInputs(); var e = edit; return call('saveQuest', [{ name: e.original, newName: e.name, rhythm: e.rhythm, days: e.days, date: e.date, every: e.every, minutes: e.minutes, who: e.who, energy: e.energy, steps: e.steps }], function (res) { closeSheet(); apply(res, 'Saved'); }); }
     if (t.id === 'eDel') { if (!confirm('Delete "' + edit.original + '"?')) return; return call('deleteQuest', [edit.original], function (res) { closeSheet(); apply(res, 'Deleted'); }); }
     // play
-    if (ds.pview) { if (ds.pview !== 'mix') mixStop(); playView = ds.pview; save('playView', playView); renderPlay(); return pollGames(); }
+    if (ds.pview) { playView = ds.pview; save('playView', playView); renderPlay(); return pollGames(); }
     if (ds.key) return wordKey(ds.key);
     if (ds.num) { target.expr += (target.expr && /\d$/.test(target.expr) ? ' ' : '') + ds.num; return renderPlay(); }
     if (ds.op) { target.expr += ' ' + ds.op + ' '; target.expr = target.expr.replace(/\s+/g, ' ').replace(/\( /g, '(').replace(/ \)/g, ')'); return renderPlay(); }
@@ -3244,7 +3017,6 @@
     if (t.id === 'ideasClose') { ideas = null; return renderFood(); }
     if (ds.idea !== undefined) { var idea = ideas[+ds.idea]; return call('logIdea', [idea], function (res) { S.food = res.state; ideas = null; renderFood(); offerUndo(res.undo, 'Logged ' + idea.name); }); }
     // you
-    if (ds.reward) return call('redeemReward', [ds.reward], function (res) { confetti(true); apply(res, 'Enjoy: ' + ds.reward); });
     if (ds.addshop) return call('addShopping', [ds.addshop], function (res) { apply(res, 'Added ' + ds.addshop); });
     if (t.id === 'pushOn') return Notification.permission === 'granted' && S.push.devices && load('pushTok') ? testPush() : enablePush();
     if ((t.id === 'install' || t.id === 'navInstall') && deferredInstall) { deferredInstall.prompt(); deferredInstall = null; var ni = el('navInstall'); if (ni) ni.hidden = true; return; }
@@ -3330,15 +3102,11 @@
     }
     var tb = el('dotTrain'); if (tb) tb.textContent = rest ? clock(rest.until - now()) : '';
     document.querySelectorAll('[data-due]').forEach(function (x) { x.textContent = dueLabel(+x.getAttribute('data-due')); });
-    var bl = boostLeft(), be = el('boostLeft');
-    if (be) be.textContent = bl + ' min';
-    if (!!bl !== lastBoost) { lastBoost = !!bl; renderHome(); }
   }, 1000);
-  var lastBoost = false;
   function refresh() {
     if (!S || busy || inflight || parking || !el('sheetbg').hidden || document.visibilityState !== 'visible' || (box && box.pending().length)) return;
     if (document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
-    if (current === 'train' || current === 'food' || (current === 'play' && (recallGame || (mix && mix.on) || tempo))) return;
+    if (current === 'train' || current === 'food' || (current === 'play' && (recallGame || tempo))) return;
     rpc('appState', []).then(fresh(apply), function () {});
   }
   function refreshQuiet() { rpc('appState', []).then(fresh(apply), function () {}); }
@@ -3457,15 +3225,13 @@
     ME = S.who === 'me';
     if (!ME) el('nav').querySelectorAll('[data-me]').forEach(function (b) { b.remove(); });
     setupNav();
-    if (!load('badges-' + S.who)) save('badges-' + S.who, S.game.badges.filter(function (b) { return b.earned; }).map(function (b) { return b.id; }));
     renderAll();
     setTimeout(startChat, 1200);   // receipts, the unread count and live scores, in the background
     var hash = location.hash.replace('#', ''), sub = '';
     if (hash.indexOf(':') > 0) { sub = hash.split(':')[1]; hash = hash.split(':')[0]; history.replaceState(null, '', location.pathname + location.search + '#' + hash); }
     if (!ME && /^(food|train)$/.test(hash)) hash = 'home';
     showTab(['home', 'chores', 'work', 'play', 'train', 'food', 'health', 'you', 'custom', 'empire'].indexOf(hash) !== -1 ? hash : (window.LQ_TAB || load('tab') || 'home'));
-    lastBoost = !!boostLeft();
-    if (hash === 'djset') {   // straight to the DJ game (the Chrome add-on's "DJ Set in a tab")
+    if (hash === 'djset') {   // straight to the first-version DJ game
       playView = 'mix'; save('playView', 'mix'); showTab('play');
       history.replaceState(null, '', location.pathname + location.search + '#play');
       setTimeout(openSet, 300);

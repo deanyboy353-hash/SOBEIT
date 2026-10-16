@@ -74,7 +74,7 @@ test('Tuesday: setup builds the sheet and plans the bus 3 (e-bike offered when d
   g.ctx.setup();
   ['Config', 'Sessions', 'Gym log', 'Weight', 'Health', 'Food', 'Inbox', 'Log'].forEach(n => assert.ok(g.tab(n), n));
   assert.strictEqual(g.tab('Sheet1'), null);
-  assert.deepStrictEqual(g.state.triggers.map(t => t.fn).sort(), ['dailyRun', 'foodCheck', 'nagRun', 'pollTasks', 'weeklySummary']);
+  assert.deepStrictEqual(g.state.triggers.map(t => t.fn).sort(), ['dailyRun', 'foodCheck', 'nagRun', 'weeklySummary']);
   assert.ok(g.state.props.WEBAPP_KEY);
 
   const ev = gymEvents(g);
@@ -93,9 +93,7 @@ test('Tuesday: setup builds the sheet and plans the bus 3 (e-bike offered when d
   assert.strictEqual(g.ctx.Utilities.formatDate(ev[0].start, 'Europe/London', 'HH:mm'), '14:59');
   assert.strictEqual(g.ctx.Utilities.formatDate(ev[0].end, 'Europe/London', 'HH:mm'), '17:26');
 
-  const open = gymTasks(g);
-  assert.strictEqual(open.length, 1);
-  assert.match(open[0].title, /Gym done: Push/);
+  assert.strictEqual(gymTasks(g).length, 0, 'no Google Tasks');
   const log = g.tab('Gym log').rows();
   assert.deepStrictEqual(log[1].slice(0, 7), ['2026-10-13', 'Tue', 'Push', 'Bus', '14:59', log[1][5], 'Planned']);
   assert.strictEqual(g.state.mails.length, 0, JSON.stringify(g.tab('Log').rows()));
@@ -125,72 +123,39 @@ test('running again the same day replaces, never duplicates', () => {
   g.ctx.dailyRun();
   g.ctx.dailyRun();
   assert.strictEqual(gymEvents(g).length, 1);
-  assert.strictEqual(Object.values(g.tasks.store).filter(t => /Gym done/.test(t.title)).length, 1);
   assert.strictEqual(g.tab('Gym log').getLastRow(), 2);
 });
 
-test('ticking Gym done logs it; re-planning afterwards does not bring the task back', () => {
+test('Gym done in the app logs it once; re-planning afterwards keeps it done', () => {
   const g = loadProject({ now: new Date('2026-10-13T05:05:00Z') });
   g.ctx.setup();
-  const id = Object.values(g.tasks.store).find(t => /Gym done/.test(t.title)).id;
-  g.tasks.tick(id, '2026-10-13T16:40:00.000Z');
-  at(g.state, '2026-10-13T16:45:00Z');
-  g.ctx.pollTasks();
+  at(g.state, '2026-10-13T16:40:00Z');
+  g.ctx.gymDone(g.state.props.WEBAPP_KEY);
+  g.ctx.gymDone(g.state.props.WEBAPP_KEY);
   const row = g.tab('Gym log').rows()[1];
   assert.strictEqual(row[6], 'Done');
-  assert.strictEqual(row[7], '2026-10-13 17:40');
+  assert.strictEqual(row[7], '17:40');
+  assert.strictEqual(g.tab('XP log').rows().filter(r => r[5] === 'gym').length, 1);
   g.ctx.dailyRun();
-  assert.strictEqual(gymTasks(g).length, 0);
   assert.strictEqual(g.tab('Gym log').rows()[1][6], 'Done');
 });
 
-test('Wednesday: weigh-in alert + task; typed weight is logged when ticked', () => {
+test('Wednesday: weigh-in alert; yesterday\'s missed gym is marked; the weight is logged in the app', () => {
   const g = loadProject({ now: new Date('2026-10-13T05:05:00Z') });
   g.ctx.setup();
   at(g.state, '2026-10-14T05:05:00Z'); // Wed
   g.ctx.dailyRun();
-
-  // Tuesday's unticked gym task was tidied away and marked
-  assert.strictEqual(g.tab('Gym log').rows()[1][6], 'Not ticked');
+  assert.strictEqual(g.tab('Gym log').rows()[1][6], 'Not done');
   const titles = g.calendar.live().map(e => e.title);
   assert.ok(titles.some(t => /^Push/.test(t)), 'Tuesday\'s Push wasn\'t done, so it\'s still Push');
   const weigh = g.calendar.live().find(e => e.title === 'Weigh in');
   assert.strictEqual(g.ctx.Utilities.formatDate(weigh.start, 'Europe/London', 'HH:mm'), '08:30');
   assert.deepStrictEqual(weigh.reminders, [0]);
-
-  const task = g.tasks.open().find(t => /Weigh-in/.test(t.title));
-  g.tasks.store[task.id].title = task.title + ' 13st 2';
-  g.tasks.tick(task.id, '2026-10-14T07:35:00.000Z');
-  g.ctx.pollTasks();
-  const w = g.tab('Weight').rows();
-  assert.deepStrictEqual(w[1], ['2026-10-14', '08:35', 83.5, '13st 2', '']);
-});
-
-test('weigh-in ticked with no number is reopened and asks again', () => {
-  const g = loadProject({ now: new Date('2026-10-14T05:05:00Z') });
-  g.ctx.setup();
-  const task = g.tasks.open().find(t => /Weigh-in/.test(t.title));
-  g.tasks.tick(task.id, '2026-10-14T07:35:00.000Z');
-  g.ctx.pollTasks();
-  assert.strictEqual(g.tab('Weight').getLastRow(), 1);
-  const again = g.tasks.store[task.id];
-  assert.strictEqual(again.status, 'needsAction');
-  assert.match(again.title, /Didn't catch a number/);
-  again.title = '82.0';
-  g.tasks.tick(task.id, '2026-10-14T07:40:00.000Z');
-  g.ctx.pollTasks();
-  assert.strictEqual(g.tab('Weight').rows()[1][2], 82);
-});
-
-test('weight typed but never ticked is still logged next morning', () => {
-  const g = loadProject({ now: new Date('2026-10-12T05:05:00Z') }); // Mon
-  g.ctx.setup();
-  const task = g.tasks.open().find(t => /Weigh-in/.test(t.title));
-  g.tasks.store[task.id].notes = '82.6';
-  at(g.state, '2026-10-13T05:05:00Z');
-  g.ctx.dailyRun();
-  assert.strictEqual(g.tab('Weight').rows()[1][2], 82.6);
-  assert.ok(!g.tasks.store[task.id], 'old task removed');
+  assert.match(weigh.opts.description, /Log it on Home in Nudge/);
+  assert.strictEqual(g.tasks.open().length, 0);
+  at(g.state, '2026-10-14T07:35:00Z');
+  g.ctx.logWeightNow(g.state.props.WEBAPP_KEY, '13st 2');
+  assert.strictEqual(g.tab('Weight').rows()[1][2], 83.5);
 });
 
 test('rest days: nothing created (Thursday, fixed training days)', () => {

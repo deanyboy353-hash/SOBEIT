@@ -139,7 +139,6 @@ function ask(key, text) {
         try { var dl = addDeadline_(who, t); done.push('Deadline: ' + dl.task + ' by ' + dl.dueText.slice(-5)); } catch (e) { done.push('Couldn\'t set a deadline: ' + e.message); }
       } else if (a.type === 'add_todo') {
         park_(who, 'To do: ' + t);
-        if (who === 'me') Tasks.Tasks.insert({ title: t, due: todayYmd_() + 'T00:00:00.000Z' }, TASK_LIST);
         done.push('To-do added: ' + t);
       } else if (a.type === 'add_chore') {
         if (!readChores_().some(function (q) { return q.name.toLowerCase() === t.toLowerCase(); })) {

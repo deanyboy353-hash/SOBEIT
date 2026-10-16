@@ -12,13 +12,12 @@
  * person sees it live; finished games are logged to the Games tab.
  */
 
-var GAME_LIST = ['word', 'target', 'recall', 'tempo', 'mix'];
+var GAME_LIST = ['word', 'target', 'recall', 'tempo'];
 
 function gamesDay_(ymd) {
   var g = JSON.parse(prop_('GAMES_' + ymd) || 'null') ||
     { word: { me: null, partner: null }, target: { me: null, partner: null }, recall: { me: null, partner: null } };
   g.tempo = g.tempo || { me: null, partner: null };
-  g.mix = g.mix || { me: null, partner: null };
   g.set = g.set || { me: null, partner: null };
   g.booth = g.booth || { me: null, partner: null };
   g.stake = g.stake || null;
@@ -73,7 +72,6 @@ function gamesState_(who) {
     },
     recall: { mine: g.recall[who], other: g.recall[other] },
     tempo: tempoState_(today, g.tempo[who], g.tempo[other]),
-    mix: { puzzle: mixPuzzle(today), mine: g.mix[who], other: g.mix[other] ? { points: g.mix[other].points, scored: g.mix[other].scored, tries: g.mix[other].tries } : null },
     set: { mine: g.set[who], other: g.set[other] ? { points: g.set[other].points, score: g.set[other].score, grade: g.set[other].grade, acc: g.set[other].acc, tries: g.set[other].tries } : null },
     booth: { mine: g.booth[who], other: g.booth[other] ? { points: g.booth[other].points, score: g.booth[other].score, grade: g.booth[other].grade, title: g.booth[other].title, tries: g.booth[other].tries } : null },
     stake: g.stake ? { text: g.stake.text, by: g.stake.by === who ? 'you' : 'them', result: stakeResult_(w[who], w[other]) } : null,
@@ -228,7 +226,7 @@ function submitRecall(key, level) {
 }
 
 /**
- * Tempo and Mix: play as often as you like. Your best score of the day is what
+ * Tempo: play as often as you like. Your best score of the day is what
  * counts against your partner; XP comes once a day, the first time you score.
  */
 function replayable_(who, game, pts, keep, better, detail, label, brag) {
@@ -299,22 +297,6 @@ function submitBooth(key, score, grade, title) {
       function (me) { return me.grade + ' ' + me.score + ' (' + me.title + ')'; }, 'Booth challenge', 'did today\'s Booth challenge');
     var st = gamesState_(who);
     st.last = { points: pts, score: score, grade: grade, firstXp: res.first ? 5 + pts : 0 };
-    return st;
-  });
-}
-
-/** A Mix attempt: how far off the tempos were (BPM) and how far apart the beats landed (ms). */
-function submitMix(key, bpmDiff, phaseMs) {
-  var who = who_(key);
-  bpmDiff = Math.round(Math.abs(Number(bpmDiff)) * 100) / 100;
-  phaseMs = Math.round(Math.abs(Number(phaseMs)));
-  if (!isFinite(bpmDiff) || !isFinite(phaseMs) || bpmDiff > 60 || phaseMs > 2000) throw new Error('That mix didn\'t register. Try again.');
-  return withLock_(function () {
-    var pts = mixPoints(bpmDiff, phaseMs);
-    var res = replayable_(who, 'mix', pts, { bpm: bpmDiff, phase: phaseMs }, function (me) { return bpmDiff + phaseMs / 100 < me.bpm + me.phase / 100; },
-      function (me) { return me.bpm + ' BPM off, ' + me.phase + ' ms'; }, 'Mix', 'dropped a mix');
-    var st = gamesState_(who);
-    st.last = { points: pts, bpm: bpmDiff, phase: phaseMs, firstXp: res.first ? 5 + pts : 0 };
     return st;
   });
 }

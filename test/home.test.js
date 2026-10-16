@@ -66,10 +66,11 @@ test('Win the day before setup: the XP goal, and no "Goal hit" wording when the 
 test('Home order: brief, win, deadline, routine, water/weight, characters and pet, then the rest', () => {
   assert.deepStrictEqual(F.homeOrder([]).slice(0, 6).map(x => x.id), ['brief', 'win', 'deadlines', 'routine', 'tiles', 'stage']);
   // an old saved order is replaced, but hidden cards stay hidden
-  const old = [{ id: 'feed', hide: false }, { id: 'challenges', hide: true }, { id: 'deadlines', hide: false }, { id: 'pet', hide: true }];
+  const old = [{ id: 'feed', hide: false }, { id: 'us', hide: true }, { id: 'challenges', hide: true }, { id: 'deadlines', hide: false }, { id: 'pet', hide: true }];
   const o = F.homeOrder(old);
   assert.deepStrictEqual(o.slice(0, 3).map(x => x.id), ['brief', 'win', 'deadlines']);
-  assert.strictEqual(o.find(x => x.id === 'challenges').hide, true);
+  assert.strictEqual(o.find(x => x.id === 'us').hide, true);
+  ['challenges', 'whatnow', 'next', 'make'].forEach(id => assert.ok(!o.some(x => x.id === id), 'retired card ' + id + ' is dropped'));
   assert.strictEqual(o.find(x => x.id === 'feed').hide, false);
   assert.strictEqual(o.find(x => x.id === 'stage').hide, false, 'merged cards show');
   // a new order is kept as saved (every card can move)

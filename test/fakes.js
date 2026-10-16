@@ -61,6 +61,7 @@ class FakeRange {
     }
     return out;
   }
+  getDisplayValues() { return this.getValues().map(r => r.map(v => String(v))); }
   getValue() { return this.getValues()[0][0]; }
   setValues(vals) {
     vals.forEach((row, i) => row.forEach((v, j) => {
@@ -100,6 +101,7 @@ class FakeSheet {
   deleteRows(r, n) { this.data.splice(r - 1, n); }
   setName(n) { this.name = n; }
   setColumnWidth() {}
+  appendRow(row) { this.data[this.getLastRow()] = row.slice(); }
   rows() { return this.getDataRange().getValues(); }
 }
 

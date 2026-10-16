@@ -216,25 +216,16 @@ function saveWorkout(key, session, sets, meta) {
     var bestPr = prs.sort(function (a, b) { return b.e1rm - a.e1rm; })[0];
     if (bestPr) addXp_('me', 'PR: ' + bestPr.exercise + ' ' + bestPr.weight + '×' + bestPr.reps, 25, 'pr');
     if (session !== todaySession_(today)) useSession_(today, session);
-    completeTracked_('gym', today);
-    onGymTaskDone_({ completed: new Date().toISOString() }, { date: today });
+    markGymDone_(today);
     return { changes: changes, prs: prs, minutes: mins, volume: Math.round(volume), sets: done.length, state: appState_('me') };
   });
 }
 
-/** Remember today's session and fix the gym row and Google Task to match. */
+/** Remember today's session and fix the gym row to match. */
 function useSession_(ymd, session) {
   setProp_('GYM_TODAY', JSON.stringify({ date: ymd, session: session }));
   var r = findRow_('gym', 'Date', ymd);
   if (r && session) updateRow_('gym', r, { 'Session': session });
-  var t = tracked_();
-  Object.keys(t).forEach(function (id) {
-    if (t[id].type !== 'gym' || t[id].date !== ymd || t[id].done) return;
-    try {
-      if (session) Tasks.Tasks.patch({ title: 'Gym done: ' + session }, TASK_LIST, id);
-      else { Tasks.Tasks.remove(TASK_LIST, id); delete t[id]; saveTracked_(t); }
-    } catch (e) { log_('WARN', 'Gym task: ' + e); }
-  });
 }
 
 /** Change today's workout (or make it a rest day: session ''). Moves the calendar event too. */

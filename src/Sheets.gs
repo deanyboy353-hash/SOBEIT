@@ -18,7 +18,6 @@ var TABS = {
   choresLog: 'Chores log',
   later: 'Later',
   xp: 'XP log',
-  rewards: 'Rewards',
   routines: 'Routines',
   shopping: 'Shopping',
   lifts: 'Lifts',
@@ -134,7 +133,7 @@ function vals_(key) {
 // a new version at once, so a stale copy can never be served. Tabs you edit by hand in the Sheet
 // also expire quickly (and onEdit bumps them). If anything goes wrong the cache switches itself off.
 var TAB_TTL = 600, TAB_TTL_HAND = 90, TAB_PART = 90000;
-var HAND_EDITED = { config: 1, sessions: 1, chores: 1, rewards: 1, routines: 1, presets: 1, lifts: 1, programme: 1 };
+var HAND_EDITED = { config: 1, sessions: 1, chores: 1, routines: 1, presets: 1, lifts: 1, programme: 1 };
 var WRITE_METHODS = { setValue: 1, setValues: 1, setFormula: 1, setFormulas: 1, setRichTextValue: 1, setRichTextValues: 1, appendRow: 1, deleteRow: 1, deleteRows: 1, insertRowAfter: 1, insertRowBefore: 1, insertRowsAfter: 1, insertRowsBefore: 1, insertRows: 1, deleteColumn: 1, deleteColumns: 1, insertColumnAfter: 1, insertColumnBefore: 1, insertColumnsAfter: 1, insertColumnsBefore: 1, clear: 1, clearContent: 1, clearContents: 1, sort: 1, moveTo: 1, copyTo: 1, randomize: 1, trimWhitespace: 1, removeDuplicates: 1, insertCheckboxes: 1, check: 1, uncheck: 1 };
 var tabVers_ = null, tabOff_ = false, dirtyTabs_ = {}, tabTokN_ = 0;
 // version labels: time + a counter (writes happen under the script lock, so they can't collide)

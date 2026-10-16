@@ -101,7 +101,7 @@ test('health insight: Claude explains the day', () => {
   assert.strictEqual(g.ctx.appState(me).health.insight.tip, 'Push the top set today.');
 });
 
-test('today\'s workout can change: the plan, calendar event and gym task follow', () => {
+test('today\'s workout can change: the plan and calendar event follow', () => {
   const g = loadProject({ now: new Date('2026-10-14T05:05:00Z') }); // Wed 06:05
   g.ctx.setup();
   g.ctx.dailyRun();
@@ -117,8 +117,7 @@ test('today\'s workout can change: the plan, calendar event and gym task follow'
   const gymEvents = g.calendar.events.filter(e => !e.deleted && e.tags && e.tags.sobeit === 'gym');
   assert.strictEqual(gymEvents.length, 1);
   assert.match(gymEvents[0].title, /^Pull/);
-  assert.ok(Object.values(g.tasks.store).some(t => t.title === 'Gym done: Pull'));
-  assert.ok(!Object.values(g.tasks.store).some(t => t.title === 'Gym done: ' + planned));
+  assert.strictEqual(Object.keys(g.tasks.store).length, 0, 'no Google Tasks');
   // a rest day instead
   s = g.ctx.setTodaySession(me, '');
   assert.strictEqual(s.today.gym, null);

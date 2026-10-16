@@ -200,7 +200,7 @@ function buildGymEventText(plan) {
   lines.push(plan.sessionName.toUpperCase());
   plan.exercises.forEach(function (ex, i) { lines.push(formatExercise(ex, i)); });
   lines.push('');
-  lines.push('Log it in the app\'s Train tab (or tick "Gym done" in Google Tasks).');
+  lines.push('Log it in the app\'s Train tab.');
   return { title: title, description: lines.join('\n') };
 }
 
@@ -577,30 +577,6 @@ function tempoPoints(tapped, bpm) {
   var d = Math.abs(tapped - bpm);
   if (bpm > 150) d = Math.min(d, Math.abs(tapped * 2 - bpm));
   return d <= 1 ? 10 : d <= 2 ? 8 : d <= 4 ? 6 : d <= 7 ? 3 : 0;
-}
-
-// ---- Mix (the DJ game) ----
-
-var MIX_STATIONS = ['vice-house', 'sunset-disco', 'warehouse', 'garage-run', 'afro-house', 'trance'];
-
-/** Today's two records: deck A plays at its tempo, deck B starts off and you match it. */
-function mixPuzzle(ymd) {
-  var r = seededRandom('mix' + ymd);
-  var a = MIX_STATIONS[Math.floor(r() * MIX_STATIONS.length)], b = a;
-  while (b === a) b = MIX_STATIONS[Math.floor(r() * MIX_STATIONS.length)];
-  var bpmA = 118 + Math.floor(r() * 13), off = (3 + Math.floor(r() * 5)) * (r() < 0.5 ? -1 : 1);
-  return { a: a, b: b, bpmA: bpmA, bpmB: bpmA + off };
-}
-
-/** Points for a mix: how close the tempos are (BPM) and how tight the beats line up (ms). */
-function mixPoints(bpmDiff, phaseMs) {
-  var d = Math.abs(Number(bpmDiff)), ph = Math.abs(Number(phaseMs));
-  if (!isFinite(d) || !isFinite(ph)) return 0;
-  if (d <= 0.5 && ph <= 30) return 10;
-  if (d <= 1 && ph <= 60) return 8;
-  if (d <= 1.5 && ph <= 90) return 6;
-  if (d <= 2 && ph <= 120) return 3;
-  return 0;                                   // not matched yet: no points, no XP
 }
 
 /** DJ Set grade from accuracy (%). */

@@ -3,15 +3,11 @@
  *
  *   Names and eras    nicknames, a team name, and level titles (a DJ career
  *                     ladder, or album eras) instead of plain numbers
- *   Daily challenges  three small goals each a day; each one done is bonus
- *                     XP, all three opens a chest
- *   Double XP         a surprise half hour every day, announced by notification
  *   Reminders         Duolingo-style evening nudges when a streak is at risk
  *   Us                a private, playful counter for the two of you, with
  *                     winks and "tonight?"
- *   Wrapped           your week as a story
  *
- * The 10-minute trigger (pollTasks) calls heartbeat_() for the timed parts.
+ * The nag trigger calls heartbeat_() for the timed parts.
  */
 
 var ERA_TITLES = {
@@ -55,95 +51,6 @@ function hhmm_(v) {
   return String(v || '');
 }
 
-// ---------- double XP ----------
-
-/** Today's surprise half hour, somewhere between noon and 9pm. Same for both of you. */
-function boostWindow_(ymd) {
-  var r = seededRandom('boost' + ymd);
-  var start = 12 * 60 + Math.floor(r() * (8.5 * 60 / 5)) * 5;
-  return { start: start, end: start + 30, from: formatClock(start), to: formatClock(start + 30) };
-}
-
-function boostActive_() {
-  if (!extrasOn_('Double XP')) return false;
-  var w = boostWindow_(todayYmd_()), m = minutesNow_();
-  return m >= w.start && m < w.end;
-}
-
-// ---------- daily challenges ----------
-
-var CHALLENGES = [
-  ['chores2', 'Finish 2 chores', function (s) { return s.chores >= 2; }],
-  ['chores3', 'Finish 3 chores', function (s) { return s.chores >= 3; }],
-  ['word', 'Solve today\'s word', function (s) { return s.wordWon; }],
-  ['games2', 'Play 2 of the daily games', function (s) { return s.games >= 2; }],
-  ['tempo', 'Lock in a Tempo score', function (s) { return s.tempo; }],
-  ['routine', 'Finish a routine', function (s) { return (s.kinds.routine || 0) >= 1; }],
-  ['early', 'Earn 10 XP before noon', function (s) { return s.beforeNoon >= 10; }],
-  ['create', 'Make something for 15 minutes', function (s) { return (s.kinds.create || 0) >= 1; }],
-  ['water', 'Hit your water goal', function (s) { return (s.kinds.water || 0) >= 1; }],
-  ['timer', 'Do a job on the timer', function (s) { return s.timers >= 1; }],
-  ['goal8', 'Hit your daily goal before 8pm', function (s) { return s.goalBy8; }]
-];
-var CHALLENGE_XP = 5, CHEST_XP = 15;
-
-function todaysChallenges_(who, ymd) {
-  var r = seededRandom('challenge' + who + ymd), pool = CHALLENGES.slice(), out = [];
-  while (out.length < 3) out.push(pool.splice(Math.floor(r() * pool.length), 1)[0]);
-  return out;
-}
-
-function challengeStats_(who, ymd) {
-  var rows = xpRows_().filter(function (r) { return r.who === who && r.date === ymd && r.xp > 0; });
-  var kinds = {}, beforeNoon = 0, by8 = 0;
-  rows.forEach(function (r) {
-    kinds[r.kind] = (kinds[r.kind] || 0) + 1;
-    if (r.time && r.time < '12:00') beforeNoon += r.xp;
-    if (r.time && r.time < '20:00') by8 += r.xp;
-  });
-  var g = gamesDay_(ymd), w = g.word[who], t = g.target[who], rc = g.recall[who], tp = (g.tempo || {})[who], mx = (g.mix || {})[who];
-  var timers = rowsBetween_('choresLog', ymd, ymd).filter(function (r) { return r['Who'] === who && r['Result'] === 'Done'; }).length;
-  return {
-    kinds: kinds, beforeNoon: beforeNoon, goalBy8: by8 >= dailyGoal_(), timers: timers,
-    chores: (kinds.quest || 0) + (kinds.cover || 0),
-    wordWon: !!(w && w.won), tempo: !!(tp && tp.final),
-    games: [w && w.guesses.length, t && t.tries, rc && rc.plays, tp && tp.tries, mx && mx.tries].filter(Boolean).length
-  };
-}
-
-function challengeLog_(who, ymd) {
-  var c = JSON.parse(prop_('CHAL_' + who) || 'null');
-  return c && c.date === ymd ? c : { date: ymd, done: [], chest: false };
-}
-
-/** Award any challenge you've just completed. Called after every XP award. */
-function checkChallenges_(who) {
-  if (!extrasOn_('Daily challenges')) return;
-  var ymd = todayYmd_(), log = challengeLog_(who, ymd), stats = null, changed = false;
-  todaysChallenges_(who, ymd).forEach(function (c) {
-    if (log.done.indexOf(c[0]) !== -1) return;
-    stats = stats || challengeStats_(who, ymd);
-    if (!c[2](stats)) return;
-    log.done.push(c[0]);
-    changed = true;
-    addXp_(who, 'Challenge: ' + c[1], CHALLENGE_XP, 'bonus');
-  });
-  if (changed && log.done.length >= 3 && !log.chest) {
-    log.chest = true;
-    addXp_(who, 'Opened today\'s chest', CHEST_XP, 'bonus');
-  }
-  if (changed) setProp_('CHAL_' + who, JSON.stringify(log));
-}
-
-function challengesState_(who) {
-  if (!extrasOn_('Daily challenges')) return null;
-  var ymd = todayYmd_(), log = challengeLog_(who, ymd);
-  return {
-    list: todaysChallenges_(who, ymd).map(function (c) { return { id: c[0], text: c[1], done: log.done.indexOf(c[0]) !== -1, xp: CHALLENGE_XP }; }),
-    chest: log.chest, chestXp: CHEST_XP
-  };
-}
-
 // ---------- reminders (every 10 minutes) ----------
 
 var STREAK_LINES = [
@@ -181,7 +88,7 @@ function heartbeat_() {
   if (!sent || sent.date !== ymd) sent = { date: ymd, me: [], partner: [] };
   var before = JSON.stringify(sent);
   try { alertsHeartbeat_(ymd, m, sent); } catch (e) { log_('WARN', 'Alerts: ' + e); }
-  if ((!extrasOn_('Reminders') && !extrasOn_('Double XP')) || m < 9 * 60 || m >= 22 * 60 + 30) { if (JSON.stringify(sent) !== before) setProp_('REMINDED', JSON.stringify(sent)); return; }
+  if (!extrasOn_('Reminders') || m < 9 * 60 || m >= 22 * 60 + 30) { if (JSON.stringify(sent) !== before) setProp_('REMINDED', JSON.stringify(sent)); return; }
   var nk = nicks_(), goal = dailyGoal_(), r = seededRandom('lines' + ymd);
   function once(who, id, title, body, tab) {
     if (sent[who].indexOf(id) !== -1 || quietFor_(who, m)) return;
@@ -191,18 +98,15 @@ function heartbeat_() {
   if (setupOn_()) PEOPLE.forEach(function (who) {
     // the day's list, once, half an hour after you usually wake
     var pf = profile_(who), plan = cpToday_()[who];
+    if (lazyOn_(who, ymd)) return;
     if (m >= (pf.wake || 450) + 30 && plan.minimum + plan.bonus.length) once(who, 'list', plan.minimum ? 'Today: ' + plan.minimum + ' to win the day' : 'Today: nothing you have to do',
       (plan.must.length ? plan.must.join(', ') : 'Just the bonus jobs, if you feel like it') + (plan.bonus.length ? '. Bonus: ' + plan.bonus.slice(0, 3).join(', ') + (plan.bonus.length > 3 ? '…' : '') : '') + '.', 'chores');
   });
-  var w = boostWindow_(ymd);
-  if (extrasOn_('Double XP') && m >= w.start && m < w.end - 5) {
-    PEOPLE.forEach(function (who) { once(who, 'boost', 'Double XP for the next half hour', 'Everything you do until ' + w.to + ' counts twice.', 'home'); });
-  }
   if (extrasOn_('Reminders')) {
     var g = gamesDay_(ymd);
     PEOPLE.forEach(function (who) {
       var other = who === 'me' ? 'partner' : 'me';
-      var xp = xpOn_(who, ymd), st = streakNow_(who, ymd, goal), behind = !st.todayDone, gentle = setupOn_() && profile_(who).reminder !== 'direct';
+      var xp = xpOn_(who, ymd), st = streakNow_(who, ymd, goal), behind = !st.todayDone && !st.lazy, gentle = setupOn_() && profile_(who).reminder !== 'direct';
       var oxp = xpOn_(other, ymd), cname = nicks_()[who] || 'You';
       var fill = function (s) { return s.replace('{n}', st.count).replace('{x}', Math.max(0, goal - xp)).replace('{other}', nk[other]).replace('{ox}', oxp).replace('{mx}', xp).replace('{char}', cname); };
       var calm = setupOn_() && profile_(who).motivation === 'calm';   // "just a calm list": the morning list only, no streak or race nags
@@ -321,59 +225,14 @@ function setStake(key, text) {
   });
 }
 
-// ---------- Wrapped ----------
-
-/** The last seven days as a story. */
-function getWrapped(key) {
-  var who = who_(key), other = who === 'me' ? 'partner' : 'me';
-  var to = todayYmd_(), from = addDays_(to, -6), nk = nicks_();
-  var rows = xpRows_().filter(function (r) { return r.date >= from && r.date <= to; });
-  function person(p) {
-    var mine = rows.filter(function (r) { return r.who === p && r.xp > 0; });
-    var count = {};
-    mine.filter(function (r) { return r.kind === 'quest'; }).forEach(function (r) { count[r.what] = (count[r.what] || 0) + 1; });
-    var top = Object.keys(count).sort(function (a, b) { return count[b] - count[a]; })[0] || '';
-    var days = {};
-    mine.forEach(function (r) { days[r.date] = (days[r.date] || 0) + r.xp; });
-    var bestDay = Object.keys(days).sort(function (a, b) { return days[b] - days[a]; })[0] || '';
-    return {
-      name: nk[p], xp: mine.reduce(function (s, r) { return s + r.xp; }, 0),
-      chores: mine.filter(function (r) { return r.kind === 'quest' || r.kind === 'cover'; }).length,
-      top: top, topCount: count[top] || 0, bestDay: bestDay, bestDayXp: days[bestDay] || 0,
-      gym: mine.filter(function (r) { return r.kind === 'gym'; }).length, prs: mine.filter(function (r) { return r.kind === 'pr'; }).length,
-      create: mine.filter(function (r) { return r.kind === 'create'; }).length,
-      challenges: mine.filter(function (r) { return r.kind === 'bonus' && /^Challenge/.test(r.what); }).length
-    };
-  }
-  var games = rowsBetween_('games', from, to), wins = { me: 0, partner: 0 }, byDay = {}, bestWord = { me: 7, partner: 7 };
-  games.forEach(function (r) {
-    var k = r['Date'] + '|' + r['Game'];
-    (byDay[k] = byDay[k] || {})[r['Who']] = Number(r['Score']);
-    if (r['Game'] === 'word') bestWord[r['Who']] = Math.min(bestWord[r['Who']], Number(r['Score']));
-  });
-  Object.keys(byDay).forEach(function (k) {
-    var d = byDay[k], low = k.split('|')[1] === 'word';
-    if (d.me === undefined || d.partner === undefined || d.me === d.partner) return;
-    wins[(d.me < d.partner) === low ? 'me' : 'partner']++;
-  });
-  var us = usDates_().filter(function (d) { return d >= from && d <= to; }).length;
-  return {
-    from: from, to: to, team: nk.team, you: person(who), them: person(other),
-    games: { you: wins[who], them: wins[other], bestWord: bestWord[who] <= 6 ? bestWord[who] : null, theirBestWord: bestWord[other] <= 6 ? bestWord[other] : null },
-    team: { name: nk.team, streak: streakNow_('team', to, dailyGoal_()).count, us: us }
-  };
-}
-
 /** Everything fun the app shows for one person. */
 function funState_(who, g) {
   g = g || gameState_(who);
-  var nk = nicks_(), w = boostWindow_(todayYmd_());
+  var nk = nicks_();
   var since = xpRows_().length ? xpRows_()[0].date : todayYmd_();
   return {
     nick: nk[who], otherNick: nk[who === 'me' ? 'partner' : 'me'], team: nk.team,
     era: eraTitle_(who, g.level.level), nextEra: eraTitle_(who, g.level.level + 1),
-    boost: extrasOn_('Double XP') ? { from: w.from, to: w.to, startsAt: atTime_(todayYmd_(), w.start).getTime(), endsAt: atTime_(todayYmd_(), w.end).getTime() } : null,
-    challenges: challengesState_(who),
     us: usState_(who),
     day: Math.max(1, daysBetween_(since, todayYmd_()) + 1),
     appBase: appBaseUrl_(),
@@ -390,7 +249,7 @@ function daysBetween_(a, b) {
 
 // ---------- customisation ----------
 
-var HOME_BLOCKS = ['brief', 'win', 'deadlines', 'routine', 'tiles', 'stage', 'ask', 'gym', 'challenges', 'whatnow', 'work', 'next', 'make', 'us', 'feed', 'wardrobe', 'ring', 'pet', 'chores'];
+var HOME_BLOCKS = ['brief', 'win', 'deadlines', 'routine', 'tiles', 'stage', 'ask', 'gym', 'work', 'us', 'feed', 'wardrobe', 'ring', 'pet', 'chores'];
 var PREF_DEFAULTS = { char: '', skin: '', mode: 'auto', accent: '', text: 'normal', sound: false, haptics: true, confetti: true, motion: true, home: [], nag: '', look: {} };
 // the style studio: the first choice is the default
 var STYLE_CHOICES = { bg: ['live', 'lasers', 'grid', 'stars', 'plain'], cards: ['soft', 'glass', 'neon', 'outline', 'flat'], font: ['default', 'rounded', 'mono', 'serif', 'condensed'], corners: ['round', 'sharp', 'pill'] };

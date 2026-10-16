@@ -245,33 +245,6 @@ test('plan the week: pair jobs with people; together jobs pay both double XP', (
   assert.strictEqual(g.ctx.xpOn_('me', '2026-10-14') - before, g.ctx.readChores_().find(x => x.name === 'Food shop').xp);
 });
 
-test('Mix: replay as often as you like; doing nothing scores 0; XP once', () => {
-  const { g, me, partner } = ready();
-  const pz = g.ctx.mixPuzzle('2026-10-14');
-  assert.notStrictEqual(pz.a, pz.b);
-  assert.ok(Math.abs(pz.bpmB - pz.bpmA) >= 3 && Math.abs(pz.bpmB - pz.bpmA) <= 7);
-  assert.deepStrictEqual([g.ctx.mixPoints(0.3, 20), g.ctx.mixPoints(0.8, 50), g.ctx.mixPoints(1.4, 80), g.ctx.mixPoints(1.8, 110), g.ctx.mixPoints(3, 50), g.ctx.mixPoints(0.2, 300)], [10, 8, 6, 3, 0, 0]);
-  const xp = () => g.tab('XP log').rows().filter(r => r[2] === 'me' && r[5] === 'game').length;
-  // locking in without touching anything: the tempos are 3 to 7 BPM apart, so nothing
-  let s = g.ctx.submitMix(me, Math.abs(pz.bpmB - pz.bpmA), 200);
-  assert.strictEqual(s.mix.mine.points, 0);
-  assert.strictEqual(xp(), 0);
-  s = g.ctx.submitMix(me, 1.4, 80);
-  assert.strictEqual(s.last.firstXp, 11);
-  s = g.ctx.submitMix(me, 0.8, 40);
-  assert.strictEqual(s.mix.mine.points, 8);
-  assert.strictEqual(s.last.firstXp, 0);
-  s = g.ctx.submitMix(me, 6, 300);
-  assert.strictEqual(s.mix.mine.points, 8, 'best counts');
-  s = g.ctx.submitMix(me, 0.2, 10);
-  assert.strictEqual(s.mix.mine.points, 10);
-  assert.strictEqual(xp(), 1);
-  assert.throws(() => g.ctx.submitMix(partner, 'loud', 1), /didn't register/);
-  s = g.ctx.submitMix(partner, 0.9, 50);
-  assert.strictEqual(s.mix.other.points, 10);
-  assert.strictEqual(s.stats.them, 1);
-});
-
 test('DJ Set: grades and points; replayable, best score counts, XP once', () => {
   const { g, me, partner } = ready();
   assert.deepStrictEqual([96, 90, 75, 55, 40].map(a => g.ctx.setGrade(a)), ['S', 'A', 'B', 'C', 'D']);

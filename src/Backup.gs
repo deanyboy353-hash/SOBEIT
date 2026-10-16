@@ -107,3 +107,46 @@ function importBackup(key, text) {
   try { snap = JSON.parse(String(text || '')); } catch (e) { throw new Error('That file isn\'t a Nudge backup (it\'s not readable JSON).'); }
   return restoreToNewBook_(snap);
 }
+
+/**
+ * Removed features keep their data here: a tab called "Archive" in your Sheet, one row per thing kept
+ * (feature, what it was, the data as JSON, when). Nothing in it is used by the app.
+ */
+function archive_(feature, what, data) {
+  var text = typeof data === 'string' ? data : JSON.stringify(data);
+  if (!text || text === '{}' || text === '[]' || text === 'null') return;
+  var ss = db_(), sh = ss.getSheetByName('Archive');
+  if (!sh) { sh = ss.insertSheet('Archive'); sh.getRange(1, 1, 1, 4).setValues([['Feature', 'What', 'Data', 'Archived']]).setFontWeight('bold'); }
+  sh.appendRow([feature, what, text.slice(0, 49000), now_()]);
+}
+
+/**
+ * Runs once: the retired extras (daily challenges and the chest, surprise Double XP, XP rewards, Wrapped,
+ * the Mix game, general badges, streak freezes, routine calendar events and the Meds alert) keep their data in the
+ * Archive tab. Their settings rows leave the Config tab; nothing else is touched.
+ */
+var RETIRED_SETTINGS = ['Daily challenges', 'Double XP', 'Meds reminder'];
+
+function retireExtras_() {
+  if (prop_('EXTRAS_RETIRED')) return;
+  PEOPLE.forEach(function (who) {
+    var c = prop_('CHAL_' + who);
+    if (c) { archive_('Daily challenges', 'CHAL_' + who, c); delProp_('CHAL_' + who); }
+  });
+  var fr = {};
+  PEOPLE.concat(['team']).forEach(function (id) { var st = JSON.parse(prop_('STREAK_' + id) || 'null'); if (st && (st.freezes || st.frozeOn)) fr[id] = { freezes: st.freezes, frozeOn: st.frozeOn }; });
+  archive_('Streak freezes', 'replaced by lazy days', fr);
+  var ss = db_(), rw = ss.getSheetByName('Rewards');
+  if (rw && rw.getLastRow() > 0) {
+    archive_('Rewards', 'Rewards tab', rw.getDataRange().getDisplayValues());
+    if (!ss.getSheetByName('Old Rewards')) rw.setName('Old Rewards');   // kept, just renamed so it's clearly unused
+  }
+  var spent = xpRows_().filter(function (r) { return r.kind === 'reward'; });
+  if (spent.length) archive_('Rewards', 'XP spent (still in the XP log)', spent);
+  var sh = sheet_('config'), vals = sh.getDataRange().getValues(), gone = [];
+  for (var i = vals.length - 1; i >= 1; i--) {
+    if (RETIRED_SETTINGS.indexOf(String(vals[i][0]).trim()) !== -1) { gone.push([vals[i][0], vals[i][1]]); sh.deleteRow(i + 1); }
+  }
+  if (gone.length) { archive_('Settings', 'Config rows', gone); forget_('config'); configCache_ = null; }
+  setProp_('EXTRAS_RETIRED', '1');
+}

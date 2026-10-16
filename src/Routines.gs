@@ -1,7 +1,6 @@
 /**
  * Routines.gs: morning and evening checklists (Routines tab), a water
- * counter and an optional meds reminder. Your routines also arrive as a
- * calendar alert at their time; one tap per step in the app.
+ * counter. One tap per step in the app.
  */
 
 function readRoutines_(who) {
@@ -28,25 +27,6 @@ function dayState_() {
 
 function saveDay_(d) {
   PROPS.setProperty('DAY', JSON.stringify(d));
-}
-
-/** Daily job: calendar alerts for your routines and meds. */
-function planRoutines_(ymd, cfg) {
-  removeTaggedEvents_(ymd, 'routine');
-  var routines = readRoutines_('me');
-  routines.forEach(function (r) {
-    if (r.time === null || !r.steps.length) return;
-    var ev = CalendarApp.getDefaultCalendar().createEvent((r.name === 'Evening' ? '' : '') + r.name + ' routine (' + r.steps.length + ' steps)',
-      atTime_(ymd, r.time), atTime_(ymd, r.time + 10), { description: r.steps.map(function (s) { return '- ' + s; }).join('\n') + '\n\nTick them off in the app: ' + appUrl_() });
-    ev.setTag(EVENT_TAG, 'routine'); ev.removeAllReminders(); ev.addPopupReminder(0);
-    ev.setColor(CalendarApp.EventColor.MAUVE);
-  });
-  var meds = cellClock_(cfg.settings['Meds reminder']);
-  if (meds !== null) {
-    var m = CalendarApp.getDefaultCalendar().createEvent('Meds', atTime_(ymd, meds), atTime_(ymd, meds + 5), { description: 'Take your meds, then tick the step in your routine.' });
-    m.setTag(EVENT_TAG, 'routine'); m.removeAllReminders(); m.addPopupReminder(0);
-  }
-  return routines.length + ' routines';
 }
 
 /**
