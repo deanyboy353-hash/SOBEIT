@@ -19,7 +19,7 @@ The DJ game is **not here**: it's **Afters**, its own project (`afters`, next to
 ## Deploy
 - Apps Script: `npm run deploy` (or `clasp push --force` + `clasp update-deployment <id>`).
 - Hosting: `firebase deploy --only hosting` (site `life-quest-5c52d`).
-- Dylz's separate copy: copy `src/*` except `ImportData.gs`/`Instance.gs` into its folder, then push and redeploy it.
+- Dylz's separate copy: don't update it unless asked.
 
 ## Rules
 - Never delete, reset or overwrite stored data; archive removed features' data (`archive_` in Backup.gs).
