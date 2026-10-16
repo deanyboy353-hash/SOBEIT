@@ -1152,3 +1152,34 @@ body.chat-open { overflow: hidden; }
 .card.us .us-line { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); align-items: center; }
 
 .afters-card { background: linear-gradient(135deg, rgba(255,79,179,.14), rgba(47,224,214,.12)); }
+
+/* training splits */
+.pumpbtn { margin-top: 10px; }
+.rushrow { gap: 8px; margin: 0 0 12px; }
+.rushrow input { width: 20px; height: 20px; }
+.superset .tplex + .tplex { margin-top: 4px; }
+.ssjoin { text-align: center; font-size: 12px; font-weight: 650; color: var(--muted); margin: 10px 0 6px; letter-spacing: .04em; text-transform: uppercase; }
+.hint { color: var(--good); font-weight: 600; display: flex; gap: 6px; align-items: flex-start; }
+.rpebox { display: flex; flex-direction: column; align-items: center; gap: 0; width: 56px; }
+.rpebox input { width: 56px; text-align: center; padding: 8px 4px; }
+.tplrow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--line); align-items: end; }
+.tplrow input, .tplrow select { width: 100%; }
+/* main lifts chart (categorical slots from the reference palette: light, then the dark steps) */
+.liftchart { --lc1: #2a78d6; --lc2: #eb6834; --lc3: #1baf7a; --lc4: #eda100; --lc5: #e87ba4; --lc6: #008300; --lc7: #6250d6; --lc8: #e34948; }
+:root[data-theme$="-dark"] .liftchart { --lc1: #3987e5; --lc2: #d95926; --lc3: #199e70; --lc4: #c98500; --lc5: #d55181; --lc6: #008300; --lc7: #9085e9; --lc8: #e66767; }
+.lcwrap { position: relative; touch-action: pan-y; }
+.lcsvg { width: 100%; height: auto; display: block; overflow: visible; }
+.lcgrid { stroke: var(--line); stroke-width: 1; }
+.lcax { fill: var(--muted); font-size: 9px; font-family: inherit; }
+.lcline { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.lcdot { stroke: var(--surface); stroke-width: 2; }
+.lccross { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
+.lctip { position: absolute; top: 0; min-width: 140px; max-width: 220px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font-size: 12px; box-shadow: 0 6px 20px rgba(0,0,0,.18); pointer-events: none; color: var(--ink); }
+.lctip i, .lckey i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.lclegend { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.lckey { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 6px 10px; font: inherit; font-size: 12.5px; }
+.lckey.off { opacity: .45; }
+.lckey.off i { background: var(--line) !important; }
+.lctable table { width: 100%; border-collapse: collapse; } .lctable td, .lctable th { text-align: left; padding: 3px 4px; border-bottom: 1px solid var(--line); }
+.rpebox { width: 46px; flex: none; }
+.rpebox input { width: 46px; padding: 8px 2px; }

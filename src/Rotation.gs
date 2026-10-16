@@ -1,5 +1,6 @@
 /**
- * Rotation.gs: Dean's training split. Push -> Pull -> Shoulders & Arms, on a rotation that only moves on
+ * Rotation.gs: the rotation helpers the rest of the app uses (the splits and templates themselves are in
+ * Training.gs), plus the old one-off moves from the Upper/Lower programme. The rotation only moves on
  * when a session is actually logged (miss a day and the same session waits for you).
  * No barbell squats, deadlifts, RDLs or other hip hinges: hack squat, leg press, machines and seated work.
  * Push: chest + quads. Pull: back (extra volume) + hamstrings. Shoulders & Arms: delts, biceps, triceps, calves.
@@ -50,30 +51,16 @@ function classifySession(exercises) {
   return best;
 }
 
-/** Rotation sessions completed, oldest first: [{ date, session }] from the workout log and "Gym done" ticks in the Gym log. */
+/** Main sessions completed, oldest first: [{ date, session, template }] (any split; the Pump never counts). See Training.gs. */
 function rotationDone_(toYmd) {
-  var out = [];
-  rowsBetween_('workoutLog', '0000', toYmd).forEach(function (r) { var s = String(r['Session']); if (ROTATION.indexOf(s) !== -1) out.push({ date: String(r['Date']), session: s }); });
-  try { rowsBetween_('gym', '0000', toYmd).forEach(function (r) { var s = String(r['Session']); if (ROTATION.indexOf(s) !== -1 && /^Done/.test(String(r['Status'] || ''))) out.push({ date: String(r['Date']), session: s }); }); } catch (e) { /* no gym log yet */ }
-  return out.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+  return mainDone_(toYmd).map(function (x) { return { date: x.date, session: TEMPLATES[x.template].name, template: x.template }; });
 }
-/**
- * The session the rotation is on: whichever of the three you've gone longest without (never done comes first,
- * in Push, Pull, Shoulders & Arms order). Done Pull on Monday and Push on Wednesday? Shoulders & Arms is next.
- * Every completed session moves it on, whatever order you did them in.
- */
-function rotationPick(done) {
-  var last = {};
-  (done || []).forEach(function (x) { if (!last[x.session] || x.date >= last[x.session]) last[x.session] = x.date; });
-  var best = ROTATION[0], bestAt = null;
-  ROTATION.forEach(function (s) { var at = last[s] || ''; if (bestAt === null || at < bestAt) { best = s; bestAt = at; } });
-  return best;
-}
-function rotationNext_(ymd) { return rotationPick(rotationDone_(addDays_(ymd, -1))); }
-/** Rotation session completed on a day ('' if none). */
+/** The next session in your split's rotation, by name: the one after the last you did. Skipping a day moves nothing. */
+function rotationNext_(ymd) { return TEMPLATES[nextTemplate_(addDays_(ymd, -1))].name; }
+/** Main session completed on a day ('' if none). */
 function rotationDoneOn_(ymd) {
-  var d = rotationDone_(ymd).filter(function (x) { return x.date === ymd; });
-  return d.length ? d[d.length - 1].session : '';
+  var d = mainDone_(ymd).filter(function (x) { return x.date === ymd; });
+  return d.length ? TEMPLATES[d[d.length - 1].template].name : '';
 }
 
 /**

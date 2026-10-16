@@ -85,8 +85,8 @@ test('Tuesday: setup builds the sheet and plans the bus 3 (e-bike offered when d
   assert.match(ev[0].opts.description, /Back: bus 3 at 17:15 from Coatbridge Bus Stance \(westbound\) → home by 17:26/);
   assert.match(ev[0].opts.description, /Miss the 15:01\? Next: bus 3 at 16:01 \(leave 15:59\), gym 16:14–18:16, back on the 3 at 18:30, home by 18:44/);
   assert.match(ev[0].opts.description, /It's dry, so the e-bike works too: leave 15:05, 17 min each way/);
-  assert.match(ev[0].opts.description, /1\. Barbell bench press: 4 × 6-10 @ RPE 8 · rest 2\.5 min/);
-  assert.match(ev[0].opts.description, /2\. Hack squat: 4 × 8-10 @ RPE 8 · rest 2\.5 min/);
+  assert.match(ev[0].opts.description, /1\. Bench press: 4 × 6-8 @ RPE 8 · rest 2\.5–3 min/);
+  assert.match(ev[0].opts.description, /2\. Hack squat: 4 × 8-10 @ RPE 8 · rest 2–3 min/);
   assert.doesNotMatch(ev[0].opts.description, /Machine shoulder press|deadlift|Romanian/i);
   assert.strictEqual(ev[0].opts.location, 'JD Gym Coatbridge');
   assert.deepStrictEqual(ev[0].reminders, [14, 0]); // 14:45 alert, then "time to go"
@@ -173,11 +173,11 @@ test('editing the Config tab changes the plan', () => {
   const rows = cfg.rows();
   const set = (label, col, v) => { const r = rows.findIndex(x => x[0] === label); cfg.getRange(r + 1, col).setValue(v); };
   set('Tue', 4, '16:00');
-  set('Tue', 3, 'Arms & Shoulders Pump');                      // a fixed session on a day still works
+  set('Tue', 3, 'Full Body Express');                          // a fixed custom session on a day still works
   g.ctx.dailyRun();
   const ev = gymEvents(g);
   assert.strictEqual(ev.length, 1);
-  assert.strictEqual(ev[0].title, 'Arms & Shoulders Pump · Bus 3 16:01 · leave 15:59');
+  assert.strictEqual(ev[0].title, 'Full Body Express · Bus 3 16:01 · leave 15:59');
   assert.match(ev[0].opts.description, /Gym 16:14–18:16, 122 min/);
 });
 

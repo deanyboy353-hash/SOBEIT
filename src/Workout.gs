@@ -89,11 +89,15 @@ function trainState_() {
   // What comes next if you just go in order (handy when the week went sideways).
   var logged = rowsBetween_('workoutLog', addDays_(today, -60), addDays_(today, -1));
   var last = logged.length ? String(logged[logged.length - 1]['Session']) : '';
-  var next = rotationNext_(today), planned = day && day.train ? (rotationDoneOn_(today) || next) : todaySession;   // flexible days: whatever today offers
-  sessions = ROTATION.filter(function (s) { return cfg.sessions[s]; }).concat(sessions.filter(function (s) { return ROTATION.indexOf(s) === -1; }));
+  var split = splitInfo_(today), order = split.order.map(function (x) { return x.name; });
+  var next = split.next.name, planned = day && day.train ? (rotationDoneOn_(today) || next) : todaySession;   // flexible days: whatever today offers
+  // your own saved workouts (the Sessions tab, minus the old rows the templates replaced)
+  sessions = sessions.filter(function (s) { return !/^Old: /.test(s) && order.indexOf(s) === -1 && s !== split.pump.name; });
+  var tpl = split.order.map(function (x) { return x.id; }).concat([PUMP_ID]).reduce(function (o, id) { o[id] = templatePlan_(id); return o; }, {});
   return {
     today: todaySession,
-    planned: planned, rotation: ROTATION, rotationNext: next, trainDays: Object.keys(cfg.schedule).filter(function (d) { return cfg.schedule[d].train; }).map(Number),
+    split: split, tpl: tpl, lifts: liftHistory_(),
+    planned: planned, rotation: order, rotationNext: next, trainDays: Object.keys(cfg.schedule).filter(function (d) { return cfg.schedule[d].train; }).map(Number),
     changed: todaySession !== planned,
     last: last, next: next,
     sessions: sessions,
@@ -104,7 +108,7 @@ function trainState_() {
     cardio: cardioState_(),
     prev: previousSets_(),
     records: records_(),
-    kinds: sessions.reduce(function (o, s) { o[s] = ROTATION.indexOf(s) !== -1 || readProgramme_()[s] ? 'programme' : PRESET_NAMES.indexOf(s) !== -1 ? 'preset' : 'custom'; return o; }, {})
+    kinds: sessions.reduce(function (o, s) { o[s] = readProgramme_()[s] ? 'programme' : PRESET_NAMES.indexOf(s) !== -1 ? 'preset' : 'custom'; return o; }, {})
   };
 }
 
@@ -115,7 +119,7 @@ function progress_() {
   var lifts = readLifts_();
   var out = Object.keys(lifts).map(function (k) {
     var l = lifts[k];
-    var mine = log.filter(function (r) { return String(r['Exercise']).toLowerCase() === k; });
+    var mine = log.filter(function (r) { return canonicalExercise(r['Exercise']).toLowerCase() === canonicalExercise(k).toLowerCase(); });
     var best = mine.reduce(function (b, r) { return Math.max(b, Number(r['e1RM']) || 0); }, 0);
     var h = hist.filter(function (r) { return String(r['Lift']).toLowerCase() === k; });
     return {
@@ -173,21 +177,24 @@ function saveWorkout(key, session, sets, meta) {
   session = String(session || 'Workout').trim().slice(0, 60) || 'Workout';
   return withLock_(function () {
     var today = todayYmd_(), wid = Utilities.getUuid().replace(/-/g, '').slice(0, 10);
+    var tpl = TEMPLATES[meta.template] ? String(meta.template) : templateByName_(session);
+    if (tpl) session = TEMPLATES[tpl].name;
     var done = (sets || []).filter(function (s) { return Number(s.reps) > 0 && Number(s.weight) >= 0; });
     if (!done.length) throw new Error('Tick at least one set first.');
     var log = rowsBetween_('workoutLog', '0000', '9999');
     var bestBefore = {}, heaviestBefore = {};
-    log.forEach(function (r) { if (String(r['Type'] || '') === 'W') return; var k = String(r['Exercise']).toLowerCase(); bestBefore[k] = Math.max(bestBefore[k] || 0, Number(r['e1RM']) || 0); heaviestBefore[k] = Math.max(heaviestBefore[k] || 0, Number(r['Weight (kg)']) || 0); });
+    log.forEach(function (r) { if (String(r['Type'] || '') === 'W') return; var k = canonicalExercise(r['Exercise']).toLowerCase(); bestBefore[k] = Math.max(bestBefore[k] || 0, Number(r['e1RM']) || 0); heaviestBefore[k] = Math.max(heaviestBefore[k] || 0, Number(r['Weight (kg)']) || 0); });
 
     var prs = [];
     var volume = 0, seenPr = {};
     done.forEach(function (s) {
       var type = /^[WDF]$/.test(String(s.type || '')) ? String(s.type) : '';
       var est = type === 'W' ? '' : e1rm(Number(s.weight), Number(s.reps));
-      appendRow_('workoutLog', { 'Date': today, 'Session': session, 'Exercise': String(s.exercise).slice(0, 60), 'Tier': s.tier || 'Acc', 'Set': s.set, 'Weight (kg)': Number(s.weight), 'Reps': Number(s.reps), 'Target': s.target || '', 'e1RM': est, 'Type': type, 'Workout': wid });
+      var rpe = Number(s.rpe) >= 5 && Number(s.rpe) <= 10 ? Math.round(Number(s.rpe) * 2) / 2 : '';
+      appendRow_('workoutLog', { 'Date': today, 'Session': session, 'Exercise': String(s.exercise).slice(0, 60), 'Tier': s.tier || 'Acc', 'Set': s.set, 'Weight (kg)': Number(s.weight), 'Reps': Number(s.reps), 'Target': s.target || '', 'e1RM': est, 'Type': type, 'Workout': wid, 'RPE': rpe, 'Template': tpl || '' });
       volume += Number(s.weight) * Number(s.reps);
       if (type === 'W') return;
-      var k = String(s.exercise).toLowerCase();
+      var k = canonicalExercise(s.exercise).toLowerCase();
       // A PR beats every earlier workout (not just an earlier set today): best estimated 1RM, or heaviest weight.
       if (bestBefore[k] && est > bestBefore[k] && !seenPr[k + 'e']) { seenPr[k + 'e'] = 1; prs.push({ exercise: s.exercise, e1rm: est, weight: Number(s.weight), reps: Number(s.reps), kind: 'e1RM' }); }
       else if (heaviestBefore[k] && Number(s.weight) > heaviestBefore[k] && !seenPr[k + 'w']) { seenPr[k + 'w'] = 1; prs.push({ exercise: s.exercise, e1rm: est, weight: Number(s.weight), reps: Number(s.reps), kind: 'weight' }); }
@@ -215,9 +222,15 @@ function saveWorkout(key, session, sets, meta) {
     // Best PR only, once per workout, so the XP stays sensible.
     var bestPr = prs.sort(function (a, b) { return b.e1rm - a.e1rm; })[0];
     if (bestPr) addXp_('me', 'PR: ' + bestPr.exercise + ' ' + bestPr.weight + '×' + bestPr.reps, 25, 'pr');
-    if (session !== todaySession_(today)) useSession_(today, session);
-    markGymDone_(today);
-    return { changes: changes, prs: prs, minutes: mins, volume: Math.round(volume), sets: done.length, state: appState_('me') };
+    var bonus = 0;
+    if (tpl === PUMP_ID) {
+      // the Pump is extra: bonus XP (once a day), and the rotation and today's main session are left alone
+      if (!xpRows_().some(function (r) { return r.who === 'me' && r.date === today && r.kind === 'pump'; })) bonus = addXp_('me', 'Bonus: ' + session, PUMP_XP, 'pump');
+    } else {
+      if (session !== todaySession_(today)) useSession_(today, session);
+      markGymDone_(today, session);
+    }
+    return { changes: changes, prs: prs, minutes: mins, volume: Math.round(volume), sets: done.length, bonus: bonus, extra: tpl === PUMP_ID, state: appState_('me') };
   });
 }
 
@@ -234,7 +247,8 @@ function setTodaySession(key, session) {
   session = String(session || '');
   return withLock_(function () {
     var today = todayYmd_(), cfg = readConfig_();
-    if (session && !readProgramme_()[session] && !cfg.sessions[session]) throw new Error('No session called "' + session + '".');
+    if (session && !readProgramme_()[session] && !sessionExercises_(session, cfg).length) throw new Error('No session called "' + session + '".');
+    if (templateByName_(session) === PUMP_ID) throw new Error('The Pump is an extra: start it from the gym card, it doesn\'t replace today\'s session.');
     var r = findRow_('gym', 'Date', today);
     if (r && /^Done/.test(String(readRow_('gym', r)['Status'] || ''))) throw new Error('Today\'s workout is already logged.');
     useSession_(today, session);
@@ -286,11 +300,13 @@ function ensurePresets_() {
 /** The last time each exercise was done: its sets in order (for the "Previous" column). */
 function previousSets_() {
   var rows = rowsBetween_('workoutLog', addDays_(todayYmd_(), -180), todayYmd_()), last = {}, out = {};
-  rows.forEach(function (r) { var k = String(r['Exercise']).toLowerCase(); last[k] = String(r['Date']) + '|' + String(r['Workout'] || r['Session']); });
+  rows.forEach(function (r) { var k = canonicalExercise(r['Exercise']).toLowerCase(); last[k] = String(r['Date']) + '|' + String(r['Workout'] || r['Session']); });
   rows.forEach(function (r) {
-    var k = String(r['Exercise']).toLowerCase();
+    var k = canonicalExercise(r['Exercise']).toLowerCase();
     if (String(r['Date']) + '|' + String(r['Workout'] || r['Session']) !== last[k]) return;
-    (out[k] = out[k] || []).push({ w: Number(r['Weight (kg)']) || 0, r: Number(r['Reps']) || 0, t: String(r['Type'] || '') });
+    var x = { w: Number(r['Weight (kg)']) || 0, r: Number(r['Reps']) || 0, t: String(r['Type'] || ''), rpe: r['RPE'] === '' || r['RPE'] === undefined ? '' : Number(r['RPE']) };
+    (out[k] = out[k] || []).push(x);
+    var raw = String(r['Exercise']).toLowerCase(); if (raw !== k) (out[raw] = out[raw] || []).push(x);   // old names find it too
   });
   return out;
 }
@@ -300,7 +316,7 @@ function records_() {
   var by = {};
   rowsBetween_('workoutLog', '0000', '9999').forEach(function (r) {
     if (String(r['Type'] || '') === 'W') return;
-    var name = String(r['Exercise']), k = name.toLowerCase(), d = String(r['Date']), e = Number(r['e1RM']) || 0, w = Number(r['Weight (kg)']) || 0, reps = Number(r['Reps']) || 0;
+    var name = canonicalExercise(r['Exercise']), k = name.toLowerCase(), d = String(r['Date']), e = Number(r['e1RM']) || 0, w = Number(r['Weight (kg)']) || 0, reps = Number(r['Reps']) || 0;
     var x = by[k] = by[k] || { exercise: name, best: 0, heaviest: 0, heaviestReps: 0, sets: 0, days: {}, last: '' };
     x.sets++; x.last = d;
     if (e > x.best) x.best = e;
@@ -342,7 +358,7 @@ function saveTemplate(key, name, exercises) {
   var list = (exercises || []).filter(function (e) { return String(e.exercise || '').trim(); }).slice(0, 20);
   if (!list.length) throw new Error('Add at least one exercise.');
   return withLock_(function () {
-    if ((readProgramme_()[name] || ROTATION.indexOf(name) !== -1) && !readConfig_().sessions[name]) throw new Error('"' + name + '" is a programme day; pick another name.');
+    if (readProgramme_()[name] || templateByName_(name)) throw new Error('"' + name + '" is one of your split\'s sessions; edit it from the Train tab, or pick another name.');
     deleteTemplateRows_(name);
     var rows = list.map(function (e) { return [name, String(e.exercise).trim().slice(0, 60), String(Math.max(1, Math.min(10, Math.round(Number(e.sets) || 3)))), String(e.reps || '8-12').slice(0, 20), String(e.rpe || ''), String(e.rest || '90 sec').slice(0, 12), String(e.notes || '').slice(0, 120)]; });
     var sh = sheet_('sessions');
@@ -355,7 +371,7 @@ function saveTemplate(key, name, exercises) {
 function deleteTemplate(key, name) {
   requireKey_(key);
   return withLock_(function () {
-    if (readProgramme_()[name] || ROTATION.indexOf(name) !== -1) throw new Error('Programme days can\'t be deleted here; edit them in the Sessions tab.');
+    if (readProgramme_()[name] || templateByName_(name)) throw new Error('Split sessions can\'t be deleted; edit them or reset them to default instead.');
     deleteTemplateRows_(String(name));
     return trainState_();
   });

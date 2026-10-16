@@ -21,17 +21,20 @@ function todayState_() {
       weather: String(row['Weather'] || ''),
       dayOff: dayOffWork_('me', ymd, cfg), leaveAround: hhmm_(cfg.settings['Day off: leave around']) || '12:00', noDaytime: /only cover after work/.test(String(row['Plan'] || '')),
       done: /^Done/.test(String(row['Status'] || '')),
-      exercises: (cfg.sessions[session] || []).map(function (ex) {
+      exercises: sessionExercises_(session, cfg).map(function (ex) {
         return { exercise: String(ex.exercise), sets: String(ex.sets), reps: String(ex.reps), rpe: String(ex.rpe), rest: String(ex.rest), notes: String(ex.notes || '') };
       })
     };
   }
   var weights = rowsBetween_('weight', addDays_(ymd, -90), ymd).filter(function (w) { return w['Weight (kg)'] !== ''; });
   var last = weights[weights.length - 1];
+  var si = splitInfo_(ymd);
   return {
     date: ymd,
     day: DAY_NAMES[dow],
     gym: gym,
+    // the gym card shows the next session whatever day it is, the week's main sessions, and the optional Pump
+    train: { next: si.next, split: si.name, week: si.week, pump: si.pump, doneToday: si.doneToday.length > 0 },
     weighDay: parseDays(cfg.settings['Weigh-in days']).indexOf(dow) !== -1,
     weighedToday: !!last && last['Date'] === ymd,
     lastWeight: last ? { date: String(last['Date']), kg: Number(last['Weight (kg)']), change: last['Change (kg)'] } : null

@@ -116,13 +116,14 @@ function buildWeeklySummary_(endYmd, cfg) {
   // Week ahead
   lines.push('WEEK AHEAD');
   var weighDays = parseDays(cfg.settings['Weigh-in days']);
-  var rot = ROTATION.indexOf(rotationNext_(addDays_(endYmd, 1)));      // the rotation, if every session gets done
+  var order = SPLITS[splitState_().split].order.map(function (id) { return TEMPLATES[id].name; });
+  var rot = Math.max(0, order.indexOf(rotationNext_(addDays_(endYmd, 1))));      // the rotation, if every session gets done
   for (var i = 1; i <= 7; i++) {
     var ymd = addDays_(endYmd, i);
     var dow = dayOfWeek_(ymd);
     var bits = [];
     var day = cfg.schedule[dow];
-    if (day && day.train) { var isRot = !day.session || day.session === 'Rotation' || ROTATION.indexOf(day.session) !== -1; bits.push(isRot ? ROTATION[rot++ % ROTATION.length] : '' + day.session); }
+    if (day && day.train) { var isRot = !day.session || day.session === 'Rotation' || !!LEGACY_TEMPLATES[day.session] || !!templateByName_(day.session); bits.push(isRot ? order[rot++ % order.length] : '' + day.session); }
     if (weighDays.indexOf(dow) !== -1) bits.push('weigh-in');
     if (bits.length) lines.push(DAY_NAMES[dow] + ': ' + bits.join(' · '));
   }

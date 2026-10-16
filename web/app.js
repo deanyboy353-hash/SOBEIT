@@ -419,6 +419,12 @@
     return h;
   }
   /** Your characters on a little stage, with the pet at their feet. */
+  /** The gym card's footer: main sessions this week against the target, and the optional Pump. */
+  function gymExtras() {
+    var tr = S.today.train; if (!tr) return '';
+    return '<div class="between" style="margin-top:10px;gap:8px;flex-wrap:wrap"><span class="small"><b>' + tr.week.done + ' of ' + tr.week.target + '</b> main sessions this week</span>' +
+      '<button class="btn soft sm" type="button" data-trainpump="1">' + icon('bolt', 's') + (tr.pump.doneToday ? 'Pump done today' : 'Pump: extra, +' + tr.pump.xp + ' XP') + '</button></div>';
+  }
   function stageCard() {
     var W = S.wardrobe, p = S.game && S.game.pet, n = names(); if (!W && !p) return '';
     var h = '<section class="card stagecard"><div class="between" style="margin-bottom:6px"><div class="eyebrow">' + esc(S.solo ? 'You' : n.team) + '</div>' + (W ? '<button class="btn ghost sm" type="button" data-dress="open">' + icon('sparkles', 's') + 'Dressing room</button>' : '') + '</div>';
@@ -544,7 +550,12 @@
         (gy.done ? '<span class="chip good">' + icon('check', 's') + 'Done</span>' : '<div class="stack right"><button class="btn primary sm" type="button" data-goto="train">Log it</button><button class="btn ghost sm" type="button" data-goto="train" style="padding:4px 8px">Change</button></div>') + '</div>' +
         (gy.dayOff && !gy.done ? '<div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap"><span class="tiny muted">Day off · leave around</span><select data-dayleave="1" aria-label="When to head to the gym today">' + leaveOptions(gy.leaveAround) + '</select></div>' +
           (gy.noDaytime ? '<p class="tiny muted" style="margin:6px 0 0">Your bus times only cover after work. Add the daytime times for the 3 under Transport in the Config tab and I\'ll pick the best pair for a 90-minute session.</p>' : '') : '') +
-        (gy.plan && !gy.done ? '<details class="gymplan"><summary class="small">Travel plan</summary><ul class="small">' + gy.plan.split('\n').map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ul></details>' : '') + '</section>';
+        (gy.plan && !gy.done ? '<details class="gymplan"><summary class="small">Travel plan</summary><ul class="small">' + gy.plan.split('\n').map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ul></details>' : '') + gymExtras() + '</section>';
+    } else if (ME && S.today.train && S.today.train.week.target) {
+      // no gym planned today: the next session still waits, and the Pump is there any time
+      var tr = S.today.train;
+      h += '<section class="card blush"><div class="between"><div><div class="eyebrow" style="color:var(--pink)">Next session</div><h2 style="margin-top:4px">' + esc(tr.next.name) + '</h2><div class="small muted" style="margin-top:4px">' + esc(tr.split) + ' · whenever you get there</div></div>' +
+        '<button class="btn primary sm" type="button" data-trainnext="1">Start</button></div>' + gymExtras() + '</section>';
     }
 
     seg('gym');
@@ -924,9 +935,10 @@
   }
   function setRow(r, n, d, rst) {
     var x = d[r.key] || {}, done = !!x.done, reps = x.reps !== undefined ? x.reps : r.reps, w = x.weight !== undefined && x.weight !== null ? x.weight : r.weight;
+    var rpe = x.rpe !== undefined && x.rpe !== null ? x.rpe : r.rpe, rpeBox = r.rpe !== undefined ? '<label class="rpebox"><span class="tiny muted">RPE</span><input type="number" inputmode="decimal" step="0.5" min="5" max="10" value="' + esc(rpe) + '" data-srpe aria-label="RPE"></label>' : '';
     return '<div class="set' + (done ? ' done' : '') + '" data-key="' + esc(r.key) + '"><span class="n">' + n + '</span>' +
       '<div class="setw"><span class="wkg"><input type="number" inputmode="decimal" step="0.5" min="0" value="' + esc(w) + '" placeholder="–" data-sw aria-label="Weight in kg"><span class="u">kg</span></span>' + (r.sub ? '<span class="tiny ' + (r.amrap ? 'amrap' : 'muted') + '">' + esc(r.sub) + '</span>' : '') + '</div>' +
-      '<div class="stepper"><button type="button" data-rd="-1" aria-label="One rep fewer">−</button><input type="number" inputmode="numeric" min="0" value="' + esc(reps) + '" data-sr aria-label="Reps"><button type="button" data-rd="1" aria-label="One rep more">+</button></div>' +
+      '<div class="stepper"><button type="button" data-rd="-1" aria-label="One rep fewer">−</button><input type="number" inputmode="numeric" min="0" value="' + esc(reps) + '" data-sr aria-label="Reps"><button type="button" data-rd="1" aria-label="One rep more">+</button></div>' + rpeBox +
       '<button class="check' + (done ? ' on' : '') + '" type="button" data-set="' + esc(r.key) + '" data-rest="' + esc(rst) + '" aria-label="Set done">' + icon('check') + '</button></div>';
   }
   function spark(vals) {
@@ -948,6 +960,128 @@
   }
   function startRest(secs) { if (!(secs > 0)) return; rest = { until: now() + secs * 1000 }; save('rest', rest); drawRest(); armRest(); }
   function endRest() { rest = null; save('rest', null); drawRest(); }
+  // ---- split templates (Training.gs): supersets, last time, RPE, the progression hint, swaps ----
+  function tplIdOf(name) { var T = (S.train && S.train.tpl) || {}; return Object.keys(T).filter(function (id) { return T[id].name === name && !T[id].extra; })[0] || ''; }
+  function rush() { return !!load('trush'); }
+  /** Each exercise with its set rows, pre-filled from last time (and the suggested weight when it's time to go up). */
+  function tplModel(tp) {
+    var one = rush();
+    return tp.ex.map(function (x, xi) {
+      var last = x.last || [], low = +((String(x.reps).match(/\d+/) || [8])[0]), rows = [];
+      for (var i = 0; i < (one ? 1 : x.sets); i++) {
+        var l = last[i] || last[last.length - 1];
+        rows.push({ key: tp.id + '|' + xi + '|' + i, weight: x.hint ? x.hint.weight : l ? l.w : '', reps: l && l.r ? l.r : low, rpe: l && l.rpe !== '' && l.rpe !== undefined ? l.rpe : x.rpe, target: x.reps, sub: l ? 'Last ' + l.w + ' × ' + l.r + (l.rpe ? ' @ ' + l.rpe : '') : '' });
+      }
+      return { x: x, xi: xi, rows: rows };
+    });
+  }
+  function shortDay(ymd) { return ymd ? new Date(ymd + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) : ''; }
+  function tplEx(m, d, restText, thenName) {
+    var x = m.x, last = x.last || [];
+    var h = '<div class="tplex"><div class="between" style="gap:8px"><div><h3 style="margin:0;font-size:18px">' + esc(x.exercise) + '</h3><div class="tiny muted">' + x.sets + ' × ' + esc(x.reps) + (x.rpe !== '' ? ' @ RPE ' + x.rpe : '') + (x.rest ? ' · rest ' + esc(x.rest) : '') + (x.swapped ? ' · instead of ' + esc(x.base) : '') + '</div></div>' +
+      '<button class="btn ghost sm" type="button" data-tplswap="' + m.xi + '">Swap</button></div>' +
+      '<p class="tiny muted" style="margin:6px 0 0">' + (last.length ? 'Last time (' + esc(shortDay(x.lastDate)) + '): ' + last.map(function (l) { return l.w + ' × ' + l.r + (l.rpe ? ' @ ' + l.rpe : ''); }).join(' · ') : 'No history for this one yet.') + '</p>' +
+      (x.hint ? '<p class="small hint" style="margin:6px 0 0">' + icon('flag', 's') + esc(x.hint.text) + '</p>' : '');
+    var rst = thenName ? '0' : restText;
+    h += '<div style="margin-top:8px">' + m.rows.map(function (r, i) { return setRow(r, i + 1, d, rst).replace('data-rest="', (thenName ? 'data-then="' + esc(thenName) + '" ' : '') + 'data-rest="'); }).join('') + '</div></div>';
+    return h;
+  }
+  function tplBody(tp, d) {
+    var ms = tplModel(tp), h = '<label class="row small rushrow"><input type="checkbox" data-trush' + (rush() ? ' checked' : '') + '> In a rush: log just the top set of each</label>';
+    for (var i = 0; i < ms.length; i++) {
+      var m = ms[i], n = ms[i + 1], rs = (m.x.restSec || 0) + 's';
+      if (m.x.group && n && n.x.group === m.x.group) {
+        h += '<section class="card superset"><div class="eyebrow">Superset · one rest of ' + esc(n.x.rest || m.x.rest) + ' after each pair</div>' + tplEx(m, d, '0', n.x.exercise) + '<div class="ssjoin" aria-hidden="true">then</div>' + tplEx(n, d, (n.x.restSec || m.x.restSec || 0) + 's') + '</section>';
+        i++;
+      } else h += '<section class="card">' + tplEx(m, d, rs) + '</section>';
+    }
+    return h;
+  }
+  function swapSheet(xi) {
+    var tp = S.train.tpl[tsel], x = tp && tp.ex[xi]; if (!x) return;
+    openSheet('<h2 style="margin:0 0 4px">Swap ' + esc(x.exercise) + '</h2><p class="small muted" style="margin:0 0 12px">Same muscles, same rules (no hip hinges, no calf raises). Kept for ' + esc(tp.name) + ' until you change it back.</p>' +
+      '<div class="stack">' + x.options.filter(function (o) { return o !== x.exercise; }).map(function (o) { return '<button class="btn line wide" type="button" data-swapto="' + esc(o) + '" data-xi="' + xi + '">' + esc(o) + '</button>'; }).join('') + '</div>' +
+      (x.swapped ? '<button class="btn soft wide" type="button" data-swapto="" data-xi="' + xi + '" style="margin-top:10px">Back to ' + esc(x.base) + '</button>' : ''));
+  }
+  function editSheet(id) {
+    var tp = S.train.tpl[id]; if (!tp) return;
+    var row = function (x) {
+      return '<div class="tplrow"><input type="text" list="exAll" value="' + esc(x.exercise) + '" data-f="exercise" aria-label="Exercise" style="grid-column:1/-1">' +
+        '<label class="tiny muted">Sets<input type="number" min="1" max="10" value="' + esc(x.sets) + '" data-f="sets"></label><label class="tiny muted">Reps<input type="text" value="' + esc(x.reps) + '" data-f="reps"></label>' +
+        '<label class="tiny muted">RPE<input type="number" step="0.5" min="5" max="10" value="' + esc(x.rpe) + '" data-f="rpe"></label><label class="tiny muted">Rest<input type="text" value="' + esc(x.rest) + '" data-f="rest"></label>' +
+        '<label class="tiny muted">Superset<select data-f="group">' + ['', 'a', 'b', 'c', 'd'].map(function (g) { return '<option value="' + g + '"' + (g === x.group ? ' selected' : '') + '>' + (g ? g.toUpperCase() : 'No') + '</option>'; }).join('') + '</select></label>' +
+        '<button class="btn ghost sm" type="button" data-tplrm="1">Remove</button></div>';
+    };
+    openSheet('<h2 style="margin:0 0 4px">Edit ' + esc(tp.name) + '</h2><p class="small muted" style="margin:0 0 12px">Two exercises with the same superset letter share one rest. No hip hinges or calf raises.</p>' + exList() +
+      '<form id="tplEdit" data-id="' + esc(id) + '" autocomplete="off"><div id="tplRows">' + tp.ex.map(row).join('') + '</div>' +
+      '<button class="btn line wide" type="button" data-tpladd="1" style="margin:8px 0">' + icon('plus', 's') + 'Add an exercise</button><button class="btn primary wide" type="submit">Save ' + esc(tp.name) + '</button></form>' +
+      '<button class="btn soft wide" type="button" data-tplreset="' + esc(id) + '" style="margin-top:8px">Reset to default</button>');
+    el('tplRows').dataset.blank = row({ exercise: '', sets: 3, reps: '10-12', rpe: 8, rest: '90s', group: '' });
+  }
+  /** Main lifts over your whole history (Strong and Liftoff imports included): best estimated 1RM per session. */
+  var LC_RANGES = [['3m', '3 months', 92], ['1y', 'Year', 366], ['all', 'All', 0]];
+  function liftChart() {
+    var L = (S.train && S.train.lifts) || [];
+    if (!L.length) return '<section class="card"><div class="head"><h3>Main lifts</h3></div><p class="empty">No main-lift history yet. Import from Strong or Liftoff below, or log a session.</p></section>';
+    var range = load('lcRange') || '1y', off = load('lcOff') || L.slice(4).map(function (l) { return l.lift; });
+    var days = (LC_RANGES.filter(function (r) { return r[0] === range; })[0] || LC_RANGES[1])[2];
+    var from = days ? ymdOf(new Date(now() - days * 864e5)) : '0000';
+    var shown = L.map(function (l, i) { return { lift: l.lift, slot: i + 1, pts: l.points.filter(function (p) { return p[0] >= from; }) }; }).filter(function (l) { return off.indexOf(l.lift) === -1 && l.pts.length; });
+    var W = 320, H = 180, PL = 34, PR = 8, PT = 10, PB = 22, h = '<section class="card liftchart"><div class="head"><h3>Main lifts</h3><span class="row" style="gap:4px">' +
+      LC_RANGES.map(function (r) { return '<button type="button" class="chip' + (r[0] === range ? ' lilac' : '') + '" data-lcrange="' + r[0] + '" aria-pressed="' + (r[0] === range) + '">' + r[1] + '</button>'; }).join('') + '</span></div>' +
+      '<p class="tiny muted" style="margin:0 0 6px">Estimated one-rep max (kg), best set each session.</p>';
+    if (shown.length) {
+      var dates = {}; shown.forEach(function (l) { l.pts.forEach(function (p) { dates[p[0]] = 1; }); });
+      var ds = Object.keys(dates).sort(), t0 = Date.parse(ds[0]), t1 = Date.parse(ds[ds.length - 1]) || t0 + 1;
+      var vals = [].concat.apply([], shown.map(function (l) { return l.pts.map(function (p) { return p[1]; }); })), lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+      var step = [5, 10, 20, 25, 50].filter(function (s2) { return (hi - lo) / s2 <= 4; })[0] || 50; lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step; if (hi === lo) hi = lo + step;
+      var X = function (d2) { return PL + (t1 === t0 ? (W - PL - PR) / 2 : (Date.parse(d2) - t0) / (t1 - t0) * (W - PL - PR)); }, Y = function (v) { return PT + (1 - (v - lo) / (hi - lo)) * (H - PT - PB); };
+      var svg = '<svg id="liftSvg" class="lcsvg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Main lifts, estimated one-rep max over time">';
+      for (var v = lo; v <= hi + 0.001; v += step) svg += '<line class="lcgrid" x1="' + PL + '" x2="' + (W - PR) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '"/><text class="lcax" x="' + (PL - 4) + '" y="' + (Y(v) + 3).toFixed(1) + '" text-anchor="end">' + v + '</text>';
+      [ds[0], ds[Math.floor(ds.length / 2)], ds[ds.length - 1]].filter(function (x2, i2, a2) { return a2.indexOf(x2) === i2; }).forEach(function (d2, i2, a2) { svg += '<text class="lcax" x="' + X(d2).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="' + (i2 === 0 && a2.length > 1 ? 'start' : i2 === a2.length - 1 && a2.length > 1 ? 'end' : 'middle') + '">' + esc(new Date(d2 + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: days && days < 366 ? undefined : '2-digit' })) + '</text>'; });
+      shown.forEach(function (l) {
+        svg += '<polyline class="lcline" style="stroke:var(--lc' + l.slot + ')" points="' + l.pts.map(function (p) { return X(p[0]).toFixed(1) + ',' + Y(p[1]).toFixed(1); }).join(' ') + '"/>';
+        var e = l.pts[l.pts.length - 1]; svg += '<circle class="lcdot" style="fill:var(--lc' + l.slot + ')" cx="' + X(e[0]).toFixed(1) + '" cy="' + Y(e[1]).toFixed(1) + '" r="4"/>';
+      });
+      svg += '<line id="lcCross" class="lccross" x1="0" x2="0" y1="' + PT + '" y2="' + (H - PB) + '" visibility="hidden"/></svg>';
+      h += '<div class="lcwrap" data-lc=\'' + esc(JSON.stringify({ t0: t0, t1: t1, PL: PL, PR: PR, W: W, ds: ds })) + '\'>' + svg + '<div class="lctip" id="lcTip" hidden></div></div>';
+    } else h += '<p class="empty">Nothing in this range. Try All.</p>';
+    h += '<div class="lclegend">' + L.map(function (l, i) {
+      var on = off.indexOf(l.lift) === -1, e = l.points[l.points.length - 1];
+      return '<button type="button" class="lckey' + (on ? '' : ' off') + '" data-lclift="' + esc(l.lift) + '" aria-pressed="' + on + '"><i style="background:var(--lc' + (i + 1) + ')"></i>' + esc(l.lift) + ' <b>' + Math.round(e[1]) + '</b></button>';
+    }).join('') + '</div>';
+    h += '<details class="lctable"><summary class="small muted">Show as a table</summary>' + L.map(function (l) {
+      return '<div class="eyebrow" style="margin-top:8px">' + esc(l.lift) + '</div><table class="small"><tr><th>Date</th><th>Best set</th><th>Est. 1RM</th></tr>' + l.points.slice(-8).reverse().map(function (p) { return '<tr><td>' + esc(shortDay(p[0])) + '</td><td>' + p[2] + ' × ' + p[3] + '</td><td>' + Math.round(p[1]) + ' kg</td></tr>'; }).join('') + '</table>';
+    }).join('') + '</details></section>';
+    return h;
+  }
+  /** Hover or drag on the chart: a crosshair and each shown lift's value on that day. */
+  function lcHover(ev) {
+    var wrap = ev.target.closest && ev.target.closest('.lcwrap'); if (!wrap) return;
+    var c = JSON.parse(wrap.getAttribute('data-lc')), svg = wrap.querySelector('svg'), r = svg.getBoundingClientRect(), tip = el('lcTip'), cross = el('lcCross');
+    var x = (ev.clientX - r.left) / r.width * c.W, tt = c.t0 + Math.max(0, Math.min(1, (x - c.PL) / (c.W - c.PL - c.PR))) * (c.t1 - c.t0);
+    var day = c.ds.reduce(function (b, d2) { return Math.abs(Date.parse(d2) - tt) < Math.abs(Date.parse(b) - tt) ? d2 : b; }, c.ds[0]);
+    var off = load('lcOff') || (S.train.lifts || []).slice(4).map(function (l) { return l.lift; });
+    var rows = (S.train.lifts || []).map(function (l, i) { var p = l.points.filter(function (q) { return q[0] === day; })[0]; return off.indexOf(l.lift) === -1 && p ? '<div><i style="background:var(--lc' + (i + 1) + ')"></i>' + esc(l.lift) + ': <b>' + Math.round(p[1]) + ' kg</b> <span class="muted">(' + p[2] + ' × ' + p[3] + ')</span></div>' : ''; }).join('');
+    if (!rows) { tip.hidden = true; cross.setAttribute('visibility', 'hidden'); return; }
+    var cx = c.PL + (c.t1 === c.t0 ? 0 : (Date.parse(day) - c.t0) / (c.t1 - c.t0)) * (c.W - c.PL - c.PR);
+    cross.setAttribute('x1', cx); cross.setAttribute('x2', cx); cross.setAttribute('visibility', 'visible');
+    tip.innerHTML = '<b>' + esc(shortDay(day)) + '</b>' + rows; tip.hidden = false;
+    tip.style.left = Math.min(Math.max(0, cx / c.W * r.width - 70), r.width - 150) + 'px';
+  }
+  document.addEventListener('pointermove', lcHover);
+  document.addEventListener('pointerdown', lcHover);
+  document.addEventListener('pointerleave', function (ev) { if (ev.target.classList && ev.target.classList.contains('lcwrap')) { var tp2 = el('lcTip'); if (tp2) tp2.hidden = true; } }, true);
+  /** Settings, Training: the main split. */
+  function trainingCard() {
+    var sp = S.train && S.train.split; if (!ME || !sp) return '';
+    var mig = sp.migration;
+    return '<section class="card" id="trainingCard"><div class="head"><h3>Training</h3></div>' +
+      '<label class="small" style="display:block">Main split<select data-split="1" style="width:100%;margin-top:4px">' + sp.splits.map(function (x) { return '<option value="' + esc(x.id) + '"' + (x.id === sp.split ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join('') + '</select></label>' +
+      '<p class="tiny muted" style="margin:8px 0 0">' + sp.splits.map(function (x) { return '<b>' + esc(x.name) + '</b>: ' + esc(x.sessions.join(', ')); }).join('<br>') + '</p>' +
+      '<p class="small" style="margin:10px 0 0">A rotation, not fixed days: the next session waits for you. Switching keeps your history and starts the new split at its first session. Target: ' + sp.week.target + ' main sessions a week (' + sp.week.done + ' so far). ' + esc(sp.pump.name) + ' is an extra any time, for bonus XP.</p>' +
+      (mig ? '<p class="tiny muted" style="margin:8px 0 0">Moved to templates ' + esc(String(mig.at).slice(0, 10)) + ': gym data backed up first (' + mig.backup.rows + ' rows, "' + esc(mig.backup.sheet) + '" in your Nudge backups sheet). ' + mig.mapped + ' of ' + mig.sets + ' logged sets carry over to the templates' + (Object.keys(mig.renamed || {}).length ? ' (' + Object.keys(mig.renamed).length + ' old names matched up)' : '') + (mig.other && mig.other.length ? '; ' + mig.other.length + ' other exercises kept as they were' : '') + '.</p>' : '') + '</section>';
+  }
   var trainLater = false;
   function renderTrain() {
     if (!ME) return;
@@ -955,26 +1089,29 @@
     var ae = document.activeElement;
     if (ae && ae.tagName === 'INPUT' && ae.closest('#tab-train') && !ae.closest('form')) { trainLater = true; return; }
     trainLater = false;
-    var t = S.train;
-    if (!tsel || !t.plans[tsel]) tsel = load('tsel-' + S.today.date) || t.today || t.sessions[0];
-    if (!t.plans[tsel]) tsel = t.sessions[0];
-    var d = draft(), h = '<div class="top"><div><h1>Train</h1><div class="sub">' + (t.today ? 'Today: ' + esc(t.today) : 'Rest day. Next up: ' + esc(t.rotationNext || '') + '. Train any session you like.') + '</div></div>' + meButton() + '</div>';
-    // one rotation indicator: the three sessions in order, the one you're on lit up; any other session from the picker
-    if (t.rotation) h += '<section class="card spot trainhero"><div class="eyebrow" style="margin-bottom:8px">' + (t.today ? 'Today' : 'Rotation') + '</div><div class="rotstrip" aria-label="Your training rotation">' + t.rotation.map(function (r) { var cur = r === tsel; return '<button type="button" class="rot' + (cur ? ' on' : '') + (r === (t.today || t.rotationNext) ? ' next' : '') + '" data-tsel="' + esc(r) + '" aria-pressed="' + cur + '">' + esc(r) + '</button>'; }).join('<span class="rotarr" aria-hidden="true">›</span>') + '</div>' +
-      '<div class="rotmeta"><span class="tiny muted">Next is the one you\'ve gone longest without. Logging any session moves it on.</span>' +
-      (t.sessions.filter(function (s) { return t.rotation.indexOf(s) === -1; }).length ? '<label class="tiny rotpick">Other session <select data-tselect="1" aria-label="Pick a different session"><option value="">Choose…</option>' + t.sessions.filter(function (s) { return t.rotation.indexOf(s) === -1; }).map(function (s) { return '<option value="' + esc(s) + '"' + (s === tsel ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('') + '</select></label>' : '') + '</div>' + '</section>';
+    var t = S.train, TP = t.tpl || {}, sp = t.split;
+    if (!tsel || !(TP[tsel] || t.plans[tsel])) tsel = load('tsel-' + S.today.date) || tplIdOf(t.today) || (sp && sp.next.id) || t.today || t.sessions[0];
+    if (!(TP[tsel] || t.plans[tsel])) tsel = (sp && sp.next.id) || t.sessions[0];
+    var tp = TP[tsel], tselName = tp ? tp.name : tsel;
+    var d = draft(), h = '<div class="top"><div><h1>Train</h1><div class="sub">' + (t.today ? 'Today: ' + esc(t.today) : 'Next up: ' + esc(t.rotationNext || '') + '. Any day you get there.') + '</div></div>' + meButton() + '</div>';
+    // the split: its sessions in order, the next one marked; any session can be picked; the Pump is an extra
+    if (sp) h += '<section class="card spot trainhero"><div class="between" style="margin-bottom:8px"><div class="eyebrow">' + esc(sp.name) + '</div><span class="tiny muted"><b>' + sp.week.done + ' of ' + sp.week.target + '</b> this week</span></div><div class="rotstrip" aria-label="Your training rotation">' + sp.order.map(function (o) { var cur = o.id === tsel; return '<button type="button" class="rot' + (cur ? ' on' : '') + (o.id === sp.next.id ? ' next' : '') + '" data-tsel="' + esc(o.id) + '" aria-pressed="' + cur + '">' + esc(o.name) + '</button>'; }).join('<span class="rotarr" aria-hidden="true">›</span>') + '</div>' +
+      '<div class="rotmeta"><span class="tiny muted">Next up: <b>' + esc(sp.next.name) + '</b>. Only a logged session moves it on; a day off moves nothing.</span>' +
+      (t.sessions.length ? '<label class="tiny rotpick">Other workout <select data-tselect="1" aria-label="Pick one of your own workouts"><option value="">Choose…</option>' + t.sessions.map(function (x) { return '<option value="' + esc(x) + '"' + (x === tsel ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select></label>' : '') + '</div>' +
+      '<button type="button" class="btn ' + (tsel === 'pump' ? 'primary' : 'soft') + ' sm pumpbtn" data-tsel="pump">' + icon('bolt', 's') + esc(sp.pump.name) + ' · extra, +' + sp.pump.xp + ' XP' + (sp.pump.doneToday ? ' · done today' : '') + '</button></section>';
     h += '<div id="restSlot"></div>';
-    if (t.doneToday) h += '<div class="note">Today\'s workout is logged. Log another below if you did one.</div>';
+    if (tsel === 'pump') h += '<div class="note">An extra session: bonus XP, and your rotation stays on ' + esc(sp.next.name) + '. It never counts as missed.</div>';
+    else if (sp ? sp.doneToday.length > 0 : t.doneToday) h += '<div class="note">Today\'s workout is logged. Log another below if you did one.</div>';
     else {
-      if (tsel !== t.today) h += '<div class="swap"><div class="grow"><b>Doing ' + esc(tsel) + ' today?</b><div class="tiny muted">' + (t.today ? 'Planned: ' + esc(t.today) : 'Today is a rest day') + '. Switching moves your calendar and gym task too.</div></div><button class="btn primary sm" type="button" data-setsession="' + esc(tsel) + '">Switch</button></div>';
+      if (tselName !== t.today) h += '<div class="swap"><div class="grow"><b>Doing ' + esc(tselName) + ' today?</b><div class="tiny muted">' + (t.today ? 'Planned: ' + esc(t.today) : 'Today is a rest day') + '. Switching moves your calendar too.</div></div><button class="btn primary sm" type="button" data-setsession="' + esc(tselName) + '">Switch</button></div>';
       else if (t.changed) h += '<div class="swap"><div class="grow small">Changed from ' + (t.planned ? esc(t.planned) : 'a rest day') + '.</div><button class="btn line sm" type="button" data-setsession="' + esc(t.planned) + '" data-undo="1">Undo</button></div>';
       var hints = [];
-      if (t.rotationNext && t.rotationNext !== tsel && !t.today) hints.push('<button class="chip lilac" type="button" data-tsel="' + esc(t.rotationNext) + '">Next in the rotation: ' + esc(t.rotationNext) + '</button>');
       if (t.today) hints.push('<button class="chip" type="button" data-setsession="" data-rest="1">Make today a rest day</button>');
       if (S.health && S.health.readiness) hints.unshift('<span class="chip ' + (S.health.readiness.score >= 80 ? 'good' : S.health.readiness.score >= 60 ? 'lilac' : 'pink') + '">' + icon('bolt', 's') + 'Readiness ' + S.health.readiness.score + '</span>');
       if (hints.length) h += '<div class="chips" style="margin:-4px 0 14px">' + hints.join('') + '</div>';
     }
-    trainModel().forEach(function (x) {
+    if (tp) h += tplBody(tp, d);
+    else trainModel().forEach(function (x) {
       var m = x.m, a = x.a;
       h += '<section class="card"><div class="head"><div><div class="eyebrow">' + esc(x.eyebrow) + (x.swapped ? ' · swapped' : '') + '</div><h2 style="margin-top:2px;font-size:19px">' + esc(x.name) + '</h2></div><span class="row" style="gap:6px">' + (m && m.tm && !x.swapped ? '<button class="chip pink" type="button" data-tmedit="' + esc(m.basedOn) + '" aria-label="Change training max">TM ' + m.tm + ' kg ' + icon('edit', 's') + '</button>' : '') +
         '<button class="iconbtn" style="width:34px;height:34px" type="button" data-exmenu="' + esc(x.id) + '" aria-label="Change ' + esc(x.name) + '">' + icon('more', 's') + '</button></span></div>';
@@ -985,12 +1122,14 @@
       if (m && m.tier === 'T1' && m.tm && !x.swapped) h += '<p class="tiny muted" style="margin:8px 0 0">Sets marked <span class="amrap">+</span>: as many good reps as you can. The heavy one sets next week\'s training max.</p>';
       h += '</section>';
     });
-    h += '<button class="btn line wide" type="button" id="addEx" style="margin-bottom:12px">' + icon('plus', 's') + 'Add an exercise</button>';
+    if (!tp) h += '<button class="btn line wide" type="button" id="addEx" style="margin-bottom:12px">' + icon('plus', 's') + 'Add an exercise</button>';
     var count = doneCount();
     h += '<button class="btn primary big wide" type="button" id="finishWk"' + (count ? '' : ' disabled') + '>Finish workout · ' + count + ' set' + (count === 1 ? '' : 's') + '</button>';
-    if (load(custKeys(tsel)[0]) || load(custKeys(tsel)[1])) h += '<p class="center" style="margin:10px 0 0"><button class="linkbtn small muted" type="button" id="resetCust">Undo my changes to ' + esc(tsel) + '</button></p>';
+    if (!tp && (load(custKeys(tsel)[0]) || load(custKeys(tsel)[1]))) h += '<p class="center" style="margin:10px 0 0"><button class="linkbtn small muted" type="button" id="resetCust">Undo my changes to ' + esc(tsel) + '</button></p>';
+    if (tp) h += '<p class="center" style="margin:10px 0 0"><button class="linkbtn small muted" type="button" data-tpledit="' + esc(tp.id) + '">Edit ' + esc(tp.name) + '</button>' + (tp.edited || tp.swaps ? ' · <button class="linkbtn small muted" type="button" data-tplreset="' + esc(tp.id) + '">Reset to default</button>' : '') + '</p>';
+    h += liftChart();
     var pr = t.progress;
-    h += '<section class="card" style="margin-top:14px"><div class="head"><h3>Progress</h3><span class="small muted">' + pr.workouts + ' workout' + (pr.workouts === 1 ? '' : 's') + '</span></div>' + pr.lifts.map(function (l) {
+    h += '<section class="card" style="margin-top:14px"><div class="head"><h3>Progress</h3><span class="small muted">' + pr.workouts + ' workout' + (pr.workouts === 1 ? '' : 's') + '</span></div>' + pr.lifts.filter(function (l) { return (l.best || l.tm) && !/^(dead ?lift|squat|back squat|front squat|romanian deadlift)$/i.test(l.lift); }).map(function (l) {
       var last = l.tmHistory.filter(function (x) { return x.reps; }).slice(-1)[0];
       return '<div class="item" style="display:block"><div class="between"><div><div class="t">' + esc(l.lift) + '</div><div class="m">' + (l.best ? 'Best est. 1RM ' + Math.round(l.best) + ' kg' : 'No sets yet') + (last ? ' · last heavy set ' + last.reps + ' reps' : '') + '</div></div><div class="num" style="font-size:20px;font-weight:700">' + (l.tm ? l.tm + '<span class="tiny muted"> kg</span>' : '–') + '</div></div>' + spark(l.tmHistory.map(function (x) { return x.tm; })) + '</div>';
     }).join('');
@@ -1021,8 +1160,15 @@
       '<button class="btn primary wide" type="submit">Add</button></form>');
   }
   function finishWorkout() {
-    var d = draft(), sets = [];
-    trainModel().forEach(function (x) {
+    var d = draft(), sets = [], tp = (S.train.tpl || {})[tsel];
+    if (tp) tplModel(tp).forEach(function (m) {
+      m.rows.forEach(function (r, i) {
+        var s2 = d[r.key]; if (!s2 || !s2.done) return;
+        var w2 = s2.weight !== undefined && s2.weight !== null ? s2.weight : r.weight, rp = s2.rpe !== undefined && s2.rpe !== null ? s2.rpe : r.rpe;
+        sets.push({ exercise: m.x.exercise, tier: 'Acc', set: i + 1, weight: +w2 || 0, reps: +s2.reps || 0, rpe: rp === '' ? '' : +rp, target: m.x.reps });
+      });
+    });
+    else trainModel().forEach(function (x) {
       x.rows.forEach(function (r, i) {
         var s = d[r.key]; if (!s || !s.done) return;
         var w = s.weight !== undefined && s.weight !== null ? s.weight : r.weight;
@@ -1033,11 +1179,11 @@
     var bad = sets.filter(function (s) { return !s.reps; }).length;
     if (bad && !confirm(bad + ' ticked set' + (bad === 1 ? ' has' : 's have') + ' 0 reps and won\'t be saved. Finish anyway?')) return;
     el('finishWk').disabled = true; el('finishWk').textContent = 'Saving…';
-    call('saveWorkout', [tsel, sets, { started: load('wkstart-' + draftKey()) || 0 }], function (res) {
+    call('saveWorkout', [tp ? tp.name : tsel, sets, { started: load('wkstart-' + draftKey()) || 0, template: tp ? tp.id : '' }], function (res) {
       save(draftKey(), null); save('wkstart-' + draftKey(), null); endRest(); armRest();
       apply(res.state);
       confetti(true); chime([660, 880, 1100, 1320]); buzz([60, 40, 60, 40, 150]);
-      var h = '<div class="center">' + icon('trophy', 'l') + '<h2 style="margin:8px 0">Workout logged</h2>' + (res.volume ? '<p class="muted" style="margin:0 0 10px">' + res.sets + ' sets · ' + fmt(res.volume) + ' kg lifted' + (res.minutes ? ' · ' + res.minutes + ' min' : '') + '</p>' : '') + '</div>';
+      var h = '<div class="center">' + icon('trophy', 'l') + '<h2 style="margin:8px 0">' + (res.extra ? 'Pump logged' : 'Workout logged') + '</h2>' + (res.extra ? '<p class="small" style="margin:0 0 8px">' + (res.bonus ? '+' + res.bonus + ' bonus XP. ' : 'Bonus XP already earned today. ') + 'Your rotation stays where it was.</p>' : '') + (res.volume ? '<p class="muted" style="margin:0 0 10px">' + res.sets + ' sets · ' + fmt(res.volume) + ' kg lifted' + (res.minutes ? ' · ' + res.minutes + ' min' : '') + '</p>' : '') + '</div>';
       (res.changes || []).forEach(function (c) { h += '<section class="card tint">' + '<b>' + esc(c.lift) + '</b>: ' + c.reps + ' reps on the heavy set<br>' + (c.change ? 'Training max ' + c.from + ' → <b>' + c.to + ' kg</b>' : 'Training max stays at ' + c.from + ' kg. Go again next week.') + '</section>'; });
       (res.prs || []).slice(0, 3).forEach(function (r) { h += '<section class="card blush"><b>New record.</b> ' + esc(r.exercise) + ' ' + r.weight + ' kg × ' + r.reps + (r.e1rm ? ' (est. 1RM ' + Math.round(r.e1rm) + ' kg)' : '') + '</section>'; });
       openSheet(h + '<button class="btn primary wide" type="button" data-close>Done</button>');
@@ -1050,6 +1196,7 @@
     var d = draft(), k = row.getAttribute('data-key'); d[k] = d[k] || {};
     if (ev.target.hasAttribute('data-sw')) d[k].weight = ev.target.value === '' ? null : +ev.target.value;
     if (ev.target.hasAttribute('data-sr')) d[k].reps = ev.target.value === '' ? 0 : Math.max(0, Math.round(+ev.target.value));
+    if (ev.target.hasAttribute('data-srpe')) d[k].rpe = ev.target.value === '' ? null : +ev.target.value;
     saveDraft(d);
   });
   document.addEventListener('submit', function (ev) {
@@ -1123,6 +1270,7 @@
     h += laterCard();
     // settings
     if (window.NudgeSetup) h += NudgeSetup.settingsCard();
+    h += trainingCard();
     h += '<section class="card"><div class="head"><h3>Settings</h3></div>';
     h += '<div class="eyebrow" style="margin-bottom:6px">Your look</div>' + lookPicker();
     h += '<div class="eyebrow" style="margin:6px 0">Notifications</div>';
@@ -2213,6 +2361,26 @@
   }
   document.addEventListener('change', function (ev) { if (ev.target.dataset && ev.target.dataset.tselect && ev.target.value) { tsel = ev.target.value; save('tsel-' + S.today.date, tsel); renderTrain(); } });
   document.addEventListener('change', function (ev) {
+    var ds2 = ev.target.dataset || {};
+    if (ds2.trush !== undefined) { save('trush', ev.target.checked); return renderTrain(); }
+    if (ds2.split) {
+      var sp = S.train.split, to = sp.splits.filter(function (x) { return x.id === ev.target.value; })[0];
+      if (!to || to.id === sp.split) return;
+      if (!confirm('Switch to ' + to.name + '? Your history stays, and it starts at ' + to.sessions[0] + '.')) { ev.target.value = sp.split; return; }
+      call('setSplit', [to.id], function (res) { tsel = null; apply(res, 'Main split: ' + to.name + '. Next up: ' + to.sessions[0] + '.'); });
+    }
+  });
+  document.addEventListener('submit', function (ev) {
+    if (ev.target.id !== 'tplEdit') return;
+    ev.preventDefault();
+    var id = ev.target.dataset.id, rows = [].slice.call(ev.target.querySelectorAll('.tplrow')).map(function (r) {
+      var o = {}; r.querySelectorAll('[data-f]').forEach(function (i) { o[i.dataset.f] = i.value.trim(); }); return o;
+    }).filter(function (o) { return o.exercise; });
+    if (!rows.length) return toast('Keep at least one exercise.', true);
+    closeSheet();
+    call('editTemplate', [id, rows], function (res) { apply(res, 'Saved ' + S.train.tpl[id].name + '.'); });
+  });
+  document.addEventListener('change', function (ev) {
     if (ev.target.id !== 'wkImport' || !ev.target.files.length) return;
     var f = ev.target.files[0]; ev.target.value = '';
     toast('Reading ' + f.name + '…');
@@ -3005,6 +3173,29 @@
     if (ds.pad !== undefined && !(recallGame && recallGame.on && recallGame.input)) { toast(recallGame && recallGame.on ? 'Watch first, then copy it' : 'Tap Start, then copy the pattern'); return; }
     // train
     if (ds.tsel) { tsel = ds.tsel; save('tsel-' + S.today.date, tsel); return renderTrain(); }
+    if (ds.trainpump !== undefined || ds.trainnext !== undefined) { tsel = ds.trainpump !== undefined ? 'pump' : (S.today.train && tplIdOf(S.today.train.next.name)) || tsel; save('tsel-' + S.today.date, tsel); return showTab('train'); }
+    if (ds.tplswap !== undefined) return swapSheet(+ds.tplswap);
+    if (ds.swapto !== undefined) {
+      var stp = S.train.tpl[tsel], sx = stp && stp.ex[+ds.xi]; if (!sx) return;
+      var to = ds.swapto || sx.base, base = sx.base;
+      sx.exercise = to; sx.swapped = to !== base; sx.last = []; sx.hint = null;      // on screen now; last time arrives with the save
+      closeSheet(); renderTrain();
+      return call('swapExercise', [stp.id, base, ds.swapto], function (res) { apply(res, ds.swapto ? 'Swapped to ' + to + ' for every ' + stp.name + '.' : 'Back to ' + base + '.'); });
+    }
+    if (ds.tpledit) return editSheet(ds.tpledit);
+    if (ds.tplreset) {
+      var rtp = S.train.tpl[ds.tplreset]; if (!rtp || !confirm('Put ' + rtp.name + ' back to the default? Your edits and swaps for it go; your history stays.')) return;
+      closeSheet();
+      return call('resetTemplate', [ds.tplreset], function (res) { apply(res, rtp.name + ' is back to the default.'); });
+    }
+    if (ds.tpladd) { var box = el('tplRows'); if (box) box.insertAdjacentHTML('beforeend', box.dataset.blank); return; }
+    if (ds.tplrm) { var rr = t.closest('.tplrow'); if (rr && document.querySelectorAll('#tplRows .tplrow').length > 1) rr.remove(); return; }
+    if (ds.lcrange) { save('lcRange', ds.lcrange); return renderTrain(); }
+    if (ds.lclift) {
+      var lifts = (S.train.lifts || []), offl = load('lcOff') || lifts.slice(4).map(function (l) { return l.lift; }), ix = offl.indexOf(ds.lclift);
+      if (ix === -1) offl.push(ds.lclift); else offl.splice(ix, 1);
+      save('lcOff', offl); return renderTrain();
+    }
     if (ds.setsession !== undefined) {
       var ns = ds.setsession;
       if (ds.rest && !confirm('Make today a rest day? Your gym event and task are removed.')) return;
@@ -3016,10 +3207,11 @@
       dd[k] = dd[k] || {}; dd[k].done = !dd[k].done;
       var wi = row.querySelector('[data-sw]'), rin = row.querySelector('[data-sr]');
       dd[k].weight = wi.value === '' ? null : +wi.value; dd[k].reps = Math.max(0, Math.round(+rin.value || 0));
+      var rpi = row.querySelector('[data-srpe]'); if (rpi) dd[k].rpe = rpi.value === '' ? null : +rpi.value;
       if (!load('wkstart-' + draftKey())) save('wkstart-' + draftKey(), now());
       saveDraft(dd);
       row.classList.toggle('done', dd[k].done); t.classList.toggle('on', dd[k].done);
-      if (dd[k].done) { buzz(20); startRest(restSecs(ds.rest)); }
+      if (dd[k].done) { buzz(20); startRest(restSecs(ds.rest)); if (ds.then) toast('Superset: now ' + ds.then + ', then rest.'); }
       return drawFinish();
     }
     if (ds.restadd) { if (rest) { rest.until = Math.max(now() + 5000, rest.until + +ds.restadd * 1000); save('rest', rest); drawRest(); armRest(); } return; }

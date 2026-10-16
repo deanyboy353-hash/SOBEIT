@@ -37,14 +37,14 @@ var TABS = {
 // Columns for the data tabs. Add a column at the END of a list and it is
 // created automatically next time setup() runs.
 var HEADERS = {
-  gym: ['Date', 'Day', 'Session', 'Travel', 'Leave at', 'Weather', 'Status', 'Ticked at', 'Arrived', 'Left', 'Minutes at gym', 'Notes', 'Bus', 'Gym window', 'Home by', 'Plan'],
+  gym: ['Date', 'Day', 'Session', 'Travel', 'Leave at', 'Weather', 'Status', 'Ticked at', 'Arrived', 'Left', 'Minutes at gym', 'Notes', 'Bus', 'Gym window', 'Home by', 'Plan', 'Template'],
   weight: ['Date', 'Time', 'Weight (kg)', 'You typed', 'Change (kg)'],
   food: ['Date', 'Time', 'Item', 'kcal', 'Protein (g)', 'Source', 'Entry', 'Photo', 'Notes'],
   choresLog: ['Date', 'Who', 'Task', 'Planned (min)', 'Actual (min)', 'Result', 'Started', 'Finished', 'Steps done'],
   later: ['Date', 'Who', 'Thing', 'Done', 'ID'],
   xp: ['Date', 'Time', 'Who', 'What', 'XP', 'Kind'],
   shopping: ['Date', 'Item', 'Who', 'Got', 'ID'],
-  workoutLog: ['Date', 'Session', 'Exercise', 'Tier', 'Set', 'Weight (kg)', 'Reps', 'Target', 'e1RM', 'Type', 'Workout'],
+  workoutLog: ['Date', 'Session', 'Exercise', 'Tier', 'Set', 'Weight (kg)', 'Reps', 'Target', 'e1RM', 'Type', 'Workout', 'RPE', 'Template'],
   workouts: ['Date', 'ID', 'Session', 'Start', 'End', 'Minutes', 'Sets', 'Volume (kg)', 'PRs', 'Notes'],
   cardio: ['Date', 'ID', 'Type', 'Minutes', 'Distance (km)', 'kcal', 'Avg HR', 'Notes'],
   tmHistory: ['Date', 'Lift', 'Old TM', 'New TM', 'Change', '1+ reps'],

@@ -18,7 +18,7 @@ function rpcTable_() {
     appState: appState, batch: batch, choresState: choresState, questDone: questDone, claimQuest: claimQuest, whatNow: whatNow,
     brainDump: brainDump, saveBrainDump: saveBrainDump, addQuest: addQuest, addShopping: addShopping, toggleShopping: toggleShopping,
     askToJoin: askToJoin, planChore: planChore, startChore: startChore, stepDone: stepDone, extendChore: extendChore,
-    finishChore: finishChore, parkThing: parkThing, clearLater: clearLater, highFive: highFive, lazyDay: lazyDay, aftersReport: aftersReport, clientError: clientError,
+    finishChore: finishChore, parkThing: parkThing, clearLater: clearLater, highFive: highFive, lazyDay: lazyDay, aftersReport: aftersReport, setSplit: setSplit, swapExercise: swapExercise, editTemplate: editTemplate, resetTemplate: resetTemplate, clientError: clientError,
     routineStep: routineStep, saveRoutine: saveRoutine, setupState: setupState, saveSetup: saveSetup, previewChores: previewChores, buildChores: buildChores, saveChore: saveChore, choreAction: choreAction, deleteRoutine: deleteRoutine, chatPing: chatPing, setDayOff: setDayOff, setDayOffLeave: setDayOffLeave, addWater: addWater, setTheme: setTheme, todayState: todayState, gymDone: gymDone,
     logWeightNow: logWeightNow, foodState: foodState, logPreset: logPreset, quickAdd: quickAdd, quickAddPhoto: quickAddPhoto, importWorkoutCsv: importWorkoutCsv, backupStatus: backupStatus, backupNow: backupNow, exportAll: exportAll, importBackup: importBackup, undoLast: undoLast,
     saveClaudeKey: saveClaudeKey, trainState: trainState, setTrainingMax: setTrainingMax, saveWorkout: saveWorkout,
@@ -171,6 +171,7 @@ function appState_(who) {
 var STATE_TTL = 300, STATE_PART = 90000;
 function appState(key) {
   var who = who_(key);
+  if (!prop_('TRAIN_V3')) try { withLock_(ensureSplits_); } catch (e) { log_('WARN', 'Training splits move: ' + e); }   // once: back up the gym data, then templates
   var cache = stateCache_(), hit = cache && getCachedState_(cache, who);
   var stamp = todayYmd_() + '|' + dayPart(minutesNow_());          // never serve yesterday's (or this morning's) screen after midnight / the next part of the day
   if (hit && hit.cacheStamp === stamp) { hit.now = new Date().getTime(); return hit; }
