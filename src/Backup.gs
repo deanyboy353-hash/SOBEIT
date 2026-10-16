@@ -15,7 +15,7 @@ var BACKUP_CHUNK = 45000;   // a Sheets cell holds 50,000 characters
 function safeProps_() {
   var all = PropertiesService.getScriptProperties().getProperties(), out = {};
   Object.keys(all).forEach(function (k) {
-    if (/KEY|TOKEN|SECRET|PASS|_SA$|^FCM|^DEVICES|^BACKUP_ID$/i.test(k)) return;
+    if (/KEY|TOKEN|SECRET|PASS|_SA$|^FCM|^DEVICES|^BACKUP_ID$|^CHAT_|^SA_TOKEN/i.test(k)) return;   // the chat room is a secret too
     out[k] = all[k];
   });
   return out;

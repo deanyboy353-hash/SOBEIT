@@ -151,7 +151,7 @@
   function greeting() { var hr = new Date(now()).getHours(); return hr < 5 ? 'Late one' : hr < 12 ? 'Morning' : hr < 18 ? 'Afternoon' : 'Evening'; }
 
   var ICONS = {
-    camera: 'M4 8h3l2-3h6l2 3h3v11H4zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z',
+    camera: 'M4 8h3l2-3h6l2 3h3v11H4zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z', mic: 'M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3',
     home: 'M3 10.5 12 3l9 7.5M5 9.5V21h5v-6h4v6h5V9.5', brief: 'M4 8h16v11H4zM9 8V5h6v3M4 13h16', list: 'M10 6h10M10 12h10M10 18h10M4 6l1.2 1.2L7.5 5M4 12l1.2 1.2L7.5 11M4 18l1.2 1.2L7.5 17',
     grid: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z', dumbbell: 'M6.5 6.5v11M17.5 6.5v11M3.5 9.5v5M20.5 9.5v5M6.5 12h11',
     food: 'M7 3v8a2 2 0 0 0 4 0V3M9 11v10M17 3c-1.7 1.3-2.5 3.5-2.5 6.5V13H17v8', user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0',
@@ -316,6 +316,7 @@
     else S.game.level.into = into;
     var w = S.game.win;
     if (w) NudgeFmt.winStep(w, { xp: xp, job: !!job });            // Win the day moves on screen straight away
+    pulseLive();
     if (w ? w.won && !(prev.game.win && prev.game.win.won) : prev.game.xpToday < prev.game.goal && S.game.xpToday >= S.game.goal) { S.game.streak.count += 1; S.game.streak.todayDone = true; if (w && w.both) { S.game.team.todayDone = true; S.game.team.count += 1; } }
     celebrate(prev, S);
   }
@@ -1157,25 +1158,47 @@
     'Make tonight\'s playlist together', 'Recreate your first date', 'Lights on', 'Somewhere other than the bedroom', 'Blindfold taste test',
     'Loser of today\'s word is in charge', 'Dress up like it\'s a night out, then stay in', 'Start with a kiss that lasts a whole song',
     'Late Registration, start to finish, as background music', 'Lights low, a DJ set on the speakers', 'Truth or dare, house rules', 'Breakfast in bed, but at night'];
+  var chatUnread = 0;
+  /** Us: opens the private chat. Only a count shows here, never what was said. */
   function usCard() {
     var u = S.fun && S.fun.us;
-    if (!u) return '';
-    var n = names(), ask = u.ask, h = '<section class="card us">';
-    h += '<button class="between ushead" type="button" data-fun="usToggle"><span class="row" style="gap:8px">' + icon('flame', 's') + '<b>Us</b><span class="chip">' + icon('lock', 's') + 'Private</span></span>' + icon(usOpen ? 'x' : 'chevron', 's') + '</button>';
-    if (ask && ask.from !== S.who && !ask.answer) {
-      h += '<div class="ask"><b>' + esc(n.other) + ': tonight?</b><div class="row" style="gap:8px"><button class="btn primary sm" type="button" data-fun="tonightYes">Yes</button><button class="btn line sm" type="button" data-fun="tonightNo">Rain check</button></div></div>';
-    } else if (ask && ask.from === S.who) {
-      h += '<p class="small muted" style="margin:10px 0 0">' + (ask.answer ? esc(n.other) + (ask.answer === 'yes' ? ' said yes.' : ': rain check.') : 'Asked ' + esc(n.other) + '. Waiting…') + '</p>';
-    }
-    if (usOpen) {
-      h += '<div class="grid3 center us-stats"><div><div class="num big">' + u.week + '</div><div class="tiny muted">this week</div></div><div><div class="num big">' + u.month + '</div><div class="tiny muted">this month</div></div><div><div class="num big">' + u.heat + '</div><div class="tiny muted">week' + (u.heat === 1 ? '' : 's') + ' running</div></div></div>' +
-        '<button class="btn primary wide" type="button" data-fun="usLog">' + icon('flame', 's') + 'Log it · +20 XP each</button>' +
-        '<div class="grid3" style="margin-top:8px"><button class="btn soft" type="button" data-fun="wink">Wink</button><button class="btn soft" type="button" data-fun="tonight">Tonight?</button><button class="btn soft" type="button" data-fun="dice">' + icon('shuffle', 's') + 'Dice</button></div>' +
-        (diceIdea ? '<div class="dice">' + esc(diceIdea) + '</div>' : '') +
-        '<div class="chips" style="margin-top:12px">' + u.badges.map(function (b) { return '<span class="chip' + (b.earned ? ' pink' : '') + '" title="' + esc(b.desc) + '">' + esc(b.name) + '</span>'; }).join('') + '</div>' +
-        '<p class="tiny muted" style="margin:10px 0 0">Only the two of you see this. It never appears in the feed or the weekly email.</p>';
-    }
-    return h + '</section>';
+    if (!u || S.solo) return '';
+    var n = names();
+    return '<button class="card us usopen" type="button" data-fun="chat"><span class="row" style="gap:10px">' + avatarOf(S.who === 'me' ? 'partner' : 'me', 40) +
+      '<span class="grow" style="text-align:left"><b>Us</b> <span class="chip">' + icon('lock', 's') + 'Private</span><br><span class="small muted">' + (chatUnread ? chatUnread + ' new message' + (chatUnread === 1 ? '' : 's') + ' from ' + esc(n.other) : 'Chat with ' + esc(n.other) + ' · ' + u.week + ' this week') + '</span></span>' +
+      (chatUnread ? '<span class="badge">' + chatUnread + '</span>' : icon('chevron', 's')) + '</span></button>';
+  }
+  /** The Us stats and badges, shown at the top of the chat. */
+  function usStats() {
+    var u = S.fun && S.fun.us; if (!u) return '';
+    var got = u.badges.filter(function (b) { return b.earned; }).length;
+    return '<div class="row us-line"><span class="small"><b>' + u.week + '</b> this week · <b>' + u.month + '</b> this month · <b>' + u.heat + '</b> wk' + (u.heat === 1 ? '' : 's') + ' running</span>' +
+      '<button class="btn soft sm" type="button" data-fun="usLog">' + icon('flame', 's') + '+20 XP</button></div>' +
+      '<details class="us-badges"><summary class="tiny muted">Badges · ' + got + ' of ' + u.badges.length + '</summary><div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px">' + u.badges.map(function (b) { return '<span class="chip' + (b.earned ? ' pink' : '') + '" title="' + esc(b.desc) + '">' + esc(b.name) + '</span>'; }).join('') + '</div></details>';
+  }
+  var chatApi = {
+    cfg: function () { return S && S.chat; }, firebase: function () { return CFG.firebase; }, esc: esc, icon: icon, names: names, toast: toast,
+    avatar: function (who, size) { return avatarOf(who, size); }, stats: usStats, dice: function () { return DICE; }, haptic: buzz,
+    sheet: function (h) { openSheet(h); }, closeSheet: closeSheet,
+    ping: function () { rpc('chatPing', []).catch(function () {}); },
+    badge: function (n) { if (n !== chatUnread) { chatUnread = n; if (current === 'home' && !homeEditing) renderHome(); } },
+    live: function (d) { livePartner(d); }
+  };
+  function startChat() { if (window.NudgeChat && S && S.chat && !S.solo) NudgeChat.init(chatApi); }
+  /** Your partner did something: their numbers change here within a second (the server catches up in the background). */
+  var liveT = 0;
+  function livePartner(d) {
+    if (!S || !S.game || !d) return;
+    if (typeof d.xpToday === 'number') S.game.otherXpToday = d.xpToday;
+    var w = S.game.win; if (w && d.win && w.partner) { w.partner = Object.assign({}, w.partner, d.win); w.both = w.won && w.partner.won; }
+    if (current === 'home' && !homeEditing) renderHome();
+    if (Date.now() - liveT > 15000) { liveT = Date.now(); setTimeout(refreshQuiet, 1500); }
+  }
+  var pulseT = null;
+  function pulseLive() {
+    if (!window.NudgeChat || !S || !S.game) return;
+    clearTimeout(pulseT);
+    pulseT = setTimeout(function () { var w = S.game.win || {}; NudgeChat.pulse({ xpToday: S.game.xpToday, win: { done: w.done || 0, need: w.need || 0, won: !!w.won, by: w.by || 'jobs' } }); }, 250);
   }
   function wrappedCard() {
     var d = new Date(now()), day = d.getDay();
@@ -1335,6 +1358,7 @@
     if (f === 'introGo') { var x = el('intro'); if (x) { x.classList.add('out'); setTimeout(function () { x.remove(); }, 350); } return; }
     if (f === 'storyClose') { if (story) clearTimeout(story.timer); story = null; var st = el('story'); if (st) st.remove(); return; }
     if (f === 'wrapped') return openWrapped();
+    if (f === 'chat') return window.NudgeChat ? NudgeChat.open() : toast('The chat didn\'t load. Check your connection.', true);
     if (f === 'usToggle') { usOpen = !usOpen; return renderHome(); }
     if (f === 'dice') { var d; do { d = DICE[Math.floor(Math.random() * DICE.length)]; } while (d === diceIdea && DICE.length > 1); diceIdea = d; buzz(15); return renderHome(); }
     if (f === 'tap') return tempoTap();
@@ -3366,7 +3390,7 @@
   if (MODE === 'web' && 'serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').then(function (r) { swReg = r; if (window.Notification && Notification.permission === 'granted' && KEY) enablePush(true); }).catch(function () {});
   }
-  if (MODE === 'web' && 'serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', function (e) { if (e.data && e.data.updated) { if (!updateOffered) { updateOffered = true; setTimeout(function () { toast('A new version of Nudge is ready.', false, { label: 'Reload', fn: function () { location.reload(); } }); }, 1500); } return; } if (e.data && e.data.tab && S) { showTab(e.data.tab); if (e.data.deadline && e.data.act) handleNoteAction(e.data.deadline, e.data.act); else refreshQuiet(); } });
+  if (MODE === 'web' && 'serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', function (e) { if (e.data && e.data.updated) { if (!updateOffered) { updateOffered = true; setTimeout(function () { toast('A new version of Nudge is ready.', false, { label: 'Reload', fn: function () { location.reload(); } }); }, 1500); } return; } if (e.data && e.data.tab === 'us' && S && window.NudgeChat) { showTab('home'); if (!NudgeChat.isOpen()) NudgeChat.open(); return; } if (e.data && e.data.tab && S) { showTab(e.data.tab); if (e.data.deadline && e.data.act) handleNoteAction(e.data.deadline, e.data.act); else refreshQuiet(); } });
   if (!ME) el('nav').querySelectorAll('[data-me]').forEach(function (b) { b.remove(); });
   // the phone tab bar: four main tabs and More (the rest), the same on every screen; computers keep the full sidebar
   var PRIMARY = { me: ['home', 'chores', 'train', 'food'], partner: ['home', 'chores', 'play', 'work'] };
@@ -3409,6 +3433,7 @@
     setupNav();
     if (!load('badges-' + S.who)) save('badges-' + S.who, S.game.badges.filter(function (b) { return b.earned; }).map(function (b) { return b.id; }));
     renderAll();
+    setTimeout(startChat, 1200);   // receipts, the unread count and live scores, in the background
     var hash = location.hash.replace('#', ''), sub = '';
     if (hash.indexOf(':') > 0) { sub = hash.split(':')[1]; hash = hash.split(':')[0]; history.replaceState(null, '', location.pathname + location.search + '#' + hash); }
     if (!ME && /^(food|train)$/.test(hash)) hash = 'home';
@@ -3424,6 +3449,7 @@
     // setup comes first: anyone who hasn't finished it gets the wizard before anything else
     var needSetup = S.setup && !S.setup.done && window.NudgeSetup;
     if (needSetup) setTimeout(function () { if (!NudgeSetup.isOpen()) NudgeSetup.open({ required: true }); }, 200);
+    else if (hash === 'us') setTimeout(function () { if (window.NudgeChat) NudgeChat.open(); }, 600);
     else if (sub) setTimeout(function () { shortcut(hash, sub); }, 350);
     else if (hash !== 'djset') setTimeout(intro, 250);
     maybeBrief();

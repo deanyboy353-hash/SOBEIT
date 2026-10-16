@@ -37,7 +37,7 @@ const Utilities = {
     }
     return new RealDate(guess);
   },
-  getUuid: () => 'uuid-' + Math.random().toString(16).slice(2, 14),
+  getUuid: () => require('crypto').randomUUID(),
   newBlob: (data, type) => { const buf = Buffer.isBuffer(data) ? data : typeof data === 'string' ? Buffer.from(data, 'utf8') : Buffer.from(Uint8Array.from(data)); return { getBytes: () => Array.from(buf), getDataAsString: () => buf.toString('utf8'), _buf: buf }; },
   gzip: blob => { const z = require('zlib').gzipSync(blob._buf); return { getBytes: () => Array.from(z), _buf: z }; },
   ungzip: blob => { const u = require('zlib').gunzipSync(blob._buf); return { getBytes: () => Array.from(u), getDataAsString: () => u.toString('utf8'), _buf: u }; },
