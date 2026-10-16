@@ -26,6 +26,11 @@ const outboxJs = web('outbox.js');
 const chatJs = web('chat.js');
 const fmtJs = web('fmt.js');
 
+const cfgPath = path.join(root, 'app.config.json');
+const cfg = fs.existsSync(cfgPath) ? JSON.parse(fs.readFileSync(cfgPath, 'utf8')) : {};
+// the Google page needs the (public) Firebase web settings too, for the chat and live scores
+const gasCfg = '<script>self.LQ_CONFIG = Object.assign(' + JSON.stringify({ firebase: cfg.firebase || null }) + ', self.LQ_CONFIG || {});</script>';
+
 // ---- Google page ----
 // (No word list here to keep the page light: the server checks guesses.)
 for (const [name, src] of [['app.css', css], ['music.js', music], ['djset.js', djset], ['face.js', faceJs], ['figure.js', figureJs], ['look.js', lookJs], ['outbox.js', outboxJs], ['chat.js', chatJs], ['fmt.js', fmtJs], ['setup.js', setupJs], ['app.js', app]]) {
@@ -73,6 +78,7 @@ ${fmtJs}
 <script>
 ${setupJs}
 </script>
+${gasCfg}
 <script>
 ${app}
 </script>
@@ -82,8 +88,6 @@ ${app}
 fs.writeFileSync(path.join(root, 'src', 'App.html'), gas);
 
 // ---- installable app ----
-const cfgPath = path.join(root, 'app.config.json');
-const cfg = fs.existsSync(cfgPath) ? JSON.parse(fs.readFileSync(cfgPath, 'utf8')) : {};
 const dist = path.join(root, 'dist');
 fs.rmSync(dist, { recursive: true, force: true });
 fs.mkdirSync(dist);

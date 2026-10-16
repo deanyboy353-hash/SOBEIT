@@ -41,7 +41,7 @@
 
   // ---------- the live part ----------
   var A = null, db = null, room = null, me = '', other = '', msgs = [], pendingIds = {}, pres = {}, meta = { disappear: 'off' }, open = false, unsub = [], media = {}, replyTo = null, sel = null, typingT = 0, rec = null;
-  var V = '10.14.1';
+  var V = '10.14.1', waiting = [], conn = 'idle', connErr = '';
   function load(src) { return new Promise(function (res, rej) { var s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }
   function fb() {
     if (root.firebase && root.firebase.firestore) return Promise.resolve();
@@ -51,11 +51,15 @@
   function ts() { return root.firebase.firestore.FieldValue.serverTimestamp(); }
   /** Start listening (in the background as soon as the app opens: receipts, the unread count, live scores). */
   function init(api) {
-    A = api; var c = A.cfg(); if (!c || !c.room || started) return Promise.resolve(false);
-    started = true; room = c.room; me = c.who; other = c.other;
-    return fb().then(function () {
-      if (!root.firebase.apps.length) root.firebase.initializeApp(A.firebase());
+    A = api; var c = A.cfg(); if (!c || !c.room) return Promise.resolve(false);
+    if (started) return startedP;
+    started = true; room = c.room; me = c.who; other = c.other; conn = 'connecting'; connErr = ''; status();
+    startedP = fb().then(function () {
+      var fcfg = A.firebase(); if (!fcfg || !fcfg.projectId) throw new Error('This copy of the app has no Firebase settings.');
+      if (!root.firebase.apps.length) root.firebase.initializeApp(fcfg);
       db = root.firebase.firestore();
+      // Safari (iPhone) sometimes stalls on Firestore's streaming connection; let it fall back to long-polling
+      try { db.settings({ experimentalAutoDetectLongPolling: true, merge: true }); } catch (e) {}
       if (root.NUDGE_FS_EMU) db.useEmulator(root.NUDGE_FS_EMU.host, root.NUDGE_FS_EMU.port);   // tests only
       try { db.enablePersistence({ synchronizeTabs: true }).catch(function () {}); } catch (e) {}
       unsub.push(R().collection('msgs').orderBy('at').limitToLast(300).onSnapshot({ includeMetadataChanges: true }, function (snap) {
@@ -70,10 +74,22 @@
       unsub.push(R().collection('live').doc(other).onSnapshot(function (d) { if (d.exists) A.live(d.data()); }));
       here(true); setInterval(function () { if (!document.hidden) here(true); }, 30000);
       document.addEventListener('visibilitychange', function () { here(!document.hidden); if (!document.hidden) receipts(); });
+      root.addEventListener('pagehide', function () { here(false); });
+      conn = 'ok'; status();
+      var q = waiting; waiting = []; q.forEach(function (m) { send(m); });   // anything tapped while connecting goes now
       return true;
-    }).catch(function () { started = false; return false; });
+    }).catch(function (e) { started = false; db = null; conn = 'error'; connErr = (e && e.message) || 'no connection'; status(); return false; });
+    return startedP;
   }
-  var started = false;
+  var started = false, startedP = null;
+  /** A line under the header while connecting or when something's wrong (with Retry); nothing when all is well. */
+  function status() {
+    var b = el('chatConn'); if (!b) return;
+    if (conn === 'ok') { b.hidden = true; return; }
+    b.hidden = false;
+    b.innerHTML = conn === 'error' ? '<span class="grow small">Couldn\'t connect the chat (' + esc(connErr) + '). Your messages are kept and sent when it connects.</span><button type="button" class="btn soft sm" data-cs="retry">Retry</button>'
+      : '<span class="grow small">Connecting the chat…' + (waiting.length ? ' ' + waiting.length + ' waiting to send.' : '') + '</span>';
+  }
   function here(on) { if (!db) return; R().collection('presence').doc(me).set({ online: !!on, lastSeen: ts() }, { merge: true }).catch(function () {}); }
   function receipts() {
     if (!db) return;
@@ -87,7 +103,13 @@
 
   // ---------- sending ----------
   function send(m) {
-    if (!db) return A.toast('The chat is still connecting.', true);
+    if (!db) {
+      // not connected yet (first open on a phone takes a few seconds): keep it and send it the moment it connects
+      if (replyTo && !m.replyTo) { m.replyTo = replyTo; replyTo = null; }
+      waiting.push(m); A.haptic(15); status(); drawWaiting();
+      if (!started) init(A);
+      return null;
+    }
     var doc = R().collection('msgs').doc();
     m = Object.assign({ from: me, at: ts(), reactions: {}, deliveredAt: null, readAt: null, expiresAt: expiresAt(meta.disappear, Date.now()) }, m);
     if (replyTo) { m.replyTo = replyTo; replyTo = null; }
@@ -120,7 +142,9 @@
     if (rec) { rec.stop(); return; }
     if (!navigator.mediaDevices || !root.MediaRecorder) return A.toast('Voice notes need a newer browser.', true);
     navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
-      var chunks = [], t0 = Date.now(), opts = MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: 24000 } : {};
+      var ok = function (t) { return MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t); };
+      // mp4 (AAC) first: it plays on iPhone and Android alike; webm/opus where mp4 isn't offered
+      var chunks = [], t0 = Date.now(), opts = ok('audio/mp4') ? { mimeType: 'audio/mp4', audioBitsPerSecond: 32000 } : ok('audio/webm;codecs=opus') ? { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: 24000 } : {};
       rec = new MediaRecorder(stream, opts); rec.ondataavailable = function (e) { chunks.push(e.data); };
       rec.onstop = function () {
         stream.getTracks().forEach(function (t) { t.stop(); }); var dur = Math.round((Date.now() - t0) / 1000); rec = null; drawComposer();
@@ -159,16 +183,24 @@
   // ---------- the screen ----------
   function el(id) { return document.getElementById(id); }
   function esc(s) { return A.esc(s); }
-  function openChat() {
+  function openChat(api) {
+    if (api) A = api;
+    if (!A) return;
     if (!A.cfg()) return A.toast('The chat is for the two of you; it isn\'t set up on this copy.', true);
     unlock().then(function (ok) {
       if (!ok) return A.toast('Chat stays locked.', true);
       var box = document.createElement('div'); box.id = 'chat'; box.className = 'chat'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'Chat with ' + A.names().other);
-      box.innerHTML = '<header class="chat-head" id="chatHead"></header><div class="chat-stats" id="chatStats"></div><div class="chat-list" id="chatList" aria-live="polite"></div><div class="chat-reply" id="chatReply" hidden></div><div class="chat-specials"><button type="button" class="btn soft sm" data-cs="wink">\uD83D\uDE09 Wink</button><button type="button" class="btn soft sm" data-cs="tonight">Tonight?</button><button type="button" class="btn soft sm" data-cs="dice">\uD83C\uDFB2 Dice</button></div><form class="chat-comp" id="chatComp" autocomplete="off"></form>';
+      box.innerHTML = '<header class="chat-head" id="chatHead"></header><div class="chat-conn" id="chatConn" hidden></div><div class="chat-stats" id="chatStats"></div><div class="chat-list" id="chatList" aria-live="polite"></div><div class="chat-reply" id="chatReply" hidden></div><div class="chat-specials"><button type="button" class="btn soft sm" data-cs="wink">\uD83D\uDE09 Wink</button><button type="button" class="btn soft sm" data-cs="tonight">Tonight?</button><button type="button" class="btn soft sm" data-cs="dice">\uD83C\uDFB2 Dice</button></div><form class="chat-comp" id="chatComp" autocomplete="off"></form>';
       document.body.appendChild(box); document.body.classList.add('chat-open'); open = true;
-      head(); drawComposer(); draw(); scrollEnd(); receipts();
+      head(); drawComposer(); draw(); drawWaiting(); status(); scrollEnd(); receipts(); fitKeyboard();
       if (!started) init(A).then(function () { draw(); });
     });
+  }
+  /** iPhone: the keyboard doesn't shrink the page, so size the chat to the visible area (the Send button stays in view). */
+  function fitKeyboard() {
+    var vv = root.visualViewport, c = el('chat'); if (!vv || !c) return;
+    var fit = function () { var x = el('chat'); if (!x) { vv.removeEventListener('resize', fit); vv.removeEventListener('scroll', fit); return; } x.style.height = vv.height + 'px'; x.style.top = vv.offsetTop + 'px'; scrollEnd(); };
+    vv.addEventListener('resize', fit); vv.addEventListener('scroll', fit); fit();
   }
   function close() { var c = el('chat'); if (c) c.remove(); document.body.classList.remove('chat-open'); open = false; sel = null; replyTo = null; typing(false); }
   function head() {
@@ -221,6 +253,12 @@
     if (atEnd) scrollEnd();
     var rb = el('chatReply'); if (rb) { var r = replyTo && msgs.filter(function (x) { return x.id === replyTo; })[0]; rb.hidden = !r; if (r) rb.innerHTML = '<span class="grow small">Replying to: ' + esc((r.text || r.type).slice(0, 60)) + '</span><button type="button" class="iconbtn" data-cs="noreply" aria-label="Cancel reply">' + A.icon('x', 's') + '</button>'; }
   }
+  function drawWaiting() {
+    var L = el('chatList'); if (!L) return;
+    L.querySelectorAll('.cmsg.waiting').forEach(function (x) { x.remove(); });
+    waiting.forEach(function (m) { var d = document.createElement('div'); d.className = 'cmsg mine waiting'; d.innerHTML = '<div class="cbub"><div class="ctext">' + esc(m.type === 'text' || m.type === 'reply' ? m.text : m.type === 'wink' ? '\uD83D\uDE09' : m.type === 'dice' ? 'Dice: ' + m.text : m.type === 'tonight' ? 'Tonight?' : m.type) + '</div><div class="cmeta">waiting to send \u25CB</div></div>'; L.appendChild(d); });
+    scrollEnd();
+  }
   function scrollEnd() { var L = el('chatList'); if (L) L.scrollTop = L.scrollHeight; }
   function menu() {
     A.sheet('<h2>Chat settings</h2><div class="eyebrow" style="margin:12px 0 6px">Disappearing messages</div><div class="seg">' + [['off', 'Off'], ['24h', '24 hours'], ['7d', '7 days']].map(function (o) { return '<button type="button" data-cdis="' + o[0] + '" aria-pressed="' + ((meta.disappear || 'off') === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>' +
@@ -236,6 +274,7 @@
     if (d.cs === 'close') return close();
     if (d.cs === 'menu') return menu();
     if (d.cs === 'voice') return voice();
+    if (d.cs === 'retry') { started = false; return init(A); }
     if (d.cs === 'noreply') { replyTo = null; return draw(); }
     if (d.cs) return special(d.cs);
     if (d.cdis) { setDisappear(d.cdis); return A.closeSheet(); }

@@ -67,7 +67,7 @@
     onState: function (st, more) {
       if (!st || !st.game) return;
       if (more || inflight || (document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))) { pendingState = st; return; }
-      var hadUndo = S && S.undo; S = st; ME = S.who === 'me'; offset = st.now - Date.now(); save('state-' + KEY.slice(0, 6), S); renderAll();
+      var hadUndo = S && S.undo; S = st; ME = S.who === 'me'; offset = st.now - Date.now(); save('state-' + KEY.slice(0, 6), S); renderAll(); if (S.chat) startChat();
       if (st.undo && (!hadUndo || hadUndo.id !== st.undo.id) && Date.now() + offset - st.undo.at < 20000) offerUndo(st.undo);
     },
     onStatus: function (st) { syncState = st; drawSync(); }
@@ -281,6 +281,7 @@
   function apply(res, msg) {
     var prev = S;
     S = res; ME = S.who === 'me';
+    if (S.chat) startChat();
     offset = res.now - Date.now();
     save('state-' + KEY.slice(0, 6), S);
     celebrate(prev, S);
@@ -1382,7 +1383,7 @@
     if (f === 'introGo') { var x = el('intro'); if (x) { x.classList.add('out'); setTimeout(function () { x.remove(); }, 350); } return; }
     if (f === 'storyClose') { if (story) clearTimeout(story.timer); story = null; var st = el('story'); if (st) st.remove(); return; }
     if (f === 'wrapped') return openWrapped();
-    if (f === 'chat') return window.NudgeChat ? NudgeChat.open() : toast('The chat didn\'t load. Check your connection.', true);
+    if (f === 'chat') return window.NudgeChat ? NudgeChat.open(chatApi) : toast('The chat didn\'t load. Check your connection.', true);
     if (f === 'usToggle') { usOpen = !usOpen; return renderHome(); }
     if (f === 'dice') { var d; do { d = DICE[Math.floor(Math.random() * DICE.length)]; } while (d === diceIdea && DICE.length > 1); diceIdea = d; buzz(15); return renderHome(); }
     if (f === 'tap') return tempoTap();
@@ -3415,7 +3416,7 @@
   if (MODE === 'web' && 'serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').then(function (r) { swReg = r; if (window.Notification && Notification.permission === 'granted' && KEY) enablePush(true); }).catch(function () {});
   }
-  if (MODE === 'web' && 'serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', function (e) { if (e.data && e.data.updated) { if (!updateOffered) { updateOffered = true; setTimeout(function () { toast('A new version of Nudge is ready.', false, { label: 'Reload', fn: function () { location.reload(); } }); }, 1500); } return; } if (e.data && e.data.tab === 'us' && S && window.NudgeChat) { showTab('home'); if (!NudgeChat.isOpen()) NudgeChat.open(); return; } if (e.data && e.data.tab && S) { showTab(e.data.tab); if (e.data.deadline && e.data.act) handleNoteAction(e.data.deadline, e.data.act); else refreshQuiet(); } });
+  if (MODE === 'web' && 'serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', function (e) { if (e.data && e.data.updated) { if (!updateOffered) { updateOffered = true; setTimeout(function () { toast('A new version of Nudge is ready.', false, { label: 'Reload', fn: function () { location.reload(); } }); }, 1500); } return; } if (e.data && e.data.tab === 'us' && S && window.NudgeChat) { showTab('home'); if (!NudgeChat.isOpen()) NudgeChat.open(chatApi); return; } if (e.data && e.data.tab && S) { showTab(e.data.tab); if (e.data.deadline && e.data.act) handleNoteAction(e.data.deadline, e.data.act); else refreshQuiet(); } });
   if (!ME) el('nav').querySelectorAll('[data-me]').forEach(function (b) { b.remove(); });
   // the phone tab bar: four main tabs and More (the rest), the same on every screen; computers keep the full sidebar
   var PRIMARY = { me: ['home', 'chores', 'train', 'food'], partner: ['home', 'chores', 'play', 'work'] };
@@ -3474,7 +3475,7 @@
     // setup comes first: anyone who hasn't finished it gets the wizard before anything else
     var needSetup = S.setup && !S.setup.done && window.NudgeSetup;
     if (needSetup) setTimeout(function () { if (!NudgeSetup.isOpen()) NudgeSetup.open({ required: true }); }, 200);
-    else if (hash === 'us') setTimeout(function () { if (window.NudgeChat) NudgeChat.open(); }, 600);
+    else if (hash === 'us') setTimeout(function () { if (window.NudgeChat) NudgeChat.open(chatApi); }, 600);
     else if (sub) setTimeout(function () { shortcut(hash, sub); }, 350);
     else if (hash !== 'djset') setTimeout(intro, 250);
     maybeBrief();

@@ -90,3 +90,14 @@ test('Chat content never touches the server code: no message reading anywhere in
   assert.ok(!/chat/i.test(ai.replace(/clearAsk|askChat|chat history of the assistant/gi, '')) || !/NudgeChat|msgs/.test(ai));
   assert.ok(!/text|message/i.test(fs.readFileSync(path.join(dir, 'Chat.gs'), 'utf8').match(/function chatPing\(([^)]*)\)/)[1]), 'chatPing takes no message');
 });
+
+test('iPhone fixes stay in: the chat opens before it has connected, taps wait and send, and the Google page has the Firebase settings', () => {
+  const app = fs.readFileSync(path.join(__dirname, '../web/app.js'), 'utf8'), chat = fs.readFileSync(path.join(__dirname, '../web/chat.js'), 'utf8');
+  assert.ok(!/NudgeChat\.open\(\)/.test(app), 'every open passes the app (it may be opened before the background start)');
+  assert.match(app, /if \(S\.chat\) startChat\(\);/, 'the chat starts as soon as the state says there is one');
+  assert.match(chat, /waiting\.push\(m\)/, 'taps made while connecting are kept, not refused');
+  assert.ok(!/still connecting/.test(chat), 'no "still connecting" refusal');
+  assert.match(chat, /visualViewport/, 'the composer stays above the iPhone keyboard');
+  assert.match(fs.readFileSync(path.join(__dirname, '../src/App.html'), 'utf8'), /self\.LQ_CONFIG = Object\.assign\(\{"firebase":/, 'the Google page can reach the chat');
+  assert.match(fs.readFileSync(path.join(__dirname, '../web/app.css'), 'utf8'), /@supports \(-webkit-touch-callout: none\)/, 'iPhone tap and zoom fixes');
+});

@@ -1285,3 +1285,16 @@ body.chat-open { overflow: hidden; }
 .wonbadge { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--good); color: var(--bg); flex: none; }
 .wonbadge svg { width: 22px; height: 22px; stroke-width: 3; }
 .brief.behind { opacity: .7; }
+/* iPhone: taps on bubbles need a pointer to count as clicks; the status line; no zoom on focus */
+.cmsg, .cbub { cursor: pointer; -webkit-touch-callout: none; }
+.chat-conn { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--raised); border-bottom: 1px solid var(--line); }
+.chat-conn[hidden] { display: none; }
+.cmsg.waiting .cbub { opacity: .7; }
+.chat-comp input[type=text] { font-size: 16px; }   /* under 16px makes iPhone zoom in and jump the layout */
+.chat { height: 100dvh; }
+/* iPhone (Safari and the home-screen app): a tap only counts as a click on elements that look clickable,
+   and text boxes under 16px make the page zoom in. Neither applies anywhere else. */
+@supports (-webkit-touch-callout: none) {
+  body * { cursor: pointer; }
+  input, select, textarea { font-size: 16px !important; }
+}
