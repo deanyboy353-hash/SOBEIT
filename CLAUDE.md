@@ -18,7 +18,7 @@ The DJ game is **not here**: it's **Afters**, its own project (`afters`, next to
 - Workout log rows carry `RPE` and `Template`. History is never rewritten: `ALIASES`/`canonicalExercise` map old and imported names (Strong, Liftoff, the old rotation) onto template names when read (last time, hints, records, the main-lifts chart).
 - Your edits and swaps per template live in `TRAIN_TPL` (`editTemplate`, `swapExercise`, `resetTemplate`); swap options come from `MUSCLES`. `progressionHint`: top of the range at or below target RPE on every set → +2.5 kg (+1–2 kg on small isolation lifts).
 - `ensureSplits_` ran once (`TRAIN_V3`): backed up the gym tabs to the "Gym before splits" sheet in the Nudge backups spreadsheet, renamed the replaced Sessions-tab rows to "Old: …", and recorded how history maps.
-- App: Settings > Training card (`trainingCard`), Train tab template mode (`tplBody`, `tplModel`, `swapSheet`, `editSheet`), main-lifts chart (`liftChart`, data from `liftHistory_`), Home gym card footer (`gymExtras`).
+- App: split picker at the top of the Train tab (and You > Training card, `trainingCard`), Train tab template mode (`tplBody`, `tplModel`, `swapSheet`, `editSheet`), main-lifts chart (`liftChart`, data from `liftHistory_`), Home gym card footer (`gymExtras`).
 
 ## The Afters link (keep it this small)
 - In: `aftersReport(key, {id, day, minutes, lessons})` (`src/Afters.gs`): practice XP (1 per 2 min, max 30/day), +10 per lesson once, `grantAch_(who, 'booth1')` (gold headphones). Reports are idempotent by id.
