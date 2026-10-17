@@ -1,13 +1,11 @@
 /**
- * Training.gs: the gym splits. Pick a main split in Settings, Training:
+ * Training.gs: the gym. One main split, Upper / Lower A/B (Upper A, Lower A, Upper B, Lower B), plus presets
+ * you can do any day instead: Push, Pull and Legs (PPL), Full Body, and the Arms & Shoulders Pump.
  *
- *   Push / Pull / Shoulders & Arms   (the default)
- *   Upper / Lower A/B                (Upper A, Lower A, Upper B, Lower B)
- *   Push / Pull / Legs
- *
- * A split is a rotation, not fixed days: the next session waits until you've done it, whatever day it is.
- * Switching keeps all history and starts the new split at its first session. "Arms & Shoulders Pump" is an
- * optional extra: start it any time, bonus XP, never moves the rotation and never counts as missed.
+ * The split is a rotation, not fixed days: the next session waits until you've done it, whatever day it is.
+ * A preset never moves the rotation. Push, Pull, Legs and Full Body count as a gym session (50 XP, the weekly
+ * target); the Pump is an extra: bonus XP, never counts towards the target and never counts as missed.
+ * The old Push / Pull / Shoulders & Arms split (October 2026) is kept in TEMPLATES so its history still reads.
  *
  * Rules for every template: no hip hinges (no deadlifts, RDLs, good mornings, heavy barbell back squats),
  * no calf raises, a little more back than chest, fewer exercises with more sets, antagonist supersets.
@@ -18,11 +16,11 @@
  */
 
 var SPLITS = {
-  ppsa: { name: 'Push / Pull / Shoulders & Arms', order: ['ppsa-push', 'ppsa-pull', 'ppsa-sa'] },
-  ul: { name: 'Upper / Lower A/B', order: ['ul-ua', 'ul-la', 'ul-ub', 'ul-lb'] },
-  ppl: { name: 'Push / Pull / Legs', order: ['ppl-push', 'ppl-pull', 'ppl-legs'] }
+  ul: { name: 'Upper / Lower A/B', order: ['ul-ua', 'ul-la', 'ul-ub', 'ul-lb'] }
 };
-var SPLIT_DEFAULT = 'ppsa', PUMP_ID = 'pump', PUMP_XP = 20, WEEK_TARGET = 4;
+var SPLIT_DEFAULT = 'ul', PUMP_ID = 'pump', PUMP_XP = 20, WEEK_TARGET = 4;
+// Any day, instead of the next session in the rotation (they never move it). The Pump is the extra.
+var PRESETS = ['ppl-push', 'ppl-pull', 'ppl-legs', 'full', PUMP_ID];
 
 var TEMPLATES = {
   'ppsa-push': { name: 'Push', focus: 'Chest and quads', mins: 70, ex: [
@@ -75,6 +73,11 @@ var TEMPLATES = {
     ['Leg press', 3, '10-12', 8, '2 min', ''],
     ['Seated leg curl', 4, '10-12', 9, '90s', 'a'], ['Leg extension', 4, '10-12', 9, '90s', 'a'],
     ['DB split squat', 3, '10 each leg', 8, '2 min', '']] },
+  'full': { name: 'Full Body', focus: 'Everything once, about an hour', mins: 60, ex: [
+    ['Hack squat', 3, '8-10', 8, '2.5 min', ''],
+    ['Lat pulldown', 3, '8-10', 8, '2 min', 'a'], ['Incline DB press', 3, '8-10', 8, '2 min', 'a'],
+    ['Chest-supported row', 3, '10-12', 8, '2 min', ''],
+    ['Seated leg curl', 3, '10-12', 9, '90s', 'b'], ['Seated DB shoulder press', 3, '10-12', 8, '90s', 'b']] },
   'pump': { name: 'Arms & Shoulders Pump', focus: 'Optional extra: delts and arms', mins: 45, extra: true, ex: [
     ['Machine shoulder press', 3, '12-15', 9, '90s', ''],
     ['Cable lateral raise', 4, '15-20', 9, '60s', 'a'], ['Reverse pec deck', 4, '15-20', 9, '60s', 'a'],
@@ -166,7 +169,14 @@ function rotationAfter(order, doneIds) {
 /** { split, since, skip }: sessions of this split count from `since` on (the first `skip` on that day were before you switched). */
 function splitState_() {
   var s = JSON.parse(prop_('TRAIN_SPLIT') || 'null');
-  if (!s || !SPLITS[s.split]) s = { split: SPLIT_DEFAULT, since: '0000-00-00', skip: 0 };
+  if (s && !SPLITS[s.split]) {
+    // a split that's now presets (Push / Pull / Shoulders & Arms, Push / Pull / Legs): Upper / Lower from today, at Upper A
+    var today = todayYmd_(), order = SPLITS[SPLIT_DEFAULT].order;
+    var skip = mainDone_(today).filter(function (x) { return x.date === today && order.indexOf(x.template) !== -1; }).length;
+    s = { split: SPLIT_DEFAULT, since: today, skip: skip, from: s.split };
+    setProp_('TRAIN_SPLIT', JSON.stringify(s));
+  }
+  if (!s) s = { split: SPLIT_DEFAULT, since: '0000-00-00', skip: 0 };
   return s;
 }
 function tplEdits_() { return JSON.parse(prop_('TRAIN_TPL') || '{}'); }
@@ -179,16 +189,16 @@ function templateOf_(id, edits) {
     var base = String(r[0]), name = swaps[base] || base;
     return { exercise: name, base: base, swapped: name !== base, sets: Number(r[1]) || 1, reps: String(r[2]), rpe: r[3] === '' || r[3] === null ? '' : Number(r[3]), rest: String(r[4] || ''), restSec: parseRestSeconds(r[4]), group: String(r[5] || '') };
   });
-  return { id: id, name: t.name, focus: t.focus, mins: t.mins, extra: !!t.extra, split: t.extra ? '' : Object.keys(SPLITS).filter(function (s) { return SPLITS[s].order.indexOf(id) !== -1; })[0], edited: !!e.ex, swaps: Object.keys(swaps).length, ex: ex };
+  return { id: id, name: t.name, focus: t.focus, mins: t.mins, extra: !!t.extra, preset: PRESETS.indexOf(id) !== -1, split: Object.keys(SPLITS).filter(function (s) { return SPLITS[s].order.indexOf(id) !== -1; })[0] || '', edited: !!e.ex, swaps: Object.keys(swaps).length, ex: ex };
 }
-/** A session name (as kept in the Gym log) -> its template: your current split first, then the Pump, then any split. */
+/** A session name (as kept in the Gym log) -> its template: your split first, then the presets, then old names. */
 function templateByName_(name, splitId) {
   var n = String(name || '').trim(); if (!n) return '';
   var sp = SPLITS[splitId || splitState_().split];
   var hit = sp.order.filter(function (id) { return TEMPLATES[id].name === n; })[0];
   if (hit) return hit;
-  if (TEMPLATES[PUMP_ID].name === n) return PUMP_ID;
-  return LEGACY_TEMPLATES[n] || '';
+  hit = PRESETS.filter(function (id) { return TEMPLATES[id].name === n; })[0];
+  return hit || LEGACY_TEMPLATES[n] || '';
 }
 // Session names logged before templates existed (the old rotation, and the Upper/Lower programme before that).
 var LEGACY_TEMPLATES = { 'Push': 'ppsa-push', 'Pull': 'ppsa-pull', 'Shoulders & Arms': 'ppsa-sa', 'Upper A': 'ul-ua', 'Lower A': 'ul-la', 'Upper B': 'ul-ub', 'Lower B': 'ul-lb', 'Arms & Shoulders Pump': 'pump' };
@@ -233,12 +243,13 @@ function splitInfo_(ymd) {
   if (doneToday.length && sp.order.indexOf(doneToday[doneToday.length - 1]) !== -1) next = nextTemplate_(ymd);
   return {
     split: st.split, name: sp.name, since: st.since,
+    presets: PRESETS.map(function (id) { return { id: id, name: TEMPLATES[id].name, focus: TEMPLATES[id].focus, mins: TEMPLATES[id].mins, extra: !!TEMPLATES[id].extra }; }),
     splits: Object.keys(SPLITS).map(function (k) { return { id: k, name: SPLITS[k].name, sessions: SPLITS[k].order.map(function (id) { return TEMPLATES[id].name; }) }; }),
     order: sp.order.map(function (id) { return { id: id, name: TEMPLATES[id].name, focus: TEMPLATES[id].focus }; }),
     next: { id: next, name: TEMPLATES[next].name }, doneToday: doneToday,
     pump: { id: PUMP_ID, name: TEMPLATES[PUMP_ID].name, xp: PUMP_XP, doneToday: pumpDoneOn_(ymd) },
     week: weekMain_(ymd),
-    templates: sp.order.concat([PUMP_ID]).reduce(function (o, id) { o[id] = templateOf_(id, edits); return o; }, {}),
+    templates: sp.order.concat(PRESETS).reduce(function (o, id) { o[id] = templateOf_(id, edits); return o; }, {}),
     migration: JSON.parse(prop_('TRAIN_V3') || 'null')
   };
 }

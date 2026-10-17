@@ -308,7 +308,7 @@ test('Today brief: told the part of the day, never greets, rewritten when the sl
   assert.strictEqual(b.part, 'morning');
   const req = g.state.claudeRequests.at(-1);
   assert.match(req.body.system, /Do not greet/); assert.match(req.body.system, /It is morning now/);
-  assert.match(req.body.messages[0].content, /Training day: Push session/);
+  assert.match(req.body.messages[0].content, /Training day: Upper A session/);
   assert.doesNotMatch(req.body.messages[0].content, /Rest day/);
   const n = g.state.claudeRequests.length;
   g.ctx.getBrief(me); assert.strictEqual(g.state.claudeRequests.length, n, 'same slot: kept');
@@ -319,7 +319,7 @@ test('Today brief: told the part of the day, never greets, rewritten when the sl
   g.state.now = new Date('2026-10-15T14:00:00Z');            // Thu: a rest day (fixed training days) names the next session
   g.ctx.setSetting_('Train any day I can make the bus', 'FALSE'); g.state.cache = {};
   g.ctx.getBrief(me);
-  assert.match(g.state.claudeRequests.at(-1).body.messages[0].content, /Rest day from the gym\. Next session: Push/);
+  assert.match(g.state.claudeRequests.at(-1).body.messages[0].content, /Rest day from the gym\. Next session: Upper A/);
 });
 
 test('The cached app state is never served after midnight (or into the next part of the day)', () => {

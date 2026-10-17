@@ -41,7 +41,7 @@ test('Presets and the Pump: Full Body Express lands in the Sessions tab once; th
   const t = g.ctx.trainState(me);
   assert.ok(t.sessions.includes('Full Body Express'));
   assert.strictEqual(t.kinds['Full Body Express'], 'preset');
-  assert.deepStrictEqual(plain(t.split.order.map(o => o.name)), ['Push', 'Pull', 'Shoulders & Arms']);
+  assert.deepStrictEqual(plain(t.split.order.map(o => o.name)), ['Upper A', 'Lower A', 'Upper B', 'Lower B']);
   assert.ok(t.tpl.pump, 'the Pump template is there');
   const n = g.tab('Sessions').rows().length;
   g.ctx.ensurePresets_();

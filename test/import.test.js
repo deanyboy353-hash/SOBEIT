@@ -57,7 +57,7 @@ test('importing logs each workout on its own day: sets, Gym log Done and PRs, bu
   const again = g.ctx.importWorkoutCsv(me, STRONG);
   assert.strictEqual(again.added, 0); assert.strictEqual(again.skipped, 2);
   g.ctx.importWorkoutCsv(me, LIFTOFF);
-  assert.strictEqual(g.ctx.rotationNext_('2026-10-15'), 'Pull', 'Pull on the 1st, Push on the 3rd: the split goes on in order, so Pull is next');
+  assert.strictEqual(g.ctx.rotationNext_('2026-10-15'), 'Upper A', 'imported Push and Pull days are presets now: Upper / Lower starts at Upper A');
 });
 
 test('XP and cash an earlier import gave are taken back once; XP earned in the app is untouched', () => {

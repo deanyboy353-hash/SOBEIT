@@ -79,14 +79,14 @@ test('Tuesday: setup builds the sheet and plans the bus 3 (e-bike offered when d
 
   const ev = gymEvents(g);
   assert.strictEqual(ev.length, 1, 'one event (gym, no weigh-in on Tue)');
-  assert.strictEqual(ev[0].title, 'Push · Bus 3 15:01 · leave 14:59');
+  assert.strictEqual(ev[0].title, 'Upper A · Bus 3 15:01 · leave 14:59');
   assert.match(ev[0].opts.description, /Leave by 14:59 → bus 3 at 15:01 from Whitelaw Avenue/);
   assert.match(ev[0].opts.description, /Gym 15:14–17:01, 107 min/);
   assert.match(ev[0].opts.description, /Back: bus 3 at 17:15 from Coatbridge Bus Stance \(westbound\) → home by 17:26/);
   assert.match(ev[0].opts.description, /Miss the 15:01\? Next: bus 3 at 16:01 \(leave 15:59\), gym 16:14–18:16, back on the 3 at 18:30, home by 18:44/);
   assert.match(ev[0].opts.description, /It's dry, so the e-bike works too: leave 15:05, 17 min each way/);
-  assert.match(ev[0].opts.description, /1\. Bench press: 4 × 6-8 @ RPE 8 · rest 2\.5–3 min/);
-  assert.match(ev[0].opts.description, /2\. Hack squat: 4 × 8-10 @ RPE 8 · rest 2–3 min/);
+  assert.match(ev[0].opts.description, /1\. Bench press: 4 × 5-6 @ RPE 8 · rest 3 min/);
+  assert.match(ev[0].opts.description, /2\. Lat pulldown: 4 × 6-8 @ RPE 8 · rest 2\.5 min/);
   assert.doesNotMatch(ev[0].opts.description, /Machine shoulder press|deadlift|Romanian/i);
   assert.strictEqual(ev[0].opts.location, 'JD Gym Coatbridge');
   assert.deepStrictEqual(ev[0].reminders, [14, 0]); // 14:45 alert, then "time to go"
@@ -95,7 +95,7 @@ test('Tuesday: setup builds the sheet and plans the bus 3 (e-bike offered when d
 
   assert.strictEqual(gymTasks(g).length, 0, 'no Google Tasks');
   const log = g.tab('Gym log').rows();
-  assert.deepStrictEqual(log[1].slice(0, 7), ['2026-10-13', 'Tue', 'Push', 'Bus', '14:59', log[1][5], 'Planned']);
+  assert.deepStrictEqual(log[1].slice(0, 7), ['2026-10-13', 'Tue', 'Upper A', 'Bus', '14:59', log[1][5], 'Planned']);
   assert.strictEqual(g.state.mails.length, 0, JSON.stringify(g.tab('Log').rows()));
 });
 
@@ -147,7 +147,7 @@ test('Wednesday: weigh-in alert; yesterday\'s missed gym is marked; the weight i
   g.ctx.dailyRun();
   assert.strictEqual(g.tab('Gym log').rows()[1][6], 'Not done');
   const titles = g.calendar.live().map(e => e.title);
-  assert.ok(titles.some(t => /^Push/.test(t)), 'Tuesday\'s Push wasn\'t done, so it\'s still Push');
+  assert.ok(titles.some(t => /^Upper A/.test(t)), 'Tuesday\'s Upper A wasn\'t done, so it\'s still Upper A');
   const weigh = g.calendar.live().find(e => e.title === 'Weigh in');
   assert.strictEqual(g.ctx.Utilities.formatDate(weigh.start, 'Europe/London', 'HH:mm'), '08:30');
   assert.deepStrictEqual(weigh.reminders, [0]);

@@ -658,9 +658,11 @@ body.wizopen { overflow: hidden; }
 .rotstrip .rot { padding: 8px 14px; min-height: 40px; border: 0; border-radius: 999px; background: var(--raised); color: var(--muted); font: inherit; font-weight: 650; font-size: 14px; }
 .rotstrip .rot.next::after { content: " · next"; font-weight: 500; opacity: .8; }
 .rotmeta { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin: -4px 0 14px; }
-.trainhero > .between { flex-wrap: wrap; }
-.splitpick { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1 1 100%; }
-.splitpick select { flex: 1; min-width: 0; padding: 6px 8px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; font-weight: 650; }
+.presets { display: flex; flex-wrap: wrap; gap: 8px; }
+.presets .chip { padding: 9px 13px; font-size: 14px; color: var(--ink); }
+.presets .chip.on { background: var(--lilac); color: #fff; }
+:root[data-theme="ad-dark"] .presets .chip { padding: 9px 13px; font-size: 14px; color: var(--ink); }
+.presets .chip.on { color: #121216; }
 .rotpick select { margin-left: 6px; padding: 6px 8px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; }
 .rotstrip .rot.on { background: var(--lilac-soft); color: var(--lilac); box-shadow: inset 0 0 0 1.5px var(--lilac); }
 .rotstrip .rotarr { color: var(--faint); }

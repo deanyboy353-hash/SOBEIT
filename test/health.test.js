@@ -108,7 +108,7 @@ test('today\'s workout can change: the plan and calendar event follow', () => {
   const me = g.state.props.WEBAPP_KEY;
   let s = g.ctx.appState(me);
   const planned = s.today.gym.session;
-  assert.strictEqual(planned, 'Push');            // the rotation starts at Push
+  assert.strictEqual(planned, 'Upper A');         // the rotation starts at Upper A
   s = g.ctx.setTodaySession(me, 'Pull');
   assert.strictEqual(s.today.gym.session, 'Pull');
   assert.strictEqual(s.train.today, 'Pull');
@@ -130,7 +130,7 @@ test('today\'s workout can change: the plan and calendar event follow', () => {
   assert.strictEqual(s.today.gym.session, 'Shoulders & Arms');
   assert.ok(s.today.gym.done);
   assert.throws(() => g.ctx.setTodaySession(me, 'Push'), /already logged/);
-  assert.strictEqual(g.ctx.trainState(me).rotationNext, 'Push', 'nothing done before today: the rotation still starts at Push');
+  assert.strictEqual(g.ctx.trainState(me).rotationNext, 'Upper A', 'nothing done before today: the rotation still starts at Upper A');
 });
 
 test('HC Webhook test syncs are ignored, and a history import rebuilds whole days', () => {

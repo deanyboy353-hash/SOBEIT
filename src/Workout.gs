@@ -92,8 +92,9 @@ function trainState_() {
   var split = splitInfo_(today), order = split.order.map(function (x) { return x.name; });
   var next = split.next.name, planned = day && day.train ? (rotationDoneOn_(today) || next) : todaySession;   // flexible days: whatever today offers
   // your own saved workouts (the Sessions tab, minus the old rows the templates replaced)
-  sessions = sessions.filter(function (s) { return !/^Old: /.test(s) && order.indexOf(s) === -1 && s !== split.pump.name; });
-  var tpl = split.order.map(function (x) { return x.id; }).concat([PUMP_ID]).reduce(function (o, id) { o[id] = templatePlan_(id); return o; }, {});
+  var presetNames = split.presets.map(function (x) { return x.name; });
+  sessions = sessions.filter(function (s) { return !/^Old: /.test(s) && order.indexOf(s) === -1 && presetNames.indexOf(s) === -1; });
+  var tpl = split.order.map(function (x) { return x.id; }).concat(PRESETS).reduce(function (o, id) { o[id] = templatePlan_(id); return o; }, {});
   return {
     today: todaySession,
     split: split, tpl: tpl, lifts: liftHistory_(),
@@ -228,7 +229,7 @@ function saveWorkout(key, session, sets, meta) {
       if (!xpRows_().some(function (r) { return r.who === 'me' && r.date === today && r.kind === 'pump'; })) bonus = addXp_('me', 'Bonus: ' + session, PUMP_XP, 'pump');
     } else {
       if (session !== todaySession_(today)) useSession_(today, session);
-      markGymDone_(today, session);
+      markGymDone_(today, session, tpl);
     }
     return { changes: changes, prs: prs, minutes: mins, volume: Math.round(volume), sets: done.length, bonus: bonus, extra: tpl === PUMP_ID, state: appState_('me') };
   });

@@ -32,31 +32,38 @@ test('Rotation order: Upper/Lower goes Upper A, Lower A, Upper B, Lower B and ro
   assert.strictEqual(t.train.next.name, 'Upper A');
 });
 
-test('Switching splits keeps every logged set and starts the new split at its first session', () => {
+test('Presets: Push, Pull, Legs and Full Body count as the gym session but never move the rotation; an old split choice moves to Upper / Lower', () => {
   const { g, C, me } = ready();
-  assert.strictEqual(next(C, me), 'Push', 'the default is your current split');
-  doSession(C, me, 'ppsa-push', 'Push');
+  assert.strictEqual(next(C, me), 'Upper A', 'Upper / Lower is the split');
+  const sp = plain(C.trainState(me)).split;
+  assert.deepStrictEqual(sp.splits.map(x => x.id), ['ul']);
+  assert.deepStrictEqual(sp.presets.map(x => x.name), ['Push', 'Pull', 'Legs', 'Full Body', 'Arms & Shoulders Pump']);
+  doSession(C, me, 'ul-ua', 'Upper A');
   at(g, '2026-10-13T17:00:00Z');
-  assert.strictEqual(next(C, me), 'Pull');
-  const rows = g.tab('Workout log').rows().length;
-  C.setSplit(me, 'ppl');
-  assert.strictEqual(next(C, me), 'Push', 'PPL starts at Push, not after the Push you did on Monday');
-  doSession(C, me, 'ppl-push', 'Push');
+  const xp0 = C.xpOn_('me', '2026-10-13');
+  const r = doSession(C, me, 'ppl-legs', 'Legs');
+  assert.strictEqual(r.extra, false);
+  assert.strictEqual(C.xpOn_('me', '2026-10-13') - xp0, 50, 'a preset is a gym session: 50 XP');
+  assert.ok(g.tab('Gym log').rows().some(x => x[0] === '2026-10-13' && x[6] === 'Done' && x.includes('ppl-legs')), 'logged under the PPL Legs template');
   at(g, '2026-10-14T17:00:00Z');
-  assert.strictEqual(next(C, me), 'Pull');
-  C.setSplit(me, 'ppsa');
-  assert.strictEqual(next(C, me), 'Push', 'switching back starts again at the first session');
-  assert.strictEqual(g.tab('Workout log').rows().length, rows + 1, 'nothing removed');
-  assert.ok(g.tab('Workout log').rows().some(r => r.includes('ppsa-push')));
-  assert.throws(() => C.setSplit(me, 'bro-split'), /No split/);
-  // a same-day switch after a session doesn't count that session for the new split
-  C.setSplit(me, 'ul'); doSession(C, me, 'ul-ua', 'Upper A'); C.setSplit(me, 'ppl'); C.setSplit(me, 'ul');
+  doSession(C, me, 'full', 'Full Body');
+  at(g, '2026-10-15T17:00:00Z');
+  const s2 = plain(C.trainState(me)).split;
+  assert.strictEqual(s2.next.name, 'Lower A', 'the rotation waits on Lower A');
+  assert.strictEqual(s2.week.done, 3, 'all three count towards the week');
+  assert.strictEqual(C.templateByName_('Push'), 'ppl-push', 'Push now means the PPL preset');
+  assert.throws(() => C.setSplit(me, 'ppsa'), /No split/);
+  // someone still on the old Push / Pull / Shoulders & Arms split moves to Upper / Lower from today, at Upper A, history kept
+  const rows = g.tab('Workout log').rows().length;
+  g.state.props.TRAIN_SPLIT = JSON.stringify({ split: 'ppsa', since: '2026-10-01', skip: 0 }); g.state.cache = {};
   assert.strictEqual(next(C, me), 'Upper A');
+  assert.deepStrictEqual(JSON.parse(g.state.props.TRAIN_SPLIT), { split: 'ul', since: '2026-10-15', skip: 0, from: 'ppsa' });
+  assert.strictEqual(g.tab('Workout log').rows().length, rows, 'nothing removed');
 });
 
 test('The Pump never moves the rotation, never counts towards the week, and gives bonus XP once a day', () => {
   const { g, C, me } = ready();
-  doSession(C, me, 'ppsa-push', 'Push');
+  doSession(C, me, 'ul-ua', 'Upper A');
   at(g, '2026-10-13T17:00:00Z');
   const xpBefore = C.xpOn_('me', '2026-10-13');
   const r = C.saveWorkout(me, 'Arms & Shoulders Pump', [{ exercise: 'Cable curl', set: 1, weight: 20, reps: 15, rpe: 9 }], { template: 'pump' });
@@ -65,15 +72,15 @@ test('The Pump never moves the rotation, never counts towards the week, and give
   C.saveWorkout(me, 'Arms & Shoulders Pump', [{ exercise: 'Cable curl', set: 1, weight: 20, reps: 15 }], { template: 'pump' });
   assert.strictEqual(C.xpOn_('me', '2026-10-13') - xpBefore, 20, 'bonus once a day');
   const s = plain(C.trainState(me)).split;
-  assert.strictEqual(s.next.name, 'Pull', 'still Pull');
-  assert.deepStrictEqual([s.week.done, s.week.target], [1, 4], 'only Monday\'s Push counts');
+  assert.strictEqual(s.next.name, 'Lower A', 'still Lower A');
+  assert.deepStrictEqual([s.week.done, s.week.target], [1, 4], 'only Monday\'s Upper A counts');
   assert.strictEqual(s.pump.doneToday, true);
   assert.ok(!g.tab('Gym log').rows().some(r => r[0] === '2026-10-13' && r[6] === 'Done'), 'today\'s gym session is still open');
   assert.throws(() => C.setTodaySession(me, 'Arms & Shoulders Pump'), /extra/);
   // a main session the same day still counts
-  doSession(C, me, 'ppsa-pull', 'Pull');
+  doSession(C, me, 'ul-la', 'Lower A');
   at(g, '2026-10-14T17:00:00Z');
-  assert.strictEqual(next(C, me), 'Shoulders & Arms');
+  assert.strictEqual(next(C, me), 'Upper B');
 });
 
 test('Progression hint: top of the range at or below the target RPE on every set; 2.5 kg, or 1–2 kg on small lifts', () => {
@@ -106,8 +113,8 @@ test('Before anything changes the gym data is backed up, old rows are kept, and 
   assert.strictEqual(C.ensureSplits_().at, res.at, 'runs once');
   // last time and the hint come through under the new names
   const tpl = plain(C.trainState(me)).tpl;
-  assert.deepStrictEqual(tpl['ppsa-push'].ex.find(x => x.exercise === 'Bench press').last.map(s => [s.w, s.r]), [[80, 8]]);
-  assert.deepStrictEqual(tpl['ppsa-sa'].ex.find(x => x.exercise === 'Reverse pec deck').last.map(s => [s.w, s.r]), [[40, 15]]);
+  assert.deepStrictEqual(tpl['ul-ua'].ex.find(x => x.exercise === 'Bench press').last.map(s => [s.w, s.r]), [[80, 8]]);
+  assert.deepStrictEqual(tpl['pump'].ex.find(x => x.exercise === 'Reverse pec deck').last.map(s => [s.w, s.r]), [[40, 15]]);
   // the main-lift chart has the whole history
   const lifts = plain(C.trainState(me)).lifts;
   assert.deepStrictEqual(lifts.find(l => l.lift === 'Bench press').points[0].slice(0, 2), ['2026-10-05', 101.3]);
@@ -115,28 +122,28 @@ test('Before anything changes the gym data is backed up, old rows are kept, and 
 
 test('Swaps follow the rules and are remembered; templates can be edited and reset to default', () => {
   const { C, me } = ready();
-  let t = plain(C.trainState(me)).tpl['ppsa-pull'];
+  let t = plain(C.trainState(me)).tpl['ul-ua'];
   const pd = t.ex.find(x => x.exercise === 'Lat pulldown');
   assert.ok(pd.options.includes('Close-grip pulldown'));
   Object.values(plain(C.trainState(me)).tpl).forEach(tp => tp.ex.forEach(x => x.options.forEach(o => assert.ok(!/dead|rdl|romanian|good morning|back squat|calf/i.test(o), o))));
-  C.swapExercise(me, 'ppsa-pull', 'Lat pulldown', 'Close-grip pulldown');
-  t = plain(C.trainState(me)).tpl['ppsa-pull'];
-  assert.deepStrictEqual([t.ex[0].exercise, t.ex[0].base, t.ex[0].swapped], ['Close-grip pulldown', 'Lat pulldown', true]);
-  assert.throws(() => C.swapExercise(me, 'ppsa-pull', 'Lat pulldown', 'Romanian deadlift'), /breaks the rules/);
-  assert.throws(() => C.swapExercise(me, 'ppsa-push', 'Hack squat', 'Seated calf raise'), /breaks the rules/);
-  C.swapExercise(me, 'ppsa-pull', 'Lat pulldown', '');
-  assert.strictEqual(plain(C.trainState(me)).tpl['ppsa-pull'].ex[0].exercise, 'Lat pulldown', 'changed back');
-  C.editTemplate(me, 'ppsa-push', [{ exercise: 'Bench press', sets: 5, reps: '5', rpe: 8, rest: '3 min' }, { exercise: 'Leg press', sets: 4, reps: '10-12', rpe: 8, rest: '2 min' }]);
-  t = plain(C.trainState(me)).tpl['ppsa-push'];
+  C.swapExercise(me, 'ul-ua', 'Lat pulldown', 'Close-grip pulldown');
+  t = plain(C.trainState(me)).tpl['ul-ua'];
+  assert.deepStrictEqual([t.ex[1].exercise, t.ex[1].base, t.ex[1].swapped], ['Close-grip pulldown', 'Lat pulldown', true]);
+  assert.throws(() => C.swapExercise(me, 'ul-ua', 'Lat pulldown', 'Romanian deadlift'), /breaks the rules/);
+  assert.throws(() => C.swapExercise(me, 'ul-la', 'Hack squat', 'Seated calf raise'), /breaks the rules/);
+  C.swapExercise(me, 'ul-ua', 'Lat pulldown', '');
+  assert.strictEqual(plain(C.trainState(me)).tpl['ul-ua'].ex[1].exercise, 'Lat pulldown', 'changed back');
+  C.editTemplate(me, 'ul-ua', [{ exercise: 'Bench press', sets: 5, reps: '5', rpe: 8, rest: '3 min' }, { exercise: 'Leg press', sets: 4, reps: '10-12', rpe: 8, rest: '2 min' }]);
+  t = plain(C.trainState(me)).tpl['ul-ua'];
   assert.deepStrictEqual(t.ex.map(x => [x.exercise, x.sets, x.reps, x.restSec]), [['Bench press', 5, '5', 180], ['Leg press', 4, '10-12', 120]]);
   assert.strictEqual(t.edited, true);
-  assert.throws(() => C.editTemplate(me, 'ppsa-push', [{ exercise: 'Deadlift', sets: 3 }]), /breaks the rules/);
-  C.resetTemplate(me, 'ppsa-push');
-  t = plain(C.trainState(me)).tpl['ppsa-push'];
-  assert.strictEqual(t.ex.length, 5); assert.strictEqual(t.edited, false);
+  assert.throws(() => C.editTemplate(me, 'ul-ua', [{ exercise: 'Deadlift', sets: 3 }]), /breaks the rules/);
+  C.resetTemplate(me, 'ul-ua');
+  t = plain(C.trainState(me)).tpl['ul-ua'];
+  assert.strictEqual(t.ex.length, 6); assert.strictEqual(t.edited, false);
 });
 
-test('Every split: no hip hinges or calves, more back than chest sets, supersets in pairs, 4 to 8 exercises', () => {
+test('Every split and preset: no hip hinges or calves, more back than chest sets, supersets in pairs, 4 to 8 exercises', () => {
   const { C } = ready();
   const T = plain(C.TEMPLATES), back = /pulldown|row|pull-up|face pull|reverse pec/i, chest = /bench|chest press|incline db press|fly/i;
   Object.entries(T).forEach(([id, t]) => {
@@ -145,8 +152,9 @@ test('Every split: no hip hinges or calves, more back than chest sets, supersets
     const groups = {}; t.ex.forEach(r => { if (r[5]) groups[r[5]] = (groups[r[5]] || 0) + 1; });
     Object.values(groups).forEach(n => assert.strictEqual(n, 2, id + ': supersets come in pairs'));
   });
-  Object.entries(C.SPLITS).forEach(([s, sp]) => {
-    const sets = re => sp.order.reduce((a, id) => a + T[id].ex.filter(r => re.test(r[0])).reduce((b, r) => b + r[1], 0), 0);
+  const groups = Object.entries(C.SPLITS).map(([s, sp]) => [s, sp.order]).concat([['PPL', ['ppl-push', 'ppl-pull', 'ppl-legs']], ['Full Body', ['full']]]);
+  groups.forEach(([s, order]) => {
+    const sets = re => order.reduce((a, id) => a + T[id].ex.filter(r => re.test(r[0])).reduce((b, r) => b + r[1], 0), 0);
     assert.ok(sets(back) > sets(chest), s + ': back ' + sets(back) + ' sets vs chest ' + sets(chest));
   });
 });

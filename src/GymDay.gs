@@ -96,14 +96,14 @@ function planGymDay_(ymd, cfg) {
 
 /** Each morning: a gym day from before that wasn't logged is marked as not done. */
 /** Gym done (from the app): log it once with its XP, and record the session so the rotation moves on. Main sessions only (never the Pump). */
-function markGymDone_(ymd, session) {
+function markGymDone_(ymd, session, template) {
   var r = findRow_('gym', 'Date', ymd);
   var before = r ? readRow_('gym', r) : {};
   session = session || String(before['Session'] || '') || todaySession_(ymd) || '';
   if (!/^Done/.test(String(before['Status'] || ''))) addXp_('me', 'Gym: ' + (session || 'session done'), 50, 'gym');
   var update = { 'Status': 'Done', 'Ticked at': now_('HH:mm') };
   if (session && (!before['Session'] || !/^Done/.test(String(before['Status'] || '')))) update['Session'] = session;     // so the rotation knows what was done
-  var tpl = templateByName_(session); if (tpl && tpl !== PUMP_ID) update['Template'] = tpl;
+  var tpl = TEMPLATES[template] ? template : templateByName_(session); if (tpl && tpl !== PUMP_ID) update['Template'] = tpl;
   if (r) updateRow_('gym', r, update);
   else appendRow_('gym', Object.assign({ 'Date': ymd, 'Day': DAY_NAMES[dayOfWeek_(ymd)] }, update));
 }

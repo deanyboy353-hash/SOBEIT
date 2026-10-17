@@ -170,7 +170,7 @@ function appState_(who) {
  */
 var STATE_TTL = 300, STATE_PART = 90000;
 // Bump when the screen's shape changes, so a deploy never serves a screen saved by the old code.
-var STATE_VERSION = 'splits-1';
+var STATE_VERSION = 'presets-1';
 function appState(key) {
   var who = who_(key);
   // once: back up the gym data, then templates (a failure is logged and retried at most hourly, never in the way)
