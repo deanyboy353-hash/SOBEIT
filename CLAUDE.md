@@ -33,4 +33,5 @@ The DJ game is **not here**: it's **Afters**, its own project (`afters`, next to
 ## Rules
 - Never delete, reset or overwrite stored data; archive removed features' data (`archive_` in Backup.gs).
 - Tone: direct, British, dry; no emojis outside the chat (see `test/tone.test.js`).
+- Look: one calm theme, light and dark (`DESIGN.md`). Flat cards, one accent, one font (Manrope). No confetti, full-screen celebrations, splash screens or style options; big moments are a toast.
 - Commit trailers and branch rules come from the session instructions.

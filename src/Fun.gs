@@ -285,7 +285,7 @@ function setPrefs(key, p) {
     ['sound', 'haptics', 'confetti', 'motion'].forEach(function (k) { if (p[k] !== undefined) cur[k] = !!p[k]; });
     if (p.waterGoal !== undefined) { var wg = Math.round(Number(p.waterGoal)); if (!(wg >= 0 && wg <= 20)) throw new Error('Pick a water goal from 0 to 20 glasses.'); cur.waterGoal = wg; }
     if (Array.isArray(p.home)) {
-      cur.home = p.home.filter(function (x) { return x && HOME_BLOCKS.indexOf(x.id) !== -1; }).map(function (x) { return { id: x.id, hide: !!x.hide }; });
+      cur.home = p.home.filter(function (x) { return x && HOME_BLOCKS.indexOf(x.id) !== -1; }).map(function (x) { return x.id === 'stage' ? { id: x.id, hide: !!x.hide, on: !!x.on } : { id: x.id, hide: !!x.hide }; });
     }
     setProp_('PREFS_' + who, JSON.stringify(cur));
     var mine = who === 'me';

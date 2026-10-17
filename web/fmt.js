@@ -25,7 +25,9 @@
   }
   // Home's cards, in the order Home starts with. Anything can be moved or hidden in Edit home screen.
   var HOME_DEFAULT = ['brief', 'win', 'deadlines', 'routine', 'tiles', 'stage', 'ask', 'gym', 'work', 'us', 'feed'];
-  var HOME_QUIET = { feed: 1 };
+  var HOME_QUIET = { feed: 1, stage: 1 };
+  // Characters and pet is off unless you turned it on after it became optional (an entry with on: true).
+  function quiet(x) { return x.id === 'stage' ? !x.on : !!x.hide; }
   /**
    * The order to draw Home in. A saved order from before Win the day (no 'win' in it) is replaced by the new
    * default, but what you'd hidden stays hidden. Cards that were merged (ring, chores -> win; pet, wardrobe -> stage) show.
@@ -35,8 +37,8 @@
     var known = {}, seen = {}, out = [];
     HOME_DEFAULT.forEach(function (id) { known[id] = 1; });
     var current = saved.some(function (x) { return x.id === 'win'; });
-    if (current) saved.forEach(function (x) { if (known[x.id] && !seen[x.id]) { seen[x.id] = 1; out.push({ id: x.id, hide: !!x.hide }); } });
-    var hid = {}; if (!current) saved.forEach(function (x) { if (known[x.id]) hid[x.id] = !!x.hide; });
+    if (current) saved.forEach(function (x) { if (known[x.id] && !seen[x.id]) { seen[x.id] = 1; out.push(x.id === 'stage' ? { id: x.id, hide: quiet(x), on: !quiet(x) } : { id: x.id, hide: !!x.hide }); } });
+    var hid = {}; if (!current) saved.forEach(function (x) { if (known[x.id]) hid[x.id] = quiet(x); });
     HOME_DEFAULT.forEach(function (id) { if (!seen[id]) out.push({ id: id, hide: hid[id] !== undefined ? hid[id] : !!HOME_QUIET[id] }); });
     return out;
   }

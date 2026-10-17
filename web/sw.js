@@ -1,5 +1,5 @@
 /* Nudge service worker: opens instantly (cached shell) and shows push notifications. */
-var CACHE = 'lq-v9';
+var CACHE = 'lq-v10';
 var SHELL = ['./', 'index.html', 'app.css', 'app.js', 'setup.js', 'face.js', 'figure.js', 'look.js', 'outbox.js', 'chat.js', 'fmt.js', 'music.js', 'words.js', 'config.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 
 importScripts('config.js');
@@ -9,7 +9,7 @@ self.addEventListener('install', function (e) {
 });
 self.addEventListener('activate', function (e) {
   e.waitUntil(caches.keys().then(function (keys) {
-    return Promise.all(keys.filter(function (k) { return k !== CACHE; }).map(function (k) { return caches.delete(k); }));
+    return Promise.all(keys.filter(function (k) { return k !== CACHE && k !== 'nudge-fonts' && k !== 'nudge-share'; }).map(function (k) { return caches.delete(k); }));
   }).then(function () { return self.clients.claim(); }));
 });
 // App files: straight from the cache (instant, works offline), refreshed in the background.
@@ -27,6 +27,15 @@ self.addEventListener('fetch', function (e) {
         return Promise.all(jobs);
       }).then(function () { return Response.redirect('./#food:share', 303); });
     }).catch(function () { return Response.redirect('./#food', 303); }));
+    return;
+  }
+  // The font: kept after the first load, so opening the app never waits on Google
+  if (e.request.method === 'GET' && /^https:\/\/fonts\.(googleapis|gstatic)\.com$/.test(url.origin)) {
+    e.respondWith(caches.open('nudge-fonts').then(function (c) {
+      return c.match(e.request).then(function (hit) {
+        return hit || fetch(e.request).then(function (res) { if (res && (res.ok || res.type === 'opaque')) c.put(e.request, res.clone()); return res; });
+      });
+    }));
     return;
   }
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;

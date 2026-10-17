@@ -63,7 +63,7 @@ test('Win the day before setup: the XP goal, and no "Goal hit" wording when the 
 
 // ---------- Home order ----------
 
-test('Home order: brief, win, deadline, routine, water/weight, characters and pet, then the rest', () => {
+test('Home order: brief, win, deadline, routine, water/weight, characters and pet (off unless turned on), then the rest', () => {
   assert.deepStrictEqual(F.homeOrder([]).slice(0, 6).map(x => x.id), ['brief', 'win', 'deadlines', 'routine', 'tiles', 'stage']);
   // an old saved order is replaced, but hidden cards stay hidden
   const old = [{ id: 'feed', hide: false }, { id: 'us', hide: true }, { id: 'challenges', hide: true }, { id: 'deadlines', hide: false }, { id: 'pet', hide: true }];
@@ -72,10 +72,12 @@ test('Home order: brief, win, deadline, routine, water/weight, characters and pe
   assert.strictEqual(o.find(x => x.id === 'us').hide, true);
   ['challenges', 'whatnow', 'next', 'make'].forEach(id => assert.ok(!o.some(x => x.id === id), 'retired card ' + id + ' is dropped'));
   assert.strictEqual(o.find(x => x.id === 'feed').hide, false);
-  assert.strictEqual(o.find(x => x.id === 'stage').hide, false, 'merged cards show');
+  assert.strictEqual(o.find(x => x.id === 'stage').hide, true, 'characters and pet are off by default');
+  assert.strictEqual(F.homeOrder([]).find(x => x.id === 'stage').hide, true);
   // a new order is kept as saved (every card can move)
   const mine = [{ id: 'stage' }, { id: 'win' }, { id: 'brief', hide: true }];
-  assert.deepStrictEqual(F.homeOrder(mine).slice(0, 3).map(x => x.id + (x.hide ? '-' : '')), ['stage', 'win', 'brief-']);
+  assert.deepStrictEqual(F.homeOrder(mine).slice(0, 3).map(x => x.id + (x.hide ? '-' : '')), ['stage-', 'win', 'brief-'], 'a card shown before it went optional stays off');
+  assert.strictEqual(F.homeOrder([{ id: 'stage', on: true }, { id: 'win' }])[0].hide, false, 'turned on again: it shows');
   assert.strictEqual(F.homeOrder(mine).length, F.HOME_DEFAULT.length);
 });
 
@@ -84,6 +86,8 @@ test('Home order: the server accepts the new cards in Edit home screen', () => {
   const s = plain(C.setPrefs(me, { home: F.homeOrder([]).map((x, i) => ({ id: x.id, hide: i === 5 })) }));
   assert.strictEqual(s.fun.prefs.home.length, F.HOME_DEFAULT.length);
   assert.strictEqual(s.fun.prefs.home[5].id, 'stage'); assert.strictEqual(s.fun.prefs.home[5].hide, true);
+  const on = plain(C.setPrefs(me, { home: [{ id: 'win' }, { id: 'stage', hide: false, on: true }] }));
+  assert.strictEqual(on.fun.prefs.home[1].on, true, 'the server keeps the opt-in');
 });
 
 // ---------- routines ----------

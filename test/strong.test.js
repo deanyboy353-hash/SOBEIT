@@ -36,18 +36,19 @@ test('Timers: a push at the end of a rest timer and a chore timer; one trigger a
   assert.throws(() => g.ctx.setTimer(me, 'x', 1), /doesn't look right/);
 });
 
-test('Presets: Arms & Shoulders Pump and friends land in the Sessions tab once and can be trained', () => {
+test('Presets and the Pump: Full Body Express lands in the Sessions tab once; the Pump is an extra template, never today\'s session', () => {
   const { g, me } = ready();
   const t = g.ctx.trainState(me);
-  ['Arms & Shoulders Pump', 'Push', 'Pull', 'Full Body Express'].forEach(n => assert.ok(t.sessions.includes(n), n));
-  assert.strictEqual(t.kinds['Arms & Shoulders Pump'], 'preset');
-  assert.strictEqual(t.kinds['Push'], 'programme');
-  assert.strictEqual(t.plans['Arms & Shoulders Pump'].accessories.length, 8);
+  assert.ok(t.sessions.includes('Full Body Express'));
+  assert.strictEqual(t.kinds['Full Body Express'], 'preset');
+  assert.deepStrictEqual(plain(t.split.order.map(o => o.name)), ['Push', 'Pull', 'Shoulders & Arms']);
+  assert.ok(t.tpl.pump, 'the Pump template is there');
   const n = g.tab('Sessions').rows().length;
   g.ctx.ensurePresets_();
   assert.strictEqual(g.tab('Sessions').rows().length, n);
-  g.ctx.setTodaySession(me, 'Arms & Shoulders Pump');
-  assert.strictEqual(g.ctx.trainState(me).today, 'Arms & Shoulders Pump');
+  assert.throws(() => g.ctx.setTodaySession(me, 'Arms & Shoulders Pump'), /Pump is an extra/);
+  g.ctx.setTodaySession(me, 'Full Body Express');
+  assert.strictEqual(g.ctx.trainState(me).today, 'Full Body Express');
 });
 
 test('Templates: save, replace and delete your own; programme days are protected', () => {
@@ -59,7 +60,7 @@ test('Templates: save, replace and delete your own; programme days are protected
   assert.deepStrictEqual(plain(t.plans['Beach Day'].accessories.map(a => a.exercise)), ['Hammer curl']);
   t = g.ctx.deleteTemplate(me, 'Beach Day');
   assert.ok(!t.sessions.includes('Beach Day'));
-  assert.throws(() => g.ctx.deleteTemplate(me, 'Push'), /Programme days/);
+  assert.throws(() => g.ctx.deleteTemplate(me, 'Push'), /Split sessions can't be deleted/);
   assert.throws(() => g.ctx.saveTemplate(me, '', [{ exercise: 'x' }]), /name/);
 });
 
@@ -84,7 +85,7 @@ test('Workout: set types, duration, volume, PRs for any exercise, history, recor
   const rec = t.records.find(r => r.exercise === 'EZ-bar curl');
   assert.strictEqual(rec.heaviest, 32.5);
   assert.strictEqual(rec.history.length, 2);
-  assert.deepStrictEqual(plain(t.prev['ez-bar curl']), [{ w: 32.5, r: 10, t: '' }]);
+  assert.deepStrictEqual(plain(t.prev['ez-bar curl']), [{ w: 32.5, r: 10, t: '', rpe: '' }]);
 });
 
 test('Cardio: log with distance and heart rate, XP, undo and delete', () => {

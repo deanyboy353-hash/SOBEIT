@@ -151,7 +151,7 @@
   function greeting() { var hr = new Date(now()).getHours(); return hr < 5 ? 'Late one' : hr < 12 ? 'Morning' : hr < 18 ? 'Afternoon' : 'Evening'; }
 
   var ICONS = {
-    camera: 'M4 8h3l2-3h6l2 3h3v11H4zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z', mic: 'M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3',
+    settings: 'M4 7h10M18 7h2M4 17h4M12 17h8M14 4.5v5M8 14.5v5', camera: 'M4 8h3l2-3h6l2 3h3v11H4zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z', mic: 'M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3',
     home: 'M3 10.5 12 3l9 7.5M5 9.5V21h5v-6h4v6h5V9.5', brief: 'M4 8h16v11H4zM9 8V5h6v3M4 13h16', list: 'M10 6h10M10 12h10M10 18h10M4 6l1.2 1.2L7.5 5M4 12l1.2 1.2L7.5 11M4 18l1.2 1.2L7.5 17',
     grid: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z', dumbbell: 'M6.5 6.5v11M17.5 6.5v11M3.5 9.5v5M20.5 9.5v5M6.5 12h11',
     food: 'M7 3v8a2 2 0 0 0 4 0V3M9 11v10M17 3c-1.7 1.3-2.5 3.5-2.5 6.5V13H17v8', user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0',
@@ -209,19 +209,6 @@
     });
   }
   function buzz(p) { if (navigator.vibrate && !(S && S.fun && S.fun.prefs && S.fun.prefs.haptics === false)) navigator.vibrate(p || 25); }
-  function confetti(big) {
-    if (S && S.fun && S.fun.prefs && (S.fun.prefs.confetti === false || S.fun.prefs.motion === false)) return;
-    var c = el('confetti'), x = c.getContext('2d');
-    c.width = innerWidth; c.height = innerHeight;
-    var colors = ['#f3a9c8', '#a891ef', '#fde3ee', '#e5dcff', '#ffe7a8'], ps = [];
-    for (var i = 0; i < (big ? 140 : 60); i++) ps.push({ x: c.width / 2, y: c.height * 0.35, vx: (Math.random() - .5) * 13, vy: -Math.random() * 11 - 4, r: 4 + Math.random() * 5, c: colors[i % colors.length], a: Math.random() * 6 });
-    var t = 0;
-    (function frame() {
-      x.clearRect(0, 0, c.width, c.height);
-      ps.forEach(function (p) { p.vy += 0.33; p.x += p.vx; p.y += p.vy; p.a += 0.2; x.fillStyle = p.c; x.save(); x.translate(p.x, p.y); x.rotate(p.a); x.fillRect(-p.r / 2, -p.r / 2, p.r, p.r * 1.6); x.restore(); });
-      if (++t < 85) requestAnimationFrame(frame); else x.clearRect(0, 0, c.width, c.height);
-    })();
-  }
   function ring(frac, size, stroke) {
     var r = 50 - stroke / 2 - 1, c = 2 * Math.PI * r, id = 'g' + Math.random().toString(36).slice(2, 7);
     return '<svg viewBox="0 0 100 100"><defs><linearGradient id="' + id + '" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--ring-a)"/><stop offset="1" stop-color="var(--ring-b)"/></linearGradient></defs>' +
@@ -236,37 +223,16 @@
   el('sheetbg').addEventListener('click', function (ev) { if (ev.target === el('sheetbg') || ev.target.closest('[data-close]')) closeSheet(); });
 
   // ---------- state and celebrations ----------
+  // big moments get a word and a chime, nothing that covers the screen
   function celebrate(prev, next) {
-    if (!prev || !next || !prev.game || !next.game) return;
+    if (!prev || !next || !prev.game || !next.game) return '';
     var a = prev.game, b = next.game;
     var wonA = a.win ? a.win.won : a.streak && a.streak.todayDone, wonB = b.win ? b.win.won : b.streak && b.streak.todayDone;
-    if (b.team && a.team && !a.team.todayDone && b.team.todayDone) setTimeout(function () { highFive(S.solo ? 'Day won' : 'You both won the day'); }, b.level.level > a.level.level ? 2600 : 900);
-    if (b.level.level > a.level.level) {
-      confetti(true); chime([660, 880, 1100, 1320]); buzz([60, 40, 60, 40, 120]); levelBurst(b.level.level);
-      openSheet('<div class="center" style="padding:10px 0 4px">' + icon('star', 'l') + '<h2 style="margin:8px 0 4px">Level ' + b.level.level + '</h2><p class="muted">' + fmt(b.total) + ' XP so far. Nice one.</p><button class="btn primary wide" type="button" data-close>Continue</button></div>');
-    } else if (wonB && !wonA) {
-      confetti(true); chime([660, 880, 1100]); buzz([50, 40, 120]);
-      minBurst(b.streak.count);
-    } else if (b.xpToday > a.xpToday) {
-      confetti(false); chime([880, 1175]); buzz(25);
-    }
-  }
-  // big moments: a full-screen burst that fades by itself and never blocks a tap
-  function overlay(cls, html, ms) {
-    var o = document.createElement('div'); o.className = 'burst ' + cls; o.innerHTML = html; o.setAttribute('role', 'status');
-    var done = function () { if (o.parentNode) { o.classList.add('out'); setTimeout(function () { o.remove(); }, 300); } };
-    document.body.appendChild(o); setTimeout(done, ms || 2400);
-  }
-  function minBurst(count) {
-    overlay('minhit', '<div class="burst-in">' + flame(count, 56) + '<h2>Day won</h2><p>Streak ' + count + ' day' + (count === 1 ? '' : 's') + '</p></div>', 2000);
-  }
-  function levelBurst(level) {
-    if (reducedMotion()) return;
-    overlay('lvl', '<div class="rays"></div><div class="burst-in"><div class="lvl-n">' + level + '</div><h2>Level up</h2>' + (S.fun && S.fun.era ? '<p>' + esc(S.fun.era) + '</p>' : '') + '</div>', 2600);
-  }
-  function highFive(text) {
-    buzz([30, 60, 90]);
-    overlay('hi5', '<div class="burst-in"><div class="hands"><span class="hand l">' + avatarOf('me', 64) + '</span><span class="clap"><svg viewBox="0 0 40 40" width="44" height="44" aria-hidden="true"><path d="M20 2l4 11 11-4-7 9 9 6-11 1 1 11-7-8-7 8 1-11-11-1 9-6-7-9 11 4z" fill="#ffd36b"/></svg></span><span class="hand r">' + avatarOf('partner', 64) + '</span></div><h2>High five</h2><p>' + esc(text || '') + '</p></div>', 2200);
+    if (b.level.level > a.level.level) { chime([660, 880, 1100, 1320]); buzz([60, 40, 120]); return 'Level ' + b.level.level + '. ' + fmt(b.total) + ' XP so far.'; }
+    if (b.team && a.team && !a.team.todayDone && b.team.todayDone) { chime([660, 880, 1100]); buzz([50, 40, 120]); return S.solo ? 'Day won.' : 'You both won the day.'; }
+    if (wonB && !wonA) { chime([660, 880, 1100]); buzz([50, 40, 120]); return 'Day won. Streak ' + b.streak.count + '.'; }
+    if (b.xpToday > a.xpToday) { chime([880, 1175]); buzz(25); }
+    return '';
   }
   function apply(res, msg) {
     var prev = S;
@@ -274,9 +240,9 @@
     if (S.chat) startChat();
     offset = res.now - Date.now();
     save('state-' + KEY.slice(0, 6), S);
-    celebrate(prev, S);
+    var big = celebrate(prev, S);
     renderAll();
-    if (msg) toast(msg);
+    if (big || msg) toast(big || msg);
     if (S.undo && prev && (!prev.undo || prev.undo.id !== S.undo.id) && Date.now() + offset - S.undo.at < 20000) offerUndo(S.undo, msg);
   }
   // Quick taps: update the screen now, save in the background, undo if it fails.
@@ -635,14 +601,15 @@
   }
   function renderChores() {
     var s = mySession(), q = S.quests, n = names(), h = '<div class="top"><div><h1>Chores</h1><div class="sub">One job at a time.</div></div>' + meButton() + '</div>';
-    if (!S.solo) h += '<section class="card"><div class="head"><h3>Together</h3><button class="btn ghost sm" type="button" id="askJoin">' + icon('send', 's') + 'Ask ' + esc(n.other) + ' to join</button></div><div class="duo" id="duo">' + duo() + '</div></section>';
-    if (s) { el('tab-chores').innerHTML = h + focusView(s); return; }
-    if (plan) { el('tab-chores').innerHTML = h + readyView(); return; }
+    var together = S.solo ? '' : '<section class="card"><div class="head"><h3>Together</h3><button class="btn ghost sm" type="button" id="askJoin">' + icon('send', 's') + 'Ask ' + esc(n.other) + ' to join</button></div><div class="duo" id="duo">' + duo() + '</div></section>';
+    if (s) { el('tab-chores').innerHTML = h + together + focusView(s); return; }
+    if (plan) { el('tab-chores').innerHTML = h + together + readyView(); return; }
     if (S.chores.invite) h += '<div class="note">' + esc(n.other) + ' wants company. Start a job and do it together.</div>';
     h += '<div class="seg" role="tablist">' + [['today', 'Today'], ['schedule', 'Schedule'], ['plan', 'Plan']].map(function (o) { return '<button type="button" data-cview="' + o[0] + '" aria-pressed="' + (choresView === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
     if (choresView === 'schedule') { el('tab-chores').innerHTML = h + (S.setup && S.setup.built && window.NudgeSetup ? NudgeSetup.choreList() : scheduleView()); return; }
     if (choresView === 'plan') { el('tab-chores').innerHTML = h + planView(); return; }
-    if (!mySession()) h += musicBar();
+    var mb = musicBar(), playing = mb.indexOf('musicbtn playing') !== -1;
+    if (playing) h += mb;
     if (q.planned) {
       var mustL = q.board.filter(function (x) { return x.must; }), bonusL = q.board.filter(function (x) { return !x.must; });
       h += '<section class="card spot"><div class="head"><h3>' + (q.win ? 'Day won' : 'Win the day: ' + Math.min(q.doneCount, q.minimum) + ' of ' + q.minimum) + '</h3></div>' +
@@ -653,10 +620,12 @@
     h += '<section class="card spot"><div class="head"><h3>Today</h3><span class="muted small num">' + q.board.filter(function (x) { return x.doneToday; }).length + '/' + q.board.length + '</span></div>' +
       (q.board.length ? q.board.map(function (x) { return questRow(x, { claim: true }); }).join('') : '<p class="empty">Nothing due today. Enjoy it.</p>') + '</section>';
     if (q.more.length) h += '<section class="card"><details><summary class="small muted" style="cursor:pointer">' + (q.planned ? 'Other jobs (' + q.more.length + '): ' + esc(names().other) + '\'s, or coming up soon. Doing one counts.' : 'Also due (' + q.more.length + '), only if you feel like it') + '</summary><div style="margin-top:8px">' + q.more.map(function (x) { return questRow(x, { claim: true }); }).join('') + '</div></details></section>';
+    h += together;
     if (q.doneExtra.length) h += '<section class="card"><div class="head"><h3>Bonus today</h3></div>' + q.doneExtra.map(function (x) { return questRow(x); }).join('') + '</section>';
     if (q.upcoming.length) h += '<section class="card"><div class="head"><h3>Coming up</h3></div>' + q.upcoming.slice(0, 8).map(function (x) {
       return '<div class="item"><div class="grow"><div class="t" style="font-weight:500">' + esc(x.name) + '</div></div><span class="small muted">' + dayLabel(x.next) + '</span></div>';
     }).join('') + '</section>';
+    if (!playing) h += mb;
     h += '<section class="card"><div class="head"><h3 class="row" style="gap:8px">' + icon('bulb', 's') + 'Brain dump</h3></div><textarea id="dumpText" placeholder="Everything in your head, any order. Ring the dentist, out of bin bags, the shower needs a proper clean…"></textarea>' +
       '<button class="btn primary wide" type="button" id="dumpBtn" style="margin-top:10px">Sort it for me</button></section>';
     h += '<section class="card"><details><summary class="small muted" style="cursor:pointer">Start any job with a timer</summary><div class="grid2" style="margin-top:10px">' +
@@ -800,7 +769,7 @@
   function renderPlay() {
     var G = S.games, n = names(), h = '<div class="top"><div><h1>Play</h1><div class="sub">Same puzzles for you both. Live scores.</div></div>' + meButton() + '</div>';
     h += '<section class="card spot"><div class="vs"><div>' + avatarOf(S.who, 40) + '<div class="small muted">You</div><div class="num" style="font-size:28px;font-weight:700">' + G.stats.you + '</div></div><div class="center small muted">head to head<br><span class="tiny">' + G.stats.draws + ' draws</span></div><div class="right">' + avatarOf(S.who === 'me' ? 'partner' : 'me', 40, true) + '<div class="small muted">' + esc(n.other) + '</div><div class="num" style="font-size:28px;font-weight:700">' + G.stats.them + '</div></div></div></section>';
-    h += '<div class="seg six">' + [['word', 'Word'], ['target', 'Numbers'], ['recall', 'Recall'], ['tempo', 'Tempo'], ['mix', 'Mix practice'], ['stats', 'Stats']].map(function (o) { return '<button type="button" data-pview="' + o[0] + '" aria-pressed="' + (playView === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
+    h += '<div class="seg six">' + [['word', 'Word'], ['target', 'Numbers'], ['recall', 'Recall'], ['tempo', 'Tempo'], ['mix', 'Mix'], ['stats', 'Stats']].map(function (o) { return '<button type="button" data-pview="' + o[0] + '" aria-pressed="' + (playView === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>';
     if (playView === 'word') h += wordView(G.word, n);
     else if (playView === 'target') h += targetView(G.target, n);
     else if (playView === 'recall') h += recallView(G.recall, n);
@@ -1183,7 +1152,7 @@
     call('saveWorkout', [tp ? tp.name : tsel, sets, { started: load('wkstart-' + draftKey()) || 0, template: tp ? tp.id : '' }], function (res) {
       save(draftKey(), null); save('wkstart-' + draftKey(), null); endRest(); armRest();
       apply(res.state);
-      confetti(true); chime([660, 880, 1100, 1320]); buzz([60, 40, 60, 40, 150]);
+      chime([660, 880, 1100, 1320]); buzz([60, 40, 60, 40, 150]);
       var h = '<div class="center">' + icon('trophy', 'l') + '<h2 style="margin:8px 0">' + (res.extra ? 'Pump logged' : 'Workout logged') + '</h2>' + (res.extra ? '<p class="small" style="margin:0 0 8px">' + (res.bonus ? '+' + res.bonus + ' bonus XP. ' : 'Bonus XP already earned today. ') + 'Your rotation stays where it was.</p>' : '') + (res.volume ? '<p class="muted" style="margin:0 0 10px">' + res.sets + ' sets · ' + fmt(res.volume) + ' kg lifted' + (res.minutes ? ' · ' + res.minutes + ' min' : '') + '</p>' : '') + '</div>';
       (res.changes || []).forEach(function (c) { h += '<section class="card tint">' + '<b>' + esc(c.lift) + '</b>: ' + c.reps + ' reps on the heavy set<br>' + (c.change ? 'Training max ' + c.from + ' → <b>' + c.to + ' kg</b>' : 'Training max stays at ' + c.from + ' kg. Go again next week.') + '</section>'; });
       (res.prs || []).slice(0, 3).forEach(function (r) { h += '<section class="card blush"><b>New record.</b> ' + esc(r.exercise) + ' ' + r.weight + ' kg × ' + r.reps + (r.e1rm ? ' (est. 1RM ' + Math.round(r.e1rm) + ' kg)' : '') + '</section>'; });
@@ -1256,10 +1225,9 @@
     var g = S.game, n = names(), th = document.documentElement.getAttribute('data-theme'), h = '';
     h += '<div class="top"><div class="row"><button class="iconbtn" type="button" data-goto="home" aria-label="Back">' + icon('back') + '</button><h1>You</h1></div></div>';
     h += charCard();
-    if (S.wardrobe) h += '<section class="card spot av-card"><div class="av3d tall" id="av3dYou"><div class="av3d-msg small muted center">Loading…</div></div><button class="btn primary wide" type="button" data-dress="open">' + icon('sparkles', 's') + 'Dressing room</button></section>';
-    h += '<div class="grid2" style="margin-bottom:12px"><button class="btn soft" type="button" data-goto="empire">' + icon('building', 's') + 'Your empire</button><button class="btn soft" type="button" data-goto="custom">' + icon('sparkles', 's') + 'Customise</button></div>';
-    h += '<section class="card tint"><div class="between"><div><div class="eyebrow" style="color:var(--lilac)">Level ' + g.level.level + (S.fun && S.fun.era ? ' · ' + esc(S.fun.era) : '') + '</div><div class="num" style="font-size:28px;font-weight:700">' + fmt(g.total) + ' XP</div></div></div>' +
-      '<div class="bar" style="margin-top:10px;background:var(--surface)"><i style="width:' + Math.round(g.level.into / g.level.need * 100) + '%"></i></div><div class="tiny muted" style="margin-top:6px">' + (g.level.need - g.level.into) + ' XP to level ' + (g.level.level + 1) + ' · best streak ' + g.streak.best + (g.streak.best === 1 ? ' day' : ' days') + '</div>' + (S.fun && S.fun.nextEra && S.fun.nextEra !== S.fun.era ? '<div class="tiny muted" style="margin-top:2px">Next era: ' + esc(S.fun.nextEra) + '</div>' : '') + '</section>';
+    h += '<div class="grid2" style="margin-bottom:12px"><button class="btn soft" type="button" data-goto="empire">' + icon('building', 's') + 'Your empire</button><button class="btn soft" type="button" data-goto="custom">' + icon('settings', 's') + 'Settings</button></div>';
+    h += '<section class="card tint"><div class="between"><div><div class="eyebrow">Level ' + g.level.level + '</div><div class="num" style="font-size:28px;font-weight:700">' + fmt(g.total) + ' XP</div></div></div>' +
+      '<div class="bar" style="margin-top:10px;background:var(--surface)"><i style="width:' + Math.round(g.level.into / g.level.need * 100) + '%"></i></div><div class="tiny muted" style="margin-top:6px">' + (g.level.need - g.level.into) + ' XP to level ' + (g.level.level + 1) + ' · best streak ' + g.streak.best + (g.streak.best === 1 ? ' day' : ' days') + '</div>' + '</section>';
     var wk = g.week, mo = g.month, me = S.who, ot = S.who === 'me' ? 'partner' : 'me', mxw = Math.max(wk.me, wk.partner, 1), tot = Math.max(1, mo.me + mo.partner);
     h += '<section class="card"><div class="head"><h3>This week</h3></div>' +
       '<div class="score"><span>You</span><span class="bar"><i style="width:' + (wk[me] / mxw * 100) + '%"></i></span><b class="num right">' + wk[me] + '</b></div>' +
@@ -1272,19 +1240,8 @@
     // settings
     if (window.NudgeSetup) h += NudgeSetup.settingsCard();
     h += trainingCard();
-    h += '<section class="card"><div class="head"><h3>Settings</h3></div>';
-    h += '<div class="eyebrow" style="margin-bottom:6px">Your look</div>' + lookPicker();
-    h += '<div class="eyebrow" style="margin:6px 0">Notifications</div>';
-    if (MODE === 'gas') h += '<p class="small muted" style="margin:0 0 12px">Push notifications work in the installed app. Open your new app link from the Config tab of your Sheet.</p>';
-    else if (!('Notification' in window) || !('serviceWorker' in navigator)) h += '<p class="small muted" style="margin:0 0 12px">' + (/iPhone|iPad/.test(navigator.userAgent) && !standalone() ? 'On iPhone, add this app to your Home Screen first (Share, then Add to Home Screen), then open it from there.' : 'This browser can\'t show notifications.') + '</p>';
-    else if (!S.push.configured) h += '<p class="small muted" style="margin:0 0 12px">Notifications aren\'t set up on the server yet.</p>';
-    else h += '<div class="between" style="margin-bottom:12px"><span class="small">' + (Notification.permission === 'granted' && S.push.devices ? 'On for this phone' : Notification.permission === 'denied' ? 'Blocked in your phone settings' : 'Off') + '</span><button class="btn ' + (Notification.permission === 'granted' && S.push.devices ? 'line' : 'primary') + ' sm" type="button" id="pushOn">' + icon('bell', 's') + (Notification.permission === 'granted' && S.push.devices ? 'Test' : 'Turn on') + '</button></div>';
-    if (MODE !== 'gas' && S.push && S.push.configured) h += pushDetails();
-    if (MODE === 'web' && !standalone()) h += '<div class="between" style="margin-bottom:12px"><span class="small">Install as an app</span>' + (deferredInstall ? '<button class="btn primary sm" type="button" id="install">' + icon('download', 's') + 'Install</button>' : '<span class="tiny muted right">' + (/iPhone|iPad/.test(navigator.userAgent) ? 'Share, then Add to Home Screen' : 'Menu, then Install app') + '</span>') + '</div>';
-    if (ME) h += '<div class="eyebrow" style="margin:6px 0">Claude API key</div><form class="inline" id="keyForm" autocomplete="off"><input type="password" id="keyText" placeholder="' + (S.hasClaudeKey ? 'Saved. Paste a new one to replace it' : 'sk-ant-…') + '" aria-label="Claude API key"><button class="btn primary" type="submit">Save</button></form><p class="tiny muted" style="margin:6px 0 0">Powers Ask, the morning brief, meal ideas and food quick-add. Get one at console.anthropic.com.</p>';
-    h += '</section><p class="small muted center">Chores, routines, lifts and targets can all be changed in your Google Sheet.</p>';
+    h += '<p class="small muted center">Chores, routines, lifts and targets can all be changed in your Google Sheet.</p>';
     el('tab-you').innerHTML = h;
-    mountYou3d();
   }
 
   // ---------- FUN: Us, stakes, Tempo, intro ----------
@@ -1409,30 +1366,10 @@
     rpc('submitTempo', [bpm]).then(function (g) {
       tempo = null; S.games = g; renderPlay();
       var l = g.last || { points: 0 }, m = g.tempo.mine;
-      if (l.points >= 8) { confetti(l.points === 10); chime([659, 880, 1100]); }
+      if (l.points >= 8) chime([659, 880, 1100]);
       toast(bpm + ' BPM: ' + (l.points === 10 ? 'perfect timing' : l.points ? l.points + ' points' : 'too far off for points') + (l.firstXp ? '. +' + l.firstXp + ' XP' : '') + (m.points > l.points ? '. Best today: ' + m.points : ''));
       if (l.firstXp) refreshQuiet();
     }, function (err) { tempo = null; renderPlay(); toast(err.message, true); });
-  }
-
-  // ---- the daily intro (first open each day) ----
-  function intro() {
-    if (!S || !S.fun || current !== 'home') return;
-    var dn = new Date(now()), day = dn.getFullYear() + '-' + ('0' + (dn.getMonth() + 1)).slice(-2) + '-' + ('0' + dn.getDate()).slice(-2);
-    if (load('intro-' + S.who) === day) return;
-    save('intro-' + S.who, day);
-    var f = S.fun, g = S.game, n = names();
-    var bars = ''; for (var i = 0; i < 24; i++) bars += '<i style="animation-delay:' + (-i * 0.13).toFixed(2) + 's"></i>';
-    var h = '<div class="intro" id="intro" role="dialog" aria-label="Welcome"><div class="in">' +
-      '<div class="eq">' + bars + '</div>' +
-      '<div class="eyebrow l1">Day ' + f.day + ' of ' + esc(f.team) + '</div>' +
-      '<h1 class="l2">' + greeting() + ',<br>' + esc(n.me || 'you') + '</h1>' +
-      (f.era ? '<div class="era l3">Level ' + g.level.level + ' · ' + esc(f.era) + '</div>' : '') +
-      '<div class="istats l4"><div><b class="num">' + g.streak.count + '</b><span>day streak</span></div><div><b class="num">' + g.team.count + '</b><span>together</span></div><div><b class="num">' + (g.xpToday >= g.goal ? g.xpToday : g.goal - g.xpToday) + '</b><span>' + (g.xpToday >= g.goal ? 'XP today' : 'XP to go') + '</span></div></div>' +
-      (S.brief ? '<p class="l6 small">' + esc(S.brief.first ? 'First move: ' + S.brief.first : S.brief.brief) + '</p>' : '') +
-      '<button class="btn primary big wide l7" type="button" data-fun="introGo">Start the day</button></div></div>';
-    document.body.insertAdjacentHTML('beforeend', h);
-    chime([523, 659, 784]);
   }
 
   // ---- taps for all of the above ----
@@ -1441,12 +1378,11 @@
     if (!t || !S) return;
     var f = t.dataset.fun, v = t.dataset.v;
     if (t.dataset.stake) return call('setStake', [t.dataset.stake], function (g) { closeSheet(); S.games = g; renderPlay(); toast('Stakes set. ' + names().other + ' knows.'); });
-    if (f === 'introGo') { var x = el('intro'); if (x) { x.classList.add('out'); setTimeout(function () { x.remove(); }, 350); } return; }
     if (f === 'chat') return window.NudgeChat ? NudgeChat.open(chatApi) : toast('The chat didn\'t load. Check your connection.', true);
     if (f === 'usToggle') { usOpen = !usOpen; return renderHome(); }
     if (f === 'dice') { var d; do { d = DICE[Math.floor(Math.random() * DICE.length)]; } while (d === diceIdea && DICE.length > 1); diceIdea = d; buzz(15); return renderHome(); }
     if (f === 'tap') return tempoTap();
-    if (f === 'usLog') return call('logUs', [], function (res) { confetti(true); chime([523, 784, 1047]); apply(res, 'Logged. +20 XP each.'); var st = el('chatStats'); if (st) st.innerHTML = usStats(); });
+    if (f === 'usLog') return call('logUs', [], function (res) { chime([523, 784, 1047]); apply(res, 'Logged. +20 XP each.'); var st = el('chatStats'); if (st) st.innerHTML = usStats(); });
     if (f === 'wink') return call('sendWink', ['wink'], function (res) { apply(res, 'Wink sent'); });
     if (f === 'tonight') return call('sendWink', ['tonight'], function (res) { apply(res, 'Asked. Waiting for ' + names().other + '…'); });
     if (f === 'tonightYes' || f === 'tonightNo') return call('answerTonight', [f === 'tonightYes'], function (res) { apply(res, f === 'tonightYes' ? 'Said yes' : 'Rain check sent'); });
@@ -1808,10 +1744,8 @@
   function charCard() {
     // your look is your 3D character (the dressing room): the same face everywhere in the app
     var g = S.game;
-    return '<button class="charcard" type="button" data-dress="open">' + avatarOf(S.who, 64) + '<span class="grow"><span class="tiny">Your look</span><b>' + esc(names().me || 'You') + '</b>' +
-      '<span class="small">Level ' + g.level.level + (S.empire ? ' · worth ' + money(S.empire.worth + S.empire.cash) : '') + '</span>' +
-      (S.empire && (S.empire.rideName || S.empire.homeName) ? '<span class="tiny" style="opacity:.9">' + [S.empire.rideName ? 'Rides a ' + esc(S.empire.rideName) : '', S.empire.homeName ? 'Lives at ' + esc(S.empire.homeName) : ''].filter(Boolean).join(' · ') + '</span>' : '') +
-      wanted(g.streak.count) + '</span>' + icon('chevron', 's') + '</button>';
+    return '<button class="charcard" type="button" data-dress="open">' + avatarOf(S.who, 52) + '<span class="grow"><b>' + esc(names().me || 'You') + '</b>' +
+      '<span class="small muted">Level ' + g.level.level + (S.empire ? ' · worth ' + money(S.empire.worth + S.empire.cash) : '') + '</span></span>' + icon('chevron', 's') + '</button>';
   }
 
 
@@ -1899,23 +1833,20 @@
   var HOME_NAMES = { brief: 'Today brief', win: 'Win the day', deadlines: 'Next deadline', routine: 'Routine for now', tiles: 'Water and weight', stage: 'Characters and pet', ask: 'Ask anything', gym: 'Gym today', work: 'Work: now and next', us: 'Us', feed: 'Partner feed' };
   function homeOrder() { return NudgeFmt.homeOrder(S.fun && S.fun.prefs && S.fun.prefs.home); }
   function prefs() { return (S && S.fun && S.fun.prefs) || {}; }
-  // ---------- the look: After Dark or Glam, light or dark (follows the phone unless overridden) ----------
+  // ---------- the look: one theme, light or dark (follows the phone unless overridden) ----------
   var darkMQ = window.matchMedia ? matchMedia('(prefers-color-scheme: dark)') : null;
-  function skinOf() { var p = prefs(); return p.skin === 'glam' || p.skin === 'afterdark' ? p.skin : (S && S.who === 'partner' ? 'glam' : 'afterdark'); }
   function modeOf() { var m = prefs().mode; return m === 'light' || m === 'dark' ? m : 'auto'; }
-  function themeName() { var m = modeOf(), dark = m === 'dark' || (m === 'auto' && (!darkMQ || darkMQ.matches)); return (skinOf() === 'glam' ? 'glam' : 'ad') + '-' + (dark ? 'dark' : 'light'); }
+  function themeName() { var m = modeOf(), dark = m === 'dark' || (m === 'auto' && (!darkMQ || darkMQ.matches)); return 'ad-' + (dark ? 'dark' : 'light'); }
   function applyTheme() {
     var t = themeName(), root = document.documentElement;
     if (root.getAttribute('data-theme') !== t) root.setAttribute('data-theme', t);
-    save('skin', skinOf()); save('mode', modeOf());
-    var mc = document.querySelector('meta[name="theme-color"]'); if (mc) mc.setAttribute('content', getComputedStyle(root).getPropertyValue('--bg').trim() || '#07050c');
+    save('mode', modeOf());
+    var mc = document.querySelector('meta[name="theme-color"]'); if (mc) mc.setAttribute('content', getComputedStyle(root).getPropertyValue('--bg').trim() || '#f6f6f7');
   }
   if (darkMQ && darkMQ.addEventListener) darkMQ.addEventListener('change', function () { if (S) applyTheme(); });
   function lookPicker() {
-    var sk = skinOf(), m = modeOf();
-    return '<div class="lookpick">' + [['afterdark', 'lp-ad', 'After Dark', 'Underground rave'], ['glam', 'lp-glam', 'Glam', 'Spotlight and sparkle']].map(function (o) {
-      return '<button type="button" class="' + o[1] + '" data-skin="' + o[0] + '" aria-pressed="' + (sk === o[0]) + '"><b>' + o[2] + '</b><small>' + o[3] + '</small></button>';
-    }).join('') + '</div><div class="eyebrow" style="margin:14px 0 6px">Light or dark</div><div class="seg">' + [['auto', 'Match my phone'], ['light', 'Light'], ['dark', 'Dark']].map(function (o) {
+    var m = modeOf();
+    return '<div class="seg">' + [['auto', 'Match my phone'], ['light', 'Light'], ['dark', 'Dark']].map(function (o) {
       return '<button type="button" data-mode="' + o[0] + '" aria-pressed="' + (m === o[0]) + '">' + o[1] + '</button>';
     }).join('') + '</div>';
   }
@@ -1927,38 +1858,7 @@
     root.setAttribute('data-text', p.text === 'large' ? 'large' : 'normal');
     root.classList.toggle('calm', p.motion === false);
     save('accent', p.accent || '');
-    var st = {};
-    ['bg', 'cards', 'font', 'corners'].forEach(function (k) { var v = p[k] && STYLE_OPTS[k][0][0] !== p[k] ? p[k] : ''; if (v) { root.setAttribute('data-' + k, v); st[k] = v; } else root.removeAttribute('data-' + k); });
-    save('style', st);
-    setTod();
   }
-  // the style studio (labels; the server keeps the same lists)
-  var STYLE_OPTS = {
-    bg: [['live', 'Live', 'Drifts with the time of day'], ['lasers', 'Lasers', 'Slow sweeping beams'], ['grid', 'Grid', 'Synthwave floor'], ['stars', 'Stars', 'Quiet twinkle'], ['plain', 'Plain', 'Nothing moving']],
-    cards: [['soft', 'Soft', 'The usual'], ['glass', 'Glass', 'Frosted, see-through'], ['neon', 'Neon', 'Glowing edges'], ['outline', 'Outline', 'Just the lines'], ['flat', 'Flat', 'No borders']],
-    font: [['default', 'Clean', 'System font'], ['rounded', 'Rounded', 'Soft and friendly'], ['mono', 'Mono', 'Typewriter'], ['serif', 'Serif', 'Bookish'], ['condensed', 'Poster', 'Tall and tight']],
-    corners: [['round', 'Round', ''], ['sharp', 'Sharp', ''], ['pill', 'Pill', '']]
-  };
-  function setTod() {
-    var h = new Date(now()).getHours(), t = h < 5 || h >= 21 ? 'night' : h < 9 ? 'dawn' : h < 17 ? 'day' : 'dusk';
-    if (document.documentElement.getAttribute('data-tod') !== t) document.documentElement.setAttribute('data-tod', t);
-  }
-  setInterval(setTod, 5 * 60 * 1000);
-  function styleStudio(p) {
-    var lab = { bg: 'Background', cards: 'Cards', font: 'Font', corners: 'Corners' };
-    return '<section class="card"><div class="head"><h3>Style studio</h3><button class="btn ghost sm" type="button" data-stylereset="1">Reset</button></div><p class="small muted" style="margin:0 0 4px">Make it yours. Everything follows you to any phone.</p>' +
-      Object.keys(STYLE_OPTS).map(function (k) {
-        var cur = p[k] || STYLE_OPTS[k][0][0];
-        return '<div class="eyebrow" style="margin:12px 0 6px">' + lab[k] + '</div><div class="stylepick">' + STYLE_OPTS[k].map(function (o) {
-          return '<button type="button" data-style="' + k + ':' + o[0] + '" aria-pressed="' + (cur === o[0]) + '">' + o[1] + (o[2] ? '<small>' + o[2] + '</small>' : '') + '</button>';
-        }).join('') + '</div>';
-      }).join('') + '</section>';
-  }
-  document.addEventListener('click', function (ev) {
-    var b = ev.target.closest('[data-style], [data-stylereset]'); if (!b || !S) return;
-    if (b.dataset.stylereset) return savePrefs({ bg: 'live', cards: 'soft', font: 'default', corners: 'round' }, 'Back to the default style');
-    var kv = b.dataset.style.split(':'), ch = {}; ch[kv[0]] = kv[1]; buzz(10); savePrefs(ch);
-  });
   function savePrefs(change, msg) {
     S.fun.prefs = Object.assign({}, prefs(), change);
     if (change.char !== undefined) S.fun.chars[S.who] = change.char;
@@ -1971,36 +1871,39 @@
   function renderCustom() {
     loadBackupInfo();
     var p = prefs(), th = document.documentElement.getAttribute('data-theme'), cur = charOf(S.who), n = names(), h = '';
-    h += '<div class="top"><div class="row"><button class="iconbtn" type="button" data-goto="you" aria-label="Back">' + icon('back') + '</button><h1>Customise</h1></div></div>';
-    // character
-    h += '<section class="card"><div class="head"><h3>Your look</h3></div><div class="row" style="gap:14px">' + avatarOf(S.who, 72) + '<p class="small muted grow" style="margin:0">Your face everywhere in the app comes from your character in the dressing room: skin, hair, clothes and extras.</p></div><button class="btn primary wide" type="button" data-dress="open" style="margin-top:12px">' + icon('sparkles', 's') + 'Open the dressing room</button></section>';
-    // look
-    h += '<section class="card spot"><div class="head"><h3>Look</h3></div>' + lookPicker() +
-      '<div class="eyebrow" style="margin:14px 0 6px">Accent colour</div><div class="swatches">' + [['', 'Lilac'], ['pink', 'Pink'], ['green', 'Green'], ['teal', 'Teal'], ['orange', 'Orange'], ['blue', 'Blue'], ['lime', 'Lime'], ['red', 'Red'], ['gold', 'Gold']].map(function (o) {
+    h += '<div class="top"><div class="row"><button class="iconbtn" type="button" data-goto="you" aria-label="Back">' + icon('back') + '</button><h1>Settings</h1></div></div>';
+    h += '<section class="card"><div class="head"><h3>Appearance</h3></div>' + lookPicker() +
+      '<div class="eyebrow" style="margin:14px 0 6px">Accent colour</div><div class="swatches">' + [['', 'Violet'], ['blue', 'Blue'], ['teal', 'Teal'], ['green', 'Green'], ['orange', 'Orange'], ['pink', 'Pink']].map(function (o) {
         return '<button type="button" class="sw-' + (o[0] || 'lilac') + '" data-accent="' + o[0] + '" aria-pressed="' + ((p.accent || '') === o[0]) + '" aria-label="' + o[1] + '"></button>';
       }).join('') + '</div>' +
-      '<div class="eyebrow" style="margin:14px 0 6px">Text size</div><div class="seg">' + [['normal', 'Normal'], ['large', 'Larger']].map(function (o) { return '<button type="button" data-textsize="' + o[0] + '" aria-pressed="' + ((p.text || 'normal') === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div></section>';
-    h += styleStudio(p);
-    // names and titles
+      '<div class="eyebrow" style="margin:14px 0 6px">Text size</div><div class="seg">' + [['normal', 'Normal'], ['large', 'Larger']].map(function (o) { return '<button type="button" data-textsize="' + o[0] + '" aria-pressed="' + ((p.text || 'normal') === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>' +
+      '<button class="btn line wide" type="button" data-dress="open" style="margin-top:14px">' + avatarOf(S.who, 24) + 'Your character</button></section>';
+    h += '<section class="card"><div class="head"><h3>Phone and AI</h3></div>';
+    h += '<div class="eyebrow" style="margin:0 0 6px">Notifications</div>';
+    if (MODE === 'gas') h += '<p class="small muted" style="margin:0 0 12px">Push notifications work in the installed app. Open your new app link from the Config tab of your Sheet.</p>';
+    else if (!('Notification' in window) || !('serviceWorker' in navigator)) h += '<p class="small muted" style="margin:0 0 12px">' + (/iPhone|iPad/.test(navigator.userAgent) && !standalone() ? 'On iPhone, add this app to your Home Screen first (Share, then Add to Home Screen), then open it from there.' : 'This browser can\'t show notifications.') + '</p>';
+    else if (!S.push.configured) h += '<p class="small muted" style="margin:0 0 12px">Notifications aren\'t set up on the server yet.</p>';
+    else h += '<div class="between" style="margin-bottom:12px"><span class="small">' + (Notification.permission === 'granted' && S.push.devices ? 'On for this phone' : Notification.permission === 'denied' ? 'Blocked in your phone settings' : 'Off') + '</span><button class="btn ' + (Notification.permission === 'granted' && S.push.devices ? 'line' : 'primary') + ' sm" type="button" id="pushOn">' + icon('bell', 's') + (Notification.permission === 'granted' && S.push.devices ? 'Test' : 'Turn on') + '</button></div>';
+    if (MODE !== 'gas' && S.push && S.push.configured) h += pushDetails();
+    if (MODE === 'web' && !standalone()) h += '<div class="between" style="margin-bottom:12px"><span class="small">Install as an app</span>' + (deferredInstall ? '<button class="btn primary sm" type="button" id="install">' + icon('download', 's') + 'Install</button>' : '<span class="tiny muted right">' + (/iPhone|iPad/.test(navigator.userAgent) ? 'Share, then Add to Home Screen' : 'Menu, then Install app') + '</span>') + '</div>';
+    if (ME) h += '<div class="eyebrow" style="margin:6px 0">Claude API key</div><form class="inline" id="keyForm" autocomplete="off"><input type="password" id="keyText" placeholder="' + (S.hasClaudeKey ? 'Saved. Paste a new one to replace it' : 'sk-ant-…') + '" aria-label="Claude API key"><button class="btn primary" type="submit">Save</button></form><p class="tiny muted" style="margin:6px 0 0">Powers Ask, the morning brief, meal ideas and food quick-add. Get one at console.anthropic.com.</p>';
+    h += '</section>';
     h += '<section class="card"><div class="head"><h3>Names</h3></div><form class="stack" id="namesForm" autocomplete="off">' +
       '<label class="small muted">What the app calls you<input type="text" id="nickText" value="' + esc(n.me) + '" maxlength="24"></label>' +
       '<label class="small muted">The two of you<input type="text" id="teamText" value="' + esc(n.team) + '" maxlength="40"></label>' +
-      '<button class="btn primary" type="submit">Save names</button></form>' +
-      '<div class="eyebrow" style="margin:14px 0 6px">Level titles</div><div class="seg">' + [['dj', 'DJ'], ['glam', 'Glam'], ['city', 'City'], ['none', 'Plain']].map(function (o) {
-        return '<button type="button" data-titles="' + o[0] + '" aria-pressed="' + (String(S.fun.titles || 'none').toLowerCase() === o[0] || (o[0] === 'none' && !/^(dj|glam|city)$/i.test(S.fun.titles || ''))) + '">' + o[1] + '</button>';
-      }).join('') + '</div><p class="tiny muted" style="margin:0">' + (S.fun.era ? 'Now: ' + esc(S.fun.era) + (S.fun.nextEra ? ' · next: ' + esc(S.fun.nextEra) : '') : 'Just "Level ' + S.game.level.level + '"') + '</p></section>';
+      '<button class="btn primary" type="submit">Save names</button></form></section>';
     // home layout
-    h += '<section class="card"><div class="head"><h3>Home screen</h3><button class="btn ghost sm" type="button" data-homereset="1">Reset</button></div><p class="small muted" style="margin:0 0 6px">Move things up or down, or hide them.</p>' +
+    h += '<section class="card"><div class="head"><h3>Home screen</h3><button class="btn ghost sm" type="button" data-homereset="1">Reset</button></div><p class="small muted" style="margin:0 0 6px">Move cards up or down, or switch them off.</p>' +
       homeOrder().map(function (x, i, all) {
-        return '<div class="item' + (x.hide ? ' done' : '') + '"><button class="check' + (x.hide ? '' : ' on') + '" type="button" data-homehide="' + x.id + '" aria-label="Show or hide">' + icon('check') + '</button><div class="grow t" style="font-weight:550">' + HOME_NAMES[x.id] + '</div>' +
+        return '<div class="item"><div class="grow t" style="font-weight:550' + (x.hide ? ';color:var(--muted)' : '') + '">' + HOME_NAMES[x.id] + '</div>' +
           '<button class="iconbtn" type="button" data-homemove="' + x.id + '" data-dir="-1" aria-label="Move up"' + (i ? '' : ' disabled') + '><svg class="i s" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg></button>' +
-          '<button class="iconbtn" type="button" data-homemove="' + x.id + '" data-dir="1" aria-label="Move down"' + (i < all.length - 1 ? '' : ' disabled') + '><svg class="i s" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button></div>';
+          '<button class="iconbtn" type="button" data-homemove="' + x.id + '" data-dir="1" aria-label="Move down"' + (i < all.length - 1 ? '' : ' disabled') + '><svg class="i s" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button><button class="toggle' + (x.hide ? '' : ' on') + '" type="button" data-homehide="' + x.id + '" aria-pressed="' + !x.hide + '" aria-label="Show ' + HOME_NAMES[x.id] + '"><i></i></button></div>';
       }).join('') + '</section>';
     // feel
     var nag = p.nag || (S.who === 'me' ? 'aggressive' : 'normal');
     h += '<section class="card"><div class="head"><h3>Reminders</h3></div><p class="small muted" style="margin:0 0 8px">How hard the app pushes about deadlines and your streak.</p><div class="seg">' + [['gentle', 'Gentle'], ['normal', 'Normal'], ['aggressive', 'Duolingo']].map(function (o) { return '<button type="button" data-nag="' + o[0] + '" aria-pressed="' + (nag === o[0]) + '">' + o[1] + '</button>'; }).join('') + '</div>' +
       '<p class="tiny muted" style="margin:0">' + ({ gentle: 'One reminder before a deadline, then hourly once it\'s late.', normal: 'Reminders 30 and 10 minutes before, then every 15 minutes once it\'s late.', aggressive: 'Reminders from an hour before, then every 5 minutes once it\'s late, plus a streak nag every half hour from 6pm. Quiet from 10:30pm to 8am.' })[nag] + '</p></section>';
-    h += '<section class="card"><div class="head"><h3>Feel</h3></div>' + [['sound', 'Sounds', 'Chimes for done, levels and timers'], ['haptics', 'Vibration', 'A little buzz when you tick things'], ['confetti', 'Confetti', 'Celebrations when you earn XP'], ['motion', 'Animations', 'Turn off for a calmer app']].map(function (o) {
+    h += '<section class="card"><div class="head"><h3>Feel</h3></div>' + [['sound', 'Sounds', 'Chimes for done, levels and timers'], ['haptics', 'Vibration', 'A little buzz when you tick things'], ['motion', 'Animations', 'Turn off for a still app']].map(function (o) {
       var on = p[o[0]] !== false;
       return '<div class="item"><div class="grow"><b>' + o[1] + '</b><div class="tiny muted">' + o[2] + '</div></div><button class="toggle' + (on ? ' on' : '') + '" type="button" data-pref="' + o[0] + '" aria-pressed="' + on + '" aria-label="' + o[1] + '"><i></i></button></div>';
     }).join('') + '</section>';
@@ -2079,7 +1982,7 @@
     if (d.pref) { var ch = {}; ch[d.pref] = prefs()[d.pref] === false; return savePrefs(ch); }
     if (d.homereset) return savePrefs({ home: [] }, 'Home screen reset');
     var list = homeOrder();
-    if (d.homehide) { list.forEach(function (x) { if (x.id === d.homehide) x.hide = !x.hide; }); return savePrefs({ home: list }); }
+    if (d.homehide) { list.forEach(function (x) { if (x.id === d.homehide) { x.hide = !x.hide; if (x.id === 'stage') x.on = !x.hide; } }); return savePrefs({ home: list }); }
     if (d.homemove) {
       var i = list.map(function (x) { return x.id; }).indexOf(d.homemove), j = i + Number(d.dir);
       if (j < 0 || j >= list.length) return;
@@ -2204,8 +2107,8 @@
     var d = t.dataset;
     if (d.empview) { empView = d.empview; save('empView', empView); return renderEmpire(); }
     if (d.empgame) { empGame = d.empgame; save('empGame', empGame); return renderEmpire(); }
-    if (d.buy) { var it = catItem(d.buy); if (!confirm('Buy ' + theName(it.name) + ' for ' + money(it.price) + '?')) return; return call('buyItem', [d.buy], function (res) { confetti(true); chime([523, 659, 784, 1047]); buzz([40, 30, 80]); apply(res, 'It\'s yours: ' + it.name); }); }
-    if (d.upg) return call('upgradeItem', [d.upg, d.u], function (res) { confetti(false); chime([659, 880]); apply(res, upName(d.u) + ': done'); });
+    if (d.buy) { var it = catItem(d.buy); if (!confirm('Buy ' + theName(it.name) + ' for ' + money(it.price) + '?')) return; return call('buyItem', [d.buy], function (res) { chime([523, 659, 784, 1047]); buzz([40, 30, 80]); apply(res, 'It\'s yours: ' + it.name); }); }
+    if (d.upg) return call('upgradeItem', [d.upg, d.u], function (res) { chime([659, 880]); apply(res, upName(d.u) + ': done'); });
     if (d.sell) { var o = catItem(d.sell); if (!confirm('Sell ' + theName(o.name) + '? You get 60% of what you put in.')) return; return call('sellItem', [d.sell], function (res) { apply(res, 'Sold ' + theName(o.name)); }); }
     if (d.fav) return call('setFavourite', [d.fav], function (res) { apply(res, 'Done'); });
   });
@@ -2245,7 +2148,7 @@
       planPick = list.slice(i + 1).concat(list.slice(0, i)).filter(function (nm) { return planDraft[nm] === 'anyone'; })[0] || '';
       return renderChores();
     }
-    if (t.id === 'planSave') { return call('saveWeekPlan', [planDraft], function (res) { planDraft = null; planPick = ''; confetti(false); apply(res, 'Week planned. ' + names().other + ' can see it.'); }); }
+    if (t.id === 'planSave') { return call('saveWeekPlan', [planDraft], function (res) { planDraft = null; planPick = ''; apply(res, 'Week planned. ' + names().other + ' can see it.'); }); }
     if (t.dataset.together !== undefined) {
       var nm = t.dataset.name, q = questByName(nm), both = t.dataset.together === '1';
       closeSheet();
@@ -2751,7 +2654,6 @@
       if (!res.xp) return;
       chime([659, 784, 1047]);
       toast('+' + res.xp + ' XP' + (res.onTime ? ' · started on time' : '') + (res.combo ? ' · ' + (res.combo + 1) + ' in a row' : '') + (res.clean ? '. Clean sheet! +' + res.clean + ' XP' : ''));
-      if (res.clean) confetti(true); else if (b && b.kind !== 'break') confetti(false);
     });
   }
   document.addEventListener('submit', function (ev) {
@@ -2783,7 +2685,7 @@
     if (d.wkc) {
       var cb = W().blocks.filter(function (x) { return x.id === d.id; })[0];
       if (cb) { cb.count = Math.max(0, cb.count + +d.wkc); if (cb.status === 'planned') cb.status = 'active'; renderWork(); }
-      return wkCall('countBlock', [d.id, +d.wkc], function (res) { if (res.hit) { chime([659, 784, 1047]); confetti(!!res.clean); toast('Target hit. +' + res.xp + ' XP' + (res.clean ? '. Clean sheet! +' + res.clean : '')); } });
+      return wkCall('countBlock', [d.id, +d.wkc], function (res) { if (res.hit) { chime([659, 784, 1047]); toast('Target hit. +' + res.xp + ' XP' + (res.clean ? '. Clean sheet! +' + res.clean : '')); } });
     }
     if (d.wkkit) return wkCall('addBlock', [d.wkkit, wkDate()], function (res) { var a = res.added; toast(a.task + ': ' + hm(a.start) + '–' + hm(a.start + a.mins)); });
     if (d.wkkitdel !== undefined) { var kit = S.work.kit.slice(); kit.splice(+d.wkkitdel, 1); return call('setPrefs', [{ workKit: kit }], function (res) { apply(res); }); }
@@ -3066,7 +2968,7 @@
       if (cash < item.price) return toast('You need ' + money(item.price - cash) + ' more.', true);
       S.wardrobe.owned.push(item.id); if (S.empire) S.empire.cash -= item.price;
       renderDress(); buzz([20, 30, 40]);
-      if (item.style === 'drag') { confetti(true); toast('The ' + item.name + ' is yours. Work it.'); } else { confetti(false); toast('Bought the ' + item.name); }
+      toast('Bought the ' + item.name);
       chime([659, 784, 1047]);
       save('state-' + KEY.slice(0, 6), S);
       return call('buyWear', [d.dbuy], null, function () { if (dress) renderDress(); });
@@ -3095,7 +2997,7 @@
       buzz([20, 30, 20]);
     }, 'questDone', [ds.qdone], ds.qdone + ': done');
     if (ds.claim) return quick(function () { S.quests.board.concat(S.quests.more).forEach(function (x) { if (x.name === ds.claim) x.claimedBy = x.claimedBy === S.who ? '' : S.who; }); }, 'claimQuest', [ds.claim]);
-    if (ds.hi5) { highFive('Sent to ' + names().other); }
+    if (ds.hi5) { buzz([30, 60, 90]); toast('High five sent to ' + names().other); }
     if (ds.hi5) return quick(function () { S.game.feed.forEach(function (f) { if (f.id === ds.hi5 && f.hi5.indexOf(S.who) === -1) f.hi5.push(S.who); }); }, 'highFive', [ds.hi5], 'High-five sent');
     if (ds.routine !== undefined && ds.ri !== undefined) return quick(function () {
       S.routines.routines.forEach(function (r) { if (r.name !== ds.routine) return; var i = r.done.indexOf(+ds.ri); if (i === -1) r.done.push(+ds.ri); else r.done.splice(i, 1); if (!r.finished && r.done.length >= r.steps.length) { r.finished = true; addXpLocal(10); } });
@@ -3157,7 +3059,7 @@
     if (ds.num) { target.expr += (target.expr && /\d$/.test(target.expr) ? ' ' : '') + ds.num; return renderPlay(); }
     if (ds.op) { target.expr += ' ' + ds.op + ' '; target.expr = target.expr.replace(/\s+/g, ' ').replace(/\( /g, '(').replace(/ \)/g, ')'); return renderPlay(); }
     if (t.id === 'tClear') { target.expr = ''; return renderPlay(); }
-    if (t.id === 'tCheck') { if (!target.expr.trim()) { toast('Tap some numbers and signs first'); return; } return call('submitTarget', [target.expr, false], function (g) { var before = S.games.target.mine; S.games = g; renderPlay(); var m = g.target.mine; toast(m && m.final ? 'Bang on. Locked in.' : 'Best so far: ' + m.best + ' (' + Math.abs(m.best - g.target.target) + ' away)'); if (m && m.final) { confetti(true); refreshQuiet(); } }); }
+    if (t.id === 'tCheck') { if (!target.expr.trim()) { toast('Tap some numbers and signs first'); return; } return call('submitTarget', [target.expr, false], function (g) { var before = S.games.target.mine; S.games = g; renderPlay(); var m = g.target.mine; toast(m && m.final ? 'Bang on. Locked in.' : 'Best so far: ' + m.best + ' (' + Math.abs(m.best - g.target.target) + ' away)'); if (m && m.final) { refreshQuiet(); } }); }
     if (t.id === 'tLock') return call('submitTarget', ['', true], function (g) { S.games = g; renderPlay(); toast('Locked in.'); refreshQuiet(); });
     if (t.id === 'recallStart') { recallGame = { on: true, seq: [], pos: 0, input: false, msg: '' }; return recallRound(); }
     if (ds.pad !== undefined && recallGame && recallGame.on && recallGame.input) {
@@ -3266,7 +3168,7 @@
       rpc('guessWord', [guess]).then(function (g) {
         S.games = g; renderPlay();
         var w = g.word;
-        if (w.done) { if (w.won) { confetti(true); chime([660, 880, 1100]); toast(['Genius', 'Magnificent', 'Impressive', 'Splendid', 'Great', 'Phew'][w.guesses.length - 1]); } else toast('The word was ' + w.answer.toUpperCase()); refreshQuiet(); }
+        if (w.done) { if (w.won) { chime([660, 880, 1100]); toast(['Genius', 'Magnificent', 'Impressive', 'Splendid', 'Great', 'Phew'][w.guesses.length - 1]); } else toast('The word was ' + w.answer.toUpperCase()); refreshQuiet(); }
       }, function (err) { wd.guesses.pop(); wd.colours.pop(); typed = guess; renderPlay(); shakeRow(err.message); });
       return;
     } else if (typed.length < 5 && /^[a-z]$/.test(k)) typed += k;
@@ -3476,7 +3378,6 @@
     if (needSetup) setTimeout(function () { if (!NudgeSetup.isOpen()) NudgeSetup.open({ required: true }); }, 200);
     else if (hash === 'us') setTimeout(function () { if (window.NudgeChat) NudgeChat.open(chatApi); }, 600);
     else if (sub) setTimeout(function () { shortcut(hash, sub); }, 350);
-    else setTimeout(intro, 250);
     maybeBrief();
   }
   if (!KEY) {
