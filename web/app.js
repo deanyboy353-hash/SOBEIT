@@ -933,10 +933,19 @@
   // ---- split templates (Training.gs): supersets, last time, RPE, the progression hint, swaps ----
   function tplIdOf(name) { var T = (S.train && S.train.tpl) || {}; return Object.keys(T).filter(function (id) { return T[id].name === name && !T[id].extra; })[0] || ''; }
   function rush() { return !!load('trush'); }
+  // exercises added for one session only (the "Just this session" choice): kept on the phone for that day
+  function taddKey(id) { return 'tadd-' + (S.today ? S.today.date : '') + '-' + (id || tsel); }
+  function sessionAdds(id) { return load(taddKey(id)) || []; }
+  var NO_GO = /dead ?lift|\brdl\b|romanian|good ?morning|back squat|front squat|^squat$|barbell squat|hip thrust|kettlebell swing|trap.?bar|calf|calves/i;
+  function restSecs(t) { t = String(t || ''); var m = t.match(/([\d.]+)\s*(?:–[\d.]+\s*)?min/); if (m) return Math.round(+m[1] * 60); m = t.match(/(\d+)\s*(?:–\d+\s*)?s/); return m ? +m[1] : 90; }
+  function addedEx(a, k) {
+    var last = prevOf(a.exercise).map(function (p) { return { w: p.w, r: p.r, rpe: p.rpe === undefined ? '' : p.rpe, t: p.t }; });
+    return { exercise: a.exercise, base: a.exercise, sets: Math.max(1, +a.sets || 3), reps: String(a.reps || '8-12'), rpe: a.rpe === '' || a.rpe === undefined ? '' : +a.rpe, rest: a.rest || '90s', restSec: restSecs(a.rest), group: '', last: last, lastDate: '', hint: null, added: k + 1 };
+  }
   /** Each exercise with its set rows, pre-filled from last time (and the suggested weight when it's time to go up). */
   function tplModel(tp) {
-    var one = rush();
-    return tp.ex.map(function (x, xi) {
+    var one = rush(), list = tp.ex.map(function (x, xi) { return { x: x, xi: xi }; }).concat(sessionAdds(tp.id).map(function (a, k) { return { x: addedEx(a, k), xi: 'a' + k }; }));
+    return list.map(function (it) { var x = it.x, xi = it.xi;
       var last = x.last || [], low = +((String(x.reps).match(/\d+/) || [8])[0]), rows = [];
       for (var i = 0; i < (one ? 1 : x.sets); i++) {
         var l = last[i] || last[last.length - 1];
@@ -945,12 +954,55 @@
       return { x: x, xi: xi, rows: rows };
     });
   }
+  /** A template's rows as the server takes them; `own` writes swapped names in (for a new workout), else keeps the base. */
+  function tplRowsOf(tp, own) { return tp.ex.map(function (x) { return { exercise: own ? x.exercise : x.base, sets: x.sets, reps: x.reps, rpe: x.rpe, rest: x.rest, group: x.group }; }); }
+  function tplAddSheet() {
+    var tp = S.train.tpl[tsel]; if (!tp) return;
+    var opt = function (v, t, sub, on) { return '<label class="choice"><input type="radio" name="tplkeep" value="' + v + '"' + (on ? ' checked' : '') + '><span><b>' + t + '</b><span class="tiny muted">' + sub + '</span></span></label>'; };
+    openSheet('<h2 style="margin:0 0 12px">Add an exercise</h2><form id="tplAddForm" autocomplete="off"><input type="text" list="exAll" id="taName" placeholder="Exercise, e.g. Hammer curl" aria-label="Exercise" required style="width:100%">' + exList() +
+      '<div class="grid2" style="gap:8px;margin-top:8px"><label class="small muted">Sets<input type="number" inputmode="numeric" id="taSets" value="3" min="1" max="10"></label><label class="small muted">Reps<input type="text" id="taReps" value="10-12"></label>' +
+      '<label class="small muted">RPE<input type="number" inputmode="decimal" step="0.5" min="5" max="10" id="taRpe" value="9"></label><label class="small muted">Rest<input type="text" id="taRest" value="90s"></label></div>' +
+      '<div class="eyebrow" style="margin:16px 0 6px">Keep it</div><div class="choices">' +
+      opt('session', 'Just this session', 'Today only. ' + esc(tp.name) + ' stays as it is.', true) +
+      opt('keep', 'Add to ' + esc(tp.name) + ' for good', 'Every ' + esc(tp.name) + ' from now on.') +
+      opt('new', 'Save as a new workout', 'Today\'s ' + esc(tp.name) + ' with this added, under its own name, with your presets.') + '</div>' +
+      '<input type="text" id="taNew" placeholder="Name, e.g. Upper A + arms" maxlength="40" aria-label="Name for the new workout" hidden style="width:100%;margin-top:8px">' +
+      '<button class="btn primary wide" type="submit" style="margin-top:14px">Add</button></form>');
+  }
+  function saveNewSheet() {
+    var tp = S.train.tpl[tsel]; if (!tp) return;
+    var n = sessionAdds(tp.id).length;
+    openSheet('<h2 style="margin:0 0 4px">Save as a new workout</h2><p class="small muted" style="margin:0 0 12px">' + esc(tp.name) + (n ? ' with the ' + n + ' exercise' + (n === 1 ? '' : 's') + ' you added today' : ' as it is now') + ', under its own name. It sits with your presets: any day, it counts as your gym session, and your rotation stays put.</p>' +
+      '<form id="saveNewForm" autocomplete="off"><input type="text" id="snName" placeholder="Name, e.g. Upper A + arms" maxlength="40" aria-label="Name" required style="width:100%"><button class="btn primary wide" type="submit" style="margin-top:12px">Save</button></form>');
+  }
+  function saveAsNew(name, extra) {
+    var tp = S.train.tpl[tsel], rows = tplRowsOf(tp, true).concat(sessionAdds(tp.id), extra ? [extra] : []);
+    closeSheet();
+    call('saveMyWorkout', [name, rows], function (res) { apply(res, 'Saved ' + name + '. It\'s with your presets now; today\'s session carries on.'); });
+  }
+  document.addEventListener('change', function (ev) { if (ev.target.name === 'tplkeep') { var nb = el('taNew'); if (nb) { nb.hidden = ev.target.value !== 'new'; if (!nb.hidden) nb.focus(); } } });
+  document.addEventListener('submit', function (ev) {
+    var f = ev.target;
+    if (f.id === 'saveNewForm') { ev.preventDefault(); var nm = el('snName').value.trim(); if (!nm) return toast('Give it a name first.', true); return saveAsNew(nm); }
+    if (f.id !== 'tplAddForm') return;
+    ev.preventDefault();
+    var tp = S.train.tpl[tsel], row = { exercise: el('taName').value.trim().slice(0, 60), sets: +el('taSets').value || 3, reps: el('taReps').value.trim() || '10-12', rpe: el('taRpe').value === '' ? '' : +el('taRpe').value, rest: el('taRest').value.trim() || '90s', group: '' };
+    if (!row.exercise) return toast('Type the exercise first.', true);
+    if (NO_GO.test(row.exercise)) return toast(row.exercise + ' breaks the rules: no hip hinges and no calf raises.', true);
+    var how = (f.querySelector('[name=tplkeep]:checked') || {}).value || 'session';
+    if (how === 'new') { var nm2 = el('taNew').value.trim(); if (!nm2) { el('taNew').hidden = false; el('taNew').focus(); return toast('Give the new workout a name.', true); } saveAsNew(nm2, row); }
+    if (how === 'keep') { closeSheet(); return call('editTemplate', [tp.id, tplRowsOf(tp).concat([row])], function (res) { apply(res, row.exercise + ' added to ' + tp.name + ' for good.'); }); }
+    var adds = sessionAdds(tp.id); adds.push(row); save(taddKey(tp.id), adds);
+    if (how === 'session') { closeSheet(); toast(row.exercise + ' added for today.'); }
+    renderTrain();
+  });
   function shortDay(ymd) { return ymd ? new Date(ymd + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) : ''; }
   function tplEx(m, d, restText, thenName) {
     var x = m.x, last = x.last || [];
     var h = '<div class="tplex"><div class="between" style="gap:8px"><div><h3 style="margin:0;font-size:18px">' + esc(x.exercise) + '</h3><div class="tiny muted">' + x.sets + ' × ' + esc(x.reps) + (x.rpe !== '' ? ' @ RPE ' + x.rpe : '') + (x.rest ? ' · rest ' + esc(x.rest) : '') + (x.swapped ? ' · instead of ' + esc(x.base) : '') + '</div></div>' +
-      '<button class="btn ghost sm" type="button" data-tplswap="' + m.xi + '">Swap</button></div>' +
-      '<p class="tiny muted" style="margin:6px 0 0">' + (last.length ? 'Last time (' + esc(shortDay(x.lastDate)) + '): ' + last.map(function (l) { return l.w + ' × ' + l.r + (l.rpe ? ' @ ' + l.rpe : ''); }).join(' · ') : 'No history for this one yet.') + '</p>' +
+      (x.added ? '<button class="btn ghost sm" type="button" data-taddrm="' + (x.added - 1) + '">Remove</button></div>' : '<button class="btn ghost sm" type="button" data-tplswap="' + m.xi + '">Swap</button></div>') +
+      (x.added ? '<p class="tiny" style="margin:6px 0 0;color:var(--lilac)">Added for today only</p>' : '') +
+      '<p class="tiny muted" style="margin:6px 0 0">' + (last.length ? 'Last time' + (x.lastDate ? ' (' + esc(shortDay(x.lastDate)) + ')' : '') + ': ' + last.map(function (l) { return l.w + ' × ' + l.r + (l.rpe ? ' @ ' + l.rpe : ''); }).join(' · ') : 'No history for this one yet.') + '</p>' +
       (x.hint ? '<p class="small hint" style="margin:6px 0 0">' + icon('flag', 's') + esc(x.hint.text) + '</p>' : '');
     var rst = thenName ? '0' : restText;
     h += '<div style="margin-top:8px">' + m.rows.map(function (r, i) { return setRow(r, i + 1, d, rst).replace('data-rest="', (thenName ? 'data-then="' + esc(thenName) + '" ' : '') + 'data-rest="'); }).join('') + '</div></div>';
@@ -985,7 +1037,7 @@
     openSheet('<h2 style="margin:0 0 4px">Edit ' + esc(tp.name) + '</h2><p class="small muted" style="margin:0 0 12px">Two exercises with the same superset letter share one rest. No hip hinges or calf raises.</p>' + exList() +
       '<form id="tplEdit" data-id="' + esc(id) + '" autocomplete="off"><div id="tplRows">' + tp.ex.map(row).join('') + '</div>' +
       '<button class="btn line wide" type="button" data-tpladd="1" style="margin:8px 0">' + icon('plus', 's') + 'Add an exercise</button><button class="btn primary wide" type="submit">Save ' + esc(tp.name) + '</button></form>' +
-      '<button class="btn soft wide" type="button" data-tplreset="' + esc(id) + '" style="margin-top:8px">Reset to default</button>');
+      (tp.mine ? '<button class="btn line wide" type="button" data-mydel="' + esc(id) + '" style="margin-top:8px;color:var(--warn)">' + icon('trash', 's') + 'Delete ' + esc(tp.name) + '</button>' : '<button class="btn soft wide" type="button" data-tplreset="' + esc(id) + '" style="margin-top:8px">Reset to default</button>'));
     el('tplRows').dataset.blank = row({ exercise: '', sets: 3, reps: '10-12', rpe: 8, rest: '90s', group: '' });
   }
   /** Main lifts over your whole history (Strong and Liftoff imports included): best estimated 1RM per session. */
@@ -1095,11 +1147,11 @@
       if (m && m.tier === 'T1' && m.tm && !x.swapped) h += '<p class="tiny muted" style="margin:8px 0 0">Sets marked <span class="amrap">+</span>: as many good reps as you can. The heavy one sets next week\'s training max.</p>';
       h += '</section>';
     });
-    if (!tp) h += '<button class="btn line wide" type="button" id="addEx" style="margin-bottom:12px">' + icon('plus', 's') + 'Add an exercise</button>';
+    h += '<button class="btn line wide" type="button" id="' + (tp ? 'tplAddBtn' : 'addEx') + '" style="margin-bottom:12px">' + icon('plus', 's') + 'Add an exercise</button>';
     var count = doneCount();
     h += '<button class="btn primary big wide" type="button" id="finishWk"' + (count ? '' : ' disabled') + '>Finish workout · ' + count + ' set' + (count === 1 ? '' : 's') + '</button>';
     if (!tp && (load(custKeys(tsel)[0]) || load(custKeys(tsel)[1]))) h += '<p class="center" style="margin:10px 0 0"><button class="linkbtn small muted" type="button" id="resetCust">Undo my changes to ' + esc(tsel) + '</button></p>';
-    if (tp) h += '<p class="center" style="margin:10px 0 0"><button class="linkbtn small muted" type="button" data-tpledit="' + esc(tp.id) + '">Edit ' + esc(tp.name) + '</button>' + (tp.edited || tp.swaps ? ' · <button class="linkbtn small muted" type="button" data-tplreset="' + esc(tp.id) + '">Reset to default</button>' : '') + '</p>';
+    if (tp) h += '<p class="center" style="margin:10px 0 0"><button class="linkbtn small muted" type="button" id="saveNewBtn">Save this session as a new workout</button> · <button class="linkbtn small muted" type="button" data-tpledit="' + esc(tp.id) + '">Edit ' + esc(tp.name) + '</button>' + (tp.edited || tp.swaps ? ' · <button class="linkbtn small muted" type="button" data-tplreset="' + esc(tp.id) + '">Reset to default</button>' : '') + '</p>';
     h += liftChart();
     var pr = t.progress;
     h += '<section class="card" style="margin-top:14px"><div class="head"><h3>Progress</h3><span class="small muted">' + pr.workouts + ' workout' + (pr.workouts === 1 ? '' : 's') + '</span></div>' + pr.lifts.filter(function (l) { return (l.best || l.tm) && !/^(dead ?lift|squat|back squat|front squat|romanian deadlift)$/i.test(l.lift); }).map(function (l) {
@@ -1153,7 +1205,7 @@
     if (bad && !confirm(bad + ' ticked set' + (bad === 1 ? ' has' : 's have') + ' 0 reps and won\'t be saved. Finish anyway?')) return;
     el('finishWk').disabled = true; el('finishWk').textContent = 'Saving…';
     call('saveWorkout', [tp ? tp.name : tsel, sets, { started: load('wkstart-' + draftKey()) || 0, template: tp ? tp.id : '' }], function (res) {
-      save(draftKey(), null); save('wkstart-' + draftKey(), null); endRest(); armRest();
+      save(draftKey(), null); save('wkstart-' + draftKey(), null); if (tp) save(taddKey(tp.id), null); endRest(); armRest();
       apply(res.state);
       chime([660, 880, 1100, 1320]); buzz([60, 40, 60, 40, 150]);
       var h = '<div class="center">' + icon('trophy', 'l') + '<h2 style="margin:8px 0">' + (res.extra ? 'Pump logged' : 'Workout logged') + '</h2>' + (res.extra ? '<p class="small" style="margin:0 0 8px">' + (res.bonus ? '+' + res.bonus + ' bonus XP. ' : 'Bonus XP already earned today. ') + 'Your rotation stays where it was.</p>' : '') + (res.volume ? '<p class="muted" style="margin:0 0 10px">' + res.sets + ' sets · ' + fmt(res.volume) + ' kg lifted' + (res.minutes ? ' · ' + res.minutes + ' min' : '') + '</p>' : '') + '</div>';
@@ -3089,6 +3141,13 @@
       return call('swapExercise', [stp.id, base, ds.swapto], function (res) { apply(res, ds.swapto ? 'Swapped to ' + to + ' for every ' + stp.name + '.' : 'Back to ' + base + '.'); });
     }
     if (ds.tpledit) return editSheet(ds.tpledit);
+    if (t.id === 'tplAddBtn') return tplAddSheet();
+    if (t.id === 'saveNewBtn') return saveNewSheet();
+    if (ds.taddrm !== undefined) { var ad = sessionAdds(); ad.splice(+ds.taddrm, 1); save(taddKey(), ad.length ? ad : null); return renderTrain(); }
+    if (ds.mydel) {
+      var mtp = S.train.tpl[ds.mydel]; if (!mtp || !confirm('Delete ' + mtp.name + '? Anything you logged with it stays in your history.')) return;
+      closeSheet(); return call('deleteMyWorkout', [ds.mydel], function (res) { tsel = null; apply(res, mtp.name + ' deleted.'); });
+    }
     if (ds.tplreset) {
       var rtp = S.train.tpl[ds.tplreset]; if (!rtp || !confirm('Put ' + rtp.name + ' back to the default? Your edits and swaps for it go; your history stays.')) return;
       closeSheet();

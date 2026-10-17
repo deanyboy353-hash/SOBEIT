@@ -128,11 +128,11 @@ test('Swaps follow the rules and are remembered; templates can be edited and res
   Object.values(plain(C.trainState(me)).tpl).forEach(tp => tp.ex.forEach(x => x.options.forEach(o => assert.ok(!/dead|rdl|romanian|good morning|back squat|calf/i.test(o), o))));
   C.swapExercise(me, 'ul-ua', 'Lat pulldown', 'Close-grip pulldown');
   t = plain(C.trainState(me)).tpl['ul-ua'];
-  assert.deepStrictEqual([t.ex[1].exercise, t.ex[1].base, t.ex[1].swapped], ['Close-grip pulldown', 'Lat pulldown', true]);
+  assert.deepStrictEqual([t.ex[2].exercise, t.ex[2].base, t.ex[2].swapped], ['Close-grip pulldown', 'Lat pulldown', true]);
   assert.throws(() => C.swapExercise(me, 'ul-ua', 'Lat pulldown', 'Romanian deadlift'), /breaks the rules/);
   assert.throws(() => C.swapExercise(me, 'ul-la', 'Hack squat', 'Seated calf raise'), /breaks the rules/);
   C.swapExercise(me, 'ul-ua', 'Lat pulldown', '');
-  assert.strictEqual(plain(C.trainState(me)).tpl['ul-ua'].ex[1].exercise, 'Lat pulldown', 'changed back');
+  assert.strictEqual(plain(C.trainState(me)).tpl['ul-ua'].ex[2].exercise, 'Lat pulldown', 'changed back');
   C.editTemplate(me, 'ul-ua', [{ exercise: 'Bench press', sets: 5, reps: '5', rpe: 8, rest: '3 min' }, { exercise: 'Leg press', sets: 4, reps: '10-12', rpe: 8, rest: '2 min' }]);
   t = plain(C.trainState(me)).tpl['ul-ua'];
   assert.deepStrictEqual(t.ex.map(x => [x.exercise, x.sets, x.reps, x.restSec]), [['Bench press', 5, '5', 180], ['Leg press', 4, '10-12', 120]]);
@@ -140,7 +140,7 @@ test('Swaps follow the rules and are remembered; templates can be edited and res
   assert.throws(() => C.editTemplate(me, 'ul-ua', [{ exercise: 'Deadlift', sets: 3 }]), /breaks the rules/);
   C.resetTemplate(me, 'ul-ua');
   t = plain(C.trainState(me)).tpl['ul-ua'];
-  assert.strictEqual(t.ex.length, 6); assert.strictEqual(t.edited, false);
+  assert.strictEqual(t.ex.length, 7); assert.strictEqual(t.edited, false);
 });
 
 test('Every split and preset: no hip hinges or calves, more back than chest sets, supersets in pairs, 4 to 8 exercises', () => {
@@ -157,4 +157,47 @@ test('Every split and preset: no hip hinges or calves, more back than chest sets
     const sets = re => order.reduce((a, id) => a + T[id].ex.filter(r => re.test(r[0])).reduce((b, r) => b + r[1], 0), 0);
     assert.ok(sets(back) > sets(chest), s + ': back ' + sets(back) + ' sets vs chest ' + sets(chest));
   });
+});
+
+test('Upper A leads with chest, Upper B with back, and both are upper body only', () => {
+  const { C } = ready();
+  const T = plain(C.TEMPLATES), back = /pulldown|row|pull-up|face pull|reverse pec/i, chest = /bench|chest press|incline db press|fly/i, legs = /squat|leg |lunge|hack|calf/i;
+  const sets = (id, re) => T[id].ex.filter(r => re.test(r[0])).reduce((a, r) => a + r[1], 0);
+  ['ul-ua', 'ul-ub'].forEach(id => T[id].ex.forEach(r => assert.ok(!legs.test(r[0]), id + ' is upper body: ' + r[0])));
+  assert.ok(sets('ul-ua', chest) > sets('ul-ua', back), 'Upper A: more chest');
+  assert.ok(sets('ul-ub', back) > sets('ul-ub', chest), 'Upper B: more back');
+  assert.match(T['ul-ua'].ex[0][0], /Bench/); assert.match(T['ul-ub'].ex[0][0], /pulldown/i);
+});
+
+test('Your own workouts: save from a session, they sit with the presets, count as the gym session, can be edited and deleted (archived)', () => {
+  const { g, C, me } = ready();
+  const rows = [{ exercise: 'Bench press', sets: 4, reps: '5-6', rpe: 8, rest: '3 min' }, { exercise: 'Hammer curl', sets: 3, reps: '10-12', rpe: 9, rest: '90s' }];
+  const s = plain(C.saveMyWorkout(me, 'Upper A + arms', rows));
+  const id = s.savedWorkout;
+  assert.match(id, /^my-/);
+  const sp = s.train.split;
+  assert.deepStrictEqual(sp.presets.map(x => x.name), ['Push', 'Pull', 'Legs', 'Full Body', 'Upper A + arms', 'Arms & Shoulders Pump'], 'yours before the Pump');
+  assert.strictEqual(s.train.tpl[id].ex[1].exercise, 'Hammer curl');
+  assert.strictEqual(s.train.tpl[id].mine, true);
+  assert.throws(() => C.saveMyWorkout(me, 'upper a', rows), /already a workout called/);
+  assert.throws(() => C.saveMyWorkout(me, 'Bad', [{ exercise: 'Romanian deadlift' }]), /breaks the rules/);
+  assert.throws(() => C.saveMyWorkout(me, '', rows), /name/);
+  // logging it: a gym session (50 XP), the rotation stays on Upper A
+  const xp0 = C.xpOn_('me', '2026-10-12');
+  const r = C.saveWorkout(me, 'Upper A + arms', [{ exercise: 'Hammer curl', set: 1, weight: 16, reps: 12, rpe: 9 }], { template: id });
+  assert.strictEqual(r.extra, false);
+  assert.strictEqual(C.xpOn_('me', '2026-10-12') - xp0, 50);
+  assert.ok(g.tab('Workout log').rows().some(x => x.includes(id)));
+  at(g, '2026-10-13T17:00:00Z');
+  assert.strictEqual(next(C, me), 'Upper A');
+  // edit like any template, rename by saving again, then delete: the definition goes to the Archive tab, history stays
+  C.editTemplate(me, id, rows.concat([{ exercise: 'Rope pushdown', sets: 3, reps: '12', rpe: 9, rest: '60s' }]));
+  assert.strictEqual(plain(C.trainState(me)).tpl[id].ex.length, 3);
+  assert.strictEqual(plain(C.saveMyWorkout(me, 'Push day plus', rows, id)).train.tpl[id].name, 'Push day plus');
+  const logged = g.tab('Workout log').rows().length;
+  C.deleteMyWorkout(me, id);
+  assert.ok(!plain(C.trainState(me)).tpl[id]);
+  assert.strictEqual(g.tab('Workout log').rows().length, logged, 'history kept');
+  assert.ok(g.tab('Archive').rows().some(x => /Your workout deleted: Push day plus/.test(x.join(' '))));
+  assert.doesNotThrow(() => C.trainState(me), 'history logged with a deleted workout still reads');
 });

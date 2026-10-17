@@ -103,7 +103,7 @@ function markGymDone_(ymd, session, template) {
   if (!/^Done/.test(String(before['Status'] || ''))) addXp_('me', 'Gym: ' + (session || 'session done'), 50, 'gym');
   var update = { 'Status': 'Done', 'Ticked at': now_('HH:mm') };
   if (session && (!before['Session'] || !/^Done/.test(String(before['Status'] || '')))) update['Session'] = session;     // so the rotation knows what was done
-  var tpl = TEMPLATES[template] ? template : templateByName_(session); if (tpl && tpl !== PUMP_ID) update['Template'] = tpl;
+  var tpl = template && tplDef_(template) ? template : templateByName_(session); if (tpl && tpl !== PUMP_ID) update['Template'] = tpl;
   if (r) updateRow_('gym', r, update);
   else appendRow_('gym', Object.assign({ 'Date': ymd, 'Day': DAY_NAMES[dayOfWeek_(ymd)] }, update));
 }

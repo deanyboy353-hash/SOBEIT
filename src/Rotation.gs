@@ -53,14 +53,14 @@ function classifySession(exercises) {
 
 /** Main sessions completed, oldest first: [{ date, session, template }] (any split; the Pump never counts). See Training.gs. */
 function rotationDone_(toYmd) {
-  return mainDone_(toYmd).map(function (x) { return { date: x.date, session: TEMPLATES[x.template].name, template: x.template }; });
+  return mainDone_(toYmd).map(function (x) { return { date: x.date, session: tplDef_(x.template).name, template: x.template }; });
 }
 /** The next session in your split's rotation, by name: the one after the last you did. Skipping a day moves nothing. */
 function rotationNext_(ymd) { return TEMPLATES[nextTemplate_(addDays_(ymd, -1))].name; }
 /** Main session completed on a day ('' if none). */
 function rotationDoneOn_(ymd) {
   var d = mainDone_(ymd).filter(function (x) { return x.date === ymd; });
-  return d.length ? TEMPLATES[d[d.length - 1].template].name : '';
+  return d.length ? tplDef_(d[d.length - 1].template).name : '';
 }
 
 /**

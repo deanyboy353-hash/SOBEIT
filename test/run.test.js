@@ -86,7 +86,7 @@ test('Tuesday: setup builds the sheet and plans the bus 3 (e-bike offered when d
   assert.match(ev[0].opts.description, /Miss the 15:01\? Next: bus 3 at 16:01 \(leave 15:59\), gym 16:14–18:16, back on the 3 at 18:30, home by 18:44/);
   assert.match(ev[0].opts.description, /It's dry, so the e-bike works too: leave 15:05, 17 min each way/);
   assert.match(ev[0].opts.description, /1\. Bench press: 4 × 5-6 @ RPE 8 · rest 3 min/);
-  assert.match(ev[0].opts.description, /2\. Lat pulldown: 4 × 6-8 @ RPE 8 · rest 2\.5 min/);
+  assert.match(ev[0].opts.description, /2\. Incline DB press: 3 × 8-10 @ RPE 8 · rest 2 min/);
   assert.doesNotMatch(ev[0].opts.description, /Machine shoulder press|deadlift|Romanian/i);
   assert.strictEqual(ev[0].opts.location, 'JD Gym Coatbridge');
   assert.deepStrictEqual(ev[0].reminders, [14, 0]); // 14:45 alert, then "time to go"

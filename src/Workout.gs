@@ -94,7 +94,7 @@ function trainState_() {
   // your own saved workouts (the Sessions tab, minus the old rows the templates replaced)
   var presetNames = split.presets.map(function (x) { return x.name; });
   sessions = sessions.filter(function (s) { return !/^Old: /.test(s) && order.indexOf(s) === -1 && presetNames.indexOf(s) === -1; });
-  var tpl = split.order.map(function (x) { return x.id; }).concat(PRESETS).reduce(function (o, id) { o[id] = templatePlan_(id); return o; }, {});
+  var tpl = split.order.map(function (x) { return x.id; }).concat(presetIds_()).reduce(function (o, id) { o[id] = templatePlan_(id); return o; }, {});
   return {
     today: todaySession,
     split: split, tpl: tpl, lifts: liftHistory_(),
@@ -178,8 +178,8 @@ function saveWorkout(key, session, sets, meta) {
   session = String(session || 'Workout').trim().slice(0, 60) || 'Workout';
   return withLock_(function () {
     var today = todayYmd_(), wid = Utilities.getUuid().replace(/-/g, '').slice(0, 10);
-    var tpl = TEMPLATES[meta.template] ? String(meta.template) : templateByName_(session);
-    if (tpl) session = TEMPLATES[tpl].name;
+    var tpl = tplDef_(meta.template) ? String(meta.template) : templateByName_(session);
+    if (tpl) session = tplDef_(tpl).name;
     var done = (sets || []).filter(function (s) { return Number(s.reps) > 0 && Number(s.weight) >= 0; });
     if (!done.length) throw new Error('Tick at least one set first.');
     var log = rowsBetween_('workoutLog', '0000', '9999');

@@ -1,6 +1,7 @@
 /**
  * Training.gs: the gym. One main split, Upper / Lower A/B (Upper A, Lower A, Upper B, Lower B), plus presets
- * you can do any day instead: Push, Pull and Legs (PPL), Full Body, and the Arms & Shoulders Pump.
+ * you can do any day instead: Push, Pull and Legs (PPL), Full Body, the Arms & Shoulders Pump, and any workout
+ * you save yourself from the Train tab (TRAIN_MINE). Upper A leads with chest, Upper B with back.
  *
  * The split is a rotation, not fixed days: the next session waits until you've done it, whatever day it is.
  * A preset never moves the rotation. Push, Pull, Legs and Full Body count as a gym session (50 XP, the weekly
@@ -38,21 +39,23 @@ var TEMPLATES = {
     ['Cable lateral raise', 4, '12-15', 9, '60–90s', 'a'], ['Reverse pec deck', 4, '12-15', 9, '60–90s', 'a'],
     ['EZ-bar curl', 3, '10-12', 9, '60–90s', 'b'], ['Rope pushdown', 3, '10-12', 9, '60–90s', 'b'],
     ['Incline DB curl', 3, '12-15', 9, '60s', 'c'], ['Overhead cable extension', 3, '12-15', 9, '60s', 'c']] },
-  'ul-ua': { name: 'Upper A', focus: 'Upper body, heavier', mins: 70, ex: [
+  'ul-ua': { name: 'Upper A', focus: 'Upper body, chest first', mins: 70, ex: [
     ['Bench press', 4, '5-6', 8, '3 min', ''],
-    ['Lat pulldown', 4, '6-8', 8, '2.5 min', ''],
-    ['Seated DB shoulder press', 3, '8-10', 8, '2 min', 'a'], ['Chest-supported row', 3, '8-10', 8, '2 min', 'a'],
-    ['EZ-bar curl', 3, '10-12', 9, '90s', 'b'], ['Rope pushdown', 3, '10-12', 9, '90s', 'b']] },
+    ['Incline DB press', 3, '8-10', 8, '2 min', ''],
+    ['Lat pulldown', 3, '8-10', 8, '2 min', 'a'], ['Cable fly', 3, '12-15', 9, '2 min', 'a'],
+    ['Seated DB shoulder press', 3, '8-10', 8, '90s', 'b'], ['Seated cable row', 3, '10-12', 8, '90s', 'b'],
+    ['Rope pushdown', 3, '10-12', 9, '60–90s', '']] },
   'ul-la': { name: 'Lower A', focus: 'Lower body, heavier', mins: 65, ex: [
     ['Hack squat', 4, '6-8', 8, '3 min', ''],
     ['Leg press', 3, '10-12', 8, '2 min', ''],
     ['Seated leg curl', 4, '10-12', 9, '90s', 'a'], ['Leg extension', 4, '10-12', 9, '90s', 'a'],
     ['Cable crunch', 3, '12-15', 8, '60s', '']] },
-  'ul-ub': { name: 'Upper B', focus: 'Upper body, volume', mins: 70, ex: [
-    ['Incline DB press', 4, '8-10', 8, '2 min', ''],
-    ['Seated cable row', 4, '8-10', 8, '2 min', ''],
-    ['Machine chest press', 3, '10-12', 9, '90s', 'a'], ['Close-grip pulldown', 3, '10-12', 9, '90s', 'a'],
-    ['Cable lateral raise', 3, '12-15', 9, '60s', 'b'], ['Face pull', 3, '12-15', 9, '60s', 'b']] },
+  'ul-ub': { name: 'Upper B', focus: 'Upper body, pull first', mins: 70, ex: [
+    ['Lat pulldown', 4, '6-8', 8, '2.5 min', ''],
+    ['Chest-supported row', 4, '8-10', 8, '2 min', ''],
+    ['Seated cable row', 3, '10-12', 8, '90s', 'a'], ['Machine chest press', 3, '10-12', 8, '90s', 'a'],
+    ['Face pull', 3, '12-15', 9, '60s', 'b'], ['Cable lateral raise', 3, '12-15', 9, '60s', 'b'],
+    ['EZ-bar curl', 3, '10-12', 9, '60–90s', '']] },
   'ul-lb': { name: 'Lower B', focus: 'Lower body, volume', mins: 65, ex: [
     ['Leg press', 4, '10-12', 8, '2 min', ''],
     ['DB split squat', 3, '10 each leg', 8, '2 min', ''],
@@ -180,16 +183,26 @@ function splitState_() {
   return s;
 }
 function tplEdits_() { return JSON.parse(prop_('TRAIN_TPL') || '{}'); }
+/** Workouts you saved from the Train tab: { 'my-…': { name, ex: [rows], at } }. They work like presets. */
+function myWorkouts_() { return JSON.parse(prop_('TRAIN_MINE') || '{}'); }
+/** A template's definition: one of ours, or one of yours. */
+function tplDef_(id, mine) {
+  if (TEMPLATES[id]) return TEMPLATES[id];
+  var m = (mine || myWorkouts_())[id];
+  return m ? { name: m.name, focus: 'Your workout', mins: m.mins || 60, ex: m.ex, mine: true } : null;
+}
+/** The presets in order: ours, then yours, then the Pump last. */
+function presetIds_() { return PRESETS.filter(function (x) { return x !== PUMP_ID; }).concat(Object.keys(myWorkouts_()), [PUMP_ID]); }
 
 /** A template as you'll do it: your edits, then your swaps. Each exercise: { exercise, base, swapped, sets, reps, rpe, rest, restSec, group }. */
 function templateOf_(id, edits) {
-  var t = TEMPLATES[id]; if (!t) return null;
+  var t = tplDef_(id); if (!t) return null;
   var e = (edits || tplEdits_())[id] || {}, rows = e.ex || t.ex, swaps = e.swaps || {};
   var ex = rows.map(function (r) {
     var base = String(r[0]), name = swaps[base] || base;
     return { exercise: name, base: base, swapped: name !== base, sets: Number(r[1]) || 1, reps: String(r[2]), rpe: r[3] === '' || r[3] === null ? '' : Number(r[3]), rest: String(r[4] || ''), restSec: parseRestSeconds(r[4]), group: String(r[5] || '') };
   });
-  return { id: id, name: t.name, focus: t.focus, mins: t.mins, extra: !!t.extra, preset: PRESETS.indexOf(id) !== -1, split: Object.keys(SPLITS).filter(function (s) { return SPLITS[s].order.indexOf(id) !== -1; })[0] || '', edited: !!e.ex, swaps: Object.keys(swaps).length, ex: ex };
+  return { id: id, name: t.name, focus: t.focus, mins: t.mins, extra: !!t.extra, mine: !!t.mine, preset: !!t.mine || PRESETS.indexOf(id) !== -1, split: Object.keys(SPLITS).filter(function (s) { return SPLITS[s].order.indexOf(id) !== -1; })[0] || '', edited: !!e.ex, swaps: Object.keys(swaps).length, ex: ex };
 }
 /** A session name (as kept in the Gym log) -> its template: your split first, then the presets, then old names. */
 function templateByName_(name, splitId) {
@@ -197,7 +210,8 @@ function templateByName_(name, splitId) {
   var sp = SPLITS[splitId || splitState_().split];
   var hit = sp.order.filter(function (id) { return TEMPLATES[id].name === n; })[0];
   if (hit) return hit;
-  hit = PRESETS.filter(function (id) { return TEMPLATES[id].name === n; })[0];
+  var mine = myWorkouts_();
+  hit = presetIds_().filter(function (id) { return tplDef_(id, mine).name === n; })[0];
   return hit || LEGACY_TEMPLATES[n] || '';
 }
 // Session names logged before templates existed (the old rotation, and the Upper/Lower programme before that).
@@ -206,14 +220,14 @@ var LEGACY_TEMPLATES = { 'Push': 'ppsa-push', 'Pull': 'ppsa-pull', 'Shoulders & 
 /** Exercises for a session name, in the old { exercise, sets, reps, rpe, rest, notes } shape (calendar, Today card). */
 function sessionExercises_(name, cfg) {
   var id = templateByName_(name);
-  if (id && TEMPLATES[id]) return templateOf_(id).ex.map(function (x) { return { exercise: x.exercise, sets: String(x.sets), reps: x.reps, rpe: x.rpe === '' ? '' : String(x.rpe), rest: x.rest, notes: x.group ? 'Superset ' + x.group.toUpperCase() : '' }; });
+  if (id && tplDef_(id)) return templateOf_(id).ex.map(function (x) { return { exercise: x.exercise, sets: String(x.sets), reps: x.reps, rpe: x.rpe === '' ? '' : String(x.rpe), rest: x.rest, notes: x.group ? 'Superset ' + x.group.toUpperCase() : '' }; });
   return (cfg || readConfig_()).sessions[name] || [];
 }
 
 /** Main sessions done, oldest first: [{ date, template }] from the Workout log and Gym done ticks (Pump never counts). */
 function mainDone_(toYmd) {
-  var seen = {}, out = [];
-  function add(date, tpl) { if (!tpl || tpl === PUMP_ID || !TEMPLATES[tpl] || seen[date + '|' + tpl]) return; seen[date + '|' + tpl] = 1; out.push({ date: date, template: tpl }); }
+  var seen = {}, out = [], mine = myWorkouts_();
+  function add(date, tpl) { if (!tpl || tpl === PUMP_ID || !(TEMPLATES[tpl] || mine[tpl]) || seen[date + '|' + tpl]) return; seen[date + '|' + tpl] = 1; out.push({ date: date, template: tpl }); }
   rowsBetween_('workoutLog', '0000', toYmd).forEach(function (r) { add(String(r['Date']), String(r['Template'] || '') || LEGACY_TEMPLATES[String(r['Session'])]); });
   try { rowsBetween_('gym', '0000', toYmd).forEach(function (r) { if (/^Done/.test(String(r['Status'] || ''))) add(String(r['Date']), String(r['Template'] || '') || LEGACY_TEMPLATES[String(r['Session'])]); }); } catch (e) { /* no gym log yet */ }
   return out.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
@@ -243,13 +257,13 @@ function splitInfo_(ymd) {
   if (doneToday.length && sp.order.indexOf(doneToday[doneToday.length - 1]) !== -1) next = nextTemplate_(ymd);
   return {
     split: st.split, name: sp.name, since: st.since,
-    presets: PRESETS.map(function (id) { return { id: id, name: TEMPLATES[id].name, focus: TEMPLATES[id].focus, mins: TEMPLATES[id].mins, extra: !!TEMPLATES[id].extra }; }),
+    presets: presetIds_().map(function (id) { var t = tplDef_(id); return { id: id, name: t.name, focus: t.focus, mins: t.mins, extra: !!t.extra, mine: !!t.mine }; }),
     splits: Object.keys(SPLITS).map(function (k) { return { id: k, name: SPLITS[k].name, sessions: SPLITS[k].order.map(function (id) { return TEMPLATES[id].name; }) }; }),
     order: sp.order.map(function (id) { return { id: id, name: TEMPLATES[id].name, focus: TEMPLATES[id].focus }; }),
     next: { id: next, name: TEMPLATES[next].name }, doneToday: doneToday,
     pump: { id: PUMP_ID, name: TEMPLATES[PUMP_ID].name, xp: PUMP_XP, doneToday: pumpDoneOn_(ymd) },
     week: weekMain_(ymd),
-    templates: sp.order.concat(PRESETS).reduce(function (o, id) { o[id] = templateOf_(id, edits); return o; }, {}),
+    templates: sp.order.concat(presetIds_()).reduce(function (o, id) { o[id] = templateOf_(id, edits); return o; }, {}),
     migration: JSON.parse(prop_('TRAIN_V3') || 'null')
   };
 }
@@ -319,7 +333,18 @@ function setSplit(key, split) {
   });
 }
 
-function checkTpl_(id) { if (!TEMPLATES[id]) throw new Error('No template called "' + id + '".'); }
+function checkTpl_(id) { if (!tplDef_(id)) throw new Error('No template called "' + id + '".'); }
+/** Rows from the app -> template rows, checked against the rules. */
+function tplRows_(rows) {
+  var list = (rows || []).filter(function (r) { return r && String(r.exercise || '').trim(); }).slice(0, 12).map(function (r) {
+    var name = String(r.exercise).trim().slice(0, 60);
+    if (!allowedExercise(name)) throw new Error(name + ' breaks the rules: no hip hinges and no calf raises.');
+    var rpe = r.rpe === '' || r.rpe === null || r.rpe === undefined ? '' : Math.max(5, Math.min(10, Number(r.rpe) || 8));
+    return [name, Math.max(1, Math.min(10, Math.round(Number(r.sets) || 3))), String(r.reps || '8-12').slice(0, 20), rpe, String(r.rest || '90s').slice(0, 16), /^[a-f]$/.test(String(r.group || '')) ? String(r.group) : ''];
+  });
+  if (!list.length) throw new Error('Keep at least one exercise.');
+  return list;
+}
 
 /** Swap one exercise in a template for another that hits the same muscle (name '' puts the original back). Kept until you change it back. */
 function swapExercise(key, id, base, name) {
@@ -340,13 +365,7 @@ function swapExercise(key, id, base, name) {
 /** Edit a template: rows [{ exercise, sets, reps, rpe, rest, group }]. */
 function editTemplate(key, id, rows) {
   requireKey_(key); checkTpl_(id);
-  var list = (rows || []).filter(function (r) { return r && String(r.exercise || '').trim(); }).slice(0, 12).map(function (r) {
-    var name = String(r.exercise).trim().slice(0, 60);
-    if (!allowedExercise(name)) throw new Error(name + ' breaks the rules: no hip hinges and no calf raises.');
-    var rpe = r.rpe === '' || r.rpe === null || r.rpe === undefined ? '' : Math.max(5, Math.min(10, Number(r.rpe) || 8));
-    return [name, Math.max(1, Math.min(10, Math.round(Number(r.sets) || 3))), String(r.reps || '8-12').slice(0, 20), rpe, String(r.rest || '90s').slice(0, 16), /^[a-f]$/.test(String(r.group || '')) ? String(r.group) : ''];
-  });
-  if (!list.length) throw new Error('Keep at least one exercise.');
+  var list = tplRows_(rows);
   return withLock_(function () {
     var all = tplEdits_();
     all[id] = all[id] || {};
@@ -365,6 +384,39 @@ function resetTemplate(key, id) {
     if (all[id]) archive_('Training', 'Template edits before reset: ' + id, all[id]);
     delete all[id];
     setProp_('TRAIN_TPL', JSON.stringify(all));
+    return appState_('me');
+  });
+}
+
+/** Save your own workout (a new one, or replace yours with this id). It shows with the presets: any day, a full gym session, the rotation stays put. */
+function saveMyWorkout(key, name, rows, id) {
+  requireKey_(key);
+  name = String(name || '').trim().slice(0, 40);
+  if (!name) throw new Error('Give it a name, like Arms day.');
+  var list = tplRows_(rows);
+  return withLock_(function () {
+    var mine = myWorkouts_();
+    if (id && !mine[id]) throw new Error('That workout isn\'t there any more.');
+    var taken = Object.keys(SPLITS).reduce(function (a, k) { return a.concat(SPLITS[k].order); }, []).concat(PRESETS, Object.keys(mine)).filter(function (x) { return x !== id; })
+      .some(function (x) { return tplDef_(x, mine).name.toLowerCase() === name.toLowerCase(); });
+    if (taken) throw new Error('There\'s already a workout called ' + name + '. Pick another name.');
+    if (!id && Object.keys(mine).length >= 20) throw new Error('That\'s 20 of your own workouts. Delete one first.');
+    id = id || 'my-' + Utilities.getUuid().replace(/-/g, '').slice(0, 8);
+    mine[id] = { name: name, ex: list, at: todayYmd_(), mins: Math.min(120, 10 + list.reduce(function (a, r) { return a + r[1] * 3; }, 0)) };
+    setProp_('TRAIN_MINE', JSON.stringify(mine));
+    var st = appState_('me'); st.savedWorkout = id;
+    return st;
+  });
+}
+/** Delete one of your workouts. Its definition goes to the Archive tab; anything you logged with it stays. */
+function deleteMyWorkout(key, id) {
+  requireKey_(key);
+  return withLock_(function () {
+    var mine = myWorkouts_();
+    if (!mine[id]) throw new Error('That workout isn\'t there any more.');
+    archive_('Training', 'Your workout deleted: ' + mine[id].name, mine[id]);
+    delete mine[id];
+    setProp_('TRAIN_MINE', JSON.stringify(mine));
     return appState_('me');
   });
 }

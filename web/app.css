@@ -957,3 +957,10 @@ body.chat-open { overflow: hidden; }
 .lctable table { width: 100%; border-collapse: collapse; } .lctable td, .lctable th { text-align: left; padding: 3px 4px; border-bottom: 1px solid var(--line); }
 .rpebox { width: 46px; flex: none; }
 .rpebox input { width: 46px; padding: 8px 2px; }
+
+/* Add an exercise: where it goes */
+.choices { display: grid; gap: 8px; }
+.choice { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); cursor: pointer; }
+.choice input { width: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--lilac); flex: none; }
+.choice > span { display: flex; flex-direction: column; gap: 2px; }
+.choice:has(input:checked) { border-color: var(--lilac); background: var(--lilac-soft); }

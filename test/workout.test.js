@@ -22,7 +22,7 @@ test('Training split: Upper / Lower A/B, with PPL, Full Body and the Pump as pre
     p.ex.forEach(x => { assert.ok(!HINGE.test(x.exercise) && !/calf/i.test(x.exercise), id + ': ' + x.exercise); assert.ok(x.sets && x.reps && x.rpe && (x.rest || /drop set/.test(x.exercise)), id + ' ' + x.exercise); });
   });
   const ua = t.tpl['ul-ua'].ex.map(x => x.exercise), la = t.tpl['ul-la'].ex.map(x => x.exercise);
-  assert.deepStrictEqual(ua, ['Bench press', 'Lat pulldown', 'Seated DB shoulder press', 'Chest-supported row', 'EZ-bar curl', 'Rope pushdown']);
+  assert.deepStrictEqual(ua, ['Bench press', 'Incline DB press', 'Lat pulldown', 'Cable fly', 'Seated DB shoulder press', 'Seated cable row', 'Rope pushdown']);
   assert.ok(la.includes('Seated leg curl'));
   // the old Upper/Lower programme and the old rotation rows are kept in the Sheet, out of the way
   assert.ok(g.tab('Sessions').rows().some(r => r[0] === 'Old: Lower A'));
