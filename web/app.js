@@ -937,6 +937,9 @@
   // extra (or fewer) sets for one session: { exercise index: +n }
   function setsKey(id) { return 'tsets-' + (S.today ? S.today.date : '') + '-' + (id || tsel); }
   function moreSets(id) { return load(setsKey(id)) || {}; }
+  // exercises skipped for one session (Remove set on the last set): [exercise index]
+  function skipKey(id) { return 'tskip-' + (S.today ? S.today.date : '') + '-' + (id || tsel); }
+  function skipped(id) { return load(skipKey(id)) || []; }
   function taddKey(id) { return 'tadd-' + (S.today ? S.today.date : '') + '-' + (id || tsel); }
   function sessionAdds(id) { return load(taddKey(id)) || []; }
   var NO_GO = /dead ?lift|\brdl\b|romanian|good ?morning|back squat|front squat|^squat$|barbell squat|hip thrust|kettlebell swing|trap.?bar|calf|calves/i;
@@ -947,7 +950,8 @@
   }
   /** Each exercise with its set rows, pre-filled from last time (and the suggested weight when it's time to go up). */
   function tplModel(tp) {
-    var one = rush(), list = tp.ex.map(function (x, xi) { return { x: x, xi: xi }; }).concat(sessionAdds(tp.id).map(function (a, k) { return { x: addedEx(a, k), xi: 'a' + k }; }));
+    var one = rush(), list = tp.ex.map(function (x, xi) { return { x: x, xi: xi }; }).concat(sessionAdds(tp.id).map(function (a, k) { return { x: addedEx(a, k), xi: 'a' + k }; })), skip = skipped(tp.id);
+    list = list.filter(function (it) { return skip.indexOf(String(it.xi)) === -1; });
     return list.map(function (it) { var x = it.x, xi = it.xi;
       var last = x.last || [], low = +((String(x.reps).match(/\d+/) || [8])[0]), rows = [];
       for (var i = 0; i < (one ? 1 : Math.max(1, x.sets + (moreSets(tp.id)[xi] || 0))); i++) {
@@ -1009,7 +1013,7 @@
       (x.hint ? '<p class="small hint" style="margin:6px 0 0">' + icon('flag', 's') + esc(x.hint.text) + '</p>' : '');
     var rst = thenName ? '0' : restText;
     h += '<div style="margin-top:8px">' + m.rows.map(function (r, i) { return setRow(r, i + 1, d, rst).replace('data-rest="', (thenName ? 'data-then="' + esc(thenName) + '" ' : '') + 'data-rest="'); }).join('') + '</div>' +
-      '<div class="row" style="gap:8px;margin-top:8px"><button class="btn line sm" type="button" data-tset="1" data-xi="' + m.xi + '">' + icon('plus', 's') + 'Add set</button>' + (m.rows.length > 1 ? '<button class="btn line sm" type="button" data-tset="-1" data-xi="' + m.xi + '">Remove set</button>' : '') + '</div></div>';
+      '<div class="row" style="gap:8px;margin-top:8px"><button class="btn line sm" type="button" data-tset="1" data-xi="' + m.xi + '">' + icon('plus', 's') + 'Add set</button>' + '<button class="btn line sm" type="button" data-tset="-1" data-xi="' + m.xi + '">' + (m.rows.length > 1 ? 'Remove set' : 'Skip today') + '</button></div></div>';
     return h;
   }
   function tplBody(tp, d) {
@@ -1151,6 +1155,8 @@
       if (m && m.tier === 'T1' && m.tm && !x.swapped) h += '<p class="tiny muted" style="margin:8px 0 0">Sets marked <span class="amrap">+</span>: as many good reps as you can. The heavy one sets next week\'s training max.</p>';
       h += '</section>';
     });
+    var sk0 = tp ? skipped(tp.id) : [];
+    if (sk0.length) h += '<p class="small muted" style="margin:0 0 10px">Skipped today: ' + esc(sk0.map(function (i) { return (tp.ex[+i] || {}).exercise; }).filter(Boolean).join(', ')) + ' · <button class="linkbtn small" type="button" id="unskip">Bring back</button></p>';
     h += '<button class="btn line wide" type="button" id="' + (tp ? 'tplAddBtn' : 'addEx') + '" style="margin-bottom:12px">' + icon('plus', 's') + 'Add an exercise</button>';
     var count = doneCount();
     h += '<button class="btn primary big wide" type="button" id="finishWk"' + (count ? '' : ' disabled') + '>Finish workout · ' + count + ' set' + (count === 1 ? '' : 's') + '</button>';
@@ -1209,7 +1215,7 @@
     if (bad && !confirm(bad + ' ticked set' + (bad === 1 ? ' has' : 's have') + ' 0 reps and won\'t be saved. Finish anyway?')) return;
     el('finishWk').disabled = true; el('finishWk').textContent = 'Saving…';
     call('saveWorkout', [tp ? tp.name : tsel, sets, { started: load('wkstart-' + draftKey()) || 0, template: tp ? tp.id : '' }], function (res) {
-      save(draftKey(), null); save('wkstart-' + draftKey(), null); if (tp) { save(taddKey(tp.id), null); save(setsKey(tp.id), null); } endRest(); armRest();
+      save(draftKey(), null); save('wkstart-' + draftKey(), null); if (tp) { save(taddKey(tp.id), null); save(setsKey(tp.id), null); save(skipKey(tp.id), null); } endRest(); armRest();
       apply(res.state);
       chime([660, 880, 1100, 1320]); buzz([60, 40, 60, 40, 150]);
       var h = '<div class="center">' + icon('trophy', 'l') + '<h2 style="margin:8px 0">' + (res.extra ? 'Pump logged' : 'Workout logged') + '</h2>' + (res.extra ? '<p class="small" style="margin:0 0 8px">' + (res.bonus ? '+' + res.bonus + ' bonus XP. ' : 'Bonus XP already earned today. ') + 'Your rotation stays where it was.</p>' : '') + (res.volume ? '<p class="muted" style="margin:0 0 10px">' + res.sets + ' sets · ' + fmt(res.volume) + ' kg lifted' + (res.minutes ? ' · ' + res.minutes + ' min' : '') + '</p>' : '') + '</div>';
@@ -3147,10 +3153,17 @@
     }
     if (ds.tpledit) return editSheet(ds.tpledit);
     if (t.id === 'tplAddBtn') return tplAddSheet();
+    if (t.id === 'unskip') { save(skipKey(tsel), null); return renderTrain(); }
     if (ds.tset) {
       var tpS = S.train.tpl[tsel], xiS = ds.xi, ms = moreSets(tsel), shown = tplModel(tpS).filter(function (m) { return String(m.xi) === xiS; })[0];
       if (!shown) return;
-      if (rush()) save('trush', false);                  // adding sets means the full session
+      if (+ds.tset < 0 && shown.rows.length <= 1) {        // the last set: drop the exercise from today's session
+        var nm = shown.x.exercise;
+        if (shown.x.added) { var ad2 = sessionAdds(); ad2.splice(shown.x.added - 1, 1); save(taddKey(), ad2.length ? ad2 : null); renderTrain(); return toast(nm + ' removed.'); }
+        var sk = skipped(); sk.push(xiS); save(skipKey(tsel), sk); renderTrain();
+        return toast(nm + ' skipped today.', false, { label: 'Undo', fn: function () { save(skipKey(tsel), skipped().filter(function (z) { return z !== xiS; })); renderTrain(); } });
+      }
+      if (rush() && +ds.tset > 0) save('trush', false);   // adding sets means the full session
       var base = shown.x.sets;
       ms[xiS] = Math.max(1 - base, (ms[xiS] || 0) + +ds.tset); save(setsKey(tsel), ms); buzz(10);
       return renderTrain();
