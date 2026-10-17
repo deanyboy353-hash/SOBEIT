@@ -85,8 +85,12 @@ test('Reminders: weigh-in, social day, back on plan, meals, over, steps and ever
   const t = { type: 'rest', kcal: 1800, steps: 10000 };
   const c = o => Object.assign({ m: 0, dow: 2, wake: 510, weighed: false, weighDay: false, entries: 0, kcal: 0, protein: 0, t, steps: null, proteinMin: 130, socialYesterday: false, why: 'Christmas photos', goalLine: '86.3 kg by Christmas', weekLine: 'Week line', behindLine: '' }, o);
   const ids = o => plain(C.goalAlerts(c(o))).map(a => a.id);
-  assert.ok(ids({ m: 535 }).includes('gweigh'));
-  assert.ok(!ids({ m: 535, weighed: true }).includes('gweigh'));
+  assert.ok(!ids({ m: 535 }).includes('gweigh'), 'scale optional (the default): no weigh-in nags');
+  assert.ok(!ids({ m: 660 }).includes('gweigh2'));
+  assert.ok(ids({ m: 535, scale: 'daily' }).includes('gweigh'), 'daily scale: the nag is back');
+  assert.ok(!ids({ m: 535, scale: 'daily', weighed: true }).includes('gweigh'));
+  assert.ok(ids({ m: 560, dow: 0, checkin: true, checkinLine: 'x' }).includes('gcheckin'), 'a consistent fortnight: one Sunday suggestion');
+  assert.ok(!ids({ m: 560, dow: 1, checkin: true }).includes('gcheckin'));
   assert.ok(ids({ m: 545, t: Object.assign({}, t, { type: 'social' }) }).includes('gsocial'));
   assert.ok(ids({ m: 545, socialYesterday: true }).includes('gback'));
   assert.ok(ids({ m: 630 }).includes('gbreak'));
@@ -101,4 +105,49 @@ test('Reminders: weigh-in, social day, back on plan, meals, over, steps and ever
   assert.match(eve.body, /900 kcal left today|Christmas photos|86.3 kg/);
   assert.ok(ids({ m: 570, dow: 1 }).includes('gweek'));
   assert.ok(ids({ m: 725, dow: 4, behindLine: 'behind' }).includes('gbehind'));
+  assert.ok(!plain(C.goalAlerts(c({ m: 900, entries: 2, kcal: 2000 }))).some(a => /behind|kg behind/i.test(a.title + a.body)), 'no scale talk when over');
+});
+
+test('Consistency: days on plan, the streak, kg off on paper; unlogged days count for nothing, never against you', () => {
+  const { C } = ready();
+  const logs = {};
+  // Sat 17 to Mon 26 Oct: on plan, then two big days, then on plan again, one day not logged
+  ['2026-10-17', '2026-10-18', '2026-10-19', '2026-10-20'].forEach(d => { logs[d] = 1800; });
+  logs['2026-10-21'] = 3500; logs['2026-10-22'] = 3200;
+  ['2026-10-23', '2026-10-25'].forEach(d => { logs[d] = 1750; });
+  const r = plain(C.goalConsistency({ start: '2026-10-17', today: '2026-10-26', burn: 2700, rate: 0.6, social: 6, gym: [1, 2, 4, 5], logs }));
+  assert.strictEqual(r.days.length, 9);
+  assert.strictEqual(r.days.find(d => d.ymd === '2026-10-21').status, 'over');
+  assert.strictEqual(r.days.find(d => d.ymd === '2026-10-24').status, 'none');
+  assert.strictEqual(r.streak, 1, 'Sunday on plan after the unlogged Saturday');
+  assert.strictEqual(r.days.find(d => d.ymd === '2026-10-17').status, 'on', 'a social day has room');
+  const paper = [1800, 1800, 1800, 1800, 3500, 3200, 1750, 1750].reduce((a, k) => a + (2700 - k) / 7700, 0);
+  assert.strictEqual(r.paperKg, Math.round(paper * 10) / 10);
+  assert.strictEqual(r.lastWeek.logged, 6); assert.strictEqual(r.lastWeek.on, 4);
+});
+
+test('Scale optional by default: no weigh-in days, no push weeks, progress from your logs; daily scale is a choice', () => {
+  const { g, C, me } = ready();
+  C.appendRow_('weight', { Date: '2026-10-10', Time: '08:00', 'Weight (kg)': 95 });
+  C.appendRow_('weight', { Date: '2026-10-19', Time: '08:00', 'Weight (kg)': 97.5 });   // a creatine-and-water morning
+  C.resetRun_(); g.state.cache = {};
+  let G = plain(C.appState(me)).goal;
+  assert.strictEqual(G.scale, 'quiet');
+  assert.strictEqual(G.push, false); assert.strictEqual(G.behind, null, 'a bad scale day judges nothing');
+  assert.strictEqual(plain(C.todayState_()).weighDay, false, 'no weigh-in day alerts or events');
+  assert.ok(G.consistency && G.chart.paper.length >= 1);
+  G = plain(C.setGoal(me, { scale: 'daily' })).goal;
+  assert.strictEqual(G.scale, 'daily');
+  assert.notStrictEqual(G.behind, null);
+});
+
+
+test('Rare weigh-ins never teach the plan that over-eating is "maintenance": it only learns between real weigh-ins 10+ days apart', () => {
+  const { g, C, me } = ready('2026-11-10T08:00:00Z');
+  C.appendRow_('weight', { Date: '2026-10-15', Time: '08:00', 'Weight (kg)': 92 });
+  for (let i = 0; i < 25; i++) { const d = C.addDays_('2026-10-15', i); [900, 1100, 1300].forEach((k, j) => C.appendRow_('food', { Date: d, Time: '1' + j + ':00', Entry: 'o' + i + j, Item: 'x', kcal: k, 'Protein (g)': 30, Source: 't' })); }
+  C.resetRun_(); g.state.cache = {};
+  const G = plain(C.appState(me)).goal;
+  assert.strictEqual(G.burn.learned, 0, 'one weigh-in: nothing learned');
+  assert.strictEqual(G.burn.kcal, Math.round(92 * 32 / 10) * 10, 'the estimate from your weight stays');
 });

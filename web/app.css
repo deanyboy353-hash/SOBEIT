@@ -993,5 +993,7 @@ body.chat-open { overflow: hidden; }
 .gday b { font-size: 12.5px; }
 .gday.social { background: var(--amber-soft); }
 .gday.now { box-shadow: inset 0 0 0 2px var(--lilac); }
+.gday .gon { color: var(--good); font-weight: 650; }
+.goal .gvtile b small { font-size: 12px; }
 .goalwhy { margin: 10px 0 0; padding: 10px 12px; border-left: 3px solid var(--lilac); background: var(--lilac-soft); border-radius: 0 10px 10px 0; font-size: 14.5px; }
 .warn { color: var(--warn); }

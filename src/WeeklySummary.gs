@@ -115,7 +115,7 @@ function buildWeeklySummary_(endYmd, cfg) {
 
   // Week ahead
   lines.push('WEEK AHEAD');
-  var weighDays = parseDays(cfg.settings['Weigh-in days']);
+  var weighDays = scaleQuiet_() ? [] : parseDays(cfg.settings['Weigh-in days']);
   var order = SPLITS[splitState_().split].order.map(function (id) { return TEMPLATES[id].name; });
   var rot = Math.max(0, order.indexOf(rotationNext_(addDays_(endYmd, 1))));      // the rotation, if every session gets done
   for (var i = 1; i <= 7; i++) {

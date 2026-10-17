@@ -35,7 +35,7 @@ function todayState_() {
     gym: gym,
     // the gym card shows the next session whatever day it is, the week's main sessions, and the optional Pump
     train: { next: si.next, split: si.name, week: si.week, pump: si.pump, doneToday: si.doneToday.length > 0 },
-    weighDay: parseDays(cfg.settings['Weigh-in days']).indexOf(dow) !== -1,
+    weighDay: parseDays(cfg.settings['Weigh-in days']).indexOf(dow) !== -1 && !scaleQuiet_(),   // the goal's scale-optional mode: no weigh-in days
     weighedToday: !!last && last['Date'] === ymd,
     lastWeight: last ? { date: String(last['Date']), kg: Number(last['Weight (kg)']), change: last['Change (kg)'] } : null
   };

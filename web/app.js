@@ -1343,26 +1343,32 @@
   function goalCard(compact) {
     var G = S.goal; if (!ME || !G) return '';
     var T = G.today, left = S.food ? T.kcal - Math.round(S.food.totals.kcal) : T.kcal;
-    var status = G.now === null ? 'Weigh in to start the trend.' : G.behind === null ? '' : G.behind > 0.2 ? kgs(G.behind) + ' kg behind the ' + G.minRate + ' kg/week line' + (G.push ? ': push week' : '') : G.behind < -0.2 ? kgs(-G.behind) + ' kg ahead of the line' : 'On the line';
+    var Q = G.scale !== 'daily', C = G.consistency || { streak: 0, week: { on: 0, past: 0 }, paperKg: 0, days: [] };
+    var status = Q ? (C.streak >= 2 ? C.streak + ' days on plan in a row' : C.week.past ? C.week.on + ' of ' + C.week.past + ' days on plan this week' : 'Day one: follow today\'s numbers') : G.now === null ? 'Weigh in to start the trend.' : G.behind === null ? '' : G.behind > 0.2 ? kgs(G.behind) + ' kg behind the ' + G.minRate + ' kg/week line' + (G.push ? ': push week' : '') : G.behind < -0.2 ? kgs(-G.behind) + ' kg ahead of the line' : 'On the line';
     if (compact) return '<section class="card goalmini" data-goto="food"><div class="between"><div class="eyebrow">Goal · ' + esc(G.milestone.kg ? kgs(G.milestone.kg) + ' kg by ' + G.milestone.name : 'at least ' + G.minRate + ' kg a week') + '</div><span class="tiny muted">' + esc(DAYTYPE[T.type]) + '</span></div>' +
-      '<div class="between" style="margin-top:6px;align-items:baseline"><div><b class="num" style="font-size:22px">' + (left >= 0 ? fmt(left) : fmt(-left)) + '</b> <span class="small muted">kcal ' + (left >= 0 ? 'left' : 'over') + ' · ' + fmt(T.steps) + ' steps</span></div><span class="small ' + (G.behind > 0.2 ? 'warn' : 'muted') + '">' + (G.now !== null ? 'Trend ' + kgs(G.now) + ' kg' : '') + '</span></div>' +
-      (status ? '<div class="tiny ' + (G.behind > 0.2 ? 'warn' : 'muted') + '" style="margin-top:4px">' + esc(status) + '</div>' : '') + '</section>';
+      '<div class="between" style="margin-top:6px;align-items:baseline"><div><b class="num" style="font-size:22px">' + (left >= 0 ? fmt(left) : fmt(-left)) + '</b> <span class="small muted">kcal ' + (left >= 0 ? 'left' : 'over') + ' · ' + fmt(T.steps) + ' steps</span></div><span class="small ' + (!Q && G.behind > 0.2 ? 'warn' : 'muted') + '">' + (Q ? (C.paperKg > 0 ? '−' + kgs(C.paperKg) + ' kg on paper' : '') : G.now !== null ? 'Trend ' + kgs(G.now) + ' kg' : '') + '</span></div>' +
+      (status ? '<div class="tiny ' + (!Q && G.behind > 0.2 ? 'warn' : 'muted') + '" style="margin-top:4px">' + esc(status) + '</div>' : '') + '</section>';
     var h = '<section class="card goal"><div class="head"><h3>Goal</h3><button class="btn ghost sm" type="button" id="goalEdit">Edit</button></div>';
-    h += '<div class="gvtiles"><div class="gvtile"><b class="num">' + kgs(G.now) + '</b><span class="tiny muted">trend, kg</span></div><div class="gvtile"><b class="num">' + (G.lost === null ? '–' : (G.lost >= 0 ? '−' : '+') + kgs(Math.abs(G.lost))) + '</b><span class="tiny muted">since ' + esc(shortDay(G.start).replace(/^\w+, /, '')) + '</span></div>' +
+    var planXmas = Math.round(G.minRate * Math.max(0, (Date.parse(G.milestone.date) - Date.parse(G.start)) / (7 * 864e5)) * 10) / 10;
+    if (Q) h += '<div class="gvtiles"><div class="gvtile"><b class="num">' + C.streak + '</b><span class="tiny muted">days on plan in a row</span></div><div class="gvtile"><b class="num">' + C.week.on + '<small> / ' + C.week.past + '</small></b><span class="tiny muted">this week so far</span></div>' +
+      '<div class="gvtile"><b class="num">' + (C.paperKg > 0 ? '−' + kgs(C.paperKg) : '0.0') + '</b><span class="tiny muted">kg on paper, from your logs</span></div><div class="gvtile"><b class="num">−' + kgs(planXmas) + '</b><span class="tiny muted">kg by ' + esc(G.milestone.name) + ' (the plan)</span></div></div>' +
+      '<p class="small" style="margin:0 0 4px">The scale\'s optional. It swings 1 to 2 kg with water, salt and creatine, so progress here is counted from what you log. Hit the numbers and the weight follows.' + (G.lastWeigh ? ' <span class="muted">Last check-in weigh: ' + esc(shortDay(G.lastWeigh.date)) + '.</span>' : '') + '</p>';
+    else h += '<div class="gvtiles"><div class="gvtile"><b class="num">' + kgs(G.now) + '</b><span class="tiny muted">trend, kg</span></div><div class="gvtile"><b class="num">' + (G.lost === null ? '–' : (G.lost >= 0 ? '−' : '+') + kgs(Math.abs(G.lost))) + '</b><span class="tiny muted">since ' + esc(shortDay(G.start).replace(/^\w+, /, '')) + '</span></div>' +
       '<div class="gvtile"><b class="num">' + kgs(G.milestone.kg) + '</b><span class="tiny muted">by ' + esc(G.milestone.name) + '</span></div><div class="gvtile"><b class="num">' + kgs(G.end.kg) + '</b><span class="tiny muted">by ' + esc(G.end.name) + '</span></div></div>';
-    if (status) h += '<p class="small ' + (G.behind > 0.2 ? 'warn' : '') + '" style="margin:0 0 4px"><b>' + esc(status) + '.</b>' + (G.recent !== null ? ' Losing ' + kgs(G.recent) + ' kg a week over the last fortnight.' : '') + (G.milestone.projected ? ' At that rate: ' + kgs(G.milestone.projected) + ' kg by ' + esc(G.milestone.name) + '.' : '') + '</p>';
+    if (status && !Q) h += '<p class="small ' + (G.behind > 0.2 ? 'warn' : '') + '" style="margin:0 0 4px"><b>' + esc(status) + '.</b>' + (G.recent !== null ? ' Losing ' + kgs(G.recent) + ' kg a week over the last fortnight.' : '') + (G.milestone.projected ? ' At that rate: ' + kgs(G.milestone.projected) + ' kg by ' + esc(G.milestone.name) + '.' : '') + '</p>';
     h += goalChart(G);
     h += '<div class="eyebrow" style="margin:12px 0 6px">This week · ' + fmt(T.weekly) + ' kcal</div><div class="gweek">' + T.days.map(function (d) {
-      var isToday = d.ymd === S.today.date, val = d.logged !== null && d.logged !== undefined ? d.logged : null;
-      return '<div class="gday ' + d.type + (isToday ? ' now' : '') + '"><span class="tiny">' + DOW3[d.dow] + '</span><b class="num">' + fmt(isToday ? T.kcal : d.planned) + '</b><span class="tiny muted">' + (val !== null ? (val > d.planned + 50 ? '+' + fmt(val - d.planned) : 'logged') : d.type === 'social' ? 'social' : d.type === 'gym' ? 'gym' : 'rest') + '</span></div>';
+      var isToday = d.ymd === S.today.date, st = (C.days.filter(function (x) { return x.ymd === d.ymd; })[0] || {}).status;
+      var mark = st === 'on' ? '<span class="tiny gon">on plan</span>' : st === 'over' ? '<span class="tiny muted">over</span>' : st === 'none' ? '<span class="tiny muted">not logged</span>' : '<span class="tiny muted">' + (d.type === 'social' ? 'social' : d.type) + '</span>';
+      return '<div class="gday ' + d.type + (isToday ? ' now' : '') + (st === 'on' ? ' ok' : '') + '"><span class="tiny">' + DOW3[d.dow] + '</span><b class="num">' + fmt(isToday ? T.kcal : d.planned) + '</b>' + mark + '</div>';
     }).join('') + '</div>';
     h += '<p class="small" style="margin:10px 0 0">Today: <b>' + esc(DAYTYPE[T.type]) + '</b>, ' + fmt(T.kcal) + ' kcal' + (T.adjust ? ' (' + (T.adjust > 0 ? '+' : '−') + fmt(Math.abs(T.adjust)) + ' to even out the week)' : '') + ' and ' + fmt(T.steps) + ' steps' + (G.push ? '. Push week: 100 less a day and 2,000 more steps until the trend is back on pace' : '') + '.</p>';
     h += G.why ? '<p class="goalwhy">' + esc(G.why) + '</p>' : '<p class="small" style="margin:10px 0 0"><button class="linkbtn" type="button" id="goalEdit2">Add your reason</button><span class="muted">: it goes in every reminder.</span></p>';
-    h += '<p class="tiny muted" style="margin:8px 0 0">You burn about ' + fmt(G.burn.kcal) + ' kcal a day' + (G.burn.learned ? ', ' + G.burn.learned + '% learned from your own logs' : '; it learns from your logs after 10 fully logged days') + '. Aim ' + G.rate + ' kg a week so a loose day still clears ' + G.minRate + '. ' + esc(G.socialName) + ' is the social day.</p></section>';
+    h += '<p class="tiny muted" style="margin:8px 0 0">You burn about ' + fmt(G.burn.kcal) + ' kcal a day' + (G.burn.learned ? ', ' + G.burn.learned + '% learned from your own logs' : Q ? ' (an estimate from your weight; check-in weighs let it learn your real number)' : '; it learns from your logs after 10 fully logged days') + '. A bad day never follows you into next week. Aim ' + G.rate + ' kg a week so a loose day still clears ' + G.minRate + '. ' + esc(G.socialName) + ' is the social day.</p></section>';
     return h;
   }
   function goalChart(G) {
-    var tr = G.chart.trend, ws = G.chart.weights; if (!tr.length || G.startKg === null) return '';
+    var Q = G.scale !== 'daily', tr = Q ? G.chart.paper || [] : G.chart.trend, ws = Q ? [] : G.chart.weights; if (!tr.length || G.startKg === null) return '';
     var x0 = Date.parse(tr[0][0]), x1 = Date.parse(G.milestone.date) > Date.parse(tr[tr.length - 1][0]) ? Date.parse(G.milestone.date) : Date.parse(tr[tr.length - 1][0]);
     var vals = tr.map(function (p) { return p[1]; }).concat(ws.map(function (p) { return p[1]; }), [G.milestone.kg]), lo = Math.floor(Math.min.apply(null, vals) - 0.5), hi = Math.ceil(Math.max.apply(null, vals) + 0.5);
     var W = 320, H = 150, PL = 30, PR = 8, PT = 8, PB = 20, X = function (d) { return PL + (Date.parse(d) - x0) / Math.max(1, x1 - x0) * (W - PL - PR); }, Y = function (v) { return PT + (hi - v) / Math.max(1, hi - lo) * (H - PT - PB); };
@@ -1375,7 +1381,7 @@
     var e = tr[tr.length - 1]; svg += '<circle class="lcdot gtrenddot" cx="' + X(e[0]).toFixed(1) + '" cy="' + Y(e[1]).toFixed(1) + '" r="4"/>';
     [[tr[0][0], 'start'], [G.milestone.date, 'end']].forEach(function (a) { svg += '<text class="lcax" x="' + X(a[0]).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="' + a[1] + '">' + esc(new Date(a[0] + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })) + '</text>'; });
     svg += '</svg>';
-    return '<div class="lcwrap">' + svg + '</div><div class="lclegend" style="margin-top:4px"><span class="lckey"><i class="gk trend"></i>Trend ' + kgs(e[1]) + '</span><span class="lckey"><i class="gk dot"></i>Weigh-ins</span><span class="lckey"><i class="gk line"></i>' + G.minRate + ' kg/week line</span></div>';
+    return '<div class="lcwrap">' + svg + '</div><div class="lclegend" style="margin-top:4px"><span class="lckey"><i class="gk trend"></i>' + (Q ? 'On paper, from your logs' : 'Trend ' + kgs(e[1])) + '</span>' + (Q ? '' : '<span class="lckey"><i class="gk dot"></i>Weigh-ins</span>') + '<span class="lckey"><i class="gk line"></i>' + G.minRate + ' kg/week line</span></div>';
   }
   function goalSheet() {
     var G = S.goal; if (!G) return;
@@ -1383,13 +1389,14 @@
       '<form id="goalForm" autocomplete="off"><label class="small muted" style="display:block">Why you\'re doing it (shows in every reminder)<textarea id="gWhy" maxlength="200" style="min-height:70px" placeholder="e.g. Feel good in the Christmas photos and run without stopping">' + esc(G.why || '') + '</textarea></label>' +
       '<label class="small muted" style="display:block;margin-top:10px">Social day (looser: maintenance calories)<select id="gSocial">' + DOW3.map(function (d, i) { return '<option value="' + i + '"' + (i === G.social ? ' selected' : '') + '>' + ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][i] + '</option>'; }).join('') + '</select></label>' +
       '<label class="small muted" style="display:block;margin-top:10px">Pace to aim for<select id="gRate">' + [0.5, 0.6, 0.7, 0.8, 1].map(function (r) { return '<option value="' + r + '"' + (r === G.rate ? ' selected' : '') + '>' + r + ' kg a week' + (r === 0.6 ? ' (recommended)' : r === 0.5 ? ' (the bare minimum)' : '') + '</option>'; }).join('') + '</select></label>' +
+      '<label class="small muted" style="display:block;margin-top:10px">The scale<select id="gScale"><option value="quiet"' + (G.scale !== 'daily' ? ' selected' : '') + '>Only when I choose (progress from my logs)</option><option value="daily"' + (G.scale === 'daily' ? ' selected' : '') + '>Daily weigh-ins and the trend line</option></select></label>' +
       '<button class="btn primary wide" type="submit" style="margin-top:14px">Save</button></form>');
   }
   document.addEventListener('click', function (ev) { var t = ev.target.closest && ev.target.closest('#goalEdit, #goalEdit2'); if (t && S && S.goal) goalSheet(); });
   document.addEventListener('submit', function (ev) {
     if (ev.target.id !== 'goalForm') return;
     ev.preventDefault();
-    var ch = { why: el('gWhy').value, social: +el('gSocial').value, rate: +el('gRate').value };
+    var ch = { why: el('gWhy').value, social: +el('gSocial').value, rate: +el('gRate').value, scale: el('gScale').value };
     closeSheet();
     call('setGoal', [ch], function (res) { apply(res, 'Goal saved.'); });
   });

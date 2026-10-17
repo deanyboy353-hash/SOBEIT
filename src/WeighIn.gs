@@ -6,7 +6,7 @@
 
 function planWeighIn_(ymd, cfg) {
   var s = cfg.settings;
-  if (parseDays(s['Weigh-in days']).indexOf(dayOfWeek_(ymd)) === -1) {
+  if (parseDays(s['Weigh-in days']).indexOf(dayOfWeek_(ymd)) === -1 || scaleQuiet_()) {
     removeTaggedEvents_(ymd, 'weigh');
     return 'Not a weigh-in day';
   }
