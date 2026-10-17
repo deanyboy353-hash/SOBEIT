@@ -1972,6 +1972,7 @@
       '<button class="btn ghost wide" type="button" data-backup="now" style="margin-top:8px">Back up now</button>' +
       '<p class="tiny muted" style="margin:8px 0 0">Importing never touches your live data: it rebuilds the backup as a new sheet so you can check it first.</p></section>';
     h += '<p class="small muted center">Your choices follow you to any phone you open the app on.' + (S.solo ? '' : ' ' + esc(n.other) + ' has their own.') + '</p>';
+    h += '<p class="tiny muted center">Version: __BUILD__</p>';
     el('tab-custom').innerHTML = h;
   }
 
