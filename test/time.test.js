@@ -24,7 +24,7 @@ test('Across the clocks going back: gym, weigh-in and briefs stay on UK clock ti
   const g = loadProject({ now: new Date('2026-10-24T05:05:00Z') });     // Sat 06:05 BST, a training day
   g.ctx.setup(); g.ctx.dailyRun();
   let ev = g.calendar.live().find(e => e.tags.sobeit === 'gym');
-  assert.strictEqual(london(g, ev.start, 'HH:mm'), '12:00', 'Saturday is a day off: midday on the e-bike');
+  assert.strictEqual(london(g, ev.start, 'HH:mm'), '14:59', 'Saturday: out on the 15:01, in time for the 16:41 home');
   g.state.now = new Date('2026-10-26T06:05:00Z');                       // Mon 06:05 GMT, weigh-in day
   g.ctx.dailyRun();
   const weigh = g.calendar.live().find(e => e.title === 'Weigh in' && london(g, e.start, 'yyyy-MM-dd') === '2026-10-26');

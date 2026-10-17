@@ -130,7 +130,7 @@ function transportPlan_(ymd, dow, day, cfg, sessionMinutes) {
   var s = cfg.settings, tick = function (v) { return v === true || /^(true|yes|y|x|✓)$/i.test(String(v).trim()); };
   var dayOff = dayOffWork_('me', ymd, cfg);
   var free, earlyBy = num_(s, 'Can leave work early by (min)', 5);
-  if (dayOff) free = cellClock_(s['Day off: leave around']) || 720;
+  if (dayOff) free = ((dow === 0 || dow === 6) && cellClock_(s['Weekend: leave around'])) || cellClock_(s['Day off: leave around']) || 720;
   else {
     free = day.freeFrom !== null && day.freeFrom !== undefined ? day.freeFrom : (dow === 4 ? 960 : 900);
     if (dow === 4) {

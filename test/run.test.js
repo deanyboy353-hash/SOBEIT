@@ -248,8 +248,32 @@ test('Day off: with daytime buses, the best pair for a ~90 minute session around
   let p = g.ctx.planTransport(Object.assign({ free: 720 }, base));
   assert.strictEqual(p.ok, true);
   assert.strictEqual(p.out.dep, 721, 'the 12:01, nearest to 12:00');
-  assert.ok(p.gymMins >= 90 && p.gymMins < 150, 'about 90 minutes in the gym: ' + p.gymMins);
+  assert.ok(p.gymMins >= 75 && p.gymMins <= 120, 'about 90 minutes in the gym, never a long wait over your maximum: ' + p.gymMins);
   assert.ok(!p.noDaytime);
   p = g.ctx.planTransport(Object.assign({ free: 600 }, base));
   assert.strictEqual(p.out.dep, 601, 'your own time (10:00) moves it');
+});
+
+test('Weekend buses: old weekend rows archived and replaced once; Saturday plans the 15:01 and the 16:41 home, with a warning about the gap', () => {
+  const { loadProject } = require('./fakes');
+  const g = loadProject({ now: new Date('2026-10-17T08:00:00Z') });   // Sat
+  g.ctx.setup();
+  // a sheet from before: its own weekend rows, which the update must keep a copy of
+  const cfg = g.tab('Config'), rows = cfg.rows(), at = rows.findIndex(r => r[1] === 'Out' && r[2] === 'Sat-Sun');
+  cfg.getRange(at + 1, 1, 1, 6).setValues([['3', 'Out', 'Sat', '10:01, 11:01', '13', 'old']]);
+  delete g.state.props.BUS_WKND_V1; g.ctx.resetRun_();
+  const weekday = cfg.rows().filter(r => r[2] === 'Mon-Fri').length;
+  g.ctx.ensureWeekendBus_();
+  const after = g.tab('Config').rows();
+  assert.strictEqual(after.filter(r => r[2] === 'Mon-Fri').length, weekday, 'weekday rows untouched');
+  assert.deepStrictEqual(after.filter(r => r[2] === 'Sat-Sun').map(r => r[0] + ' ' + r[1] + ' ' + r[3]), ['3 Out 15:01, 16:01', '132 Out 18:18, 19:18', '3 Back 16:41, 18:30', '132 Back 18:30, 19:30, 20:30']);
+  assert.ok(!after.some(r => r[2] === 'Sat'), 'the old Saturday row is gone from the timetable');
+  assert.ok(g.tab('Archive').rows().some(r => /Weekend bus times/.test(r[1]) && /10:01, 11:01/.test(r[2])), 'and kept in the Archive tab');
+  g.ctx.ensureWeekendBus_();
+  assert.strictEqual(g.tab('Config').rows().filter(r => r[2] === 'Sat-Sun').length, 4, 'runs once');
+  const t = JSON.parse(JSON.stringify(g.ctx.previewTransport_('2026-10-17'))).plan;
+  assert.deepStrictEqual([t.out.dep, t.back.dep, t.homeBy], [901, 1001, 1015], '15:01 out, 16:41 back, home 16:55');
+  assert.ok(t.notes.some(n => /Don't miss the 16:41: the next bus home is the 3 at 18:30/.test(n)));
+  const sun = JSON.parse(JSON.stringify(g.ctx.previewTransport_('2026-10-18'))).plan;
+  assert.strictEqual(sun.back.dep, 1001, 'Sunday the same until its own times go in');
 });

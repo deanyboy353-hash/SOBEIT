@@ -126,6 +126,7 @@ var TRANSPORT_SETTINGS = [
   ['Thursday: can leave work early by (min)', '0', 'At 0, the 16:01 counts as not realistic after a 16:00 finish'],
   ['Days off work', 'Fri, Sat, Sun', 'On these days the plan is built around the time below'],
   ['Day off: leave around', '12:00', 'When you would like to head to the gym on a day off'],
+  ['Weekend: leave around', '14:30', 'Sat and Sun: the 3 stops early (last one home 16:41, then not until 18:30), so go early'],
   ['Day off: session length (min)', '90', ''],
   ['E-bike each way (min)', '17', 'No timetable; offered when it is dry'],
   ['E-bike: leave after work (min)', '5', 'Minutes to get out the door on the bike']
@@ -138,11 +139,50 @@ var DEFAULT_TIMETABLE = [
   ['3', 'Back', 'Mon-Fri', '16:41, 18:30', '14', 'Coatbridge Bus Stance (westbound) to home'],
   ['3', 'Back', 'Mon-Fri', '17:15', '11', ''],
   ['132', 'Back', 'Mon-Fri', '18:30, 19:30, 20:30', '8', ''],
-  ['3', 'Out', 'Sat', '', '13', 'Add Saturday times'],
-  ['3', 'Back', 'Sat', '', '14', ''],
-  ['3', 'Out', 'Sun', '', '13', 'Add Sunday times'],
-  ['3', 'Back', 'Sun', '', '14', '']
-];
+].concat(WEEKEND_TIMETABLE_());
+// Saturday afternoon from Google Maps (Oct 2026), used for Sunday too until Sunday's are checked. Add earlier times if you want them.
+function WEEKEND_TIMETABLE_() {
+  return [
+    ['3', 'Out', 'Sat-Sun', '15:01, 16:01', '13', 'Weekend: Whitelaw Avenue. Add morning times here if you go earlier'],
+    ['132', 'Out', 'Sat-Sun', '18:18, 19:18', '17', ''],
+    ['3', 'Back', 'Sat-Sun', '16:41, 18:30', '14', 'Weekend: last 3 home 16:41, then not until 18:30'],
+    ['132', 'Back', 'Sat-Sun', '18:30, 19:30, 20:30', '8', '']
+  ];
+}
+
+/**
+ * Once: the weekend bus times changed. Weekend-only rows in the Transport timetable are copied to the Archive tab,
+ * then replaced with the current ones; the "Weekend: leave around" setting is added. Weekday rows are left alone.
+ */
+function ensureWeekendBus_() {
+  if (prop_('BUS_WKND_V1')) return;
+  ensureTransport_();   // adds any new transport settings
+  var sh = sheet_('config'), rows = sh.getDataRange().getValues(), head = -1, end = -1, old = [], at = [];
+  for (var i = 0; i < rows.length; i++) {
+    var a = String(rows[i][0]).trim();
+    if (a === 'Bus') { head = i; continue; }
+    if (head === -1) continue;
+    if (!a) { if (end === -1 && i > head + 1) end = i; continue; }
+    if (end !== -1) break;
+    var days = parseDayRange(rows[i][2]);
+    if (days.length && days.every(function (d) { return d === 0 || d === 6; })) { old.push(rows[i].slice(0, 6)); at.push(i); }
+  }
+  if (head === -1) { setProp_('BUS_WKND_V1', '1'); return; }
+  var now = WEEKEND_TIMETABLE_().map(function (r) { return r.slice(0, 4).join('|'); });
+  if (old.length && old.some(function (r) { return now.indexOf(r.slice(0, 4).map(String).join('|')) === -1; })) archive_('Transport', 'Weekend bus times before the October 2026 change', old);
+  // the new rows go in first (after the last timetable row), then the old weekend rows come out, bottom up
+  var last = head;
+  for (i = head + 1; i < rows.length && String(rows[i][0]).trim(); i++) last = i;
+  var add = WEEKEND_TIMETABLE_();
+  for (k = 0; k < add.length; k++) sh.insertRowAfter(last + 1);
+  sh.getRange(last + 2, 1, add.length, 6).setNumberFormat('@').setValues(add);
+  for (var k = at.length - 1; k >= 0; k--) sh.deleteRow(at[k] + 1);
+  forget_('config'); configCache_ = null;
+  setProp_('BUS_WKND_V1', '1');
+  // a weekend today: the plan made this morning used the old times
+  var today = todayYmd_(), dw = dayOfWeek_(today);
+  if ((dw === 0 || dw === 6) && rotationDoneOn_(today) === '') { try { if (todaySession_(today)) planGymDay_(today, readConfig_()); } catch (e) { log_('WARN', 'Re-planning after the weekend bus change: ' + e); } }
+}
 
 /** Adds the TRANSPORT section to the Config tab (once) and takes out the old bus settings. */
 function ensureTransport_() {
@@ -158,6 +198,7 @@ function ensureTransport_() {
     [r, r + 1, r + 2 + TRANSPORT_SETTINGS.length + 1].forEach(function (x) { sh.getRange(x, 1, 1, 6).setFontWeight('bold'); });
     var tRow = r + 2 + TRANSPORT_SETTINGS.map(function (t) { return t[0]; }).indexOf('Thursday early finish');
     sh.getRange(tRow, 2).setNumberFormat('General').insertCheckboxes().setValue(false);
+    setProp_('BUS_WKND_V1', '1');   // a new Transport section already has the current weekend times
   } else {
     // newer settings added later go in at the end of the transport list
     var at = -1, have = {};

@@ -631,8 +631,12 @@ function planTransport(o) {
       options.filter(ok)[0] ||
       options.sort(function (a, b) { return b.gym - a.gym; })[0];
     if (want && pick) {
-      // a day off: the pair closest to the session length you want, without going under it
-      var fit = options.filter(function (x) { return x.gym >= want; }).sort(function (a, b) { return (a.back.route === pref ? 0 : 1) - (b.back.route === pref ? 0 : 1) || a.gym - b.gym; })[0];
+      // a day off: the pair closest to the session length you want without going under it, and never a long wait for
+      // a late bus (over your maximum) when an earlier one gets you home with a shorter session
+      var byPref = function (a, b) { return (a.back.route === pref ? 0 : 1) - (b.back.route === pref ? 0 : 1); };
+      var fit = options.filter(function (x) { return x.gym >= want && x.gym <= Math.max(want, o.maxGym); }).sort(function (a, b) { return byPref(a, b) || a.gym - b.gym; })[0] ||
+        options.filter(function (x) { return x.gym >= 45 && x.gym <= o.maxGym; }).sort(function (a, b) { return b.gym - a.gym || byPref(a, b); })[0] ||
+        options.filter(function (x) { return x.gym >= want; }).sort(function (a, b) { return byPref(a, b) || a.gym - b.gym; })[0];
       if (fit) pick = fit;
     }
     if (!pick) return null;
@@ -660,7 +664,11 @@ function planTransport(o) {
     Object.assign(res, plan, { ok: true });
     if (o.dayOff && Math.abs(plan.leaveBy - o.free) > 45) res.notes.push('The nearest bus to ' + formatClock(o.free) + ' in your timetable.');
     if (!o.dayOff && plan.leaveBy < o.free) { res.finishBy = plan.leaveBy; res.notes.push('Wrap up work a few minutes early: you need to be out the door at ' + formatClock(plan.leaveBy) + '.'); }
-    if (plan.gymMins < o.minGym) res.notes.push('Short session: only ' + plan.gymMins + ' min in the gym before the last bus back.');
+    if (plan.gymMins < o.minGym) res.notes.push('Short session: ' + plan.gymMins + ' min in the gym, to make the ' + formatClock(plan.back.dep) + ' back.');
+    // a long gap after your bus home (weekends: the 3 stops early): say so, so it isn't missed
+    var after = backs.filter(function (b) { return b.dep > plan.back.dep; })[0];
+    if (after && after.dep - plan.back.dep >= 60) res.notes.push('Don\'t miss the ' + formatClock(plan.back.dep) + ': the next bus home is the ' + after.route + ' at ' + formatClock(after.dep) + '.');
+    else if (!after) res.notes.push('The ' + formatClock(plan.back.dep) + ' is the last bus home.');
     // missed it? the next bus out
     var next = outs.filter(function (b) { return b.dep > first.dep && (b.route === pref || !outs.some(function (x) { return x.dep > first.dep && x.route === pref; })); })[0];
     var nb = next ? pairFor(next, o.dayOff ? o.sessionMins : 0) : null;
