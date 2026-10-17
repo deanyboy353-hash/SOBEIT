@@ -86,6 +86,7 @@ function heartbeat_() {
   if (!sent || sent.date !== ymd) sent = { date: ymd, me: [], partner: [] };
   var before = JSON.stringify(sent);
   try { alertsHeartbeat_(ymd, m, sent); } catch (e) { log_('WARN', 'Alerts: ' + e); }
+  try { goalHeartbeat_(ymd, m, sent); } catch (e) { log_('WARN', 'Goal reminders: ' + e); }
   if (!extrasOn_('Reminders') || m < 9 * 60 || m >= 22 * 60 + 30) { if (JSON.stringify(sent) !== before) setProp_('REMINDED', JSON.stringify(sent)); return; }
   var nk = nicks_(), goal = dailyGoal_(), r = seededRandom('lines' + ymd);
   function once(who, id, title, body, tab) {
@@ -248,7 +249,7 @@ function daysBetween_(a, b) {
 
 // ---------- customisation ----------
 
-var HOME_BLOCKS = ['brief', 'win', 'deadlines', 'routine', 'tiles', 'stage', 'ask', 'gym', 'work', 'us', 'feed', 'wardrobe', 'ring', 'pet', 'chores'];
+var HOME_BLOCKS = ['goal', 'brief', 'win', 'deadlines', 'routine', 'tiles', 'stage', 'ask', 'gym', 'work', 'us', 'feed', 'wardrobe', 'ring', 'pet', 'chores'];
 var PREF_DEFAULTS = { char: '', skin: '', mode: 'auto', accent: '', text: 'normal', sound: false, haptics: true, confetti: true, motion: true, home: [], nag: '', look: {} };
 // the style studio: the first choice is the default
 var STYLE_CHOICES = { bg: ['live', 'lasers', 'grid', 'stars', 'plain'], cards: ['soft', 'glass', 'neon', 'outline', 'flat'], font: ['default', 'rounded', 'mono', 'serif', 'condensed'], corners: ['round', 'sharp', 'pill'] };

@@ -55,7 +55,9 @@ test('Setup: Dean\'s body data stays private unless he shares it; Yaz never sees
   assert.strictEqual(plain(g.ctx.setupState(me)).health.height, 183);
   // and Dean's food targets follow his answers
   g.ctx.saveSetup(me, 'health', { kcal: 1900, protein: [140, 170] });
-  assert.strictEqual(plain(g.ctx.foodState(me)).targets.kcal, 1900);
+  assert.strictEqual(plain(g.ctx.foodState(me)).targets.goal, true, 'the weight-loss goal sets the calories while it is on');
+  g.ctx.setGoal(me, { on: false }); g.ctx.resetRun_();
+  assert.strictEqual(plain(g.ctx.foodState(me)).targets.kcal, 1900, 'goal off: your own number');
 });
 
 test('Setup: the household is shared; either of you can fill it in or change it', () => {

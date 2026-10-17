@@ -7,11 +7,14 @@
  */
 
 function foodTargets_(settings) {
-  return {
+  var t = {
     kcal: num_(settings, 'Daily kcal target', 1800),
     proteinMin: num_(settings, 'Protein min (g)', 130),
     proteinMax: num_(settings, 'Protein max (g)', 160)
   };
+  // with the weight-loss goal on, today's calories come from the goal's weekly plan (Goal.gs)
+  try { var gs = goalCached_(); if (gs) { t.kcal = gs.today.kcal; t.dayType = gs.today.type; t.steps = gs.today.steps; t.goal = true; } } catch (e) { log_('WARN', 'Goal targets: ' + e); }
+  return t;
 }
 
 function foodEntries_(ymd) {

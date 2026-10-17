@@ -24,8 +24,9 @@
     return won && !b.won ? 'won' : '';
   }
   // Home's cards, in the order Home starts with. Anything can be moved or hidden in Edit home screen.
-  var HOME_DEFAULT = ['brief', 'win', 'deadlines', 'routine', 'tiles', 'stage', 'ask', 'gym', 'work', 'us', 'feed'];
+  var HOME_DEFAULT = ['brief', 'win', 'goal', 'deadlines', 'routine', 'tiles', 'stage', 'ask', 'gym', 'work', 'us', 'feed'];
   var HOME_QUIET = { feed: 1, stage: 1 };
+  var NEW_CARDS = { goal: 1 };   // cards added after people had saved a layout
   // Characters and pet is off unless you turned it on after it became optional (an entry with on: true).
   function quiet(x) { return x.id === 'stage' ? !x.on : !!x.hide; }
   /**
@@ -39,7 +40,13 @@
     var current = saved.some(function (x) { return x.id === 'win'; });
     if (current) saved.forEach(function (x) { if (known[x.id] && !seen[x.id]) { seen[x.id] = 1; out.push(x.id === 'stage' ? { id: x.id, hide: quiet(x), on: !quiet(x) } : { id: x.id, hide: !!x.hide }); } });
     var hid = {}; if (!current) saved.forEach(function (x) { if (known[x.id]) hid[x.id] = quiet(x); });
-    HOME_DEFAULT.forEach(function (id) { if (!seen[id]) out.push({ id: id, hide: hid[id] !== undefined ? hid[id] : !!HOME_QUIET[id] }); });
+    HOME_DEFAULT.forEach(function (id, k) {
+      if (seen[id]) return;
+      var x = { id: id, hide: hid[id] !== undefined ? hid[id] : !!HOME_QUIET[id] }, prev = k ? HOME_DEFAULT[k - 1] : null, at = -1;
+      out.forEach(function (o, j) { if (o.id === prev) at = j; });
+      if (current && at !== -1 && NEW_CARDS[id]) out.splice(at + 1, 0, x); else out.push(x);   // a newly added card goes after the one it follows by default
+      seen[id] = 1;
+    });
     return out;
   }
   /** Win the day after one more job or some XP (the phone's guess until the server confirms). */

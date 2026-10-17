@@ -18,7 +18,7 @@ function rpcTable_() {
     appState: appState, batch: batch, choresState: choresState, questDone: questDone, claimQuest: claimQuest, whatNow: whatNow,
     brainDump: brainDump, saveBrainDump: saveBrainDump, addQuest: addQuest, addShopping: addShopping, toggleShopping: toggleShopping,
     askToJoin: askToJoin, planChore: planChore, startChore: startChore, stepDone: stepDone, extendChore: extendChore,
-    finishChore: finishChore, parkThing: parkThing, clearLater: clearLater, highFive: highFive, lazyDay: lazyDay, aftersReport: aftersReport, setSplit: setSplit, saveMyWorkout: saveMyWorkout, deleteMyWorkout: deleteMyWorkout, swapExercise: swapExercise, editTemplate: editTemplate, resetTemplate: resetTemplate, clientError: clientError,
+    finishChore: finishChore, parkThing: parkThing, clearLater: clearLater, highFive: highFive, lazyDay: lazyDay, aftersReport: aftersReport, setSplit: setSplit, setGoal: setGoal, saveMyWorkout: saveMyWorkout, deleteMyWorkout: deleteMyWorkout, swapExercise: swapExercise, editTemplate: editTemplate, resetTemplate: resetTemplate, clientError: clientError,
     routineStep: routineStep, saveRoutine: saveRoutine, setupState: setupState, saveSetup: saveSetup, previewChores: previewChores, buildChores: buildChores, saveChore: saveChore, choreAction: choreAction, deleteRoutine: deleteRoutine, chatPing: chatPing, setDayOff: setDayOff, setDayOffLeave: setDayOffLeave, addWater: addWater, setTheme: setTheme, todayState: todayState, gymDone: gymDone,
     logWeightNow: logWeightNow, foodState: foodState, logPreset: logPreset, quickAdd: quickAdd, quickAddPhoto: quickAddPhoto, importWorkoutCsv: importWorkoutCsv, backupStatus: backupStatus, backupNow: backupNow, exportAll: exportAll, importBackup: importBackup, undoLast: undoLast,
     saveClaudeKey: saveClaudeKey, trainState: trainState, setTrainingMax: setTrainingMax, saveWorkout: saveWorkout,
@@ -158,6 +158,7 @@ function appState_(who) {
     s.today = todayState_();
     s.food = foodState_();
     s.train = trainState_();
+    try { s.goal = goalCached_(); } catch (e) { log_('WARN', 'Goal: ' + e); s.goal = null; }
   }
   return s;
 }
@@ -170,7 +171,7 @@ function appState_(who) {
  */
 var STATE_TTL = 300, STATE_PART = 90000;
 // Bump when the screen's shape changes, so a deploy never serves a screen saved by the old code.
-var STATE_VERSION = 'wkndbus-1';
+var STATE_VERSION = 'goal-1';
 function appState(key) {
   var who = who_(key);
   // once: back up the gym data, then templates (a failure is logged and retried at most hourly, never in the way)
@@ -180,7 +181,7 @@ function appState(key) {
   var cache = stateCache_(), hit = cache && getCachedState_(cache, who);
   var stamp = todayYmd_() + '|' + dayPart(minutesNow_()) + '|' + STATE_VERSION;   // never serve yesterday's (or this morning's, or the old code's) screen
   if (hit && hit.cacheStamp === stamp) { hit.now = new Date().getTime(); return hit; }
-  var state = withLock_(function () { if (!prop_('TITLES_V2')) { try { var st0 = readConfig_().settings; ['Your level titles', 'Partner level titles'].forEach(function (k) { var v = String(st0[k] || '').trim().toLowerCase(); if (v === 'ye' || v === 'kanye') setSetting_(k, 'Glam'); else if (v === 'gta') setSetting_(k, 'City'); }); setProp_('TITLES_V2', '1'); } catch (e) { log_('WARN', 'Titles: ' + e); } } if ((!prop_('LIFTOFF_V1') || !prop_('STRONG_V1') || !prop_('IMPORT_XP_V2')) && !instance_()) { try { ensureLiftoffImport_(); } catch (e) { log_('WARN', 'Liftoff import: ' + e); } } if (!prop_('BINS_V2') && !instance_()) { try { ensureHomeBins_(); } catch (e) { log_('WARN', 'Bins: ' + e); } } if (!prop_('ROUTINE_V2')) { try { tidyRoutines_(); } catch (e) { log_('WARN', 'Routines: ' + e); } } if (!prop_('TRANSPORT_V1')) { try { ensureTransport_(); } catch (e) { log_('WARN', 'Transport setup: ' + e); } } if (!prop_('BUS_WKND_V1')) { try { ensureWeekendBus_(); } catch (e) { log_('WARN', 'Weekend buses: ' + e); } } if (!prop_('PRESETS_V1')) { try { ensurePresets_(); } catch (e) { log_('WARN', 'Presets: ' + e); } } if (!prop_('TRAIN_V2')) { try { ensureRotation_(); } catch (e) { log_('WARN', 'Training rotation: ' + e); } } return appState_(who); });
+  var state = withLock_(function () { if (!prop_('TITLES_V2')) { try { var st0 = readConfig_().settings; ['Your level titles', 'Partner level titles'].forEach(function (k) { var v = String(st0[k] || '').trim().toLowerCase(); if (v === 'ye' || v === 'kanye') setSetting_(k, 'Glam'); else if (v === 'gta') setSetting_(k, 'City'); }); setProp_('TITLES_V2', '1'); } catch (e) { log_('WARN', 'Titles: ' + e); } } if ((!prop_('LIFTOFF_V1') || !prop_('STRONG_V1') || !prop_('IMPORT_XP_V2')) && !instance_()) { try { ensureLiftoffImport_(); } catch (e) { log_('WARN', 'Liftoff import: ' + e); } } if (!prop_('BINS_V2') && !instance_()) { try { ensureHomeBins_(); } catch (e) { log_('WARN', 'Bins: ' + e); } } if (!prop_('ROUTINE_V2')) { try { tidyRoutines_(); } catch (e) { log_('WARN', 'Routines: ' + e); } } if (!prop_('TRANSPORT_V1')) { try { ensureTransport_(); } catch (e) { log_('WARN', 'Transport setup: ' + e); } } if (!prop_('GOAL_V1')) { try { ensureGoal_(); } catch (e) { log_('WARN', 'Goal: ' + e); } } if (!prop_('BUS_WKND_V1')) { try { ensureWeekendBus_(); } catch (e) { log_('WARN', 'Weekend buses: ' + e); } } if (!prop_('PRESETS_V1')) { try { ensurePresets_(); } catch (e) { log_('WARN', 'Presets: ' + e); } } if (!prop_('TRAIN_V2')) { try { ensureRotation_(); } catch (e) { log_('WARN', 'Training rotation: ' + e); } } return appState_(who); });
   state.cacheStamp = stamp;
   if (cache) putCachedState_(cache, who, state);
   return state;

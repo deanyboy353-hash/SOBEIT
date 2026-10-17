@@ -67,6 +67,7 @@ var ss_ = null, sheets_ = {}, vals = {}, props_ = null, configCache_ = null, cho
 
 /** Forget everything read so far (start of a run, or after taking the lock). */
 function resetRun_() {
+  if (typeof goalRun_ !== 'undefined') goalRun_ = null;
   sheets_ = {}; vals = {}; props_ = null; configCache_ = null; choresCache_ = null; xpCache_ = null; tabVers_ = null; dirtyTabs_ = {};
 }
 
