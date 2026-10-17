@@ -934,6 +934,9 @@
   function tplIdOf(name) { var T = (S.train && S.train.tpl) || {}; return Object.keys(T).filter(function (id) { return T[id].name === name && !T[id].extra; })[0] || ''; }
   function rush() { return !!load('trush'); }
   // exercises added for one session only (the "Just this session" choice): kept on the phone for that day
+  // extra (or fewer) sets for one session: { exercise index: +n }
+  function setsKey(id) { return 'tsets-' + (S.today ? S.today.date : '') + '-' + (id || tsel); }
+  function moreSets(id) { return load(setsKey(id)) || {}; }
   function taddKey(id) { return 'tadd-' + (S.today ? S.today.date : '') + '-' + (id || tsel); }
   function sessionAdds(id) { return load(taddKey(id)) || []; }
   var NO_GO = /dead ?lift|\brdl\b|romanian|good ?morning|back squat|front squat|^squat$|barbell squat|hip thrust|kettlebell swing|trap.?bar|calf|calves/i;
@@ -947,7 +950,7 @@
     var one = rush(), list = tp.ex.map(function (x, xi) { return { x: x, xi: xi }; }).concat(sessionAdds(tp.id).map(function (a, k) { return { x: addedEx(a, k), xi: 'a' + k }; }));
     return list.map(function (it) { var x = it.x, xi = it.xi;
       var last = x.last || [], low = +((String(x.reps).match(/\d+/) || [8])[0]), rows = [];
-      for (var i = 0; i < (one ? 1 : x.sets); i++) {
+      for (var i = 0; i < (one ? 1 : Math.max(1, x.sets + (moreSets(tp.id)[xi] || 0))); i++) {
         var l = last[i] || last[last.length - 1];
         rows.push({ key: tp.id + '|' + xi + '|' + i, weight: x.hint ? x.hint.weight : l ? l.w : '', reps: l && l.r ? l.r : low, rpe: l && l.rpe !== '' && l.rpe !== undefined ? l.rpe : x.rpe, target: x.reps, sub: l ? 'Last ' + l.w + ' × ' + l.r + (l.rpe ? ' @ ' + l.rpe : '') : '' });
       }
@@ -1005,7 +1008,8 @@
       '<p class="tiny muted" style="margin:6px 0 0">' + (last.length ? 'Last time' + (x.lastDate ? ' (' + esc(shortDay(x.lastDate)) + ')' : '') + ': ' + last.map(function (l) { return l.w + ' × ' + l.r + (l.rpe ? ' @ ' + l.rpe : ''); }).join(' · ') : 'No history for this one yet.') + '</p>' +
       (x.hint ? '<p class="small hint" style="margin:6px 0 0">' + icon('flag', 's') + esc(x.hint.text) + '</p>' : '');
     var rst = thenName ? '0' : restText;
-    h += '<div style="margin-top:8px">' + m.rows.map(function (r, i) { return setRow(r, i + 1, d, rst).replace('data-rest="', (thenName ? 'data-then="' + esc(thenName) + '" ' : '') + 'data-rest="'); }).join('') + '</div></div>';
+    h += '<div style="margin-top:8px">' + m.rows.map(function (r, i) { return setRow(r, i + 1, d, rst).replace('data-rest="', (thenName ? 'data-then="' + esc(thenName) + '" ' : '') + 'data-rest="'); }).join('') + '</div>' +
+      '<div class="row" style="gap:8px;margin-top:8px"><button class="btn line sm" type="button" data-tset="1" data-xi="' + m.xi + '">' + icon('plus', 's') + 'Add set</button>' + (m.rows.length > 1 ? '<button class="btn line sm" type="button" data-tset="-1" data-xi="' + m.xi + '">Remove set</button>' : '') + '</div></div>';
     return h;
   }
   function tplBody(tp, d) {
@@ -1205,7 +1209,7 @@
     if (bad && !confirm(bad + ' ticked set' + (bad === 1 ? ' has' : 's have') + ' 0 reps and won\'t be saved. Finish anyway?')) return;
     el('finishWk').disabled = true; el('finishWk').textContent = 'Saving…';
     call('saveWorkout', [tp ? tp.name : tsel, sets, { started: load('wkstart-' + draftKey()) || 0, template: tp ? tp.id : '' }], function (res) {
-      save(draftKey(), null); save('wkstart-' + draftKey(), null); if (tp) save(taddKey(tp.id), null); endRest(); armRest();
+      save(draftKey(), null); save('wkstart-' + draftKey(), null); if (tp) { save(taddKey(tp.id), null); save(setsKey(tp.id), null); } endRest(); armRest();
       apply(res.state);
       chime([660, 880, 1100, 1320]); buzz([60, 40, 60, 40, 150]);
       var h = '<div class="center">' + icon('trophy', 'l') + '<h2 style="margin:8px 0">' + (res.extra ? 'Pump logged' : 'Workout logged') + '</h2>' + (res.extra ? '<p class="small" style="margin:0 0 8px">' + (res.bonus ? '+' + res.bonus + ' bonus XP. ' : 'Bonus XP already earned today. ') + 'Your rotation stays where it was.</p>' : '') + (res.volume ? '<p class="muted" style="margin:0 0 10px">' + res.sets + ' sets · ' + fmt(res.volume) + ' kg lifted' + (res.minutes ? ' · ' + res.minutes + ' min' : '') + '</p>' : '') + '</div>';
@@ -3142,6 +3146,14 @@
     }
     if (ds.tpledit) return editSheet(ds.tpledit);
     if (t.id === 'tplAddBtn') return tplAddSheet();
+    if (ds.tset) {
+      var tpS = S.train.tpl[tsel], xiS = ds.xi, ms = moreSets(tsel), shown = tplModel(tpS).filter(function (m) { return String(m.xi) === xiS; })[0];
+      if (!shown) return;
+      if (rush()) save('trush', false);                  // adding sets means the full session
+      var base = shown.x.sets;
+      ms[xiS] = Math.max(1 - base, (ms[xiS] || 0) + +ds.tset); save(setsKey(tsel), ms); buzz(10);
+      return renderTrain();
+    }
     if (t.id === 'saveNewBtn') return saveNewSheet();
     if (ds.taddrm !== undefined) { var ad = sessionAdds(); ad.splice(+ds.taddrm, 1); save(taddKey(), ad.length ? ad : null); return renderTrain(); }
     if (ds.mydel) {
@@ -3380,13 +3392,26 @@
   if (MODE === 'web' && 'serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').then(function (r) { swReg = r; if (window.Notification && Notification.permission === 'granted' && KEY) enablePush(true); }).catch(function () {});
   }
-  if (MODE === 'web' && 'serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', function (e) { if (e.data && e.data.updated) {
-      // just opened and nothing touched yet: take the update now (at most once a minute); otherwise offer it
-      var last = 0; try { last = +sessionStorage.getItem('lq-autoreload') || 0; } catch (x) {}
-      if (performance.now() < 15000 && !touchedYet && Date.now() - last > 60000) { try { sessionStorage.setItem('lq-autoreload', String(Date.now())); } catch (x) {} location.reload(); return; }
-      if (!updateOffered) { updateOffered = true; setTimeout(function () { toast('A new version of Nudge is ready.', false, { label: 'Reload', fn: function () { location.reload(); } }); }, 1500); }
-      return;
-    } if (e.data && e.data.tab === 'us' && S && window.NudgeChat) { showTab('home'); if (!NudgeChat.isOpen()) NudgeChat.open(chatApi); return; } if (e.data && e.data.tab && S) { showTab(e.data.tab); if (e.data.deadline && e.data.act) handleNoteAction(e.data.deadline, e.data.act); else refreshQuiet(); } });
+  // A new version: each build has its own service worker. When it takes over (or a file changes), reload straight away if you
+  // haven't touched anything yet, else offer it, and take it anyway the next time the app comes back from the background
+  // (drafts, ticked sets and session tweaks are all saved on the phone, so nothing is lost).
+  var updatePending = false, hadSw = MODE === 'web' && 'serviceWorker' in navigator && !!navigator.serviceWorker.controller;
+  function newVersion() {
+    var last = 0; try { last = +sessionStorage.getItem('lq-autoreload') || 0; } catch (x) {}
+    if (Date.now() - last < 60000) return;
+    if (performance.now() < 15000 && !touchedYet) { try { sessionStorage.setItem('lq-autoreload', String(Date.now())); } catch (x) {} location.reload(); return; }
+    updatePending = true;
+    if (!updateOffered) { updateOffered = true; setTimeout(function () { toast('A new version of Nudge is ready.', false, { label: 'Reload', fn: function () { location.reload(); } }); }, 1500); }
+  }
+  if (MODE === 'web' && 'serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('controllerchange', function () { if (hadSw) newVersion(); hadSw = true; });
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') return;
+      if (updatePending && !document.querySelector('input:focus, textarea:focus')) { try { sessionStorage.setItem('lq-autoreload', String(Date.now())); } catch (x) {} location.reload(); return; }
+      if (swReg && swReg.update) swReg.update().catch(function () {});   // back from the background: look for a new version
+    });
+  }
+  if (MODE === 'web' && 'serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', function (e) { if (e.data && e.data.updated) { newVersion(); return; } if (e.data && e.data.tab === 'us' && S && window.NudgeChat) { showTab('home'); if (!NudgeChat.isOpen()) NudgeChat.open(chatApi); return; } if (e.data && e.data.tab && S) { showTab(e.data.tab); if (e.data.deadline && e.data.act) handleNoteAction(e.data.deadline, e.data.act); else refreshQuiet(); } });
   if (!ME) el('nav').querySelectorAll('[data-me]').forEach(function (b) { b.remove(); });
   // the phone tab bar: four main tabs and More (the rest), the same on every screen; computers keep the full sidebar
   var PRIMARY = { me: ['home', 'chores', 'train', 'food'], partner: ['home', 'chores', 'play', 'work'] };
