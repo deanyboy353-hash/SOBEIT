@@ -964,3 +964,16 @@ body.chat-open { overflow: hidden; }
 .choice input { width: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--lilac); flex: none; }
 .choice > span { display: flex; flex-direction: column; gap: 2px; }
 .choice:has(input:checked) { border-color: var(--lilac); background: var(--lilac-soft); }
+
+/* Gym visits */
+.gvtiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
+.gvtile { display: flex; flex-direction: column; gap: 2px; padding: 10px 8px; border-radius: 12px; background: var(--raised); }
+.gvtile b { font-size: 22px; font-weight: 800; line-height: 1.1; color: var(--ink); }
+.gvtile b small { font-size: 13px; font-weight: 600; color: var(--muted); }
+.gvbar { fill: var(--lilac); }
+:root[data-theme="ad-dark"] .gvbar { fill: color-mix(in srgb, var(--lilac) 72%, #000); }
+:root[data-theme="ad-dark"]:not([data-accent]) .gvbar { fill: #7d74ec; }
+.gvhit { fill: transparent; cursor: default; }
+.gvhit:hover { fill: color-mix(in srgb, var(--ink) 6%, transparent); }
+.gvtarget { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 4 4; }
+@media (max-width: 360px) { .gvtiles { grid-template-columns: repeat(2, 1fr); } }

@@ -296,6 +296,30 @@ function templatePlan_(id) {
   return t;
 }
 
+/**
+ * Gym visits, all of history (Strong and Liftoff imports included): a day counts once if anything was logged that day
+ * (Workout log or Workouts tab) or Gym done was ticked. Weeks run Monday to Sunday, from your first visit to this week.
+ */
+function gymVisits_(ymd) {
+  ymd = ymd || todayYmd_();
+  var days = {};
+  rowsBetween_('workoutLog', '0000', ymd).forEach(function (r) { if (r['Date']) days[String(r['Date'])] = 1; });
+  try { rowsBetween_('workouts', '0000', ymd).forEach(function (r) { if (r['Date']) days[String(r['Date'])] = 1; }); } catch (e) { /* no Workouts tab yet */ }
+  try { rowsBetween_('gym', '0000', ymd).forEach(function (r) { if (/^Done/.test(String(r['Status'] || ''))) days[String(r['Date'])] = 1; }); } catch (e) { /* no gym log yet */ }
+  var list = Object.keys(days).filter(function (d) { return /^\d{4}-\d{2}-\d{2}$/.test(d) && d <= ymd; }).sort();
+  var monday = function (d) { return addDays_(d, -((dayOfWeek_(d) + 6) % 7)); }, thisMon = monday(ymd), weeks = [], by = {};
+  list.forEach(function (d) { var m = monday(d); by[m] = (by[m] || 0) + 1; });
+  if (list.length) for (var m = monday(list[0]); m <= thisMon; m = addDays_(m, 7)) weeks.push([m, by[m] || 0]);
+  var last12 = weeks.slice(-13, -1), h = health_('me');
+  return {
+    total: list.length, first: list[0] || '', last: list[list.length - 1] || '',
+    thisWeek: by[thisMon] || 0, lastWeek: by[addDays_(thisMon, -7)] || 0,
+    avg12: last12.length ? Math.round(last12.reduce(function (a, w) { return a + w[1]; }, 0) / last12.length * 10) / 10 : 0,
+    target: h.on === false ? 0 : Number(h.trainDays) || WEEK_TARGET,
+    weeks: weeks
+  };
+}
+
 /** Main lifts over your whole history (Strong and Liftoff imports included): best estimated 1RM per day. */
 var MAIN_LIFTS = ['Bench press', 'Hack squat', 'Lat pulldown', 'Seated cable row', 'Incline DB press', 'Seated DB shoulder press', 'Leg press', 'Chest-supported row'];
 function liftHistory_() {

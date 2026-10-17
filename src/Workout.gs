@@ -97,7 +97,7 @@ function trainState_() {
   var tpl = split.order.map(function (x) { return x.id; }).concat(presetIds_()).reduce(function (o, id) { o[id] = templatePlan_(id); return o; }, {});
   return {
     today: todaySession,
-    split: split, tpl: tpl, lifts: liftHistory_(),
+    split: split, tpl: tpl, lifts: liftHistory_(), visits: gymVisits_(today),
     planned: planned, rotation: order, rotationNext: next, trainDays: Object.keys(cfg.schedule).filter(function (d) { return cfg.schedule[d].train; }).map(Number),
     changed: todaySession !== planned,
     last: last, next: next,

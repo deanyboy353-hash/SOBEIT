@@ -20,6 +20,7 @@ The DJ game is **not here**: it's **Afters**, its own project (`afters`, next to
 - Updates: each build has its own service worker; the app reloads on `controllerchange` if untouched, else offers it and takes it when it next comes back from the background.
 - Your edits and swaps per template live in `TRAIN_TPL` (`editTemplate`, `swapExercise`, `resetTemplate`); swap options come from `MUSCLES`. `progressionHint`: top of the range at or below target RPE on every set → +2.5 kg (+1–2 kg on small isolation lifts).
 - `ensureSplits_` ran once (`TRAIN_V3`): backed up the gym tabs to the "Gym before splits" sheet in the Nudge backups spreadsheet, renamed the replaced Sessions-tab rows to "Old: …", and recorded how history maps.
+- Gym visits (`gymVisits_`, `visitsCard`): a day counts once if anything is in the Workout log or Workouts tab (imports included) or Gym done was ticked; Monday-to-Sunday weeks from the first visit; this week, last week, 12-week average, total, bars with the target line, table and by-year.
 - App: the rotation and a Presets row at the top of the Train tab (`renderTrain`), You > Training card (`trainingCard`), Train tab template mode (`tplBody`, `tplModel`, `swapSheet`, `editSheet`), main-lifts chart (`liftChart`, data from `liftHistory_`), Home gym card footer (`gymExtras`).
 
 ## The Afters link (keep it this small)

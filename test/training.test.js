@@ -201,3 +201,20 @@ test('Your own workouts: save from a session, they sit with the presets, count a
   assert.ok(g.tab('Archive').rows().some(x => /Your workout deleted: Push day plus/.test(x.join(' '))));
   assert.doesNotThrow(() => C.trainState(me), 'history logged with a deleted workout still reads');
 });
+
+test('Gym visits: one per day trained, from Strong/Liftoff imports, the app and Gym done ticks, by Monday-to-Sunday week', () => {
+  const { g, C, me } = ready('2026-10-15T08:00:00Z');   // Thu
+  const log = d => C.appendRow_('workoutLog', { Date: d, Session: 'Workout', Exercise: 'Bench press', Set: 1, 'Weight (kg)': 80, Reps: 8, Workout: 'imp' + d });
+  ['2025-12-29', '2025-12-31', '2026-10-05', '2026-10-05', '2026-10-07', '2026-10-12'].forEach(log);   // an import with two rows on one day
+  C.appendRow_('gym', { Date: '2026-10-14', Day: 'Wed', Session: 'Upper A', Status: 'Done' });          // a tick with nothing logged
+  C.appendRow_('gym', { Date: '2026-10-13', Day: 'Tue', Session: 'Lower A', Status: 'Not done' });
+  const v = plain(C.trainState(me)).visits;
+  assert.strictEqual(v.total, 6);
+  assert.strictEqual(v.first, '2025-12-29');
+  assert.deepStrictEqual([v.thisWeek, v.lastWeek, v.target], [2, 2, 4]);
+  assert.deepStrictEqual(v.weeks[0], ['2025-12-29', 2], 'weeks start on Monday, across the new year');
+  assert.deepStrictEqual(v.weeks.slice(-2), [['2026-10-05', 2], ['2026-10-12', 2]]);
+  assert.ok(v.weeks.every((w, i) => i === 0 || C.addDays_(v.weeks[i - 1][0], 7) === w[0]), 'every week is there, empty ones included');
+  assert.strictEqual(v.avg12, Math.round(v.weeks.slice(-13, -1).reduce((a, w) => a + w[1], 0) / 12 * 10) / 10);
+});
+

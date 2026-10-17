@@ -1085,9 +1085,60 @@
     }).join('') + '</details></section>';
     return h;
   }
+  /** Gym visits: this week, last week, the 12-week average and every week since your first logged workout (imports too). */
+  var GV_RANGES = [['3m', '3 months', 13], ['1y', 'Year', 52], ['all', 'All', 0]];
+  function visitsCard() {
+    var V = S.train && S.train.visits; if (!V || !V.total) return '';
+    var range = load('gvRange') || '3m', n = (GV_RANGES.filter(function (r) { return r[0] === range; })[0] || GV_RANGES[0])[2];
+    var bars = n ? V.weeks.slice(-n) : V.weeks, unit = 'week';
+    if (bars.length > 104) {                               // years of history: months read better than hundreds of slivers
+      var by = {}, order = [];
+      bars.forEach(function (w) { var k = w[0].slice(0, 7); if (!(k in by)) { by[k] = 0; order.push(k); } by[k] += w[1]; });
+      bars = order.map(function (k) { return [k + '-01', by[k]]; }); unit = 'month';
+    }
+    var tile = function (big, small) { return '<div class="gvtile"><b class="num">' + big + '</b><span class="tiny muted">' + small + '</span></div>'; };
+    var h = '<section class="card gvisits"><div class="head"><h3>Gym visits</h3><span class="row" style="gap:4px">' +
+      GV_RANGES.map(function (r) { return '<button type="button" class="chip' + (r[0] === range ? ' lilac' : '') + '" data-gvrange="' + r[0] + '" aria-pressed="' + (r[0] === range) + '">' + r[1] + '</button>'; }).join('') + '</span></div>' +
+      '<div class="gvtiles">' + tile(V.thisWeek + (V.target ? '<small> / ' + V.target + '</small>' : ''), 'this week') + tile(V.lastWeek, 'last week') + tile(V.avg12, 'a week, last 12') + tile(V.total, 'since ' + esc(new Date(V.first + 'T12:00:00').toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }))) + '</div>';
+    var W = 320, H = 150, PL = 22, PR = 6, PT = 8, PB = 20, max = Math.max(unit === 'week' ? V.target : 0, Math.max.apply(null, bars.map(function (b) { return b[1]; })), 1);
+    var top = unit === 'week' ? Math.max(max, 1) : Math.ceil(max / 5) * 5, Y = function (v) { return PT + (1 - v / top) * (H - PT - PB); }, bw = (W - PL - PR) / bars.length;
+    var svg = '<svg class="lcsvg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Gym visits per ' + unit + '">';
+    var ticks = unit === 'week' ? [0, Math.round(top / 2), top] : [0, top / 2, top];
+    ticks.filter(function (t, i, a) { return a.indexOf(t) === i; }).forEach(function (t) { svg += '<line class="lcgrid" x1="' + PL + '" x2="' + (W - PR) + '" y1="' + Y(t).toFixed(1) + '" y2="' + Y(t).toFixed(1) + '"/><text class="lcax" x="' + (PL - 4) + '" y="' + (Y(t) + 3).toFixed(1) + '" text-anchor="end">' + t + '</text>'; });
+    bars.forEach(function (b, i) {
+      var x = PL + i * bw, gap = bw > 4 ? 2 : 0, w = Math.max(1, bw - gap), y = Y(b[1]), hh = Math.max(0, H - PB - y), r = Math.min(4, w / 2, hh);
+      if (b[1]) svg += '<path class="gvbar" d="M' + x.toFixed(1) + ',' + (H - PB) + 'V' + (y + r).toFixed(1) + 'q0,-' + r.toFixed(1) + ' ' + r.toFixed(1) + ',-' + r.toFixed(1) + 'H' + (x + w - r).toFixed(1) + 'q' + r.toFixed(1) + ',0 ' + r.toFixed(1) + ',' + r.toFixed(1) + 'V' + (H - PB) + 'Z"/>';
+      svg += '<rect class="gvhit" x="' + x.toFixed(1) + '" y="' + PT + '" width="' + bw.toFixed(1) + '" height="' + (H - PT - PB) + '" data-gvi="' + i + '"/>';
+    });
+    if (unit === 'week' && V.target) svg += '<line class="gvtarget" x1="' + PL + '" x2="' + (W - PR) + '" y1="' + Y(V.target).toFixed(1) + '" y2="' + Y(V.target).toFixed(1) + '"/>';
+    [0, Math.floor(bars.length / 2), bars.length - 1].filter(function (x2, i2, a2) { return a2.indexOf(x2) === i2; }).forEach(function (k, i2, a2) {
+      var lab = unit === 'month' ? new Date(bars[k][0] + 'T12:00:00').toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }) : new Date(bars[k][0] + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+      svg += '<text class="lcax" x="' + (PL + (k + .5) * bw).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="' + (a2.length > 1 && i2 === 0 ? 'start' : i2 === a2.length - 1 && a2.length > 1 ? 'end' : 'middle') + '">' + lab + '</text>';
+    });
+    svg += '</svg>';
+    h += '<div class="lcwrap gvwrap" data-gv=\'' + esc(JSON.stringify({ unit: unit, bars: bars, target: V.target })) + '\'>' + svg + '<div class="lctip" id="gvTip" hidden></div></div>' +
+      '<p class="tiny muted" style="margin:6px 0 0">Days you trained, per ' + unit + (unit === 'week' && V.target ? '. Dashed line: your target of ' + V.target : '') + '. Strong and Liftoff imports count too.</p>';
+    var recent = V.weeks.slice(-12).reverse();
+    h += '<details class="lctable"><summary class="small muted">Show as a table</summary><table class="small"><tr><th>Week of</th><th>Visits</th></tr>' + recent.map(function (w) { return '<tr><td>' + esc(shortDay(w[0])) + '</td><td>' + w[1] + (V.target && w[1] >= V.target ? ', hit' : '') + '</td></tr>'; }).join('') + '</table>';
+    var years = {}; V.weeks.forEach(function (w) { var y = w[0].slice(0, 4); years[y] = (years[y] || 0) + w[1]; });
+    h += '<div class="eyebrow" style="margin-top:10px">By year</div><table class="small">' + Object.keys(years).sort().reverse().map(function (y) { return '<tr><td>' + y + '</td><td>' + years[y] + ' visits</td></tr>'; }).join('') + '</table></details></section>';
+    return h;
+  }
+  function gvHover(ev) {
+    var hit = ev.target.closest && ev.target.closest('[data-gvi]'), wrap = ev.target.closest && ev.target.closest('.gvwrap'), tip = el('gvTip');
+    if (!wrap || !tip) return;
+    if (!hit) { tip.hidden = true; return; }
+    var c = JSON.parse(wrap.getAttribute('data-gv')), b = c.bars[+hit.dataset.gvi], r = wrap.getBoundingClientRect(), hr = hit.getBoundingClientRect();
+    var when = c.unit === 'month' ? new Date(b[0] + 'T12:00:00').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) : 'Week of ' + shortDay(b[0]);
+    tip.innerHTML = '<b>' + esc(when) + '</b><div>' + b[1] + ' visit' + (b[1] === 1 ? '' : 's') + (c.unit === 'week' && c.target ? (b[1] >= c.target ? ', target hit' : ' of ' + c.target) : '') + '</div>';
+    tip.hidden = false; tip.style.left = Math.min(Math.max(0, hr.left - r.left + hr.width / 2 - 70), r.width - 150) + 'px';
+  }
+  document.addEventListener('pointermove', gvHover);
+  document.addEventListener('pointerdown', gvHover);
+  document.addEventListener('pointerleave', function (ev) { if (ev.target.classList && ev.target.classList.contains('gvwrap')) { var t2 = el('gvTip'); if (t2) t2.hidden = true; } }, true);
   /** Hover or drag on the chart: a crosshair and each shown lift's value on that day. */
   function lcHover(ev) {
-    var wrap = ev.target.closest && ev.target.closest('.lcwrap'); if (!wrap) return;
+    var wrap = ev.target.closest && ev.target.closest('.lcwrap[data-lc]'); if (!wrap) return;
     var c = JSON.parse(wrap.getAttribute('data-lc')), svg = wrap.querySelector('svg'), r = svg.getBoundingClientRect(), tip = el('lcTip'), cross = el('lcCross');
     var x = (ev.clientX - r.left) / r.width * c.W, tt = c.t0 + Math.max(0, Math.min(1, (x - c.PL) / (c.W - c.PL - c.PR))) * (c.t1 - c.t0);
     var day = c.ds.reduce(function (b, d2) { return Math.abs(Date.parse(d2) - tt) < Math.abs(Date.parse(b) - tt) ? d2 : b; }, c.ds[0]);
@@ -1162,6 +1213,7 @@
     h += '<button class="btn primary big wide" type="button" id="finishWk"' + (count ? '' : ' disabled') + '>Finish workout · ' + count + ' set' + (count === 1 ? '' : 's') + '</button>';
     if (!tp && (load(custKeys(tsel)[0]) || load(custKeys(tsel)[1]))) h += '<p class="center" style="margin:10px 0 0"><button class="linkbtn small muted" type="button" id="resetCust">Undo my changes to ' + esc(tsel) + '</button></p>';
     if (tp) h += '<p class="center" style="margin:10px 0 0"><button class="linkbtn small muted" type="button" id="saveNewBtn">Save this session as a new workout</button> · <button class="linkbtn small muted" type="button" data-tpledit="' + esc(tp.id) + '">Edit ' + esc(tp.name) + '</button>' + (tp.edited || tp.swaps ? ' · <button class="linkbtn small muted" type="button" data-tplreset="' + esc(tp.id) + '">Reset to default</button>' : '') + '</p>';
+    h += visitsCard();
     h += liftChart();
     var pr = t.progress;
     h += '<section class="card" style="margin-top:14px"><div class="head"><h3>Progress</h3><span class="small muted">' + pr.workouts + ' workout' + (pr.workouts === 1 ? '' : 's') + '</span></div>' + pr.lifts.filter(function (l) { return (l.best || l.tm) && !/^(dead ?lift|squat|back squat|front squat|romanian deadlift)$/i.test(l.lift); }).map(function (l) {
@@ -3182,6 +3234,7 @@
     if (ds.tpladd) { var box = el('tplRows'); if (box) box.insertAdjacentHTML('beforeend', box.dataset.blank); return; }
     if (ds.tplrm) { var rr = t.closest('.tplrow'); if (rr && document.querySelectorAll('#tplRows .tplrow').length > 1) rr.remove(); return; }
     if (ds.lcrange) { save('lcRange', ds.lcrange); return renderTrain(); }
+    if (ds.gvrange) { save('gvRange', ds.gvrange); return renderTrain(); }
     if (ds.lclift) {
       var lifts = (S.train.lifts || []), offl = load('lcOff') || lifts.slice(4).map(function (l) { return l.lift; }), ix = offl.indexOf(ds.lclift);
       if (ix === -1) offl.push(ds.lclift); else offl.splice(ix, 1);
