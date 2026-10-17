@@ -195,9 +195,17 @@ function goalState_(ymd) {
 /** goalState_ for today, worked out once per run (reads several tabs). */
 var goalRun_ = null;
 function goalCached_() {
-  var ymd = todayYmd_(), stamp = ymd + '|' + vals_('weight').length + '|' + vals_('food').length;
-  if (!goalRun_ || goalRun_.stamp !== stamp) goalRun_ = { stamp: stamp, gs: goalState_(ymd) };
-  return goalRun_.gs;
+  // today's targets only depend on earlier days, so the day's plan is kept (script cache, 6 hours) until a new weight comes in
+  var ymd = todayYmd_(), stamp = 'goal1|' + ymd + '|' + vals_('weight').length + '|' + (prop_('GOAL') || '').length + '|' + String(prop_('GOAL') || '').slice(-60);
+  if (goalRun_ && goalRun_.stamp === stamp) return goalRun_.gs;
+  var cache = null, gs;
+  try { cache = CacheService.getScriptCache(); var hit = cache.get(stamp.replace(/[^\w|.-]/g, '').slice(0, 240)); if (hit) gs = JSON.parse(hit); } catch (e) { cache = null; }
+  if (gs === undefined) {
+    gs = goalState_(ymd);
+    try { var txt = JSON.stringify(gs); if (cache && txt.length < 90000) cache.put(stamp.replace(/[^\w|.-]/g, '').slice(0, 240), txt, 21600); } catch (e) { /* too big or no cache: fine */ }
+  }
+  goalRun_ = { stamp: stamp, gs: gs };
+  return gs;
 }
 
 /** Change the goal from the app: social day, reason, pace (0.5 to 1 kg a week), or off. */
@@ -257,10 +265,14 @@ function goalAlerts(c) {
 
 /** From the heartbeat (every 10 minutes): sends the goal's pushes once each, outside your quiet hours. */
 function goalHeartbeat_(ymd, m, sent) {
-  var gs = goalState_(ymd); if (!gs || !health_('me').on) return;
+  // runs every 5 minutes inside the script lock, so it reads as little as it can: the day's plan is cached,
+  // and steps are only read when the 6pm check is due
+  if (quietFor_('me', m)) return;
+  var gs = goalCached_(); if (!gs) return;
   var cfg = readConfig_(), wake = cellClock_(cfg.settings['Wake time']); if (wake === null) wake = parseClock('08:30');
-  var entries = foodEntries_(ymd), tot = sumFood_(entries), t = todayState_(), steps = null;
-  try { var hd = healthState_('me', ymd); steps = hd && hd.hasData && hd.steps > 0 ? hd.steps : null; } catch (e) { /* no health data */ }
+  var entries = foodEntries_(ymd), tot = sumFood_(entries), steps = null;
+  var lw = lastRowObject_('weight'), t = { weighedToday: !!lw && String(lw['Date']) === ymd, weighDay: gs.scale === 'daily' && parseDays(cfg.settings['Weigh-in days']).indexOf(dayOfWeek_(ymd)) !== -1 };
+  if (m >= 18 * 60 && m < 18 * 60 + 25 && sent.me.indexOf('gsteps') === -1) { try { var hd = healthState_('me', ymd); steps = hd && hd.hasData && hd.steps > 0 ? hd.steps : null; } catch (e) { /* no health data */ } }
   var goalLine = goalLine_(gs), yest = gs.today.days.filter(function (x) { return x.ymd === addDays_(ymd, -1); })[0];
   var alerts = goalAlerts({
     m: m, dow: dayOfWeek_(ymd), wake: wake, weighed: t.weighedToday, weighDay: t.weighDay, entries: entries.length, kcal: Math.round(tot.kcal), protein: Math.round(tot.protein),

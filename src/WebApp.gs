@@ -42,16 +42,22 @@ var BATCH_MAX = 40;
 function batch(key, items) {
   who_(key);
   items = (items || []).slice(0, BATCH_MAX);
-  var table = rpcTable_(), results = [];
+  var table = rpcTable_(), results = [], cache = null;
+  try { cache = CacheService.getScriptCache(); } catch (e) { cache = null; }
   DEFER_STATE_ = true;
   try {
     items.forEach(function (it) {
       var fn = it && table[it.fn];
       if (!fn || it.fn === 'batch' || it.fn === 'appState') { results.push({ id: it && it.id, ok: false, error: 'Unknown action.' }); return; }
+      // a retry of a change the server already did (its answer got lost on the way back): answer again, don't do it twice
+      var doneKey = it.id && /^[\w.]{3,40}$/.test(String(it.id)) ? 'done-' + key.slice(0, 8) + '-' + it.id : '';
+      var seen = doneKey && cache ? cache.get(doneKey) : null;
+      if (seen) { results.push(JSON.parse(seen)); return; }
       try {
         var r = fn.apply(null, [key].concat(it.args || []));
         if (r && r.deferred) r = null; else if (r && r.state && r.state.deferred) { delete r.state; r.stateDeferred = true; }
         results.push({ id: it.id, ok: true, result: r });
+        if (doneKey && cache) { try { var txt = JSON.stringify({ id: it.id, ok: true, result: r }); cache.put(doneKey, txt.length < 90000 ? txt : JSON.stringify({ id: it.id, ok: true, result: null }), 21600); } catch (e) { /* cache full: the saves themselves still check */ } }
       } catch (e) { results.push({ id: it.id, ok: false, error: String(e && e.message || e) }); }
     });
   } finally { DEFER_STATE_ = false; }

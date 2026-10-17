@@ -118,3 +118,25 @@ test('rotation end to end: a saved Monday Upper A and Wednesday Lower A make Thu
   assert.strictEqual(g.ctx.todaySession_('2026-10-15'), 'Upper B', 'not a rest day: any day can be a gym day');
   assert.strictEqual(g.ctx.trainState(me).rotationNext, 'Upper B');
 });
+
+test('A workout is never logged twice: a retried change, the same workout id, or the same sets again (a lost reply) all save once', () => {
+  const { g, C, me } = ready();
+  const sets = [{ exercise: 'Lat pulldown', set: 1, weight: 45, reps: 10, rpe: 8 }, { exercise: 'Lat pulldown', set: 2, weight: 52, reps: 8, rpe: 8 }];
+  const rows = () => g.tab('Workout log').rows().filter(r => r[0] === '2026-10-13').length;
+  // the outbox sends the same change again after the answer was lost
+  const item = { id: 'mx1.a', fn: 'saveWorkout', args: ['Upper B', sets, { template: 'ul-ub', wid: 'abc123def' }] };
+  const r1 = plain(C.batch(me, [item])), r2 = plain(C.batch(me, [item]));
+  assert.ok(r1.results[0].ok && r2.results[0].ok);
+  assert.strictEqual(rows(), 2, 'two sets, once');
+  // a new change with the same workout id (Finish tapped again)
+  const r3 = plain(C.saveWorkout(me, 'Upper B', sets, { template: 'ul-ub', wid: 'abc123def' }));
+  assert.strictEqual(r3.duplicate, true);
+  // no id at all (sent by the old app), but exactly the same sets today
+  g.state.cache = {}; C.resetRun_();
+  assert.strictEqual(plain(C.saveWorkout(me, 'Upper B', sets, { template: 'ul-ub' })).duplicate, true);
+  assert.strictEqual(rows(), 2);
+  assert.strictEqual(g.tab('XP log').rows().filter(r => r[0] === '2026-10-13' && /Gym/.test(r[3])).length, 1, 'gym XP once');
+  // a genuinely different workout the same day still saves
+  C.saveWorkout(me, 'Arms', [{ exercise: 'EZ-bar curl', set: 1, weight: 25, reps: 12 }], {});
+  assert.strictEqual(rows(), 3);
+});

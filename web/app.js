@@ -26,8 +26,10 @@
         r[fn].apply(r, [KEY].concat(args || []));
         return;
       }
-      fetch(CFG.api, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn: fn, key: KEY, args: args || [] }) })
-        .then(function (r) { return r.json(); })
+      // never wait for ever: a dropped connection (gym wifi to mobile data) gives up after 90s and the outbox tries again
+      var ctl = window.AbortController ? new AbortController() : null, tm = ctl ? setTimeout(function () { ctl.abort(); }, 90000) : null;
+      fetch(CFG.api, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn: fn, key: KEY, args: args || [] }), signal: ctl ? ctl.signal : undefined })
+        .then(function (r) { if (tm) clearTimeout(tm); return r.json(); }, function (e) { if (tm) clearTimeout(tm); throw e; })
         .then(function (j) { if (j.ok) resolve(j.result); else reject(new Error(j.error)); })
         .catch(function (e) { reject(e && e.message && !/fetch|network/i.test(e.message) ? e : new Error(navigator.onLine ? 'Couldn\'t reach your Sheet. Try again in a moment.' : 'You\'re offline.')); });
     });
@@ -1268,15 +1270,20 @@
     var bad = sets.filter(function (s) { return !s.reps; }).length;
     if (bad && !confirm(bad + ' ticked set' + (bad === 1 ? ' has' : 's have') + ' 0 reps and won\'t be saved. Finish anyway?')) return;
     el('finishWk').disabled = true; el('finishWk').textContent = 'Saving…';
-    call('saveWorkout', [tp ? tp.name : tsel, sets, { started: load('wkstart-' + draftKey()) || 0, template: tp ? tp.id : '' }], function (res) {
+    // one id per workout, so a retry or a second tap can never log it twice
+    var widKey = 'wkid-' + draftKey(), wid = load(widKey) || (Date.now().toString(36) + Math.random().toString(36).slice(2, 8));
+    save(widKey, wid);
+    var slow = setTimeout(function () { var b = el('finishWk'); if (b && b.disabled) { b.textContent = 'Saved on your phone · syncing'; toast('Your workout is safe on this phone. It\'ll reach your Sheet as soon as the connection does.'); } }, 6000);
+    call('saveWorkout', [tp ? tp.name : tsel, sets, { started: load('wkstart-' + draftKey()) || 0, template: tp ? tp.id : '', wid: wid }], function (res) {
+      clearTimeout(slow); save(widKey, null);
       save(draftKey(), null); save('wkstart-' + draftKey(), null); if (tp) { save(taddKey(tp.id), null); save(setsKey(tp.id), null); save(skipKey(tp.id), null); } endRest(); armRest();
       apply(res.state);
       chime([660, 880, 1100, 1320]); buzz([60, 40, 60, 40, 150]);
-      var h = '<div class="center">' + icon('trophy', 'l') + '<h2 style="margin:8px 0">' + (res.extra ? 'Pump logged' : 'Workout logged') + '</h2>' + (res.extra ? '<p class="small" style="margin:0 0 8px">' + (res.bonus ? '+' + res.bonus + ' bonus XP. ' : 'Bonus XP already earned today. ') + 'Your rotation stays where it was.</p>' : '') + (res.volume ? '<p class="muted" style="margin:0 0 10px">' + res.sets + ' sets · ' + fmt(res.volume) + ' kg lifted' + (res.minutes ? ' · ' + res.minutes + ' min' : '') + '</p>' : '') + '</div>';
+      var h = '<div class="center">' + icon('trophy', 'l') + '<h2 style="margin:8px 0">' + (res.duplicate ? 'Already saved' : res.extra ? 'Pump logged' : 'Workout logged') + '</h2>' + (res.duplicate ? '<p class="small" style="margin:0 0 8px">This workout was already in your Sheet, so it wasn\'t added twice.</p>' : '') + (res.extra ? '<p class="small" style="margin:0 0 8px">' + (res.bonus ? '+' + res.bonus + ' bonus XP. ' : 'Bonus XP already earned today. ') + 'Your rotation stays where it was.</p>' : '') + (res.volume ? '<p class="muted" style="margin:0 0 10px">' + res.sets + ' sets · ' + fmt(res.volume) + ' kg lifted' + (res.minutes ? ' · ' + res.minutes + ' min' : '') + '</p>' : '') + '</div>';
       (res.changes || []).forEach(function (c) { h += '<section class="card tint">' + '<b>' + esc(c.lift) + '</b>: ' + c.reps + ' reps on the heavy set<br>' + (c.change ? 'Training max ' + c.from + ' → <b>' + c.to + ' kg</b>' : 'Training max stays at ' + c.from + ' kg. Go again next week.') + '</section>'; });
       (res.prs || []).slice(0, 3).forEach(function (r) { h += '<section class="card blush"><b>New record.</b> ' + esc(r.exercise) + ' ' + r.weight + ' kg × ' + r.reps + (r.e1rm ? ' (est. 1RM ' + Math.round(r.e1rm) + ' kg)' : '') + '</section>'; });
       openSheet(h + '<button class="btn primary wide" type="button" data-close>Done</button>');
-    }, function () { drawFinish(); });
+    }, function () { clearTimeout(slow); drawFinish(); });
   }
   document.addEventListener('focusout', function (ev) { if (trainLater && ev.target.closest && ev.target.closest('#tab-train')) setTimeout(function () { var ae = document.activeElement; if (trainLater && !(ae && ae.tagName === 'INPUT' && ae.closest('#tab-train'))) renderTrain(); }, 0); });
   // typing a weight or reps saves straight away, so nothing is lost when the page refreshes

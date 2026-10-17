@@ -182,6 +182,15 @@ function saveWorkout(key, session, sets, meta) {
     if (tpl) session = tplDef_(tpl).name;
     var done = (sets || []).filter(function (s) { return Number(s.reps) > 0 && Number(s.weight) >= 0; });
     if (!done.length) throw new Error('Tick at least one set first.');
+    // sent twice (a retry after a lost answer, or Finish tapped again)? Same id, or exactly the same sets today: already saved
+    if (/^[a-z0-9]{6,24}$/.test(String(meta.wid || ''))) wid = String(meta.wid);
+    var sig = function (list) { return list.map(function (s) { return String(s.exercise).toLowerCase() + ':' + Number(s.weight) + 'x' + Number(s.reps); }).join('|'); };
+    var mine = sig(done), already = rowsBetween_('workouts', today, today).some(function (r) { return String(r['ID']) === wid; });
+    if (!already) {
+      var byW = {}; rowsBetween_('workoutLog', today, today).forEach(function (r) { var k = String(r['Workout'] || ''); (byW[k] = byW[k] || []).push({ exercise: r['Exercise'], weight: r['Weight (kg)'], reps: r['Reps'] }); });
+      already = Object.keys(byW).some(function (k) { return sig(byW[k]) === mine; });
+    }
+    if (already) return { changes: [], prs: [], minutes: '', volume: Math.round(done.reduce(function (a, s) { return a + Number(s.weight) * Number(s.reps); }, 0)), sets: done.length, bonus: 0, extra: tpl === PUMP_ID, duplicate: true, state: appState_('me') };
     var log = rowsBetween_('workoutLog', '0000', '9999');
     var bestBefore = {}, heaviestBefore = {};
     log.forEach(function (r) { if (String(r['Type'] || '') === 'W') return; var k = canonicalExercise(r['Exercise']).toLowerCase(); bestBefore[k] = Math.max(bestBefore[k] || 0, Number(r['e1RM']) || 0); heaviestBefore[k] = Math.max(heaviestBefore[k] || 0, Number(r['Weight (kg)']) || 0); });
