@@ -21,7 +21,7 @@ function rpcTable_() {
     finishChore: finishChore, parkThing: parkThing, clearLater: clearLater, highFive: highFive, lazyDay: lazyDay, aftersReport: aftersReport, setSplit: setSplit, setGoal: setGoal, saveMyWorkout: saveMyWorkout, deleteMyWorkout: deleteMyWorkout, swapExercise: swapExercise, editTemplate: editTemplate, resetTemplate: resetTemplate, clientError: clientError,
     routineStep: routineStep, saveRoutine: saveRoutine, setupState: setupState, saveSetup: saveSetup, previewChores: previewChores, buildChores: buildChores, saveChore: saveChore, choreAction: choreAction, deleteRoutine: deleteRoutine, chatPing: chatPing, setDayOff: setDayOff, setDayOffLeave: setDayOffLeave, addWater: addWater, setTheme: setTheme, todayState: todayState, gymDone: gymDone,
     logWeightNow: logWeightNow, foodState: foodState, logPreset: logPreset, quickAdd: quickAdd, quickAddPhoto: quickAddPhoto, importWorkoutCsv: importWorkoutCsv, backupStatus: backupStatus, backupNow: backupNow, exportAll: exportAll, importBackup: importBackup, undoLast: undoLast,
-    saveClaudeKey: saveClaudeKey, trainState: trainState, setTrainingMax: setTrainingMax, saveWorkout: saveWorkout,
+    saveClaudeKey: saveClaudeKey, trainState: trainState, gymMemories: gymMemories, setTrainingMax: setTrainingMax, saveWorkout: saveWorkout,
     respreadSchedule: respreadSchedule, saveQuest: saveQuest, deleteQuest: deleteQuest,
     gamesState: gamesState, guessWord: guessWord, submitTarget: submitTarget, submitRecall: submitRecall,
     registerDevice: registerDevice, sendNudge: sendNudge, ask: ask, clearAsk: clearAsk, getBrief: getBrief,
@@ -177,7 +177,7 @@ function appState_(who) {
  */
 var STATE_TTL = 300, STATE_PART = 90000;
 // Bump when the screen's shape changes, so a deploy never serves a screen saved by the old code.
-var STATE_VERSION = 'goal-1';
+var STATE_VERSION = 'memories-1';
 function appState(key) {
   var who = who_(key);
   // once: back up the gym data, then templates (a failure is logged and retried at most hourly, never in the way)

@@ -64,7 +64,35 @@
   }
   /** Is the brief behind what's on screen (a job got done since it was written)? */
   function briefBehind(b, S) { return !!(b && b.sig && b.sig !== briefSig(S)); }
-  var api = { briefSig: briefSig, briefBehind: briefBehind, winStep: winStep, homeOrder: homeOrder, HOME_DEFAULT: HOME_DEFAULT, winText: winText, ago: ago, briefDue: briefDue, briefSlot: briefSlot };
+
+  // ---------- Memories (the training calendar) ----------
+  /** Body parts as the server names them (Training.gs bodyOf), in words, front of the body first. */
+  var BODY_NAMES = { chest: 'Chest', fdelt: 'Front delts', sdelt: 'Side delts', rdelt: 'Rear delts', bi: 'Biceps', tri: 'Triceps', fore: 'Forearms', abs: 'Abs',
+    trap: 'Traps', back: 'Upper back', lat: 'Lats', lower: 'Lower back', glute: 'Glutes', quad: 'Quads', ham: 'Hamstrings', calf: 'Calves' };
+  /** How hard a part was worked that day, 0 to 3, from its score (1 a set as the main muscle, 0.5 as a helper). */
+  function memLevel(score) { return score >= 6 ? 3 : score >= 3 ? 2 : score > 0 ? 1 : 0; }
+  /** The parts worked most, as words: ['Chest', 'Triceps']. Helpers only (under one set's worth) are left out. */
+  function memTop(m, n) {
+    return Object.keys(m || {}).filter(function (k) { return m[k] >= 1 && BODY_NAMES[k]; })
+      .sort(function (a, b) { return m[b] - m[a] || Object.keys(BODY_NAMES).indexOf(a) - Object.keys(BODY_NAMES).indexOf(b); })
+      .slice(0, n || 99).map(function (k) { return BODY_NAMES[k]; });
+  }
+  /** A month as weeks, Monday first: ['', '', '2026-10-01', …] padded to whole weeks. ym = 'yyyy-MM'. */
+  function memGrid(ym) {
+    var y = +ym.slice(0, 4), mo = +ym.slice(5, 7), first = new Date(Date.UTC(y, mo - 1, 1)), days = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+    var out = [], lead = (first.getUTCDay() + 6) % 7, i;
+    for (i = 0; i < lead; i++) out.push('');
+    for (i = 1; i <= days; i++) out.push(ym + '-' + (i < 10 ? '0' : '') + i);
+    while (out.length % 7) out.push('');
+    return out;
+  }
+  /** Every month from one to another, oldest first: ['2026-09', '2026-10']. */
+  function memMonths(fromYm, toYm) {
+    var out = [], y = +fromYm.slice(0, 4), m = +fromYm.slice(5, 7);
+    while (out.length < 1200) { var k = y + '-' + (m < 10 ? '0' : '') + m; if (k > toYm) break; out.push(k); if (++m > 12) { m = 1; y++; } }
+    return out;
+  }
+  var api = { BODY_NAMES: BODY_NAMES, memLevel: memLevel, memTop: memTop, memGrid: memGrid, memMonths: memMonths, briefSig: briefSig, briefBehind: briefBehind, winStep: winStep, homeOrder: homeOrder, HOME_DEFAULT: HOME_DEFAULT, winText: winText, ago: ago, briefDue: briefDue, briefSlot: briefSlot };
   root.NudgeFmt = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -218,3 +218,50 @@ test('Gym visits: one per day trained, from Strong/Liftoff imports, the app and 
   assert.strictEqual(v.avg12, Math.round(v.weeks.slice(-13, -1).reduce((a, w) => a + w[1], 0) / 12 * 10) / 10);
 });
 
+
+test('Memories: each day trained with its workouts, sets and the parts of the body worked; warm-ups and other days left out', () => {
+  const { g, C, me } = ready('2026-10-15T08:00:00Z');   // Thu
+  const log = (d, ex, w, r, wid, type) => C.appendRow_('workoutLog', { Date: d, Session: 'Upper A', Exercise: ex, Set: 1, 'Weight (kg)': w, Reps: r, Type: type || '', Workout: wid });
+  log('2026-09-30', 'Bench press', 80, 6, 'a1');
+  log('2026-10-07', 'Bench press (Barbell)', 40, 10, 'b1', 'W');
+  log('2026-10-07', 'Bench press (Barbell)', 80, 6, 'b1');
+  log('2026-10-07', 'Bench press', 82.5, 5, 'b1');
+  log('2026-10-07', 'Lat pulldown', 60, 10, 'b1');
+  log('2026-10-07', 'EZ-bar curl', 30, 12, 'b2');
+  C.appendRow_('workouts', { Date: '2026-10-07', ID: 'b1', Session: 'Upper A', Minutes: 62 });
+  C.appendRow_('gym', { Date: '2026-10-14', Day: 'Wed', Session: 'Lower A', Status: 'Done' });
+  C.appendRow_('gym', { Date: '2026-10-13', Day: 'Tue', Session: 'Lower A', Status: 'Not done' });
+  const m = plain(C.trainState(me)).memories;
+  assert.deepStrictEqual(Object.keys(m).sort(), ['2026-10-07', '2026-10-14'], 'this month only, a tick with nothing logged counts, a "Not done" doesn\'t');
+  const d = m['2026-10-07'];
+  assert.strictEqual(d.s, 4, 'warm-ups don\'t count');
+  assert.deepStrictEqual(d.w.map(w => [w.n, w.min, w.ex.length]), [['Upper A', 62, 2], ['Upper A', 0, 1]], 'one entry per workout');
+  assert.deepStrictEqual(d.w[0].ex[0], ['Bench press', 2, 82.5, 5], 'old names matched up, best set kept');
+  assert.deepStrictEqual([d.m.chest, d.m.tri, d.m.lat, d.m.bi], [2, 1, 1, 1.5], 'main part 1 a set, the others half (curls 1, pulldowns 0.5)');
+  assert.deepStrictEqual(m['2026-10-14'], { m: {}, s: 0, w: [{ n: 'Lower A', min: 0, ex: [] }], g: 1 });
+  const all = plain(C.gymMemories(me));
+  assert.strictEqual(all.today, '2026-10-15');
+  assert.deepStrictEqual(Object.keys(all.days).sort(), ['2026-09-30', '2026-10-07', '2026-10-14'], 'All memories: every day ever');
+  assert.throws(() => C.gymMemories('nope'));
+});
+
+test('Memories: every template exercise maps to the body, and imported names are guessed from their words', () => {
+  const { C } = ready();
+  Object.keys(C.TEMPLATES).forEach(id => C.TEMPLATES[id].ex.forEach(x => assert.ok(C.bodyOf(x[0]).length, x[0])));
+  const first = n => C.bodyOf(n)[0];
+  assert.deepStrictEqual(
+    ['Squat (Barbell)', 'Lying Leg Curl (Machine)', 'Standing Calf Raise', 'Triceps Kickback', 'Hip Thrust (Barbell)', 'T-Bar Row', 'Chin Up', 'Shrug (Dumbbell)', 'Plank', 'Overhead Press (Barbell)', 'Push Up', 'Preacher Curl (Machine)', 'Deadlift (Barbell)', 'Something odd'].map(first),
+    ['quad', 'ham', 'calf', 'tri', 'glute', 'back', 'lat', 'trap', 'abs', 'fdelt', 'chest', 'bi', 'ham', undefined]);
+});
+
+test('Memories calendar helpers: Monday-first months, levels from sets, the parts worked most', () => {
+  const F = require('../web/fmt.js');
+  const oct = F.memGrid('2026-10');
+  assert.deepStrictEqual(oct.slice(0, 4), ['', '', '', '2026-10-01'], '1 October 2026 is a Thursday');
+  assert.strictEqual(oct.length % 7, 0); assert.strictEqual(oct.filter(Boolean).length, 31);
+  assert.strictEqual(F.memGrid('2026-02').filter(Boolean).length, 28);
+  assert.deepStrictEqual(F.memMonths('2025-11', '2026-02'), ['2025-11', '2025-12', '2026-01', '2026-02']);
+  assert.deepStrictEqual([0, 0.5, 2.5, 3, 6, 12].map(F.memLevel), [0, 1, 1, 2, 3, 3]);
+  assert.deepStrictEqual(F.memTop({ chest: 8, tri: 4, fdelt: 4, bi: 0.5 }), ['Chest', 'Front delts', 'Triceps'], 'helpers under a set left out, ties front of the body first');
+  assert.deepStrictEqual(F.memTop({ chest: 8, tri: 4 }, 1), ['Chest']);
+});

@@ -320,6 +320,62 @@ function gymVisits_(ymd) {
   };
 }
 
+/**
+ * Which parts of the body an exercise works, the main one first (the Memories calendar's figures).
+ * Parts: chest, fdelt/sdelt/rdelt (front, side, rear delts), bi, tri, fore, abs, trap, back (mid back), lat, lower,
+ * glute, quad, ham, calf. Names not in MUSCLES (imports, your own) are guessed from the words in them.
+ */
+var BODY_OF = {
+  'Chest press': ['chest', 'fdelt', 'tri'], 'Chest fly': ['chest', 'fdelt'], 'Quads': ['quad', 'glute'], 'Quad isolation': ['quad'],
+  'Hamstrings': ['ham'], 'Lats': ['lat', 'bi'], 'Mid back': ['back', 'lat', 'rdelt'], 'Shoulder press': ['fdelt', 'sdelt', 'tri'],
+  'Side delts': ['sdelt'], 'Rear delts': ['rdelt', 'back'], 'Biceps': ['bi', 'fore'], 'Triceps': ['tri'], 'Abs': ['abs']
+};
+var BODY_GUESS = [
+  [/calf|calves/i, ['calf']], [/tricep|pushdown|skull|\bdips?\b|overhead (cable |db |dumbbell )?extension/i, ['tri']],
+  [/leg curl|hamstring|\brdl\b|romanian|good ?morning|nordic/i, ['ham', 'glute']], [/dead ?lift/i, ['ham', 'glute', 'lower', 'back']],
+  [/hip thrust|glute|kickback|abduct|bridge/i, ['glute']], [/squat|leg press|lunge|step.?up|leg extension|adduct/i, ['quad', 'glute']],
+  [/crunch|plank|sit.?up|knee raise|leg raise|ab wheel|\babs?\b|oblique|twist|wood ?chop/i, ['abs']], [/shrug/i, ['trap']],
+  [/face pull|rear delt|reverse (pec|fly)/i, ['rdelt', 'back']], [/lateral raise|upright row/i, ['sdelt', 'trap']],
+  [/pull.?up|chin.?up|pulldown|pullover/i, ['lat', 'bi']], [/\brows?\b/i, ['back', 'lat', 'rdelt']], [/back extension|hyperextension/i, ['lower', 'glute']],
+  [/curl/i, ['bi', 'fore']], [/wrist|forearm|farmer|grip/i, ['fore']], [/shoulder press|overhead press|military|arnold|\bohp\b|front raise/i, ['fdelt', 'sdelt', 'tri']],
+  [/bench|chest|press|push.?up|\bfly\b|flye|pec deck|crossover/i, ['chest', 'fdelt', 'tri']]
+];
+function bodyOf(exercise) {
+  var m = muscleOf(exercise); if (m) return BODY_OF[m];
+  var n = canonicalExercise(exercise);
+  for (var i = 0; i < BODY_GUESS.length; i++) if (BODY_GUESS[i][0].test(n)) return BODY_GUESS[i][1];
+  return [];
+}
+
+/**
+ * Memories: every day you trained between two dates, with what each workout was and what it worked.
+ * { 'yyyy-MM-dd': { m: { part: score }, s: working sets, w: [{ n: name, min, ex: [[exercise, sets, best kg, best reps]] }], g: 1 if only Gym done was ticked } }
+ * A working set scores 1 for the exercise's main part and 0.5 for the others; warm-ups don't count.
+ */
+function gymMemories_(fromYmd, toYmd) {
+  var days = {}, ws = {}, ok = function (d) { return /^\d{4}-\d{2}-\d{2}$/.test(d); };
+  var day = function (d) { return days[d] = days[d] || { m: {}, s: 0, w: [] }; };
+  rowsBetween_('workoutLog', fromYmd, toYmd).forEach(function (r) {
+    var d = String(r['Date']); if (!ok(d) || String(r['Type'] || '') === 'W') return;
+    var x = day(d), id = String(r['Workout'] || '') || d + ' ' + String(r['Session'] || ''), name = canonicalExercise(r['Exercise']);
+    if (!name) return;
+    var w = ws[id]; if (!w) { w = ws[id] = { n: String(r['Session'] || 'Workout'), min: 0, ex: [], at: {} }; x.w.push(w); }
+    var e = w.at[name.toLowerCase()]; if (!e) { e = w.at[name.toLowerCase()] = [name, 0, 0, 0]; w.ex.push(e); }
+    var kg = Number(r['Weight (kg)']) || 0, reps = Number(r['Reps']) || 0;
+    e[1]++; if (kg > e[2] || (kg === e[2] && reps > e[3])) { e[2] = kg; e[3] = reps; }
+    x.s++;
+    bodyOf(name).forEach(function (p, i) { x.m[p] = (x.m[p] || 0) + (i ? 0.5 : 1); });
+  });
+  try { rowsBetween_('workouts', fromYmd, toYmd).forEach(function (r) { var w = ws[String(r['ID'])]; if (w) w.min = Number(r['Minutes']) || 0; }); } catch (e) { /* no Workouts tab yet */ }
+  try {
+    rowsBetween_('gym', fromYmd, toYmd).forEach(function (r) {
+      var d = String(r['Date']); if (ok(d) && /^Done/.test(String(r['Status'] || '')) && !days[d]) days[d] = { m: {}, s: 0, w: [{ n: String(r['Session'] || 'Gym'), min: 0, ex: [] }], g: 1 };
+    });
+  } catch (e) { /* no gym log yet */ }
+  Object.keys(days).forEach(function (d) { days[d].w.forEach(function (w) { delete w.at; }); });
+  return days;
+}
+
 /** Main lifts over your whole history (Strong and Liftoff imports included): best estimated 1RM per day. */
 var MAIN_LIFTS = ['Bench press', 'Hack squat', 'Lat pulldown', 'Seated cable row', 'Incline DB press', 'Seated DB shoulder press', 'Leg press', 'Chest-supported row'];
 function liftHistory_() {

@@ -392,7 +392,7 @@
   function gymExtras() {
     var tr = S.today.train; if (!tr) return '';
     return '<div class="between" style="margin-top:10px;gap:8px;flex-wrap:wrap"><span class="small"><b>' + tr.week.done + ' of ' + tr.week.target + '</b> main sessions this week</span>' +
-      '<button class="btn soft sm" type="button" data-trainpump="1">' + icon('bolt', 's') + (tr.pump.doneToday ? 'Pump done today' : 'Pump: extra, +' + tr.pump.xp + ' XP') + '</button></div>';
+      '<span class="row" style="gap:6px"><button class="btn line sm" type="button" data-memories="open">' + icon('calendar', 's') + 'Memories</button><button class="btn soft sm" type="button" data-trainpump="1">' + icon('bolt', 's') + (tr.pump.doneToday ? 'Pump done today' : 'Pump: extra, +' + tr.pump.xp + ' XP') + '</button></span></div>';
   }
   function stageCard() {
     var W = S.wardrobe, p = S.game && S.game.pet, n = names(); if (!W && !p) return '';
@@ -1157,6 +1157,142 @@
   document.addEventListener('pointermove', lcHover);
   document.addEventListener('pointerdown', lcHover);
   document.addEventListener('pointerleave', function (ev) { if (ev.target.classList && ev.target.classList.contains('lcwrap')) { var tp2 = el('lcTip'); if (tp2) tp2.hidden = true; } }, true);
+  // ---------- Memories: every day you trained on a calendar, with the muscles each one worked ----------
+  // One body (front and back) drawn once as a symbol; each day colours its parts through CSS variables (--b-chest: …),
+  // so a calendar of hundreds of days stays light.
+  var BODY_SIDE = {   // the left half of each view; the right half is its mirror
+    front: [['fdelt', 'e', '11.6 22.6 3.6 4.2'], ['sdelt', 'e', '8.6 22.8 1.5 3.6'], ['chest', 'p', 'M15 19.6Q19.6 19 19.6 20.4L19.6 29.6Q16.4 31.4 14 29Q13.2 24 15 19.6Z'],
+      ['bi', 'e', '9.3 31 2.5 5'], ['fore', 'e', '8.2 43 2.2 6 8'], ['', 'e', '7 51.5 1.8 2.4'], ['abs', 'p', 'M13.8 30Q15 31.4 15.8 31.6L15.8 46L14.2 46Q12.8 38 13.8 30Z'],
+      ['quad', 'p', 'M14.2 50Q19.6 50.5 19.4 54L18.6 71Q16.6 73.2 14.6 71Q12.6 60 14.2 50Z'], ['', 'e', '16.6 74 2.1 1.8'],
+      ['calf', 'p', 'M14.6 76.4Q16.6 75.4 18.6 76.4Q19 84 17.8 91L15.6 91Q14 84 14.6 76.4Z'], ['', 'e', '16.4 93.4 2.4 1.6']],
+    back: [['rdelt', 'e', '11.6 22.6 3.6 4.2'], ['sdelt', 'e', '8.6 22.8 1.5 3.6'], ['lat', 'p', 'M14.6 25L19.6 30.6L19.6 37.6L16.8 41.6Q13.4 34 14.6 25Z'],
+      ['tri', 'e', '9.3 31 2.5 5'], ['fore', 'e', '8.2 43 2.2 6 8'], ['', 'e', '7 51.5 1.8 2.4'], ['glute', 'p', 'M19.6 46.6L19.6 54.4Q16.4 56 14.2 53.6Q13.4 49 14.4 46.6Z'],
+      ['ham', 'p', 'M14.4 55.8Q16.8 57 19.4 55.8L18.6 71Q16.6 73.2 14.6 71Q13.2 62 14.4 55.8Z'], ['', 'e', '16.6 74 2.1 1.8'],
+      ['calf', 'p', 'M14.4 76Q16.6 74.8 18.8 76Q19.6 81 18.2 88L15.6 90.6Q13.6 82 14.4 76Z'], ['', 'e', '16.4 93.4 2.4 1.6']]
+  };
+  var BODY_MID = {    // down the middle
+    front: [['', 'e', '20 8 4.6 5.6'], ['', 'p', 'M18 13H22V17H18Z'], ['trap', 'p', 'M17.6 15.8L22.4 15.8L25.8 18.6L14.2 18.6Z'], ['abs', 'p', 'M16.2 33.4Q16.2 31 18.6 31H21.4Q23.8 31 23.8 33.4V43.6Q23.8 46 21.4 46H18.6Q16.2 46 16.2 43.6Z'],
+      ['', 'p', 'M14 46.6L26 46.6L26.4 50Q20 52.6 13.6 50Z']],
+    back: [['', 'e', '20 8 4.6 5.6'], ['', 'p', 'M18 13H22V17H18Z'], ['trap', 'p', 'M20 13.6L26 18.4L20 23.6L14 18.4Z'], ['back', 'p', 'M14.6 19.4L20 24.6L25.4 19.4L25.6 24.6L20 30.4L14.4 24.6Z'],
+      ['lower', 'p', 'M17.2 41.6L19.8 38.2L20.2 38.2L22.8 41.6L23.6 46L16.4 46Z']]
+  };
+  function bodyShape(s) {
+    var st = ' style="fill:' + (s[0] ? 'var(--b-' + s[0] + ',var(--b0))' : 'var(--bbase)') + '"';
+    if (s[1] === 'p') return '<path d="' + s[2] + '"' + st + '/>';
+    var n = s[2].split(' ');
+    return '<ellipse cx="' + n[0] + '" cy="' + n[1] + '" rx="' + n[2] + '" ry="' + n[3] + '"' + (n[4] ? ' transform="rotate(' + n[4] + ' ' + n[0] + ' ' + n[1] + ')"' : '') + st + '/>';
+  }
+  function ensureBodyDefs() {
+    if (el('memBodyDefs')) return;
+    var view = function (v, x) { var half = BODY_SIDE[v].map(bodyShape).join(''); return '<g transform="translate(' + x + ' 0)">' + half + '<g transform="matrix(-1 0 0 1 40 0)">' + half + '</g>' + BODY_MID[v].map(bodyShape).join('') + '</g>'; };
+    var d = document.createElement('div');
+    d.id = 'memBodyDefs'; d.setAttribute('aria-hidden', 'true'); d.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden';
+    d.innerHTML = '<svg width="0" height="0"><defs><symbol id="memBody" viewBox="4.4 2 75.2 93.6">' + view('front', 0) + view('back', 44) + '</symbol></defs></svg>';
+    document.body.appendChild(d);
+  }
+  /** Front and back, the parts worked that day in the accent (stronger the more sets). m = { part: score }. */
+  function bodySvg(m, cls, label) {
+    ensureBodyDefs();
+    var vars = Object.keys(m || {}).map(function (k) { var l = NudgeFmt.memLevel(m[k]); return l ? '--b-' + k + ':var(--b' + l + ')' : ''; }).filter(Boolean).join(';');
+    return '<svg class="body' + (cls ? ' ' + cls : '') + '" viewBox="4.4 2 75.2 93.6"' + (vars ? ' style="' + vars + '"' : '') + (label ? ' role="img" aria-label="' + esc(label) + '"' : ' aria-hidden="true"') + '><use href="#memBody"/></svg>';
+  }
+  /** One month: Monday-first weeks; a trained day shows the body, today is ringed, days to come are faded. */
+  function memMonth(ym, days, today) {
+    var h = '<div class="memgrid" role="grid">' + ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map(function (d) { return '<span class="memwd" aria-hidden="true">' + d + '</span>'; }).join('');
+    NudgeFmt.memGrid(ym).forEach(function (d) {
+      if (!d) { h += '<span class="memday blank" aria-hidden="true"></span>'; return; }
+      var x = days[d], n = +d.slice(8), cls = (d === today ? ' today' : '') + (d > today ? ' later' : '');
+      if (!x) { h += '<span class="memday' + cls + '" role="gridcell" aria-label="' + esc(shortDay(d)) + (d > today ? '' : ', no training') + '"><span class="dn">' + n + '</span></span>'; return; }
+      var what = x.w.map(function (w) { return w.n; }).join(' and '), top = NudgeFmt.memTop(x.m, 3), many = x.w.length > 1;
+      h += '<button type="button" class="memday on' + cls + '" data-memday="' + d + '" aria-label="' + esc(shortDay(d) + ': ' + what + (top.length ? ', ' + top.join(', ') : '')) + '">' +
+        bodySvg(x.m) + '<span class="dn">' + n + '</span>' + (many ? '<span class="ct">' + x.w.length + '</span>' : '') + '</button>';
+    });
+    return h + '</div>';
+  }
+  function monthName(ym) { return new Date(ym + '-15T12:00:00').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }); }
+  function memCount(days, ym) { return Object.keys(days).filter(function (d) { return d.slice(0, 7) === ym; }).length; }
+  /** Train tab: this month at a glance, and the way into every month. */
+  function memoriesCard() {
+    var M = S.train && S.train.memories; if (!M) return '';
+    var today = S.today ? S.today.date : ymdOf(new Date(now())), ym = today.slice(0, 7), n = memCount(M, ym);
+    return '<section class="card memcard"><div class="head"><div><h3>Memories</h3><div class="tiny muted">' + esc(monthName(ym)) + ': ' + n + ' day' + (n === 1 ? '' : 's') + ' trained</div></div>' +
+      '<button class="btn soft sm" type="button" data-memories="open">' + icon('calendar', 's') + 'All memories</button></div>' + memMonth(ym, M, today) +
+      '<p class="tiny muted" style="margin:8px 0 0">Tap a day for the workout. Highlighted: what you worked; the stronger the colour, the more sets.</p></section>';
+  }
+  /** The Train tab's hero: Monday to Sunday, each day trained with its body; tap for All memories. */
+  function memWeek() {
+    var M = S.train && S.train.memories; if (!M) return '';
+    var today = S.today ? S.today.date : ymdOf(new Date(now())), mon = addDaysYmd(today, -((new Date(today + 'T12:00:00').getDay() + 6) % 7)), cells = '', n = 0;
+    for (var i = 0; i < 7; i++) {
+      var d = addDaysYmd(mon, i), x = M[d]; if (x) n++;
+      cells += '<span class="memwk' + (x ? ' on' : '') + (d === today ? ' today' : '') + (d > today ? ' later' : '') + '"><span class="tiny">' + 'MTWTFSS'[i] + '</span>' + (x ? bodySvg(x.m) : '<i></i>') + '</span>';
+    }
+    return '<button type="button" class="memweek" data-memories="open" aria-label="This week: trained ' + n + ' day' + (n === 1 ? '' : 's') + '. Open all memories">' + cells + '</button>';
+  }
+  function addDaysYmd(ymd, n) { var t = new Date(ymd + 'T12:00:00'); t.setDate(t.getDate() + n); return ymdOf(t); }
+  var memAll = null;   // { today, days } for every day trained, kept on the phone too
+  function memData() {
+    var cached = memAll || load('mem-' + KEY.slice(0, 6)), cur = (S.train && S.train.memories) || {}, days = {};
+    Object.keys((cached && cached.days) || {}).forEach(function (d) { days[d] = cached.days[d]; });
+    var from = (S.train && S.train.memFrom) || '9999';
+    Object.keys(days).forEach(function (d) { if (d >= from && !cur[d]) delete days[d]; });   // this month and week: the fresh copy wins
+    Object.keys(cur).forEach(function (d) { days[d] = cur[d]; });
+    return days;
+  }
+  function renderMemories(scrollEnd) {
+    var box = el('memories'); if (!box) return;
+    var days = memData(), today = S.today ? S.today.date : ymdOf(new Date(now())), list = Object.keys(days).sort();
+    var first = list.length ? list[0].slice(0, 7) : today.slice(0, 7), months = NudgeFmt.memMonths(first, today.slice(0, 7));
+    var thisM = memCount(days, today.slice(0, 7)), prev = months.length > 1 ? memCount(days, months[months.length - 2]) : 0;
+    var h = '<div class="memhead"><button class="iconbtn" type="button" data-memories="close" aria-label="Back">' + icon('back') + '</button><h2>All memories</h2><span style="width:40px"></span></div>' +
+      '<div class="memscroll" id="memScroll"><div class="memstats"><div class="gvtile"><b class="num">' + thisM + '</b><span class="tiny muted">this month</span></div><div class="gvtile"><b class="num">' + prev + '</b><span class="tiny muted">last month</span></div><div class="gvtile"><b class="num">' + list.length + '</b><span class="tiny muted">days in all</span></div></div>' +
+      (memAll ? '' : '<p class="tiny muted center" id="memLoading">' + (list.length ? 'Checking for older days…' : 'Loading your history…') + '</p>');
+    months.forEach(function (ym) {
+      var n = memCount(days, ym), parts = {};
+      Object.keys(days).forEach(function (d) { if (d.slice(0, 7) === ym) Object.keys(days[d].m).forEach(function (k) { parts[k] = (parts[k] || 0) + days[d].m[k]; }); });
+      var top = NudgeFmt.memTop(parts, 3);
+      h += '<section class="memmonth" id="mem-' + ym + '"><div class="memmhead"><b>' + esc(monthName(ym)) + '</b><span class="tiny muted">' + (n ? n + ' day' + (n === 1 ? '' : 's') + (top.length ? ' · most: ' + esc(top.join(', ')) : '') : 'No training') + '</span></div>' + memMonth(ym, days, today) + '</section>';
+    });
+    h += '<p class="tiny muted center" style="margin:14px 0 4px">Every day you trained, Strong and Liftoff imports included. Highlighted: what you worked; the stronger the colour, the more sets.</p></div>';
+    var sc = el('memScroll'), y = sc ? sc.scrollTop : 0;
+    box.innerHTML = h;
+    sc = el('memScroll'); if (sc) sc.scrollTop = scrollEnd ? sc.scrollHeight : y;
+  }
+  function openMemories() {
+    if (el('memories')) return;
+    var box = document.createElement('div');
+    box.id = 'memories'; box.className = 'memories'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'All memories');
+    document.body.appendChild(box); document.body.classList.add('mem-open');
+    renderMemories(true);
+    rpc('gymMemories').then(function (r) {
+      memAll = r; save('mem-' + KEY.slice(0, 6), r);
+      var sc = el('memScroll'), atEnd = sc && sc.scrollHeight - sc.scrollTop - sc.clientHeight < 40, fromEnd = sc ? sc.scrollHeight - sc.scrollTop : 0;
+      renderMemories(atEnd);
+      sc = el('memScroll'); if (sc && !atEnd) sc.scrollTop = sc.scrollHeight - fromEnd;   // older months land above: keep your place
+    }, function (e) { var l = el('memLoading'); if (l) l.textContent = 'Couldn\'t load older days: ' + (e.message || e); });
+  }
+  function closeMemories() { var b = el('memories'); if (b) b.remove(); document.body.classList.remove('mem-open'); }
+  /** One day: the body big, what it worked, and each workout's exercises with the best set. */
+  function memDaySheet(d) {
+    var x = memData()[d]; if (!x) return;
+    var top = NudgeFmt.memTop(x.m), mins = x.w.reduce(function (a, w) { return a + (w.min || 0); }, 0);
+    var h = '<div class="between"><div><div class="eyebrow">' + esc(new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long' })) + '</div><h2 style="margin:2px 0 0">' + esc(new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })) + '</h2></div><button class="iconbtn" type="button" data-close aria-label="Close">' + icon('x') + '</button></div>' +
+      '<div class="memdaybody">' + bodySvg(x.m, 'big', top.length ? 'Worked: ' + top.join(', ') : 'Gym visit') + '<div class="small"><div class="eyebrow" style="margin-bottom:4px">Worked</div>' + (top.length ? esc(top.join(', ')) : '<span class="muted">Nothing logged, just Gym done ticked.</span>') +
+      (x.s ? '<div class="tiny muted" style="margin-top:8px">' + x.s + ' working set' + (x.s === 1 ? '' : 's') + (mins ? ' · ' + mins + ' min' : '') + '</div>' : '') + '</div></div>';
+    x.w.forEach(function (w) {
+      h += '<div class="eyebrow" style="margin:14px 0 2px">' + esc(w.n) + (w.min ? ' · ' + w.min + ' min' : '') + '</div>' + w.ex.map(function (e) {
+        return '<div class="item"><div class="grow"><div class="t">' + esc(e[0]) + '</div><div class="m">' + e[1] + ' set' + (e[1] === 1 ? '' : 's') + (e[2] || e[3] ? ' · best ' + (e[2] ? e[2] + ' kg × ' : '') + e[3] : '') + '</div></div></div>';
+      }).join('');
+    });
+    openSheet(h);
+  }
+  document.addEventListener('click', function (ev) {
+    var t = ev.target.closest && ev.target.closest('[data-memories], [data-memday]'); if (!t || !S) return;
+    if (t.dataset.memday) return memDaySheet(t.dataset.memday);
+    if (t.dataset.memories === 'open') return openMemories();
+    if (t.dataset.memories === 'close') return closeMemories();
+  });
+  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && el('memories') && el('sheetbg').hidden) closeMemories(); });
   /** Settings, Training: the main split. */
   function trainingCard() {
     var sp = S.train && S.train.split; if (!ME || !sp) return '';
@@ -1177,10 +1313,10 @@
     if (!tsel || !(TP[tsel] || t.plans[tsel])) tsel = load('tsel-' + S.today.date) || tplIdOf(t.today) || (sp && sp.next.id) || t.today || t.sessions[0];
     if (!(TP[tsel] || t.plans[tsel])) tsel = (sp && sp.next.id) || t.sessions[0];
     var tp = TP[tsel], tselName = tp ? tp.name : tsel;
-    var d = draft(), h = '<div class="top"><div><h1>Train</h1><div class="sub">' + (t.today ? 'Today: ' + esc(t.today) : 'Next up: ' + esc(t.rotationNext || '') + '. Any day you get there.') + '</div></div>' + meButton() + '</div>';
+    var d = draft(), h = '<div class="top"><div><h1>Train</h1><div class="sub">' + (t.today ? 'Today: ' + esc(t.today) : 'Next up: ' + esc(t.rotationNext || '') + '. Any day you get there.') + '</div></div><span class="row" style="gap:8px"><button class="iconbtn" type="button" data-memories="open" aria-label="All memories: every day you trained">' + icon('calendar') + '</button>' + meButton() + '</span></div>';
     // the split: its sessions in order, the next one marked; any session can be picked. Presets below: any day, the rotation stays put
     var presets = (sp && sp.presets) || [], preset = presets.filter(function (x) { return x.id === tsel; })[0];
-    if (sp) h += '<section class="card spot trainhero"><div class="between" style="margin-bottom:8px"><div class="eyebrow">' + esc(sp.name) + '</div><span class="tiny muted"><b>' + sp.week.done + ' of ' + sp.week.target + '</b> this week</span></div><div class="rotstrip" aria-label="Your training rotation">' + sp.order.map(function (o) { var cur = o.id === tsel; return '<button type="button" class="rot' + (cur ? ' on' : '') + (o.id === sp.next.id ? ' next' : '') + '" data-tsel="' + esc(o.id) + '" aria-pressed="' + cur + '">' + esc(o.name) + '</button>'; }).join('<span class="rotarr" aria-hidden="true">›</span>') + '</div>' +
+    if (sp) h += '<section class="card spot trainhero"><div class="between" style="margin-bottom:8px"><div class="eyebrow">' + esc(sp.name) + '</div><span class="tiny muted"><b>' + sp.week.done + ' of ' + sp.week.target + '</b> this week</span></div>' + memWeek() + '<div class="rotstrip" aria-label="Your training rotation">' + sp.order.map(function (o) { var cur = o.id === tsel; return '<button type="button" class="rot' + (cur ? ' on' : '') + (o.id === sp.next.id ? ' next' : '') + '" data-tsel="' + esc(o.id) + '" aria-pressed="' + cur + '">' + esc(o.name) + '</button>'; }).join('<span class="rotarr" aria-hidden="true">›</span>') + '</div>' +
       '<div class="rotmeta"><span class="tiny muted">Next up: <b>' + esc(sp.next.name) + '</b>. Only a logged session moves it on; a day off moves nothing.</span>' +
       (t.sessions.length ? '<label class="tiny rotpick">Other workout <select data-tselect="1" aria-label="Pick one of your own workouts"><option value="">Choose…</option>' + t.sessions.map(function (x) { return '<option value="' + esc(x) + '"' + (x === tsel ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select></label>' : '') + '</div>' +
       '<div class="eyebrow" style="margin:2px 0 8px">Presets, any day</div><div class="presets">' + presets.map(function (x) {
@@ -1217,6 +1353,7 @@
     h += '<button class="btn primary big wide" type="button" id="finishWk"' + (count ? '' : ' disabled') + '>Finish workout · ' + count + ' set' + (count === 1 ? '' : 's') + '</button>';
     if (!tp && (load(custKeys(tsel)[0]) || load(custKeys(tsel)[1]))) h += '<p class="center" style="margin:10px 0 0"><button class="linkbtn small muted" type="button" id="resetCust">Undo my changes to ' + esc(tsel) + '</button></p>';
     if (tp) h += '<p class="center" style="margin:10px 0 0"><button class="linkbtn small muted" type="button" id="saveNewBtn">Save this session as a new workout</button> · <button class="linkbtn small muted" type="button" data-tpledit="' + esc(tp.id) + '">Edit ' + esc(tp.name) + '</button>' + (tp.edited || tp.swaps ? ' · <button class="linkbtn small muted" type="button" data-tplreset="' + esc(tp.id) + '">Reset to default</button>' : '') + '</p>';
+    h += memoriesCard();
     h += visitsCard();
     h += liftChart();
     var pr = t.progress;

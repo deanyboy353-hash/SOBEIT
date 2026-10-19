@@ -94,10 +94,12 @@ function trainState_() {
   // your own saved workouts (the Sessions tab, minus the old rows the templates replaced)
   var presetNames = split.presets.map(function (x) { return x.name; });
   sessions = sessions.filter(function (s) { return !/^Old: /.test(s) && order.indexOf(s) === -1 && presetNames.indexOf(s) === -1; });
+  // Memories for the Train tab: this month and this week (Monday on), the rest loads with All memories
+  var monday = addDays_(today, -((dow + 6) % 7)), memFrom = monday < today.slice(0, 8) + '01' ? monday : today.slice(0, 8) + '01';
   var tpl = split.order.map(function (x) { return x.id; }).concat(presetIds_()).reduce(function (o, id) { o[id] = templatePlan_(id); return o; }, {});
   return {
     today: todaySession,
-    split: split, tpl: tpl, lifts: liftHistory_(), visits: gymVisits_(today),
+    split: split, tpl: tpl, lifts: liftHistory_(), visits: gymVisits_(today), memories: gymMemories_(memFrom, today), memFrom: memFrom,
     planned: planned, rotation: order, rotationNext: next, trainDays: Object.keys(cfg.schedule).filter(function (d) { return cfg.schedule[d].train; }).map(Number),
     changed: todaySession !== planned,
     last: last, next: next,
@@ -144,6 +146,12 @@ function progress_() {
 function trainState(key) {
   requireKey_(key);
   return trainState_();
+}
+
+/** Memories: every day you've trained, all of history (the All memories screen loads it when opened). */
+function gymMemories(key) {
+  requireKey_(key);
+  return { today: todayYmd_(), days: gymMemories_('0000', todayYmd_()) };
 }
 
 /** Set a training max from a recent set (weight × reps): TM = 90% of the estimated 1RM. */

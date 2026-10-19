@@ -1008,6 +1008,45 @@ body.chat-open { overflow: hidden; }
 .goalwhy { margin: 10px 0 0; padding: 10px 12px; border-left: 3px solid var(--lilac); background: var(--lilac-soft); border-radius: 0 10px 10px 0; font-size: 14.5px; }
 .warn { color: var(--warn); }
 
+/* Memories: the training calendar. One body symbol; each day sets --b-<part> to a level. */
+:root { --b0: color-mix(in srgb, var(--ink) 15%, var(--surface)); --bbase: color-mix(in srgb, var(--ink) 26%, var(--surface));
+  --b1: color-mix(in srgb, var(--lilac) 42%, var(--b0)); --b2: color-mix(in srgb, var(--lilac) 72%, var(--b0)); --b3: var(--lilac); }
+:root[data-theme="ad-dark"] { --b0: color-mix(in srgb, var(--ink) 34%, var(--surface)); --bbase: color-mix(in srgb, var(--ink) 50%, var(--surface)); }
+svg.body { display: block; width: 100%; height: auto; }
+svg.body.big { width: 128px; flex: none; }
+.memgrid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
+.memwd { text-align: center; font-size: 11.5px; font-weight: 650; color: var(--faint); padding-bottom: 2px; }
+.memday { position: relative; aspect-ratio: 4 / 5; border-radius: 10px; background: var(--raised); display: grid; place-items: center; border: 1px solid transparent; padding: 0; font: inherit; color: var(--muted); min-width: 0; overflow: hidden; }
+.memday.blank { background: none; }
+.memday .dn { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.memday.on { background: var(--surface); border-color: var(--lilac-mid); color: var(--ink); cursor: pointer; }
+.memday.on { display: flex; flex-direction: column; align-items: center; padding: 4px 3px 2px; }
+.memday.on .dn { font-size: 11px; font-weight: 750; line-height: 13px; }
+.memday.on svg.body { flex: 1 1 0; min-height: 0; height: 0; width: 100%; }
+.memday .ct { position: absolute; right: 2px; top: 2px; min-width: 15px; height: 15px; padding: 0 4px; border-radius: 999px; background: var(--lilac); color: #fff; font-size: 10px; font-weight: 750; line-height: 15px; text-align: center; }
+.memday.today { box-shadow: inset 0 0 0 2px var(--lilac); }
+.memday.later { opacity: .45; }
+.memcard .head { align-items: flex-start; }
+.memweek { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; width: 100%; margin: 0 0 12px; padding: 0; border: 0; background: none; font: inherit; cursor: pointer; }
+.memwk { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 2px 5px; border-radius: 10px; background: var(--raised); color: var(--muted); min-width: 0; }
+.memwk .tiny { font-weight: 700; font-size: 11px; }
+.memwk svg.body { width: 100%; max-width: 40px; }
+.memwk i { display: block; width: 100%; max-width: 40px; aspect-ratio: 75.2 / 93.6; }
+.memwk.on { background: var(--lilac-soft); color: var(--lilac); }
+.memwk.today { box-shadow: inset 0 0 0 2px var(--lilac); }
+.memwk.later { opacity: .5; }
+body.mem-open { overflow: hidden; }
+.memories { position: fixed; inset: 0; z-index: 7; display: flex; flex-direction: column; background: var(--bg); padding-top: env(safe-area-inset-top, 0px); }
+.memhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--surface); }
+.memhead h2 { margin: 0; font-size: 18px; }
+.memscroll { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 12px 16px calc(24px + env(safe-area-inset-bottom)); width: 100%; max-width: 620px; margin: 0 auto; }
+.memstats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
+.memstats .gvtile b { font-size: 22px; font-weight: 800; color: var(--ink); }
+.memmonth { margin-top: 18px; }
+.memmhead { position: sticky; top: -12px; z-index: 1; display: flex; flex-direction: column; padding: 8px 0 8px; margin-bottom: 4px; background: var(--bg); }
+.memmhead b { font-size: 17px; }
+.memdaybody { display: flex; gap: 16px; align-items: center; margin: 14px 0 4px; padding: 12px; border-radius: 14px; background: var(--raised); }
+
 </style>
 </head>
 <body>
@@ -2163,7 +2202,35 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
   }
   /** Is the brief behind what's on screen (a job got done since it was written)? */
   function briefBehind(b, S) { return !!(b && b.sig && b.sig !== briefSig(S)); }
-  var api = { briefSig: briefSig, briefBehind: briefBehind, winStep: winStep, homeOrder: homeOrder, HOME_DEFAULT: HOME_DEFAULT, winText: winText, ago: ago, briefDue: briefDue, briefSlot: briefSlot };
+
+  // ---------- Memories (the training calendar) ----------
+  /** Body parts as the server names them (Training.gs bodyOf), in words, front of the body first. */
+  var BODY_NAMES = { chest: 'Chest', fdelt: 'Front delts', sdelt: 'Side delts', rdelt: 'Rear delts', bi: 'Biceps', tri: 'Triceps', fore: 'Forearms', abs: 'Abs',
+    trap: 'Traps', back: 'Upper back', lat: 'Lats', lower: 'Lower back', glute: 'Glutes', quad: 'Quads', ham: 'Hamstrings', calf: 'Calves' };
+  /** How hard a part was worked that day, 0 to 3, from its score (1 a set as the main muscle, 0.5 as a helper). */
+  function memLevel(score) { return score >= 6 ? 3 : score >= 3 ? 2 : score > 0 ? 1 : 0; }
+  /** The parts worked most, as words: ['Chest', 'Triceps']. Helpers only (under one set's worth) are left out. */
+  function memTop(m, n) {
+    return Object.keys(m || {}).filter(function (k) { return m[k] >= 1 && BODY_NAMES[k]; })
+      .sort(function (a, b) { return m[b] - m[a] || Object.keys(BODY_NAMES).indexOf(a) - Object.keys(BODY_NAMES).indexOf(b); })
+      .slice(0, n || 99).map(function (k) { return BODY_NAMES[k]; });
+  }
+  /** A month as weeks, Monday first: ['', '', '2026-10-01', …] padded to whole weeks. ym = 'yyyy-MM'. */
+  function memGrid(ym) {
+    var y = +ym.slice(0, 4), mo = +ym.slice(5, 7), first = new Date(Date.UTC(y, mo - 1, 1)), days = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+    var out = [], lead = (first.getUTCDay() + 6) % 7, i;
+    for (i = 0; i < lead; i++) out.push('');
+    for (i = 1; i <= days; i++) out.push(ym + '-' + (i < 10 ? '0' : '') + i);
+    while (out.length % 7) out.push('');
+    return out;
+  }
+  /** Every month from one to another, oldest first: ['2026-09', '2026-10']. */
+  function memMonths(fromYm, toYm) {
+    var out = [], y = +fromYm.slice(0, 4), m = +fromYm.slice(5, 7);
+    while (out.length < 1200) { var k = y + '-' + (m < 10 ? '0' : '') + m; if (k > toYm) break; out.push(k); if (++m > 12) { m = 1; y++; } }
+    return out;
+  }
+  var api = { BODY_NAMES: BODY_NAMES, memLevel: memLevel, memTop: memTop, memGrid: memGrid, memMonths: memMonths, briefSig: briefSig, briefBehind: briefBehind, winStep: winStep, homeOrder: homeOrder, HOME_DEFAULT: HOME_DEFAULT, winText: winText, ago: ago, briefDue: briefDue, briefSlot: briefSlot };
   root.NudgeFmt = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -2967,7 +3034,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
   function gymExtras() {
     var tr = S.today.train; if (!tr) return '';
     return '<div class="between" style="margin-top:10px;gap:8px;flex-wrap:wrap"><span class="small"><b>' + tr.week.done + ' of ' + tr.week.target + '</b> main sessions this week</span>' +
-      '<button class="btn soft sm" type="button" data-trainpump="1">' + icon('bolt', 's') + (tr.pump.doneToday ? 'Pump done today' : 'Pump: extra, +' + tr.pump.xp + ' XP') + '</button></div>';
+      '<span class="row" style="gap:6px"><button class="btn line sm" type="button" data-memories="open">' + icon('calendar', 's') + 'Memories</button><button class="btn soft sm" type="button" data-trainpump="1">' + icon('bolt', 's') + (tr.pump.doneToday ? 'Pump done today' : 'Pump: extra, +' + tr.pump.xp + ' XP') + '</button></span></div>';
   }
   function stageCard() {
     var W = S.wardrobe, p = S.game && S.game.pet, n = names(); if (!W && !p) return '';
@@ -3732,6 +3799,142 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
   document.addEventListener('pointermove', lcHover);
   document.addEventListener('pointerdown', lcHover);
   document.addEventListener('pointerleave', function (ev) { if (ev.target.classList && ev.target.classList.contains('lcwrap')) { var tp2 = el('lcTip'); if (tp2) tp2.hidden = true; } }, true);
+  // ---------- Memories: every day you trained on a calendar, with the muscles each one worked ----------
+  // One body (front and back) drawn once as a symbol; each day colours its parts through CSS variables (--b-chest: …),
+  // so a calendar of hundreds of days stays light.
+  var BODY_SIDE = {   // the left half of each view; the right half is its mirror
+    front: [['fdelt', 'e', '11.6 22.6 3.6 4.2'], ['sdelt', 'e', '8.6 22.8 1.5 3.6'], ['chest', 'p', 'M15 19.6Q19.6 19 19.6 20.4L19.6 29.6Q16.4 31.4 14 29Q13.2 24 15 19.6Z'],
+      ['bi', 'e', '9.3 31 2.5 5'], ['fore', 'e', '8.2 43 2.2 6 8'], ['', 'e', '7 51.5 1.8 2.4'], ['abs', 'p', 'M13.8 30Q15 31.4 15.8 31.6L15.8 46L14.2 46Q12.8 38 13.8 30Z'],
+      ['quad', 'p', 'M14.2 50Q19.6 50.5 19.4 54L18.6 71Q16.6 73.2 14.6 71Q12.6 60 14.2 50Z'], ['', 'e', '16.6 74 2.1 1.8'],
+      ['calf', 'p', 'M14.6 76.4Q16.6 75.4 18.6 76.4Q19 84 17.8 91L15.6 91Q14 84 14.6 76.4Z'], ['', 'e', '16.4 93.4 2.4 1.6']],
+    back: [['rdelt', 'e', '11.6 22.6 3.6 4.2'], ['sdelt', 'e', '8.6 22.8 1.5 3.6'], ['lat', 'p', 'M14.6 25L19.6 30.6L19.6 37.6L16.8 41.6Q13.4 34 14.6 25Z'],
+      ['tri', 'e', '9.3 31 2.5 5'], ['fore', 'e', '8.2 43 2.2 6 8'], ['', 'e', '7 51.5 1.8 2.4'], ['glute', 'p', 'M19.6 46.6L19.6 54.4Q16.4 56 14.2 53.6Q13.4 49 14.4 46.6Z'],
+      ['ham', 'p', 'M14.4 55.8Q16.8 57 19.4 55.8L18.6 71Q16.6 73.2 14.6 71Q13.2 62 14.4 55.8Z'], ['', 'e', '16.6 74 2.1 1.8'],
+      ['calf', 'p', 'M14.4 76Q16.6 74.8 18.8 76Q19.6 81 18.2 88L15.6 90.6Q13.6 82 14.4 76Z'], ['', 'e', '16.4 93.4 2.4 1.6']]
+  };
+  var BODY_MID = {    // down the middle
+    front: [['', 'e', '20 8 4.6 5.6'], ['', 'p', 'M18 13H22V17H18Z'], ['trap', 'p', 'M17.6 15.8L22.4 15.8L25.8 18.6L14.2 18.6Z'], ['abs', 'p', 'M16.2 33.4Q16.2 31 18.6 31H21.4Q23.8 31 23.8 33.4V43.6Q23.8 46 21.4 46H18.6Q16.2 46 16.2 43.6Z'],
+      ['', 'p', 'M14 46.6L26 46.6L26.4 50Q20 52.6 13.6 50Z']],
+    back: [['', 'e', '20 8 4.6 5.6'], ['', 'p', 'M18 13H22V17H18Z'], ['trap', 'p', 'M20 13.6L26 18.4L20 23.6L14 18.4Z'], ['back', 'p', 'M14.6 19.4L20 24.6L25.4 19.4L25.6 24.6L20 30.4L14.4 24.6Z'],
+      ['lower', 'p', 'M17.2 41.6L19.8 38.2L20.2 38.2L22.8 41.6L23.6 46L16.4 46Z']]
+  };
+  function bodyShape(s) {
+    var st = ' style="fill:' + (s[0] ? 'var(--b-' + s[0] + ',var(--b0))' : 'var(--bbase)') + '"';
+    if (s[1] === 'p') return '<path d="' + s[2] + '"' + st + '/>';
+    var n = s[2].split(' ');
+    return '<ellipse cx="' + n[0] + '" cy="' + n[1] + '" rx="' + n[2] + '" ry="' + n[3] + '"' + (n[4] ? ' transform="rotate(' + n[4] + ' ' + n[0] + ' ' + n[1] + ')"' : '') + st + '/>';
+  }
+  function ensureBodyDefs() {
+    if (el('memBodyDefs')) return;
+    var view = function (v, x) { var half = BODY_SIDE[v].map(bodyShape).join(''); return '<g transform="translate(' + x + ' 0)">' + half + '<g transform="matrix(-1 0 0 1 40 0)">' + half + '</g>' + BODY_MID[v].map(bodyShape).join('') + '</g>'; };
+    var d = document.createElement('div');
+    d.id = 'memBodyDefs'; d.setAttribute('aria-hidden', 'true'); d.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden';
+    d.innerHTML = '<svg width="0" height="0"><defs><symbol id="memBody" viewBox="4.4 2 75.2 93.6">' + view('front', 0) + view('back', 44) + '</symbol></defs></svg>';
+    document.body.appendChild(d);
+  }
+  /** Front and back, the parts worked that day in the accent (stronger the more sets). m = { part: score }. */
+  function bodySvg(m, cls, label) {
+    ensureBodyDefs();
+    var vars = Object.keys(m || {}).map(function (k) { var l = NudgeFmt.memLevel(m[k]); return l ? '--b-' + k + ':var(--b' + l + ')' : ''; }).filter(Boolean).join(';');
+    return '<svg class="body' + (cls ? ' ' + cls : '') + '" viewBox="4.4 2 75.2 93.6"' + (vars ? ' style="' + vars + '"' : '') + (label ? ' role="img" aria-label="' + esc(label) + '"' : ' aria-hidden="true"') + '><use href="#memBody"/></svg>';
+  }
+  /** One month: Monday-first weeks; a trained day shows the body, today is ringed, days to come are faded. */
+  function memMonth(ym, days, today) {
+    var h = '<div class="memgrid" role="grid">' + ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map(function (d) { return '<span class="memwd" aria-hidden="true">' + d + '</span>'; }).join('');
+    NudgeFmt.memGrid(ym).forEach(function (d) {
+      if (!d) { h += '<span class="memday blank" aria-hidden="true"></span>'; return; }
+      var x = days[d], n = +d.slice(8), cls = (d === today ? ' today' : '') + (d > today ? ' later' : '');
+      if (!x) { h += '<span class="memday' + cls + '" role="gridcell" aria-label="' + esc(shortDay(d)) + (d > today ? '' : ', no training') + '"><span class="dn">' + n + '</span></span>'; return; }
+      var what = x.w.map(function (w) { return w.n; }).join(' and '), top = NudgeFmt.memTop(x.m, 3), many = x.w.length > 1;
+      h += '<button type="button" class="memday on' + cls + '" data-memday="' + d + '" aria-label="' + esc(shortDay(d) + ': ' + what + (top.length ? ', ' + top.join(', ') : '')) + '">' +
+        bodySvg(x.m) + '<span class="dn">' + n + '</span>' + (many ? '<span class="ct">' + x.w.length + '</span>' : '') + '</button>';
+    });
+    return h + '</div>';
+  }
+  function monthName(ym) { return new Date(ym + '-15T12:00:00').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }); }
+  function memCount(days, ym) { return Object.keys(days).filter(function (d) { return d.slice(0, 7) === ym; }).length; }
+  /** Train tab: this month at a glance, and the way into every month. */
+  function memoriesCard() {
+    var M = S.train && S.train.memories; if (!M) return '';
+    var today = S.today ? S.today.date : ymdOf(new Date(now())), ym = today.slice(0, 7), n = memCount(M, ym);
+    return '<section class="card memcard"><div class="head"><div><h3>Memories</h3><div class="tiny muted">' + esc(monthName(ym)) + ': ' + n + ' day' + (n === 1 ? '' : 's') + ' trained</div></div>' +
+      '<button class="btn soft sm" type="button" data-memories="open">' + icon('calendar', 's') + 'All memories</button></div>' + memMonth(ym, M, today) +
+      '<p class="tiny muted" style="margin:8px 0 0">Tap a day for the workout. Highlighted: what you worked; the stronger the colour, the more sets.</p></section>';
+  }
+  /** The Train tab's hero: Monday to Sunday, each day trained with its body; tap for All memories. */
+  function memWeek() {
+    var M = S.train && S.train.memories; if (!M) return '';
+    var today = S.today ? S.today.date : ymdOf(new Date(now())), mon = addDaysYmd(today, -((new Date(today + 'T12:00:00').getDay() + 6) % 7)), cells = '', n = 0;
+    for (var i = 0; i < 7; i++) {
+      var d = addDaysYmd(mon, i), x = M[d]; if (x) n++;
+      cells += '<span class="memwk' + (x ? ' on' : '') + (d === today ? ' today' : '') + (d > today ? ' later' : '') + '"><span class="tiny">' + 'MTWTFSS'[i] + '</span>' + (x ? bodySvg(x.m) : '<i></i>') + '</span>';
+    }
+    return '<button type="button" class="memweek" data-memories="open" aria-label="This week: trained ' + n + ' day' + (n === 1 ? '' : 's') + '. Open all memories">' + cells + '</button>';
+  }
+  function addDaysYmd(ymd, n) { var t = new Date(ymd + 'T12:00:00'); t.setDate(t.getDate() + n); return ymdOf(t); }
+  var memAll = null;   // { today, days } for every day trained, kept on the phone too
+  function memData() {
+    var cached = memAll || load('mem-' + KEY.slice(0, 6)), cur = (S.train && S.train.memories) || {}, days = {};
+    Object.keys((cached && cached.days) || {}).forEach(function (d) { days[d] = cached.days[d]; });
+    var from = (S.train && S.train.memFrom) || '9999';
+    Object.keys(days).forEach(function (d) { if (d >= from && !cur[d]) delete days[d]; });   // this month and week: the fresh copy wins
+    Object.keys(cur).forEach(function (d) { days[d] = cur[d]; });
+    return days;
+  }
+  function renderMemories(scrollEnd) {
+    var box = el('memories'); if (!box) return;
+    var days = memData(), today = S.today ? S.today.date : ymdOf(new Date(now())), list = Object.keys(days).sort();
+    var first = list.length ? list[0].slice(0, 7) : today.slice(0, 7), months = NudgeFmt.memMonths(first, today.slice(0, 7));
+    var thisM = memCount(days, today.slice(0, 7)), prev = months.length > 1 ? memCount(days, months[months.length - 2]) : 0;
+    var h = '<div class="memhead"><button class="iconbtn" type="button" data-memories="close" aria-label="Back">' + icon('back') + '</button><h2>All memories</h2><span style="width:40px"></span></div>' +
+      '<div class="memscroll" id="memScroll"><div class="memstats"><div class="gvtile"><b class="num">' + thisM + '</b><span class="tiny muted">this month</span></div><div class="gvtile"><b class="num">' + prev + '</b><span class="tiny muted">last month</span></div><div class="gvtile"><b class="num">' + list.length + '</b><span class="tiny muted">days in all</span></div></div>' +
+      (memAll ? '' : '<p class="tiny muted center" id="memLoading">' + (list.length ? 'Checking for older days…' : 'Loading your history…') + '</p>');
+    months.forEach(function (ym) {
+      var n = memCount(days, ym), parts = {};
+      Object.keys(days).forEach(function (d) { if (d.slice(0, 7) === ym) Object.keys(days[d].m).forEach(function (k) { parts[k] = (parts[k] || 0) + days[d].m[k]; }); });
+      var top = NudgeFmt.memTop(parts, 3);
+      h += '<section class="memmonth" id="mem-' + ym + '"><div class="memmhead"><b>' + esc(monthName(ym)) + '</b><span class="tiny muted">' + (n ? n + ' day' + (n === 1 ? '' : 's') + (top.length ? ' · most: ' + esc(top.join(', ')) : '') : 'No training') + '</span></div>' + memMonth(ym, days, today) + '</section>';
+    });
+    h += '<p class="tiny muted center" style="margin:14px 0 4px">Every day you trained, Strong and Liftoff imports included. Highlighted: what you worked; the stronger the colour, the more sets.</p></div>';
+    var sc = el('memScroll'), y = sc ? sc.scrollTop : 0;
+    box.innerHTML = h;
+    sc = el('memScroll'); if (sc) sc.scrollTop = scrollEnd ? sc.scrollHeight : y;
+  }
+  function openMemories() {
+    if (el('memories')) return;
+    var box = document.createElement('div');
+    box.id = 'memories'; box.className = 'memories'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'All memories');
+    document.body.appendChild(box); document.body.classList.add('mem-open');
+    renderMemories(true);
+    rpc('gymMemories').then(function (r) {
+      memAll = r; save('mem-' + KEY.slice(0, 6), r);
+      var sc = el('memScroll'), atEnd = sc && sc.scrollHeight - sc.scrollTop - sc.clientHeight < 40, fromEnd = sc ? sc.scrollHeight - sc.scrollTop : 0;
+      renderMemories(atEnd);
+      sc = el('memScroll'); if (sc && !atEnd) sc.scrollTop = sc.scrollHeight - fromEnd;   // older months land above: keep your place
+    }, function (e) { var l = el('memLoading'); if (l) l.textContent = 'Couldn\'t load older days: ' + (e.message || e); });
+  }
+  function closeMemories() { var b = el('memories'); if (b) b.remove(); document.body.classList.remove('mem-open'); }
+  /** One day: the body big, what it worked, and each workout's exercises with the best set. */
+  function memDaySheet(d) {
+    var x = memData()[d]; if (!x) return;
+    var top = NudgeFmt.memTop(x.m), mins = x.w.reduce(function (a, w) { return a + (w.min || 0); }, 0);
+    var h = '<div class="between"><div><div class="eyebrow">' + esc(new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long' })) + '</div><h2 style="margin:2px 0 0">' + esc(new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })) + '</h2></div><button class="iconbtn" type="button" data-close aria-label="Close">' + icon('x') + '</button></div>' +
+      '<div class="memdaybody">' + bodySvg(x.m, 'big', top.length ? 'Worked: ' + top.join(', ') : 'Gym visit') + '<div class="small"><div class="eyebrow" style="margin-bottom:4px">Worked</div>' + (top.length ? esc(top.join(', ')) : '<span class="muted">Nothing logged, just Gym done ticked.</span>') +
+      (x.s ? '<div class="tiny muted" style="margin-top:8px">' + x.s + ' working set' + (x.s === 1 ? '' : 's') + (mins ? ' · ' + mins + ' min' : '') + '</div>' : '') + '</div></div>';
+    x.w.forEach(function (w) {
+      h += '<div class="eyebrow" style="margin:14px 0 2px">' + esc(w.n) + (w.min ? ' · ' + w.min + ' min' : '') + '</div>' + w.ex.map(function (e) {
+        return '<div class="item"><div class="grow"><div class="t">' + esc(e[0]) + '</div><div class="m">' + e[1] + ' set' + (e[1] === 1 ? '' : 's') + (e[2] || e[3] ? ' · best ' + (e[2] ? e[2] + ' kg × ' : '') + e[3] : '') + '</div></div></div>';
+      }).join('');
+    });
+    openSheet(h);
+  }
+  document.addEventListener('click', function (ev) {
+    var t = ev.target.closest && ev.target.closest('[data-memories], [data-memday]'); if (!t || !S) return;
+    if (t.dataset.memday) return memDaySheet(t.dataset.memday);
+    if (t.dataset.memories === 'open') return openMemories();
+    if (t.dataset.memories === 'close') return closeMemories();
+  });
+  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && el('memories') && el('sheetbg').hidden) closeMemories(); });
   /** Settings, Training: the main split. */
   function trainingCard() {
     var sp = S.train && S.train.split; if (!ME || !sp) return '';
@@ -3752,10 +3955,10 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     if (!tsel || !(TP[tsel] || t.plans[tsel])) tsel = load('tsel-' + S.today.date) || tplIdOf(t.today) || (sp && sp.next.id) || t.today || t.sessions[0];
     if (!(TP[tsel] || t.plans[tsel])) tsel = (sp && sp.next.id) || t.sessions[0];
     var tp = TP[tsel], tselName = tp ? tp.name : tsel;
-    var d = draft(), h = '<div class="top"><div><h1>Train</h1><div class="sub">' + (t.today ? 'Today: ' + esc(t.today) : 'Next up: ' + esc(t.rotationNext || '') + '. Any day you get there.') + '</div></div>' + meButton() + '</div>';
+    var d = draft(), h = '<div class="top"><div><h1>Train</h1><div class="sub">' + (t.today ? 'Today: ' + esc(t.today) : 'Next up: ' + esc(t.rotationNext || '') + '. Any day you get there.') + '</div></div><span class="row" style="gap:8px"><button class="iconbtn" type="button" data-memories="open" aria-label="All memories: every day you trained">' + icon('calendar') + '</button>' + meButton() + '</span></div>';
     // the split: its sessions in order, the next one marked; any session can be picked. Presets below: any day, the rotation stays put
     var presets = (sp && sp.presets) || [], preset = presets.filter(function (x) { return x.id === tsel; })[0];
-    if (sp) h += '<section class="card spot trainhero"><div class="between" style="margin-bottom:8px"><div class="eyebrow">' + esc(sp.name) + '</div><span class="tiny muted"><b>' + sp.week.done + ' of ' + sp.week.target + '</b> this week</span></div><div class="rotstrip" aria-label="Your training rotation">' + sp.order.map(function (o) { var cur = o.id === tsel; return '<button type="button" class="rot' + (cur ? ' on' : '') + (o.id === sp.next.id ? ' next' : '') + '" data-tsel="' + esc(o.id) + '" aria-pressed="' + cur + '">' + esc(o.name) + '</button>'; }).join('<span class="rotarr" aria-hidden="true">›</span>') + '</div>' +
+    if (sp) h += '<section class="card spot trainhero"><div class="between" style="margin-bottom:8px"><div class="eyebrow">' + esc(sp.name) + '</div><span class="tiny muted"><b>' + sp.week.done + ' of ' + sp.week.target + '</b> this week</span></div>' + memWeek() + '<div class="rotstrip" aria-label="Your training rotation">' + sp.order.map(function (o) { var cur = o.id === tsel; return '<button type="button" class="rot' + (cur ? ' on' : '') + (o.id === sp.next.id ? ' next' : '') + '" data-tsel="' + esc(o.id) + '" aria-pressed="' + cur + '">' + esc(o.name) + '</button>'; }).join('<span class="rotarr" aria-hidden="true">›</span>') + '</div>' +
       '<div class="rotmeta"><span class="tiny muted">Next up: <b>' + esc(sp.next.name) + '</b>. Only a logged session moves it on; a day off moves nothing.</span>' +
       (t.sessions.length ? '<label class="tiny rotpick">Other workout <select data-tselect="1" aria-label="Pick one of your own workouts"><option value="">Choose…</option>' + t.sessions.map(function (x) { return '<option value="' + esc(x) + '"' + (x === tsel ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select></label>' : '') + '</div>' +
       '<div class="eyebrow" style="margin:2px 0 8px">Presets, any day</div><div class="presets">' + presets.map(function (x) {
@@ -3792,6 +3995,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
     h += '<button class="btn primary big wide" type="button" id="finishWk"' + (count ? '' : ' disabled') + '>Finish workout · ' + count + ' set' + (count === 1 ? '' : 's') + '</button>';
     if (!tp && (load(custKeys(tsel)[0]) || load(custKeys(tsel)[1]))) h += '<p class="center" style="margin:10px 0 0"><button class="linkbtn small muted" type="button" id="resetCust">Undo my changes to ' + esc(tsel) + '</button></p>';
     if (tp) h += '<p class="center" style="margin:10px 0 0"><button class="linkbtn small muted" type="button" id="saveNewBtn">Save this session as a new workout</button> · <button class="linkbtn small muted" type="button" data-tpledit="' + esc(tp.id) + '">Edit ' + esc(tp.name) + '</button>' + (tp.edited || tp.swaps ? ' · <button class="linkbtn small muted" type="button" data-tplreset="' + esc(tp.id) + '">Reset to default</button>' : '') + '</p>';
+    h += memoriesCard();
     h += visitsCard();
     h += liftChart();
     var pr = t.progress;
@@ -4680,7 +4884,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
       '<button class="btn ghost wide" type="button" data-backup="now" style="margin-top:8px">Back up now</button>' +
       '<p class="tiny muted" style="margin:8px 0 0">Importing never touches your live data: it rebuilds the backup as a new sheet so you can check it first.</p></section>';
     h += '<p class="small muted center">Your choices follow you to any phone you open the app on.' + (S.solo ? '' : ' ' + esc(n.other) + ' has their own.') + '</p>';
-    h += '<p class="tiny muted center">Version: 17 Oct, 17:46</p>';
+    h += '<p class="tiny muted center">Version: 19 Oct, 12:40</p>';
     el('tab-custom').innerHTML = h;
   }
 
