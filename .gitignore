@@ -1,4 +1,7 @@
-build/
-out/
-.vs/
-*.user
+node_modules/
+.clasprc.json
+dist/
+src/Secrets.gs
+.firebase/
+src/Instance.gs
+src/ImportData.gs

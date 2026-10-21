@@ -1,0 +1,516 @@
+/**
+ * Config.gs: everything you might want to change lives in the Config and
+ * Sessions tabs. This file writes the starting values (only into empty tabs,
+ * so your edits are never overwritten) and reads them back each run.
+ */
+
+// [Setting name (don't rename), starting value, what it does]
+var DEFAULT_SETTINGS = [
+  ['Train any day I can make the bus', 'TRUE', 'TRUE: any day can be a gym day (the next session in the rotation) until you hit your sessions for the week, as long as a bus or the e-bike fits after work. FALSE: only the days ticked in the weekly plan.'],
+  ['Wake time', '08:30', 'When the weigh-in alert goes off on weigh-in days'],
+  ['Weigh-in days', 'Mon, Wed', 'Days to weigh in, e.g. "Mon, Wed"'],
+  ['Weight unit', 'kg', 'What a bare number means when you weigh in: kg, st or lb. You can always type "13st 2" or "185 lb".'],
+  ['Prep before leaving (min)', '15', 'Time to change and get out the door after you are free'],
+  ['Bike: door to gym (min)', '17', 'E-bike ride each way'],
+  ['Session length (min)', 'auto', '"auto" works it out from the Sessions tab, or type a number'],
+  ['Warm-up (min)', '10', 'Added to the auto session length'],
+  ['Seconds per working set', '60', 'Used by the auto session length (includes setting up)'],
+  ['Bike: max rain chance (%)', '30', 'Above this in any hour of the trip → bus'],
+  ['Bike: max rain (mm per hour)', '0.3', 'Above this in any hour of the trip → bus'],
+  ['Bike: min temperature (°C)', '3', 'Below this → bus'],
+  ['Bike: max gusts (km/h)', '45', 'Above this → bus'],
+  ['Weather latitude', '55.8622', 'Where to check the forecast (Coatbridge)'],
+  ['Weather longitude', '-4.0266', ''],
+  ['Gym name', 'JD Gym Coatbridge', 'Shown as the event location, so Maps works'],
+  ['Daily kcal target', '1800', 'Calories per day'],
+  ['Protein min (g)', '130', 'Protein target range: bottom'],
+  ['Protein max (g)', '160', 'Protein target range: top'],
+  ['Evening food check', '23:00', 'When the "what\'s left today" alert goes off'],
+  ['Claude model', 'claude-opus-5-5', 'Model used for quick-add estimates'],
+  ['Your name', 'Dean', 'Shown in the app and to your partner'],
+  ['Partner name', 'Yaz', 'Shown in the app'],
+  ['Your nickname', 'Deany', 'What the app calls you'],
+  ['Partner nickname', 'Yazzy', 'What the app calls your partner'],
+  ['Team name', 'Yazzy & Deany', 'The two of you, together'],
+  ['Your level titles', 'DJ', 'Names for your levels: DJ, Glam, City or None'],
+  ['Partner level titles', 'Glam', 'Names for your partner\'s levels: DJ, Glam, City or None'],
+  ['Step goal', '7000', 'Steps a day (Health page)'],
+  ['Sleep goal (hours)', '8', 'Hours of sleep you aim for (Health page and sleep score)'],
+  ['Reminders', 'TRUE', 'Evening nudges when a streak is at risk'],
+  ['Your app link', '', 'Filled in automatically. Open it on your phone, then install it (see the README). Keep it private.'],
+  ['Partner app link', '', 'Filled in automatically. Send this to your partner. It opens everything except Train and Food.'],
+  ['Partner email', '', 'Optional. Your partner gets their daily quests, "join me" nudges and time\'s-up alerts by email (iPhones can\'t get app alerts).'],
+  ['Daily XP goal', '30', 'XP each of you aims for per day. Hitting it keeps your streak going.'],
+  ['Quests per day', '6', 'Most quests put on the daily board, so it never feels like a wall'],
+  ['Water goal (glasses)', '8', 'Shown on the Home tab. Set to 0 to hide it.'],
+  ['Plate step (kg)', '2.5', 'Gym weights are rounded to this'],
+  ['Email me if something breaks', 'TRUE', 'Untick to stop error emails'],
+  ['Web app URL', '', 'Filled in automatically. Used later by HC Webhook and MacroDroid.'],
+  ['Web app key', '', 'Filled in automatically. Add it to the URL as ?key=… (keep it private)']
+];
+
+// [Day, Train?, Session, Free from, Alert at]
+var DEFAULT_SCHEDULE = [
+  ['Mon', false, '', '15:00', '14:45'],
+  ['Tue', true, 'Upper A', '15:00', '14:45'],
+  ['Wed', true, 'Lower A', '15:00', '14:45'],
+  ['Thu', false, '', '16:00', '15:45'],
+  ['Fri', true, 'Upper B', '15:00', '14:45'],
+  ['Sat', true, 'Lower B', '15:00', '14:45'],
+  ['Sun', false, '', '15:00', '14:45']
+];
+
+var SESSION_HEADERS = ['Session', 'Exercise', 'Sets', 'Reps', 'RPE', 'Rest', 'Notes'];
+
+var DEFAULT_SESSIONS = [
+  ['Upper A', 'Barbell bench press', '4', '5-6', '8', '3 min', 'Top set first, then the rest'],
+  ['Upper A', 'Barbell row', '4', '6-8', '8', '2.5 min', ''],
+  ['Upper A', 'Seated DB shoulder press', '3', '8-10', '8', '2 min', ''],
+  ['Upper A', 'Lat pulldown', '3', '8-12', '8', '2 min', ''],
+  ['Upper A', 'Cable lateral raise', '3', '12-15', '9', '75 sec', ''],
+  ['Upper A', 'EZ-bar curl', '3', '10-12', '9', '75 sec', ''],
+  ['Upper A', 'Triceps pushdown', '3', '10-12', '9', '75 sec', ''],
+  ['Lower A', 'Back squat', '4', '5-6', '8', '3 min', ''],
+  ['Lower A', 'Romanian deadlift', '3', '8-10', '8', '2.5 min', ''],
+  ['Lower A', 'Leg press', '3', '10-12', '8', '2 min', ''],
+  ['Lower A', 'Lying leg curl', '3', '10-12', '9', '90 sec', ''],
+  ['Lower A', 'Standing calf raise', '4', '10-15', '9', '60 sec', ''],
+  ['Lower A', 'Hanging knee raise', '3', '10-15', '8', '60 sec', ''],
+  ['Upper B', 'Incline DB press', '4', '8-10', '8', '2 min', ''],
+  ['Upper B', 'Pull-up (or assisted)', '4', '6-8', '8', '2.5 min', ''],
+  ['Upper B', 'Chest-supported row', '3', '10-12', '8', '2 min', ''],
+  ['Upper B', 'Machine shoulder press', '3', '10-12', '8', '90 sec', ''],
+  ['Upper B', 'Rear delt fly', '3', '12-15', '9', '60 sec', ''],
+  ['Upper B', 'Hammer curl', '3', '10-12', '9', '60 sec', ''],
+  ['Upper B', 'Overhead triceps extension', '3', '10-12', '9', '60 sec', ''],
+  ['Lower B', 'Trap-bar deadlift', '3', '4-5', '7-8', '3 min', ''],
+  ['Lower B', 'Bulgarian split squat', '3', '8-10 each leg', '8', '2 min', ''],
+  ['Lower B', 'Hack squat', '3', '8-12', '8', '2 min', ''],
+  ['Lower B', 'Seated leg curl', '3', '12-15', '9', '90 sec', ''],
+  ['Lower B', 'Hip thrust', '3', '8-12', '8', '2 min', ''],
+  ['Lower B', 'Seated calf raise', '4', '12-15', '9', '60 sec', '']
+];
+
+function seedConfig_() {
+  var sh = sheet_('config');
+  if (sh.getLastRow() > 0) return false;
+  sh.getRange(1, 1, 200, 5).setNumberFormat('@');
+  var rows = [['SETTINGS', '', ''], ['Setting', 'Value', 'What it does']].concat(DEFAULT_SETTINGS);
+  sh.getRange(1, 1, rows.length, 3).setValues(rows);
+  var r = rows.length + 2;
+  sh.getRange(r, 1).setValue('WEEKLY PLAN');
+  sh.getRange(r + 1, 1, 1, 5).setValues([['Day', 'Train?', 'Session', 'Free from', 'Alert at']]);
+  sh.getRange(r + 2, 1, 7, 5).setValues(DEFAULT_SCHEDULE);
+  sh.getRange(r + 2, 2, 7, 1).setNumberFormat('General').insertCheckboxes()
+    .setValues(DEFAULT_SCHEDULE.map(function (d) { return [d[1]]; }));
+  [1, 2, r, r + 1].forEach(function (row) { sh.getRange(row, 1, 1, 5).setFontWeight('bold'); });
+  var emailRow = 3 + DEFAULT_SETTINGS.map(function (s) { return s[0]; }).indexOf('Email me if something breaks');
+  sh.getRange(emailRow, 2).setNumberFormat('General').insertCheckboxes().setValue(true);
+  sh.setColumnWidth(1, 230);
+  sh.setColumnWidth(3, 420);
+  return true;
+}
+
+// ---- Transport: the gym bus plan, edited in the Config tab ----
+var OLD_BUS_SETTINGS = ['Bus: door to gym (min)', 'Bus: gym to stop (min)', 'Last bus home'];
+var TRANSPORT_SETTINGS = [
+  ['Walk home to Whitelaw Avenue stop (min)', '2', 'The stop is about 2 minutes from home'],
+  ['Walk JD Gym to Coatbridge Bus Stance (min)', '12', 'For the bus home'],
+  ['Buffer before the bus back (min)', '2', 'Extra minutes so you are not running for it'],
+  ['Gym time: at least (min)', '75', 'A return bus has to give you at least this long in the gym'],
+  ['Gym time: at most (min)', '100', 'Preferred upper end'],
+  ['Preferred bus', '3', 'Always picked first (gets you home earliest). Others are the fallback.'],
+  ['Can leave work early by (min)', '5', 'How early you can slip out to catch a bus (Mon to Wed)'],
+  ['Thursday early finish', 'FALSE', 'Tick on Thursdays you finish at the time below'],
+  ['Thursday early finish time', '15:00', ''],
+  ['Thursday: can leave work early by (min)', '0', 'At 0, the 16:01 counts as not realistic after a 16:00 finish'],
+  ['Days off work', 'Fri, Sat, Sun', 'On these days the plan is built around the time below'],
+  ['Day off: leave around', '12:00', 'When you would like to head to the gym on a day off'],
+  ['Weekend: leave around', '14:30', 'Sat and Sun: the 3 stops early (last one home 16:41, then not until 18:30), so go early'],
+  ['Day off: session length (min)', '90', ''],
+  ['E-bike each way (min)', '17', 'No timetable; offered when it is dry'],
+  ['E-bike: leave after work (min)', '5', 'Minutes to get out the door on the bike']
+];
+var TIMETABLE_HEADERS = ['Bus', 'Way', 'Days', 'Departs', 'Door to door (min)', 'Notes'];
+// Out: from Whitelaw Avenue, door to door = departure to walking into JD Gym. Back: from Coatbridge Bus Stance (westbound), to your front door.
+var DEFAULT_TIMETABLE = [
+  ['3', 'Out', 'Mon-Fri', '15:01, 16:01', '13', 'Whitelaw Avenue to Coatbridge, then a 4 min walk'],
+  ['132', 'Out', 'Mon-Fri', '18:18, 19:18, 20:18', '17', 'Includes the 12 min walk to the gym'],
+  ['3', 'Back', 'Mon-Fri', '16:41, 18:30', '14', 'Coatbridge Bus Stance (westbound) to home'],
+  ['3', 'Back', 'Mon-Fri', '17:15', '11', ''],
+  ['132', 'Back', 'Mon-Fri', '18:30, 19:30, 20:30', '8', ''],
+].concat(WEEKEND_TIMETABLE_());
+// Saturday afternoon from Google Maps (Oct 2026), used for Sunday too until Sunday's are checked. Add earlier times if you want them.
+function WEEKEND_TIMETABLE_() {
+  return [
+    ['3', 'Out', 'Sat-Sun', '15:01, 16:01', '13', 'Weekend: Whitelaw Avenue. Add morning times here if you go earlier'],
+    ['132', 'Out', 'Sat-Sun', '18:18, 19:18', '17', ''],
+    ['3', 'Back', 'Sat-Sun', '16:41, 18:30', '14', 'Weekend: last 3 home 16:41, then not until 18:30'],
+    ['132', 'Back', 'Sat-Sun', '18:30, 19:30, 20:30', '8', '']
+  ];
+}
+
+/**
+ * Once: the weekend bus times changed. Weekend-only rows in the Transport timetable are copied to the Archive tab,
+ * then replaced with the current ones; the "Weekend: leave around" setting is added. Weekday rows are left alone.
+ */
+function ensureWeekendBus_() {
+  if (prop_('BUS_WKND_V1')) return;
+  ensureTransport_();   // adds any new transport settings
+  var sh = sheet_('config'), rows = sh.getDataRange().getValues(), head = -1, end = -1, old = [], at = [];
+  for (var i = 0; i < rows.length; i++) {
+    var a = String(rows[i][0]).trim();
+    if (a === 'Bus') { head = i; continue; }
+    if (head === -1) continue;
+    if (!a) { if (end === -1 && i > head + 1) end = i; continue; }
+    if (end !== -1) break;
+    var days = parseDayRange(rows[i][2]);
+    if (days.length && days.every(function (d) { return d === 0 || d === 6; })) { old.push(rows[i].slice(0, 6)); at.push(i); }
+  }
+  if (head === -1) { setProp_('BUS_WKND_V1', '1'); return; }
+  var now = WEEKEND_TIMETABLE_().map(function (r) { return r.slice(0, 4).join('|'); });
+  if (old.length && old.some(function (r) { return now.indexOf(r.slice(0, 4).map(String).join('|')) === -1; })) archive_('Transport', 'Weekend bus times before the October 2026 change', old);
+  // the new rows go in first (after the last timetable row), then the old weekend rows come out, bottom up
+  var last = head;
+  for (i = head + 1; i < rows.length && String(rows[i][0]).trim(); i++) last = i;
+  var add = WEEKEND_TIMETABLE_();
+  for (k = 0; k < add.length; k++) sh.insertRowAfter(last + 1);
+  sh.getRange(last + 2, 1, add.length, 6).setNumberFormat('@').setValues(add);
+  for (var k = at.length - 1; k >= 0; k--) sh.deleteRow(at[k] + 1);
+  forget_('config'); configCache_ = null;
+  setProp_('BUS_WKND_V1', '1');
+  // a weekend today: the plan made this morning used the old times
+  var today = todayYmd_(), dw = dayOfWeek_(today);
+  if ((dw === 0 || dw === 6) && rotationDoneOn_(today) === '') { try { if (todaySession_(today)) planGymDay_(today, readConfig_()); } catch (e) { log_('WARN', 'Re-planning after the weekend bus change: ' + e); } }
+}
+
+/** Adds the TRANSPORT section to the Config tab (once) and takes out the old bus settings. */
+function ensureTransport_() {
+  var sh = sheet_('config'), rows = sh.getDataRange().getValues();
+  var has = rows.some(function (r) { return String(r[0]).trim() === 'Transport setting'; });
+  for (var i = rows.length - 1; i >= 0; i--) if (OLD_BUS_SETTINGS.indexOf(String(rows[i][0]).trim()) !== -1) sh.deleteRow(i + 1);
+  if (!has) {
+    var r = sh.getLastRow() + 2;
+    var block = [['TRANSPORT', '', '', '', '', ''], ['Transport setting', 'Value', 'What it does', '', '', '']]
+      .concat(TRANSPORT_SETTINGS.map(function (t) { return [t[0], t[1], t[2], '', '', '']; }))
+      .concat([['', '', '', '', '', ''], TIMETABLE_HEADERS]).concat(DEFAULT_TIMETABLE);
+    sh.getRange(r, 1, block.length, 6).setNumberFormat('@').setValues(block);
+    [r, r + 1, r + 2 + TRANSPORT_SETTINGS.length + 1].forEach(function (x) { sh.getRange(x, 1, 1, 6).setFontWeight('bold'); });
+    var tRow = r + 2 + TRANSPORT_SETTINGS.map(function (t) { return t[0]; }).indexOf('Thursday early finish');
+    sh.getRange(tRow, 2).setNumberFormat('General').insertCheckboxes().setValue(false);
+    setProp_('BUS_WKND_V1', '1');   // a new Transport section already has the current weekend times
+  } else {
+    // newer settings added later go in at the end of the transport list
+    var at = -1, have = {};
+    rows = sh.getDataRange().getValues();
+    for (i = 0; i < rows.length; i++) { var a = String(rows[i][0]).trim(); if (a === 'Transport setting') at = i; else if (at !== -1 && a && a !== 'Bus') { have[a] = true; } if (a === 'Bus') break; }
+    var last = at + 1 + Object.keys(have).length;
+    TRANSPORT_SETTINGS.forEach(function (t) { if (!have[t[0]]) { sh.insertRowAfter(last); last++; sh.getRange(last, 1, 1, 3).setNumberFormat('@').setValues([t]); } });
+  }
+  forget_('config'); configCache_ = null;
+  setProp_('TRANSPORT_V1', '1');
+}
+
+var PRESET_HEADERS = ['Food', 'kcal', 'Protein (g)'];
+
+// Placeholders until your own list goes in. One row per button, in this order.
+var DEFAULT_PRESETS = [
+  ['Protein shake', '120', '24'],
+  ['Greek yogurt 0% (170g)', '95', '17'],
+  ['Weetabix Protein ×2 + 200ml semi-skimmed', '300', '23'],
+  ['Chicken breast (150g)', '240', '46'],
+  ['Banana', '105', '1'],
+  ['Coffee with milk', '30', '2']
+];
+
+function seedPresets_() {
+  var sh = sheet_('presets');
+  if (sh.getLastRow() > 0) return false;
+  sh.getRange(1, 1, 1, PRESET_HEADERS.length).setValues([PRESET_HEADERS]).setFontWeight('bold');
+  sh.getRange(2, 1, DEFAULT_PRESETS.length, PRESET_HEADERS.length).setValues(DEFAULT_PRESETS);
+  sh.setFrozenRows(1);
+  sh.setColumnWidth(1, 280);
+  return true;
+}
+
+function readPresets_() {
+  var rows = vals_('presets');
+  var out = [];
+  for (var i = 1; i < rows.length; i++) {
+    var name = String(rows[i][0]).trim();
+    if (!name) continue;
+    out.push({ name: name, kcal: Number(rows[i][1]) || 0, protein: Number(rows[i][2]) || 0 });
+  }
+  return out;
+}
+
+/** Adds settings introduced after your Config tab was first made, without touching your values. */
+function ensureSettings_() {
+  var sh = sheet_('config');
+  var rows = sh.getDataRange().getValues();
+  var have = {};
+  var lastSettingRow = 0;
+  var inSettings = false;
+  for (var i = 0; i < rows.length; i++) {
+    var a = String(rows[i][0]).trim();
+    if (a === 'Setting') { inSettings = true; continue; }
+    if (inSettings && !a) break;
+    if (inSettings) { have[a] = true; lastSettingRow = i + 1; }
+  }
+  if (!lastSettingRow) return;
+  DEFAULT_SETTINGS.forEach(function (d) {
+    if (have[d[0]]) return;
+    sh.insertRowAfter(lastSettingRow);
+    lastSettingRow++;
+    sh.getRange(lastSettingRow, 1, 1, 3).setNumberFormat('@').setValues([d]);
+  });
+}
+
+var CHORE_HEADERS = ['Job', 'Minutes', 'Steps (separate with ;)'];
+
+// Typical times for one person at a steady pace. Change them to match your house.
+var DEFAULT_CHORES = [
+  ['Do the dishes', '15', 'Clear and scrape plates; Fill the sink or load the dishwasher; Wash or load everything; Dry and put away (or start the dishwasher); Wipe the counters and sink'],
+  ['Change the bedding', '15', 'Strip the bed; Put the sheets in the wash; Fitted sheet on; Duvet cover on; Pillowcases on'],
+  ['Hoover downstairs', '20', 'Pick things up off the floor; Hoover the living room; Hoover the hall and stairs; Hoover the kitchen; Empty the hoover'],
+  ['Put a wash on', '5', 'Gather the washing; Sort lights and darks; Load the machine; Add detergent and start it'],
+  ['Hang up or fold laundry', '15', 'Empty the machine; Hang or fold; Put it away'],
+  ['Clean the bathroom', '20', 'Spray the toilet, sink and shower; Scrub the toilet; Wipe the sink and taps; Rinse the shower or bath; Wipe the mirror; Mop the floor'],
+  ['Tidy the living room', '10', 'Rubbish in the bin; Cups and plates to the kitchen; Things back where they live; Cushions and throws straight'],
+  ['Wipe down the kitchen', '10', 'Clear the counters; Spray and wipe counters; Wipe the hob; Wipe the table'],
+  ['Take the bins out', '5', 'Empty the small bins into the big one; New bin bags in; Bins out to the kerb'],
+  ['10-minute reset', '10', 'Rubbish in the bin; Dishes to the kitchen; Clothes to the wash basket; Clear one surface']
+];
+
+function seedChores_() {
+  var sh = sheet_('chores');
+  if (sh.getLastRow() > 0) return false;
+  sh.getRange(1, 1, 1, CHORE_HEADERS.length).setValues([CHORE_HEADERS]).setFontWeight('bold');
+  sh.getRange(2, 1, DEFAULT_CHORES.length, CHORE_HEADERS.length).setValues(DEFAULT_CHORES);
+  sh.setFrozenRows(1);
+  sh.setColumnWidth(1, 200);
+  sh.setColumnWidth(3, 600);
+  return true;
+}
+
+// ---------- Quests (the Chores tab, extended) ----------
+
+// Columns added to the Chores tab. Every: daily, 3 days, weekly, 2 weeks,
+// monthly, monthly 15, yearly, or weekdays like "Wed". Who: Anyone / Me / Partner.
+var QUEST_COLUMNS = ['Every', 'Who', 'Energy', 'XP', 'Last done', 'Last done by', 'Next due', 'Area', 'Time of day', 'Notes', 'Archived', 'Order', 'Now (days)', 'Goal (days)', 'Ramp from', 'Key', 'After'];
+
+// [Job, Minutes, Steps, Every, Who, Energy]
+var DEFAULT_QUESTS = [
+  ['Do the dishes', '15', '', 'daily', 'Anyone', 'Low'],
+  ['Change the bedding', '15', '', '2 weeks', 'Anyone', 'Medium'],
+  ['Hoover downstairs', '20', '', '4 days', 'Anyone', 'Medium'],
+  ['Put a wash on', '5', '', '3 days', 'Anyone', 'Low'],
+  ['Hang up or fold laundry', '15', '', '3 days', 'Anyone', 'Low'],
+  ['Clean the bathroom', '20', '', 'weekly', 'Anyone', 'High'],
+  ['Tidy the living room', '10', '', '2 days', 'Anyone', 'Low'],
+  ['Wipe down the kitchen', '10', '', 'daily', 'Anyone', 'Low'],
+  ['Take the bins out', '5', '', 'Wed', 'Anyone', 'Low'],
+  ['10-minute reset', '10', '', 'as needed', 'Anyone', 'Low'],
+  ['Wash the towels', '5', 'Gather the towels; Load the machine; Add detergent and start it', 'weekly', 'Anyone', 'Low'],
+  ['Food shop', '45', 'Check the fridge and cupboards; Check the shopping list in the app; Go or order online; Put it all away', 'weekly', 'Anyone', 'Medium'],
+  ['Mop the kitchen floor', '10', 'Clear the floor; Sweep or hoover; Mop; Let it dry', 'weekly', 'Anyone', 'Medium'],
+  ['Clean the microwave', '5', 'Bowl of water and lemon in for 3 min; Wipe inside; Wipe the door and handle', '2 weeks', 'Anyone', 'Low'],
+  ['Clean out the fridge', '20', 'Bin anything out of date; Take shelves out if needed; Wipe the shelves; Put food back, oldest at the front', 'monthly', 'Anyone', 'Medium'],
+  ['Descale the kettle', '5', 'Fill halfway with water and a splash of vinegar or descaler; Boil and leave 20 min; Empty and rinse twice', '2 months', 'Anyone', 'Low'],
+  ['Washing machine clean cycle', '5', 'Wipe the door seal; Clean the drawer; Run an empty hot wash with cleaner', 'monthly', 'Anyone', 'Low'],
+  ['Clean the oven', '40', 'Take the racks out to soak; Spray the inside; Wait 15 min; Scrub and wipe; Racks back in', '3 months', 'Anyone', 'High'],
+  ['Sort one pile', '10', 'Pick one pile, only one; Bin anything that is rubbish; Put away things that live in this room; Things for other rooms go in a basket; Decide on the rest: keep, donate or bin', 'as needed', 'Anyone', 'Low'],
+  ['Declutter one drawer', '10', 'Empty the drawer; Bin the rubbish; Put back only what belongs there; Donate bag for the rest', 'monthly', 'Anyone', 'Low'],
+  ['Check bills and subscriptions', '15', 'Open your banking app; Check what went out this month; Cancel anything you don\'t use; Note any bills due soon', 'monthly 1', 'Me', 'Medium'],
+  ['E-bike check', '10', 'Pump the tyres; Check the brakes; Clean and oil the chain; Charge the battery', '2 weeks', 'Me', 'Low'],
+  ['E-bike service', '10', 'Book a service at a bike shop', '6 months', 'Me', 'Low'],
+  ['Book the dentist', '5', 'Call or book online; Put it in the calendar', '6 months', 'Anyone', 'Low'],
+  ['Book the boiler service', '5', 'Call the landlord or engineer; Put the date in the calendar', 'yearly', 'Anyone', 'Low'],
+  ['Change toothbrush heads', '2', '', '3 months', 'Anyone', 'Low']
+];
+
+/** Adds the quest columns to the Chores tab and the starter quests (once), keeping your edits. */
+function ensureQuests_() {
+  var sh = sheet_('chores');
+  var lastCol = Math.max(sh.getLastColumn(), 1);
+  var head = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  QUEST_COLUMNS.forEach(function (h) {
+    if (head.indexOf(h) === -1) {
+      sh.getRange(1, head.filter(String).length + 1).setValue(h).setFontWeight('bold');
+      head[head.filter(String).length] = h;
+    }
+  });
+  var props = PROPS;
+  if (props.getProperty('QUESTS_V2')) return;
+  var map = headerMap_(sh);
+  var rows = sh.getDataRange().getValues();
+  var names = rows.slice(1).map(function (r) { return String(r[0]).trim(); });
+  DEFAULT_QUESTS.forEach(function (q) {
+    var i = names.indexOf(q[0]);
+    if (i !== -1) {
+      var r = i + 2;
+      if (!rows[i + 1][map['Every']]) sh.getRange(r, map['Every'] + 1).setValue(q[3]);
+      if (!rows[i + 1][map['Who']]) sh.getRange(r, map['Who'] + 1).setValue(q[4]);
+      if (!rows[i + 1][map['Energy']]) sh.getRange(r, map['Energy'] + 1).setValue(q[5]);
+    } else {
+      var row = [];
+      for (var c = 0; c < sh.getLastColumn(); c++) row.push('');
+      row[0] = q[0]; row[1] = q[1]; row[2] = q[2];
+      row[map['Every']] = q[3]; row[map['Who']] = q[4]; row[map['Energy']] = q[5];
+      sh.getRange(sh.getLastRow() + 1, 1, 1, row.length).setValues([row]);
+    }
+  });
+  sh.getRange(2, map['Every'] + 1, Math.max(sh.getLastRow() - 1, 1), 1).setNumberFormat('@');
+  sh.getRange(2, map['Last done'] + 1, Math.max(sh.getLastRow() - 1, 1), 1).setNumberFormat('@');
+  props.setProperty('QUESTS_V2', '1');
+}
+
+// ---------- Routines ----------
+
+var DEFAULT_ROUTINES = [
+  ['Morning', 'Me', '08:30', 'Meds (if you take them); Glass of water; Teeth; Get dressed'],
+  ['Evening', 'Me', '22:30', 'Phone on charge; Keys, wallet and headphones by the door; Gym bag ready if training tomorrow; Teeth; Set out tomorrow\'s clothes']
+];
+
+function seedSimple_(key, headers, rows, widths) {
+  var sh = sheet_(key);
+  if (sh.getLastRow() > 0) return false;
+  sh.getRange(1, 1, 500, headers.length).setNumberFormat('@');
+  sh.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight('bold');
+  sh.getRange(2, 1, rows.length, headers.length).setValues(rows);
+  sh.setFrozenRows(1);
+  (widths || []).forEach(function (w, i) { if (w) sh.setColumnWidth(i + 1, w); });
+  return true;
+}
+
+// ---------- Strength programme (nSuns-style upper/lower) ----------
+
+var DEFAULT_LIFTS = [
+  ['Bench press', '', 'Upper'],
+  ['Overhead press', '', 'Upper'],
+  ['Squat', '', 'Lower'],
+  ['Deadlift', '', 'Lower']
+];
+
+// [Session, T1 lift, T1 sets (% of TM x reps, + = as many as you can), T2 lift, T2 % of, T2 sets]
+var DEFAULT_PROGRAMME = [
+  ['Upper A', 'Bench press', '75x5, 85x3, 95x1+, 90x3, 85x3, 80x3, 75x5, 70x5, 65x5+', 'Overhead press', 'Overhead press', '50x6, 60x5, 70x3, 70x5, 70x7, 70x4, 70x6, 70x8'],
+  ['Lower A', 'Squat', '75x5, 85x3, 95x1+, 90x3, 85x3, 80x3, 75x5, 70x5, 65x5+', 'Sumo deadlift', 'Deadlift', '50x5, 60x5, 70x3, 70x5, 70x7, 70x4, 70x6, 70x8'],
+  ['Upper B', 'Overhead press', '75x5, 85x3, 95x1+, 90x3, 85x3, 80x3, 75x5, 70x5, 65x5+', 'Incline bench press', 'Bench press', '40x6, 50x5, 60x3, 60x5, 60x7, 60x4, 60x6, 60x8'],
+  ['Lower B', 'Deadlift', '75x5, 85x3, 95x1+, 90x3, 85x3, 80x3, 75x3, 70x3, 65x3+', 'Front squat', 'Squat', '35x5, 45x5, 55x3, 55x5, 55x7, 55x4, 55x6, 55x8']
+];
+
+// Accessories after the two main lifts (the Sessions tab).
+var ACCESSORY_SESSIONS = [
+  ['Upper A', 'Barbell row', '4', '6-8', '8', '2 min', ''],
+  ['Upper A', 'Lat pulldown', '3', '8-12', '8', '90 sec', ''],
+  ['Upper A', 'Cable lateral raise', '3', '12-15', '9', '60 sec', ''],
+  ['Upper A', 'EZ-bar curl', '3', '10-12', '9', '60 sec', ''],
+  ['Upper A', 'Triceps pushdown', '3', '10-12', '9', '60 sec', ''],
+  ['Lower A', 'Leg press', '3', '10-12', '8', '2 min', ''],
+  ['Lower A', 'Lying leg curl', '3', '10-12', '9', '90 sec', ''],
+  ['Lower A', 'Standing calf raise', '4', '10-15', '9', '60 sec', ''],
+  ['Lower A', 'Hanging knee raise', '3', '10-15', '8', '60 sec', ''],
+  ['Upper B', 'Pull-up (or assisted)', '4', '6-8', '8', '2 min', ''],
+  ['Upper B', 'Chest-supported row', '3', '10-12', '8', '90 sec', ''],
+  ['Upper B', 'Rear delt fly', '3', '12-15', '9', '60 sec', ''],
+  ['Upper B', 'Hammer curl', '3', '10-12', '9', '60 sec', ''],
+  ['Upper B', 'Overhead triceps extension', '3', '10-12', '9', '60 sec', ''],
+  ['Lower B', 'Bulgarian split squat', '3', '8-10 each leg', '8', '90 sec', ''],
+  ['Lower B', 'Seated leg curl', '3', '12-15', '9', '60 sec', ''],
+  ['Lower B', 'Hip thrust', '3', '8-12', '8', '90 sec', ''],
+  ['Lower B', 'Seated calf raise', '4', '12-15', '9', '60 sec', '']
+];
+
+/** If the Sessions tab still holds the original starter list, swap it for accessories (the main lifts now live in Programme). */
+function upgradeSessions_() {
+  var sh = sheet_('sessions');
+  var rows = sh.getDataRange().getValues().slice(1).filter(function (r) { return String(r[0]).trim(); });
+  var same = rows.length === DEFAULT_SESSIONS.length && rows.every(function (r, i) {
+    return String(r[0]) === DEFAULT_SESSIONS[i][0] && String(r[1]) === DEFAULT_SESSIONS[i][1];
+  });
+  if (!same) return false;
+  sh.getRange(2, 1, Math.max(sh.getLastRow() - 1, 1), SESSION_HEADERS.length).clearContent();
+  sh.getRange(2, 1, ACCESSORY_SESSIONS.length, SESSION_HEADERS.length).setValues(ACCESSORY_SESSIONS);
+  return true;
+}
+
+function seedSessions_() {
+  var sh = sheet_('sessions');
+  if (sh.getLastRow() > 0) return false;
+  sh.getRange(1, 1, 500, SESSION_HEADERS.length).setNumberFormat('@');
+  sh.getRange(1, 1, 1, SESSION_HEADERS.length).setValues([SESSION_HEADERS]).setFontWeight('bold');
+  sh.getRange(2, 1, ACCESSORY_SESSIONS.length, SESSION_HEADERS.length).setValues(ACCESSORY_SESSIONS);
+  sh.setFrozenRows(1);
+  return true;
+}
+
+/** Read the Config and Sessions tabs into a plain object. */
+function readConfig_() {
+  if (configCache_) return configCache_;
+  var rows = vals_('config');
+  var settings = {};
+  var schedule = {};
+  var timetable = [];
+  var mode = '';
+  rows.forEach(function (row) {
+    var a = String(row[0]).trim();
+    if (a === 'Setting' || a === 'Transport setting') { mode = 'settings'; return; }
+    if (a === 'Day') { mode = 'schedule'; return; }
+    if (a === 'Bus') { mode = 'timetable'; return; }
+    if (!a || a === 'SETTINGS' || a === 'WEEKLY PLAN' || a === 'TRANSPORT') return;
+    if (mode === 'timetable') {
+      var way = String(row[1]).trim().toLowerCase();
+      timetable.push({ route: a, way: /^b|^ret|home/.test(way) ? 'back' : 'out', days: parseDayRange(row[2]), times: parseTimes(row[3] instanceof Date ? Utilities.formatDate(row[3], TZ, 'HH:mm') : row[3]), door: Number(row[4]) || 0, notes: String(row[5] || '') });
+      return;
+    }
+    if (mode === 'settings') settings[a] = row[1];
+    if (mode === 'schedule') {
+      var d = parseDays(a)[0];
+      if (d === undefined) return;
+      schedule[d] = {
+        train: row[1] === true || /^(true|yes|y|x|✓)$/i.test(String(row[1]).trim()),
+        session: String(row[2]).trim(),
+        freeFrom: cellClock_(row[3]),
+        alertAt: cellClock_(row[4])
+      };
+    }
+  });
+
+  var sessions = {};
+  var srows = vals_('sessions');
+  var h = srows[0].map(function (x) { return String(x).trim().toLowerCase(); });
+  for (var i = 1; i < srows.length; i++) {
+    var r = srows[i];
+    var name = String(r[h.indexOf('session')]).trim();
+    if (!name || /^Old: /.test(name)) continue;   // the retired Upper/Lower programme stays in the Sheet, unused
+    (sessions[name] = sessions[name] || []).push({
+      exercise: r[h.indexOf('exercise')], sets: r[h.indexOf('sets')], reps: r[h.indexOf('reps')],
+      rpe: r[h.indexOf('rpe')], rest: r[h.indexOf('rest')], notes: h.indexOf('notes') >= 0 ? r[h.indexOf('notes')] : ''
+    });
+  }
+  return (configCache_ = { settings: settings, schedule: schedule, sessions: sessions, timetable: timetable });
+}
+
+/** Times typed into Sheets can come back as Date objects. */
+function cellClock_(v) {
+  if (v instanceof Date) return parseClock(Utilities.formatDate(v, TZ, 'HH:mm'));
+  return parseClock(v);
+}
+
+function num_(settings, key, fallback) {
+  var v = Number(String(settings[key] === undefined ? '' : settings[key]).replace(',', '.'));
+  return isNaN(v) || settings[key] === '' || settings[key] === undefined ? fallback : v;
+}
+
+function setSetting_(key, value) {
+  var rows = vals_('config');
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i][0]).trim() === key) {
+      sheet_('config').getRange(i + 1, 2).setValue(value);
+      rows[i][1] = value;
+      derived_('config');
+      return;
+    }
+  }
+}

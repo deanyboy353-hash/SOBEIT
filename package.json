@@ -1,0 +1,17 @@
+{
+  "name": "sobeit-life-automation",
+  "private": true,
+  "description": "Nudge: chores, training, food and daily games for two (Apps Script backend, installable app)",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "test": "node scripts/build.js && node --test test/*.test.js",
+    "push": "node scripts/build.js && clasp push --force",
+    "deploy": "node scripts/build.js && clasp push --force && clasp update-deployment AKfycbyGglsy-_DOdaCn7DFhNyD8JH89jGapkUXUHdWp-JmdpuupiMPPEp6gm8e23x-yOVbsYQ --description update",
+    "publish": "node scripts/build.js && firebase deploy --only hosting"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^3.0.4",
+    "fake-indexeddb": "^6.0.0",
+    "firebase": "^10.14.1"
+  }
+}
