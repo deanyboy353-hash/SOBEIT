@@ -162,7 +162,7 @@ test('Sunday summary includes daily food averages, gym, weight and the week ahea
   assert.match(d, /1 of 2 sessions done \(Wed Lower A\)/);
   assert.match(d, /83\.5 → 83\.1 kg \(-0\.4\)/);
   assert.match(d, /CHORES\nDean: 2 jobs, 32 min · Yaz: 1 job, 14 min/);
-  assert.match(d, /Mon: weigh-in\nTue: Upper B\nWed: Lower B · weigh-in\nFri: Upper A\nSat: Lower A/);
+  assert.match(d, /Mon: weigh-in\nTue: Upper A\nWed: Lower A · weigh-in\nFri: Upper B\nSat: Lower B/);
 });
 
 test('photo food: sends the image to Claude, logs what it saw, rejects non-photos and empty plates', () => {

@@ -48,7 +48,7 @@ function dayContext_(who) {
   if (who === 'me') {
     var t = todayState_();
     if (t.gym) lines.push('Training day: ' + t.gym.session + ' session' + (t.gym.done ? ' (already done today)' : '') + (t.gym.travel ? '. Getting there: ' + t.gym.travel + ', leave by ' + t.gym.leaveAt + (t.gym.plan ? ' (' + String(t.gym.plan).split('\n')[0] + ')' : '') : '') + (t.gym.homeBy ? ', home by ' + t.gym.homeBy : '') + (t.gym.weather ? '. Weather: ' + t.gym.weather : '') + '.');
-    else lines.push('Rest day from the gym. Next session: ' + rotationNext_(todayYmd_()) + ' (split: ' + SPLITS[splitState_().split].name + '; the rotation moves on only when a session is done).');
+    else lines.push('Rest day from the gym. Next session: ' + rotationNext_(todayYmd_()) + ' (split: ' + SPLITS[splitState_().split].name + '; picked by what has rested longest).');
     if (t.weighDay && !t.weighedToday) lines.push('It is a weigh-in day.');
     try {
       var evs = CalendarApp.getDefaultCalendar().getEvents(atTime_(todayYmd_(), 0), atTime_(addDays_(todayYmd_(), 1), 0))

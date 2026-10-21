@@ -130,7 +130,7 @@ test('today\'s workout can change: the plan and calendar event follow', () => {
   assert.strictEqual(s.today.gym.session, 'Shoulders & Arms');
   assert.ok(s.today.gym.done);
   assert.throws(() => g.ctx.setTodaySession(me, 'Push'), /already logged/);
-  assert.strictEqual(g.ctx.trainState(me).rotationNext, 'Upper A', 'nothing done before today: the rotation still starts at Upper A');
+  assert.strictEqual(g.ctx.trainState(me).rotationNext, 'Lower A', 'shoulders and arms today: lower body next');
 });
 
 test('HC Webhook test syncs are ignored, and a history import rebuilds whole days', () => {

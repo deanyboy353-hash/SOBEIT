@@ -232,16 +232,53 @@ function mainDone_(toYmd) {
   try { rowsBetween_('gym', '0000', toYmd).forEach(function (r) { if (/^Done/.test(String(r['Status'] || ''))) add(String(r['Date']), String(r['Template'] || '') || LEGACY_TEMPLATES[String(r['Session'])]); }); } catch (e) { /* no gym log yet */ }
   return out.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
 }
-/** The next main session's template id, counting sessions done up to (and including) `throughYmd`. */
+/**
+ * The next main session: the one whose muscles have rested longest. Every workout counts (presets, the Pump, imports,
+ * your own, Gym done ticks), so a lower day is never followed by another lower day. Days off move nothing.
+ */
 function nextTemplate_(throughYmd) {
-  var st = splitState_(), order = SPLITS[st.split].order, skipped = 0;
-  var done = mainDone_(throughYmd).filter(function (x) {
-    if (order.indexOf(x.template) === -1 || x.date < st.since) return false;
-    if (x.date === st.since && skipped < st.skip) { skipped++; return false; }
-    return true;
+  var order = SPLITS[splitState_().split].order, edits = tplEdits_(), hit = {};
+  var mem = gymMemories_(addDays_(throughYmd, -REST_CAP), throughYmd);
+  Object.keys(mem).sort().forEach(function (d) {
+    var m = mem[d].m, id = mem[d].g ? templateByName_(mem[d].w[0].n) : '';
+    if (mem[d].g) { if (id && tplDef_(id)) Object.keys(templateParts_(id, edits)).forEach(function (p) { hit[p] = d; }); return; }
+    Object.keys(m).forEach(function (p) { if (m[p] >= 1) hit[p] = d; });     // a working set, or two as a helper
   });
-  return rotationAfter(order, done.map(function (x) { return x.template; }));
+  var lastDone = {}, from = addDays_(throughYmd, -REST_CAP);
+  mainDone_(throughYmd).forEach(function (x) {      // a session logged or ticked worked what its template works, whatever sets made it in
+    lastDone[x.template] = x.date;
+    if (x.date >= from) Object.keys(templateParts_(x.template, edits)).forEach(function (p) { if (!hit[p] || hit[p] < x.date) hit[p] = x.date; });
+  });
+  return pickSession(order, order.map(function (id) { return templateParts_(id, edits); }), hit, lastDone, throughYmd);
 }
+/** A template's main parts of the body, weighted by sets: { quad: 7, ham: 6, ... }. */
+function templateParts_(id, edits) {
+  var parts = {};
+  templateOf_(id, edits).ex.forEach(function (x) { var p = bodyOf(x.exercise)[0]; if (p) parts[p] = (parts[p] || 0) + x.sets; });
+  return parts;
+}
+/**
+ * Pure: which session goes next. First the half of the body (upper or lower) that has rested longest, so lower never
+ * follows lower; then, within it, the session whose parts have rested longest (each part's days since, capped at REST_CAP,
+ * never = the cap, weighted by sets); within a day of the best, the one done least recently, then the split's order.
+ */
+var REST_CAP = 14, LOWER_PARTS = { quad: 1, ham: 1, glute: 1, calf: 1 };
+function pickSession(order, parts, lastHit, lastDone, ymd) {
+  var rest = function (d) { return d ? Math.min(REST_CAP, Math.max(0, ymdToDays(ymd) - ymdToDays(d))) : REST_CAP; };
+  var half = function (p) { return p === 'abs' || p === 'lower' ? '' : LOWER_PARTS[p] ? 'lower' : 'upper'; };
+  var halfHit = {}; Object.keys(lastHit).forEach(function (p) { var h = half(p); if (h && (!halfHit[h] || halfHit[h] < lastHit[p])) halfHit[h] = lastHit[p]; });
+  var c = order.map(function (id, i) {
+    var w = 0, s = 0, by = { upper: 0, lower: 0 };
+    Object.keys(parts[i] || {}).forEach(function (p) { var n = parts[i][p]; w += n; s += n * rest(lastHit[p]); if (half(p)) by[half(p)] += n; });
+    return { id: id, i: i, half: rest(halfHit[by.lower > by.upper ? 'lower' : 'upper']), score: w ? s / w : REST_CAP, done: lastDone[id] || '' };
+  });
+  var topHalf = Math.max.apply(null, c.map(function (x) { return x.half; }));
+  c = c.filter(function (x) { return x.half === topHalf; });
+  var top = Math.max.apply(null, c.map(function (x) { return x.score; })), pick = null;
+  c.forEach(function (x) { if (x.score >= top - 1 && (!pick || x.done < pick.done)) pick = x; });
+  return pick.id;
+}
+
 /** Main sessions this week (Monday to Sunday) towards the target. */
 function weekMain_(ymd) {
   var mon = addDays_(ymd, -((dayOfWeek_(ymd) + 6) % 7)), days = {};
@@ -252,9 +289,8 @@ function weekMain_(ymd) {
 
 /** What the Train tab and the gym card need about the split. */
 function splitInfo_(ymd) {
-  var st = splitState_(), sp = SPLITS[st.split], edits = tplEdits_(), next = nextTemplate_(addDays_(ymd, -1));
+  var st = splitState_(), sp = SPLITS[st.split], edits = tplEdits_(), next = nextTemplate_(ymd);     // anything trained today counts
   var doneToday = mainDone_(ymd).filter(function (x) { return x.date === ymd; }).map(function (x) { return x.template; });
-  if (doneToday.length && sp.order.indexOf(doneToday[doneToday.length - 1]) !== -1) next = nextTemplate_(ymd);
   return {
     split: st.split, name: sp.name, since: st.since,
     presets: presetIds_().map(function (id) { var t = tplDef_(id); return { id: id, name: t.name, focus: t.focus, mins: t.mins, extra: !!t.extra, mine: !!t.mine }; }),
@@ -468,7 +504,7 @@ function resetTemplate(key, id) {
   });
 }
 
-/** Save your own workout (a new one, or replace yours with this id). It shows with the presets: any day, a full gym session, the rotation stays put. */
+/** Save your own workout (a new one, or replace yours with this id). It shows with the presets: any day, a full gym session. */
 function saveMyWorkout(key, name, rows, id) {
   requireKey_(key);
   name = String(name || '').trim().slice(0, 40);

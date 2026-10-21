@@ -185,7 +185,7 @@ function saveWorkout(key, session, sets, meta) {
   meta = meta || {};
   session = String(session || 'Workout').trim().slice(0, 60) || 'Workout';
   return withLock_(function () {
-    var today = todayYmd_(), wid = Utilities.getUuid().replace(/-/g, '').slice(0, 10);
+    var today = todayYmd_(), day = workoutDay_(meta, today), wid = Utilities.getUuid().replace(/-/g, '').slice(0, 10);
     var tpl = tplDef_(meta.template) ? String(meta.template) : templateByName_(session);
     if (tpl) session = tplDef_(tpl).name;
     var done = (sets || []).filter(function (s) { return Number(s.reps) > 0 && Number(s.weight) >= 0; });
@@ -193,9 +193,9 @@ function saveWorkout(key, session, sets, meta) {
     // sent twice (a retry after a lost answer, or Finish tapped again)? Same id, or exactly the same sets today: already saved
     if (/^[a-z0-9]{6,24}$/.test(String(meta.wid || ''))) wid = String(meta.wid);
     var sig = function (list) { return list.map(function (s) { return String(s.exercise).toLowerCase() + ':' + Number(s.weight) + 'x' + Number(s.reps); }).join('|'); };
-    var mine = sig(done), already = rowsBetween_('workouts', today, today).some(function (r) { return String(r['ID']) === wid; });
+    var mine = sig(done), already = rowsBetween_('workouts', day, day).some(function (r) { return String(r['ID']) === wid; });
     if (!already) {
-      var byW = {}; rowsBetween_('workoutLog', today, today).forEach(function (r) { var k = String(r['Workout'] || ''); (byW[k] = byW[k] || []).push({ exercise: r['Exercise'], weight: r['Weight (kg)'], reps: r['Reps'] }); });
+      var byW = {}; rowsBetween_('workoutLog', day, day).forEach(function (r) { var k = String(r['Workout'] || ''); (byW[k] = byW[k] || []).push({ exercise: r['Exercise'], weight: r['Weight (kg)'], reps: r['Reps'] }); });
       already = Object.keys(byW).some(function (k) { return sig(byW[k]) === mine; });
     }
     if (already) return { changes: [], prs: [], minutes: '', volume: Math.round(done.reduce(function (a, s) { return a + Number(s.weight) * Number(s.reps); }, 0)), sets: done.length, bonus: 0, extra: tpl === PUMP_ID, duplicate: true, state: appState_('me') };
@@ -209,7 +209,7 @@ function saveWorkout(key, session, sets, meta) {
       var type = /^[WDF]$/.test(String(s.type || '')) ? String(s.type) : '';
       var est = type === 'W' ? '' : e1rm(Number(s.weight), Number(s.reps));
       var rpe = Number(s.rpe) >= 5 && Number(s.rpe) <= 10 ? Math.round(Number(s.rpe) * 2) / 2 : '';
-      appendRow_('workoutLog', { 'Date': today, 'Session': session, 'Exercise': String(s.exercise).slice(0, 60), 'Tier': s.tier || 'Acc', 'Set': s.set, 'Weight (kg)': Number(s.weight), 'Reps': Number(s.reps), 'Target': s.target || '', 'e1RM': est, 'Type': type, 'Workout': wid, 'RPE': rpe, 'Template': tpl || '' });
+      appendRow_('workoutLog', { 'Date': day, 'Session': session, 'Exercise': String(s.exercise).slice(0, 60), 'Tier': s.tier || 'Acc', 'Set': s.set, 'Weight (kg)': Number(s.weight), 'Reps': Number(s.reps), 'Target': s.target || '', 'e1RM': est, 'Type': type, 'Workout': wid, 'RPE': rpe, 'Template': tpl || '' });
       volume += Number(s.weight) * Number(s.reps);
       if (type === 'W') return;
       var k = canonicalExercise(s.exercise).toLowerCase();
@@ -218,7 +218,7 @@ function saveWorkout(key, session, sets, meta) {
       else if (heaviestBefore[k] && Number(s.weight) > heaviestBefore[k] && !seenPr[k + 'w']) { seenPr[k + 'w'] = 1; prs.push({ exercise: s.exercise, e1rm: est, weight: Number(s.weight), reps: Number(s.reps), kind: 'weight' }); }
     });
     var started = Number(meta.started) || 0, ended = new Date().getTime(), mins = started && ended > started ? Math.min(360, Math.round((ended - started) / 60000)) : '';
-    appendRow_('workouts', { 'Date': today, 'ID': wid, 'Session': session, 'Start': started ? Utilities.formatDate(new Date(started), TZ, 'HH:mm') : '', 'End': Utilities.formatDate(new Date(ended), TZ, 'HH:mm'),
+    appendRow_('workouts', { 'Date': day, 'ID': wid, 'Session': session, 'Start': started ? Utilities.formatDate(new Date(started), TZ, 'HH:mm') : '', 'End': Utilities.formatDate(new Date(ended), TZ, 'HH:mm'),
       'Minutes': mins, 'Sets': done.filter(function (s) { return s.type !== 'W'; }).length, 'Volume (kg)': Math.round(volume), 'PRs': prs.length, 'Notes': String(meta.notes || '').slice(0, 300) });
 
     // nSuns: the first "+" set of T1 sets next week's training max.
@@ -245,11 +245,21 @@ function saveWorkout(key, session, sets, meta) {
       // the Pump is extra: bonus XP (once a day), and the rotation and today's main session are left alone
       if (!xpRows_().some(function (r) { return r.who === 'me' && r.date === today && r.kind === 'pump'; })) bonus = addXp_('me', 'Bonus: ' + session, PUMP_XP, 'pump');
     } else {
-      if (session !== todaySession_(today)) useSession_(today, session);
-      markGymDone_(today, session, tpl);
+      if (day === today && session !== todaySession_(today)) useSession_(today, session);
+      markGymDone_(day, session, tpl);
     }
     return { changes: changes, prs: prs, minutes: mins, volume: Math.round(volume), sets: done.length, bonus: bonus, extra: tpl === PUMP_ID, state: appState_('me') };
   });
+}
+
+/**
+ * The day a workout was done, not the day it reached the Sheet (one saved on the phone offline can arrive the next morning):
+ * the phone's date (meta.day), else the day it started, within the last week; otherwise today.
+ */
+function workoutDay_(meta, today) {
+  var ok = function (d) { return /^\d{4}-\d{2}-\d{2}$/.test(d) && d <= today && d >= addDays_(today, -7) ? d : ''; };
+  var started = Number(meta.started) || 0;
+  return ok(String(meta.day || '')) || (started ? ok(Utilities.formatDate(new Date(started), TZ, 'yyyy-MM-dd')) : '') || today;
 }
 
 /** Remember today's session and fix the gym row to match. */

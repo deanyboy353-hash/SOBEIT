@@ -983,7 +983,7 @@
   function saveNewSheet() {
     var tp = S.train.tpl[tsel]; if (!tp) return;
     var n = sessionAdds(tp.id).length;
-    openSheet('<h2 style="margin:0 0 4px">Save as a new workout</h2><p class="small muted" style="margin:0 0 12px">' + esc(tp.name) + (n ? ' with the ' + n + ' exercise' + (n === 1 ? '' : 's') + ' you added today' : ' as it is now') + ', under its own name. It sits with your presets: any day, it counts as your gym session, and your rotation stays put.</p>' +
+    openSheet('<h2 style="margin:0 0 4px">Save as a new workout</h2><p class="small muted" style="margin:0 0 12px">' + esc(tp.name) + (n ? ' with the ' + n + ' exercise' + (n === 1 ? '' : 's') + ' you added today' : ' as it is now') + ', under its own name. It sits with your presets: any day, it counts as your gym session.</p>' +
       '<form id="saveNewForm" autocomplete="off"><input type="text" id="snName" placeholder="Name, e.g. Upper A + arms" maxlength="40" aria-label="Name" required style="width:100%"><button class="btn primary wide" type="submit" style="margin-top:12px">Save</button></form>');
   }
   function saveAsNew(name, extra) {
@@ -1299,7 +1299,7 @@
     var mig = sp.migration;
     return '<section class="card" id="trainingCard"><div class="head"><h3>Training</h3></div>' +
       '<p class="small" style="margin:0"><b>' + esc(sp.name) + '</b>: ' + esc(sp.order.map(function (x) { return x.name; }).join(', ')) + '. A rotation, not fixed days: the next session waits for you, and only a logged session moves it on.</p>' +
-      '<p class="small" style="margin:10px 0 0"><b>Presets</b>, any day: ' + esc((sp.presets || []).map(function (x) { return x.name; }).join(', ')) + '. They never move the rotation. ' + esc(sp.pump.name) + ' is an extra for bonus XP; the others count as your gym session. Target: ' + sp.week.target + ' sessions a week (' + sp.week.done + ' so far).</p>' +
+      '<p class="small" style="margin:10px 0 0"><b>Presets</b>, any day: ' + esc((sp.presets || []).map(function (x) { return x.name; }).join(', ')) + '. What they work counts towards what goes next. ' + esc(sp.pump.name) + ' is an extra for bonus XP; the others count as your gym session. Target: ' + sp.week.target + ' sessions a week (' + sp.week.done + ' so far).</p>' +
       (mig ? '<p class="tiny muted" style="margin:8px 0 0">Moved to templates ' + esc(String(mig.at).slice(0, 10)) + ': gym data backed up first (' + mig.backup.rows + ' rows, "' + esc(mig.backup.sheet) + '" in your Nudge backups sheet). ' + mig.mapped + ' of ' + mig.sets + ' logged sets carry over to the templates' + (Object.keys(mig.renamed || {}).length ? ' (' + Object.keys(mig.renamed).length + ' old names matched up)' : '') + (mig.other && mig.other.length ? '; ' + mig.other.length + ' other exercises kept as they were' : '') + '.</p>' : '') + '</section>';
   }
   var trainLater = false;
@@ -1314,17 +1314,17 @@
     if (!(TP[tsel] || t.plans[tsel])) tsel = (sp && sp.next.id) || t.sessions[0];
     var tp = TP[tsel], tselName = tp ? tp.name : tsel;
     var d = draft(), h = '<div class="top"><div><h1>Train</h1><div class="sub">' + (t.today ? 'Today: ' + esc(t.today) : 'Next up: ' + esc(t.rotationNext || '') + '. Any day you get there.') + '</div></div><span class="row" style="gap:8px"><button class="iconbtn" type="button" data-memories="open" aria-label="All memories: every day you trained">' + icon('calendar') + '</button>' + meButton() + '</span></div>';
-    // the split: its sessions in order, the next one marked; any session can be picked. Presets below: any day, the rotation stays put
+    // the split: its sessions, the next one (rested longest) marked; any session can be picked. Presets below: any day
     var presets = (sp && sp.presets) || [], preset = presets.filter(function (x) { return x.id === tsel; })[0];
     if (sp) h += '<section class="card spot trainhero"><div class="between" style="margin-bottom:8px"><div class="eyebrow">' + esc(sp.name) + '</div><span class="tiny muted"><b>' + sp.week.done + ' of ' + sp.week.target + '</b> this week</span></div>' + memWeek() + '<div class="rotstrip" aria-label="Your training rotation">' + sp.order.map(function (o) { var cur = o.id === tsel; return '<button type="button" class="rot' + (cur ? ' on' : '') + (o.id === sp.next.id ? ' next' : '') + '" data-tsel="' + esc(o.id) + '" aria-pressed="' + cur + '">' + esc(o.name) + '</button>'; }).join('<span class="rotarr" aria-hidden="true">›</span>') + '</div>' +
-      '<div class="rotmeta"><span class="tiny muted">Next up: <b>' + esc(sp.next.name) + '</b>. Only a logged session moves it on; a day off moves nothing.</span>' +
+      '<div class="rotmeta"><span class="tiny muted">Next up: <b>' + esc(sp.next.name) + '</b>: whatever has rested longest goes next, so lower never follows lower.</span>' +
       (t.sessions.length ? '<label class="tiny rotpick">Other workout <select data-tselect="1" aria-label="Pick one of your own workouts"><option value="">Choose…</option>' + t.sessions.map(function (x) { return '<option value="' + esc(x) + '"' + (x === tsel ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select></label>' : '') + '</div>' +
       '<div class="eyebrow" style="margin:2px 0 8px">Presets, any day</div><div class="presets">' + presets.map(function (x) {
         return '<button type="button" class="chip' + (x.id === tsel ? ' on' : '') + '" data-tsel="' + esc(x.id) + '" aria-pressed="' + (x.id === tsel) + '">' + (x.extra ? icon('bolt', 's') : '') + esc(x.name) + (x.extra ? ' · +' + sp.pump.xp + ' XP' + (sp.pump.doneToday ? ', done' : '') : '') + '</button>';
       }).join('') + '</div></section>';
     h += '<div id="restSlot"></div>';
-    if (tsel === 'pump') h += '<div class="note">An extra session: bonus XP, and your rotation stays on ' + esc(sp.next.name) + '. It never counts as missed.</div>';
-    else if (preset && !(sp.doneToday.length > 0)) h += '<div class="note">A preset: it counts as today\'s gym session, and your rotation stays on ' + esc(sp.next.name) + '.</div>';
+    if (tsel === 'pump') h += '<div class="note">An extra session: bonus XP, and it never counts as missed. What it works counts towards what goes next.</div>';
+    else if (preset && !(sp.doneToday.length > 0)) h += '<div class="note">A preset: it counts as today\'s gym session, and what it works counts towards what goes next.</div>';
     else if (sp ? sp.doneToday.length > 0 : t.doneToday) h += '<div class="note">Today\'s workout is logged. Log another below if you did one.</div>';
     else {
       if (tselName !== t.today) h += '<div class="swap"><div class="grow"><b>Doing ' + esc(tselName) + ' today?</b><div class="tiny muted">' + (t.today ? 'Planned: ' + esc(t.today) : 'Today is a rest day') + '. Switching moves your calendar too.</div></div><button class="btn primary sm" type="button" data-setsession="' + esc(tselName) + '">Switch</button></div>';
@@ -1411,12 +1411,13 @@
     var widKey = 'wkid-' + draftKey(), wid = load(widKey) || (Date.now().toString(36) + Math.random().toString(36).slice(2, 8));
     save(widKey, wid);
     var slow = setTimeout(function () { var b = el('finishWk'); if (b && b.disabled) { b.textContent = 'Saved on your phone · syncing'; toast('Your workout is safe on this phone. It\'ll reach your Sheet as soon as the connection does.'); } }, 6000);
-    call('saveWorkout', [tp ? tp.name : tsel, sets, { started: load('wkstart-' + draftKey()) || 0, template: tp ? tp.id : '', wid: wid }], function (res) {
+    var started = load('wkstart-' + draftKey()) || 0;
+    call('saveWorkout', [tp ? tp.name : tsel, sets, { started: started, day: ymdOf(new Date(started || now())), template: tp ? tp.id : '', wid: wid }], function (res) {
       clearTimeout(slow); save(widKey, null);
       save(draftKey(), null); save('wkstart-' + draftKey(), null); if (tp) { save(taddKey(tp.id), null); save(setsKey(tp.id), null); save(skipKey(tp.id), null); } endRest(); armRest();
       apply(res.state);
       chime([660, 880, 1100, 1320]); buzz([60, 40, 60, 40, 150]);
-      var h = '<div class="center">' + icon('trophy', 'l') + '<h2 style="margin:8px 0">' + (res.duplicate ? 'Already saved' : res.extra ? 'Pump logged' : 'Workout logged') + '</h2>' + (res.duplicate ? '<p class="small" style="margin:0 0 8px">This workout was already in your Sheet, so it wasn\'t added twice.</p>' : '') + (res.extra ? '<p class="small" style="margin:0 0 8px">' + (res.bonus ? '+' + res.bonus + ' bonus XP. ' : 'Bonus XP already earned today. ') + 'Your rotation stays where it was.</p>' : '') + (res.volume ? '<p class="muted" style="margin:0 0 10px">' + res.sets + ' sets · ' + fmt(res.volume) + ' kg lifted' + (res.minutes ? ' · ' + res.minutes + ' min' : '') + '</p>' : '') + '</div>';
+      var h = '<div class="center">' + icon('trophy', 'l') + '<h2 style="margin:8px 0">' + (res.duplicate ? 'Already saved' : res.extra ? 'Pump logged' : 'Workout logged') + '</h2>' + (res.duplicate ? '<p class="small" style="margin:0 0 8px">This workout was already in your Sheet, so it wasn\'t added twice.</p>' : '') + (res.extra ? '<p class="small" style="margin:0 0 8px">' + (res.bonus ? '+' + res.bonus + ' bonus XP. ' : 'Bonus XP already earned today. ') + 'It never counts as missed.</p>' : '') + (res.volume ? '<p class="muted" style="margin:0 0 10px">' + res.sets + ' sets · ' + fmt(res.volume) + ' kg lifted' + (res.minutes ? ' · ' + res.minutes + ' min' : '') + '</p>' : '') + '</div>';
       (res.changes || []).forEach(function (c) { h += '<section class="card tint">' + '<b>' + esc(c.lift) + '</b>: ' + c.reps + ' reps on the heavy set<br>' + (c.change ? 'Training max ' + c.from + ' → <b>' + c.to + ' kg</b>' : 'Training max stays at ' + c.from + ' kg. Go again next week.') + '</section>'; });
       (res.prs || []).slice(0, 3).forEach(function (r) { h += '<section class="card blush"><b>New record.</b> ' + esc(r.exercise) + ' ' + r.weight + ' kg × ' + r.reps + (r.e1rm ? ' (est. 1RM ' + Math.round(r.e1rm) + ' kg)' : '') + '</section>'; });
       openSheet(h + '<button class="btn primary wide" type="button" data-close>Done</button>');

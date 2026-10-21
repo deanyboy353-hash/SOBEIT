@@ -32,7 +32,7 @@ test('Rotation order: Upper/Lower goes Upper A, Lower A, Upper B, Lower B and ro
   assert.strictEqual(t.train.next.name, 'Upper A');
 });
 
-test('Presets: Push, Pull, Legs and Full Body count as the gym session but never move the rotation; an old split choice moves to Upper / Lower', () => {
+test('Presets: Push, Pull, Legs and Full Body count as the gym session and what they work counts (Legs, then never lower again); an old split choice moves to Upper / Lower', () => {
   const { g, C, me } = ready();
   assert.strictEqual(next(C, me), 'Upper A', 'Upper / Lower is the split');
   const sp = plain(C.trainState(me)).split;
@@ -46,17 +46,18 @@ test('Presets: Push, Pull, Legs and Full Body count as the gym session but never
   assert.strictEqual(C.xpOn_('me', '2026-10-13') - xp0, 50, 'a preset is a gym session: 50 XP');
   assert.ok(g.tab('Gym log').rows().some(x => x[0] === '2026-10-13' && x[6] === 'Done' && x.includes('ppl-legs')), 'logged under the PPL Legs template');
   at(g, '2026-10-14T17:00:00Z');
+  assert.strictEqual(next(C, me), 'Upper B', 'Legs yesterday: upper next, the one done least recently');
   doSession(C, me, 'full', 'Full Body');
   at(g, '2026-10-15T17:00:00Z');
   const s2 = plain(C.trainState(me)).split;
-  assert.strictEqual(s2.next.name, 'Lower A', 'the rotation waits on Lower A');
+  assert.strictEqual(s2.next.name, 'Upper B', 'Full Body worked everything yesterday: the upper parts it skips have rested longest');
   assert.strictEqual(s2.week.done, 3, 'all three count towards the week');
   assert.strictEqual(C.templateByName_('Push'), 'ppl-push', 'Push now means the PPL preset');
   assert.throws(() => C.setSplit(me, 'ppsa'), /No split/);
-  // someone still on the old Push / Pull / Shoulders & Arms split moves to Upper / Lower from today, at Upper A, history kept
+  // someone still on the old Push / Pull / Shoulders & Arms split moves to Upper / Lower from today, history kept and still counted
   const rows = g.tab('Workout log').rows().length;
   g.state.props.TRAIN_SPLIT = JSON.stringify({ split: 'ppsa', since: '2026-10-01', skip: 0 }); g.state.cache = {};
-  assert.strictEqual(next(C, me), 'Upper A');
+  assert.strictEqual(next(C, me), 'Upper B');
   assert.deepStrictEqual(JSON.parse(g.state.props.TRAIN_SPLIT), { split: 'ul', since: '2026-10-15', skip: 0, from: 'ppsa' });
   assert.strictEqual(g.tab('Workout log').rows().length, rows, 'nothing removed');
 });
@@ -182,14 +183,14 @@ test('Your own workouts: save from a session, they sit with the presets, count a
   assert.throws(() => C.saveMyWorkout(me, 'upper a', rows), /already a workout called/);
   assert.throws(() => C.saveMyWorkout(me, 'Bad', [{ exercise: 'Romanian deadlift' }]), /breaks the rules/);
   assert.throws(() => C.saveMyWorkout(me, '', rows), /name/);
-  // logging it: a gym session (50 XP), the rotation stays on Upper A
+  // logging it: a gym session (50 XP); it worked the upper body, so lower is next
   const xp0 = C.xpOn_('me', '2026-10-12');
   const r = C.saveWorkout(me, 'Upper A + arms', [{ exercise: 'Hammer curl', set: 1, weight: 16, reps: 12, rpe: 9 }], { template: id });
   assert.strictEqual(r.extra, false);
   assert.strictEqual(C.xpOn_('me', '2026-10-12') - xp0, 50);
   assert.ok(g.tab('Workout log').rows().some(x => x.includes(id)));
   at(g, '2026-10-13T17:00:00Z');
-  assert.strictEqual(next(C, me), 'Upper A');
+  assert.strictEqual(next(C, me), 'Lower A');
   // edit like any template, rename by saving again, then delete: the definition goes to the Archive tab, history stays
   C.editTemplate(me, id, rows.concat([{ exercise: 'Rope pushdown', sets: 3, reps: '12', rpe: 9, rest: '60s' }]));
   assert.strictEqual(plain(C.trainState(me)).tpl[id].ex.length, 3);
@@ -264,4 +265,40 @@ test('Memories calendar helpers: Monday-first months, levels from sets, the part
   assert.deepStrictEqual([0, 0.5, 2.5, 3, 6, 12].map(F.memLevel), [0, 1, 1, 2, 3, 3]);
   assert.deepStrictEqual(F.memTop({ chest: 8, tri: 4, fdelt: 4, bi: 0.5 }), ['Chest', 'Front delts', 'Triceps'], 'helpers under a set left out, ties front of the body first');
   assert.deepStrictEqual(F.memTop({ chest: 8, tri: 4 }, 1), ['Chest']);
+});
+
+test('Next is whatever has rested longest: a lower day is never followed by another lower day, whatever the order says', () => {
+  const { g, C, me } = ready();
+  const lower = [{ exercise: 'Hack squat', set: 1, weight: 100, reps: 8, rpe: 8 }, { exercise: 'Seated leg curl', set: 1, weight: 50, reps: 10, rpe: 8 }];
+  const upper = [{ exercise: 'Lat pulldown', set: 1, weight: 60, reps: 10, rpe: 8 }, { exercise: 'Bench press', set: 1, weight: 70, reps: 8, rpe: 8 }];
+  C.saveWorkout(me, 'Lower B', lower, { template: 'ul-lb' });               // Mon: Lower B, though Upper A was "next"
+  at(g, '2026-10-13T17:00:00Z');
+  assert.strictEqual(next(C, me), 'Upper A', 'lower yesterday: upper today');
+  C.saveWorkout(me, 'Upper A', upper, { template: 'ul-ua' });
+  at(g, '2026-10-14T17:00:00Z');
+  assert.strictEqual(next(C, me), 'Lower A', 'upper yesterday: lower, the one not done lately');
+  C.saveWorkout(me, 'Lower A', lower, { template: 'ul-la' });
+  at(g, '2026-10-15T17:00:00Z');
+  assert.strictEqual(next(C, me), 'Upper B');
+  // a lower day done as a free workout (no template) counts by its exercises too
+  C.saveWorkout(me, 'Leg day', lower);
+  at(g, '2026-10-16T17:00:00Z');
+  assert.strictEqual(next(C, me), 'Upper B', 'legs yesterday: still upper');
+  assert.strictEqual(C.pickSession(['a', 'b'], [{ quad: 3 }, { chest: 3 }], { quad: '2026-10-15', chest: '2026-10-10' }, {}, '2026-10-16'), 'b', 'pure: the part rested longest wins');
+});
+
+test('A workout saved offline keeps the day it was done, not the day it reached the Sheet', () => {
+  const { g, C, me } = ready('2026-10-13T07:30:00Z');                   // Tue morning: yesterday's Lower B arrives from the outbox
+  const sets = [{ exercise: 'Hack squat', set: 1, weight: 100, reps: 8, rpe: 8 }];
+  C.saveWorkout(me, 'Lower B', sets, { template: 'ul-lb', day: '2026-10-12', started: Date.parse('2026-10-12T17:00:00Z'), wid: 'late1' });
+  assert.ok(g.tab('Workout log').rows().some(r => r[0] === '2026-10-12'), 'logged on Monday');
+  assert.ok(!g.tab('Workout log').rows().some(r => r[0] === '2026-10-13'), 'nothing on Tuesday');
+  const t = plain(C.trainState(me));
+  assert.notStrictEqual(t.today, 'Lower B', 'today is not shown as Lower B');
+  assert.strictEqual(t.split.next.name, 'Upper A');
+  // an old build sends no day: the start time gives it; a date from the future or over a week back is ignored
+  C.saveWorkout(me, 'Upper A', [{ exercise: 'Bench press', set: 1, weight: 70, reps: 8 }], { template: 'ul-ua', started: Date.parse('2026-10-11T17:00:00Z'), wid: 'late2' });
+  assert.ok(g.tab('Workout log').rows().some(r => r[0] === '2026-10-11'));
+  assert.strictEqual(C.workoutDay_({ day: '2026-10-20' }, '2026-10-13'), '2026-10-13');
+  assert.strictEqual(C.workoutDay_({ day: '2026-09-01' }, '2026-10-13'), '2026-10-13');
 });
