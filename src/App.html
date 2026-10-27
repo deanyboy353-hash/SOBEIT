@@ -917,7 +917,7 @@ body.chat-open { overflow: hidden; }
 .wonbadge.soft svg { stroke-width: 2; }
 .lazyrow { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
 .lazyrow.nudge .small { font-weight: 600; }
-.lazyitem { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; margin-top: 8px; padding: 8px 0; background: none; border: 0; border-top: 1px solid var(--line); color: var(--ink); font: inherit; text-align: left; }
+.lazyitem { border-radius: 0; display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; margin-top: 8px; padding: 8px 0; background: none; border: 0; border-top: 1px solid var(--line); color: var(--ink); font: inherit; text-align: left; }
 .lazyitem .check { width: 24px; height: 24px; flex: none; border-radius: 999px; border: 2px solid var(--line); display: grid; place-items: center; color: var(--surface); }
 .lazyitem.done .check { background: var(--good); border-color: var(--good); }
 .lazyitem.done .grow { color: var(--muted); }
@@ -4935,7 +4935,7 @@ window.LQ_TAB = <?!= JSON.stringify(tab) ?>;
       '<button class="btn ghost wide" type="button" data-backup="now" style="margin-top:8px">Back up now</button>' +
       '<p class="tiny muted" style="margin:8px 0 0">Importing never touches your live data: it rebuilds the backup as a new sheet so you can check it first.</p></section>';
     h += '<p class="small muted center">Your choices follow you to any phone you open the app on.' + (S.solo ? '' : ' ' + esc(n.other) + ' has their own.') + '</p>';
-    h += '<p class="tiny muted center">Version: 27 Oct, 15:17</p>';
+    h += '<p class="tiny muted center">Version: 27 Oct, 15:19</p>';
     el('tab-custom').innerHTML = h;
   }
 
