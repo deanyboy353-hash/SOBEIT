@@ -92,7 +92,23 @@
     while (out.length < 1200) { var k = y + '-' + (m < 10 ? '0' : '') + m; if (k > toYm) break; out.push(k); if (++m > 12) { m = 1; y++; } }
     return out;
   }
-  var api = { BODY_NAMES: BODY_NAMES, memLevel: memLevel, memTop: memTop, memGrid: memGrid, memMonths: memMonths, briefSig: briefSig, briefBehind: briefBehind, winStep: winStep, homeOrder: homeOrder, HOME_DEFAULT: HOME_DEFAULT, winText: winText, ago: ago, briefDue: briefDue, briefSlot: briefSlot };
+  /**
+   * Today as the UK sees it, whatever the phone's own time zone: 'yyyy-MM-dd', the weekday (0 = Sunday) and a long label.
+   * Uses Europe/London, so the clocks going back or forward never put the app a day out.
+   */
+  var UK = 'Europe/London';
+  function ukParts(ms) {
+    var p = {}; new Intl.DateTimeFormat('en-GB', { timeZone: UK, year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+      .formatToParts(new Date(ms)).forEach(function (x) { p[x.type] = x.value; });
+    return p;
+  }
+  function ukYmd(ms) { var p = ukParts(ms); return p.year + '-' + p.month + '-' + p.day; }
+  function ukDow(ms) { return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(ukParts(ms).weekday); }
+  function ukMinutes(ms) { var p = ukParts(ms); return (+p.hour % 24) * 60 + +p.minute; }
+  function ukLongDate(ms) { return new Date(ms).toLocaleDateString('en-GB', { timeZone: UK, weekday: 'long', day: 'numeric', month: 'long' }); }
+  /** The clock correction to trust: only one measured against a fresh answer from the server, and never more than an hour out (a bigger gap is a stale screen, not a wrong clock). */
+  function clockOffset(saved) { var n = Number(saved); return isFinite(n) && Math.abs(n) < 36e5 ? n : 0; }
+  var api = { ukYmd: ukYmd, ukDow: ukDow, ukMinutes: ukMinutes, ukLongDate: ukLongDate, clockOffset: clockOffset, BODY_NAMES: BODY_NAMES, memLevel: memLevel, memTop: memTop, memGrid: memGrid, memMonths: memMonths, briefSig: briefSig, briefBehind: briefBehind, winStep: winStep, homeOrder: homeOrder, HOME_DEFAULT: HOME_DEFAULT, winText: winText, ago: ago, briefDue: briefDue, briefSlot: briefSlot };
   root.NudgeFmt = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
