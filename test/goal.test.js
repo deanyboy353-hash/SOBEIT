@@ -80,7 +80,7 @@ test('Goal state: starts from the trend on 17 Oct, Christmas and March targets a
   assert.throws(() => C.setGoal(g.state.props.PARTNER_KEY, { rate: 0.6 }), /Dean/);
 });
 
-test('Reminders: weigh-in, social day, back on plan, meals, over, steps and every half hour from 8pm until three things are logged', () => {
+test('Reminders: weigh-in, social day, back on plan, a bigger day, a walk, and one evening invitation if fewer than three things are logged', () => {
   const { C } = ready();
   const t = { type: 'rest', kcal: 1800, steps: 10000 };
   const c = o => Object.assign({ m: 0, dow: 2, wake: 510, weighed: false, weighDay: false, entries: 0, kcal: 0, protein: 0, t, steps: null, proteinMin: 130, socialYesterday: false, why: 'Christmas photos', goalLine: '86.3 kg by Christmas', weekLine: 'Week line', behindLine: '' }, o);
@@ -93,15 +93,14 @@ test('Reminders: weigh-in, social day, back on plan, meals, over, steps and ever
   assert.ok(!ids({ m: 560, dow: 1, checkin: true }).includes('gcheckin'));
   assert.ok(ids({ m: 545, t: Object.assign({}, t, { type: 'social' }) }).includes('gsocial'));
   assert.ok(ids({ m: 545, socialYesterday: true }).includes('gback'));
-  assert.ok(ids({ m: 630 }).includes('gbreak'));
-  assert.ok(ids({ m: 840, entries: 1 }).includes('glunch'));
+  assert.ok(!ids({ m: 630 }).includes('gbreak') && !ids({ m: 840, entries: 1 }).includes('glunch'), 'meals are the meal nudges in Alerts.gs now');
   assert.ok(ids({ m: 900, entries: 2, kcal: 2000 }).includes('gover'));
   assert.ok(ids({ m: 1085, steps: 3000 }).includes('gsteps'));
   assert.ok(!ids({ m: 1085, steps: 9000 }).includes('gsteps'));
-  assert.deepStrictEqual(ids({ m: 1205, entries: 1 }).filter(x => /^geve/.test(x)), ['geve-40']);
-  assert.deepStrictEqual(ids({ m: 1240, entries: 1 }).filter(x => /^geve/.test(x)), ['geve-41'], 'every half hour');
-  assert.deepStrictEqual(ids({ m: 1240, entries: 3 }).filter(x => /^geve/.test(x)), [], 'stops at three things logged');
-  const eve = plain(C.goalAlerts(c({ m: 1205, entries: 1, kcal: 900 })))[0];
+  assert.deepStrictEqual(ids({ m: 1235, entries: 1 }).filter(x => /^geve/.test(x)), ['geve'], 'once, at half eight');
+  assert.deepStrictEqual(ids({ m: 1265, entries: 1 }).filter(x => /^geve/.test(x)), [], 'not every half hour');
+  assert.deepStrictEqual(ids({ m: 1235, entries: 3 }).filter(x => /^geve/.test(x)), [], 'three things logged: nothing');
+  const eve = plain(C.goalAlerts(c({ m: 1235, entries: 1, kcal: 900 })))[0];
   assert.match(eve.body, /900 kcal left today|Christmas photos|86.3 kg/);
   assert.ok(ids({ m: 570, dow: 1 }).includes('gweek'));
   assert.ok(ids({ m: 725, dow: 4, behindLine: 'behind' }).includes('gbehind'));

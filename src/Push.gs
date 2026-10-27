@@ -38,7 +38,7 @@ function fcmAccessToken_(sa, scope) {
     method: 'post', muteHttpExceptions: true,
     payload: { grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: header + '.' + claims + '.' + sig }
   });
-  if (res.getResponseCode() !== 200) throw new Error('Push sign-in failed: ' + res.getContentText().slice(0, 200));
+  if (res.getResponseCode() !== 200) throw new Error('Push sign-in didn\'t work: ' + res.getContentText().slice(0, 200));
   var tok = JSON.parse(res.getContentText());
   setProp_(ck, JSON.stringify({ token: tok.access_token, exp: now + (tok.expires_in || 3600) - 600 }));
   return tok.access_token;

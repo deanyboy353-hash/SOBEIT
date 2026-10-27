@@ -51,7 +51,7 @@ function buildWeeklySummary_(endYmd, cfg) {
   var done = gym.filter(function (r) { return /^Done/.test(String(r['Status'])); });
   var target = flex ? Math.max(done.length, Number(health_('me').trainDays) || 4) : gym.length;
   lines.push('GYM');
-  lines.push(target ? done.length + ' of ' + target + ' sessions done' + (done.length ? ' (' + done.map(function (r) { return r['Day'] + ' ' + r['Session']; }).join(', ') + ')' : '') : 'No sessions planned.');
+  lines.push(!target ? 'No sessions planned.' : done.length ? done.length + ' of ' + target + ' sessions done (' + done.map(function (r) { return r['Day'] + ' ' + r['Session']; }).join(', ') + ')' : 'A week off the gym. Next week\'s a fresh one.');
   lines.push('');
 
   // Weight

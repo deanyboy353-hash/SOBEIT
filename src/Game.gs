@@ -13,6 +13,8 @@ var PEOPLE = ['me', 'partner'];
 var LAZY_PER_WEEK = 2;      // lazy days each, Monday to Sunday
 var MISS_SHARE = 0.1;       // a missed day costs 10% of that day's potential XP...
 var MISS_CAP = 10;          // ...but never more than 10 XP (and £10 a point)
+// Lazy day mode: this small set wins the day (protein and a job tick themselves from what you log)
+var LAZY_SET = [['protein', 'Eat something with protein'], ['chore', 'One short job, 5 to 10 minutes'], ['walk', 'A short walk, even 10 minutes']];
 
 var xpCache_ = null;
 
@@ -66,8 +68,9 @@ function saveStreak_(id, st) { PROPS.setProperty('STREAK_' + id, JSON.stringify(
 
 /**
  * Run each morning: settle every day up to yesterday. Won: the streak grows. A lazy day: neither won nor
- * lost. Missed: the streak starts again and a little XP and cash go (the comeback bonus pays it back).
- * "team" counts days you both won; a day you were both won-or-lazy (with a lazy one) leaves it as it was.
+ * lost (its small set done: won). Missed: the first one in a week (Monday to Sunday) is a grace day that
+ * pauses the streak, at no cost; after that the streak starts again and a little XP and cash go (the
+ * comeback bonus pays it back). "team" (the joint streak) gets its own grace day.
  */
 function updateStreaks_(todayYmd) {
   var goal = dailyGoal_();
@@ -83,6 +86,8 @@ function updateStreaks_(todayYmd) {
       if (day === 'won') {
         st.count++;
         if (id === 'team') st.total = (st.total === undefined ? st.best : st.total) + 1;   // the pet's lifetime days: never goes down
+      } else if (day === 'missed' && st.count > 0 && !graceUsed_(st, d)) {
+        st.graces = (st.graces || []).filter(function (g) { return g >= addDays_(d, -35); }).concat([d]);   // paused, not lost
       } else if (day === 'missed') {
         if (st.count > 0) { st.lostOn = d; st.lostCount = st.count; }
         st.count = 0;
@@ -95,13 +100,16 @@ function updateStreaks_(todayYmd) {
   });
 }
 
+/** The grace day for the week (Monday to Sunday) that holds ymd has gone. */
+function graceUsed_(st, ymd) { var mon = mondayOf_(ymd), sun = addDays_(mon, 6); return (st.graces || []).some(function (g) { return g >= mon && g <= sun; }); }
+
 /** 'won', 'lazy' or 'missed' for one person (or the team) on a past day. */
 function dayResult_(id, ymd, goal) {
   if (id === 'team') {
     var a = dayResult_('me', ymd, goal), b = solo_() ? 'won' : dayResult_('partner', ymd, goal);
     return a === 'missed' || b === 'missed' ? 'missed' : a === 'won' && b === 'won' ? 'won' : 'lazy';
   }
-  if (lazyOn_(id, ymd)) return 'lazy';
+  if (lazyOn_(id, ymd)) return lazySetDone_(id, ymd) ? 'won' : 'lazy';
   return dayWon_(id, ymd, goal) ? 'won' : 'missed';
 }
 
@@ -115,8 +123,8 @@ function missPenalty_(who, ymd, plan, goal) {
   var lv = levelFor(xpTotal_(who));
   var xp = Math.min(MISS_CAP, Math.max(1, Math.round(potential * MISS_SHARE)), lv.into);
   var cash = Math.min(xp * CASH_PER_XP, Math.max(0, cashBreakdown_(who).total));
-  if (xp > 0) { appendRow_('xp', { 'Date': ymd, 'Time': now_('HH:mm'), 'Who': who, 'What': 'Missed the minimum', 'XP': -xp, 'Kind': 'penalty' }); xpCache_ = null; }
-  if (cash > 0) addCash_(who, 'Missed the minimum (' + ymd + ')', -cash, 'penalty');
+  if (xp > 0) { appendRow_('xp', { 'Date': ymd, 'Time': now_('HH:mm'), 'Who': who, 'What': 'Quiet day', 'XP': -xp, 'Kind': 'penalty' }); xpCache_ = null; }
+  if (cash > 0) addCash_(who, 'Quiet day (' + ymd + ')', -cash, 'penalty');
   return { date: ymd, xp: xp, cash: cash, back: false };
 }
 
@@ -133,6 +141,36 @@ function comebackCheck_(who) {
 // ---------- lazy days ----------
 
 function lazyDays_(who) { return JSON.parse(prop_('LAZY_' + who) || '[]'); }
+/** Lazy day mode's small set for a day: [{ id, text, done, auto }]. Protein and a job tick themselves from what's logged; the walk is a tap. */
+function lazySet_(who, ymd) {
+  var ticks = (JSON.parse(prop_('LAZYSET_' + who) || '{}')[ymd]) || [];
+  var protein = who === 'me' && rowsBetween_('food', ymd, ymd).some(function (r) { return Number(r['Protein (g)']) >= 15; });
+  var chore = choresDoneOn_(who, ymd) > 0;
+  return LAZY_SET.map(function (x) {
+    var auto = x[0] === 'protein' ? protein : x[0] === 'chore' ? chore : false;
+    return { id: x[0], text: x[1], done: auto || ticks.indexOf(x[0]) !== -1, auto: auto };
+  });
+}
+function lazySetDone_(who, ymd) { return lazySet_(who, ymd).every(function (x) { return x.done; }); }
+/** Tick (or untick) one thing in today's lazy set. */
+function lazyTick(key, id) {
+  var who = who_(key);
+  if (!LAZY_SET.some(function (x) { return x[0] === id; })) throw new Error('Not part of the lazy day.');
+  return withLock_(function () {
+    var today = todayYmd_(), all = JSON.parse(prop_('LAZYSET_' + who) || '{}'), list = all[today] || [];
+    all[today] = list.indexOf(id) === -1 ? list.concat([id]) : list.filter(function (x) { return x !== id; });
+    Object.keys(all).forEach(function (d) { if (d < addDays_(today, -35)) delete all[d]; });
+    setProp_('LAZYSET_' + who, JSON.stringify(all));
+    return appState_(who);
+  });
+}
+/** The morning check-in: 'low' | 'ok' | 'good'. Low suggests lazy day mode, never sets it. */
+function setEnergy(key, level) {
+  var who = who_(key);
+  if (['low', 'ok', 'good'].indexOf(level) === -1) throw new Error('Low, OK or Good.');
+  return withLock_(function () { setProp_('ENERGY_' + who, JSON.stringify({ date: todayYmd_(), level: level })); return appState_(who); });
+}
+function energyToday_(who, today) { var e = JSON.parse(prop_('ENERGY_' + who) || 'null'); return e && e.date === today ? e.level : ''; }
 function lazyOn_(who, ymd) { return lazyDays_(who).indexOf(ymd) !== -1; }
 /** Lazy days left in the week (Monday to Sunday) that holds ymd. */
 function lazyLeft_(who, ymd) {
@@ -145,6 +183,7 @@ function lazyOfferYesterday_(who, today) {
   if (minutesNow_() >= 12 * 60 || lazyOn_(who, y) || lazyLeft_(who, y) < 1) return null;
   if (st.through < y || dayResult_(who, y, dailyGoal_()) !== 'missed') return null;
   var p = st.penalty && st.penalty.date === y ? st.penalty : null;
+  if (!(p && (p.xp || p.cash)) && st.lostOn !== y) return null;     // nothing was lost (a grace day, or no streak yet): nothing to offer
   return { date: y, xp: p ? p.xp : 0, cash: p ? p.cash : 0, streak: st.lostOn === y ? st.lostCount : 0 };
 }
 
@@ -173,8 +212,8 @@ function lazyDay(key, which) {
         if (st.lostOn === y && dayResult_(id, y, dailyGoal_()) !== 'missed') { st.count = st.lostCount; st.best = Math.max(st.best, st.count); delete st.lostOn; delete st.lostCount; }
         var p = st.penalty;
         if (p && p.date === y && !p.back) {
-          if (p.xp) { appendRow_('xp', { 'Date': y, 'Time': now_('HH:mm'), 'Who': who, 'What': 'Lazy day: missed-day cost returned', 'XP': p.xp, 'Kind': 'penalty' }); xpCache_ = null; }
-          if (p.cash) addCash_(who, 'Lazy day: missed-day cost returned', p.cash, 'penalty');
+          if (p.xp) { appendRow_('xp', { 'Date': y, 'Time': now_('HH:mm'), 'Who': who, 'What': 'Lazy day: quiet-day cost returned', 'XP': p.xp, 'Kind': 'penalty' }); xpCache_ = null; }
+          if (p.cash) addCash_(who, 'Lazy day: quiet-day cost returned', p.cash, 'penalty');
           delete st.penalty;
         }
         saveStreak_(id, st);
@@ -190,6 +229,8 @@ function lazyState_(who, today) {
   return {
     left: lazyLeft_(who, today), perWeek: LAZY_PER_WEEK, today: lazyOn_(who, today),
     offerYesterday: lazyOfferYesterday_(who, today),
+    set: lazySet_(who, today), energy: energyToday_(who, today),
+    grace: (st.graces || []).indexOf(y) !== -1 ? { paused: st.count } : null,
     missed: p && p.date === y && (p.xp || p.cash) ? { xp: p.xp, cash: p.cash, back: !!p.back } : null
   };
 }
@@ -218,7 +259,7 @@ function winOf_(who, ymd, goal) {
 /** Your win plus your partner's (null when solo); both: you've both won, which is what feeds the pet and the couple streak. */
 function winState_(who, ymd, goal) {
   var w = winOf_(who, ymd, goal);
-  if (lazyOn_(who, ymd)) { w.lazy = true; w.won = false; }
+  if (lazyOn_(who, ymd)) { w.lazy = true; w.won = lazySetDone_(who, ymd); }     // lazy day mode: its small set wins the day
   w.partner = solo_() ? null : winOf_(who === 'me' ? 'partner' : 'me', ymd, goal);
   w.both = w.won && (!w.partner || w.partner.won);
   return w;
@@ -227,7 +268,7 @@ function winState_(who, ymd, goal) {
 /** Streak as shown: settled days plus today once today's goal is hit. */
 function streakNow_(id, todayYmd, goal) {
   var st = streakState_(id);
-  var r = id === 'team' ? dayResult_('team', todayYmd, goal) : lazyOn_(id, todayYmd) ? 'lazy' : dayWon_(id, todayYmd, goal) ? 'won' : 'open';
+  var r = id === 'team' ? dayResult_('team', todayYmd, goal) : lazyOn_(id, todayYmd) ? (lazySetDone_(id, todayYmd) ? 'won' : 'lazy') : dayWon_(id, todayYmd, goal) ? 'won' : 'open';
   var today = r === 'won', lazy = r === 'lazy' || (id === 'team' && !today && (lazyOn_('me', todayYmd) || lazyOn_('partner', todayYmd)));
   return { count: st.count + (today ? 1 : 0), best: Math.max(st.best, st.count + (today ? 1 : 0)), todayDone: today, lazy: lazy,
     total: (st.total === undefined ? st.best : st.total) + (today ? 1 : 0) };

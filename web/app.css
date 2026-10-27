@@ -907,8 +907,13 @@ body.chat-open { overflow: hidden; }
 .wonbadge.soft svg { stroke-width: 2; }
 .lazyrow { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
 .lazyrow.nudge .small { font-weight: 600; }
+.lazyitem { border-radius: 0; display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; margin-top: 8px; padding: 8px 0; background: none; border: 0; border-top: 1px solid var(--line); color: var(--ink); font: inherit; text-align: left; }
+.lazyitem .check { width: 24px; height: 24px; flex: none; border-radius: 999px; border: 2px solid var(--line); display: grid; place-items: center; color: var(--surface); }
+.lazyitem.done .check { background: var(--good); border-color: var(--good); }
+.lazyitem.done .grow { color: var(--muted); }
+.lazyitem:disabled { opacity: 1; }
 .lazyrow .btn { flex: none; }
-.brief.behind { opacity: .7; }
+.brief.stale { opacity: .7; }
 /* iPhone: taps on bubbles need a pointer to count as clicks; the status line; no zoom on focus */
 .cmsg, .cbub { cursor: pointer; -webkit-touch-callout: none; }
 .chat-conn { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--raised); border-bottom: 1px solid var(--line); }

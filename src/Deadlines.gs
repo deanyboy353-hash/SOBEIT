@@ -14,9 +14,8 @@ var DEADLINE_XP = { onTime: 15, late: 5, extend: -3, park: -10 };
 var NAG_LINES = {
   before: ['{task}: due at {due}. {left} left.', 'Coming up: {task} by {due}.', '{left} until {task} is due. Start now and it\'s easy.'],
   due: ['{task} is due now.', 'Time\'s up: {task}. Done, or park it?', 'It\'s {due}. {task}?'],
-  late: ['{task} was due at {due}. {late} late.', 'Still open: {task}.', '{task}. {late} overdue. Tap Done or park it.',
-    'This keeps going until {task} is done or parked.', '{task}, {late} late. Five minutes gets it moving.', '{task}. Five minutes. Start.', 'Still here. Still {task}.',
-    '{nth} reminder: {task}.', 'Done with {task}? Tap Done. Not today? Park it.']
+  late: ['Still open: {task}. Done, or park it for later?', 'Fancy five minutes on {task}? That gets it moving.', '{task} is still waiting. Tap Done, or park it.',
+    'No rush now: {task} can be parked if today\'s not the day.', 'Five minutes on {task}, then see how you feel.', 'Done with {task}? Tap Done. Not today? Park it.']
 };
 
 function deadlineRows_(who) {
@@ -90,7 +89,7 @@ function nagDeadlines_() {
     var kind = nagDue(d.due, now, d.lastNag, nagLevel_(d.who));
     if (!kind) return;
     var lines = NAG_LINES[kind], line = fill_(lines[d.nags % lines.length], d, d.who);
-    var title = kind === 'before' ? 'Coming up' : kind === 'due' ? 'Due now' : 'Overdue';
+    var title = kind === 'before' ? 'Coming up' : kind === 'due' ? 'Due now' : 'Still open';
     push_(d.who, title, line, 'home', kind === 'due', { deadline: d.id, persist: kind !== 'before' });
     updateRow_('deadlines', deadlineRow_(d.id), { 'Nags': d.nags + 1, 'Last nag (ms)': now });
     sent++;

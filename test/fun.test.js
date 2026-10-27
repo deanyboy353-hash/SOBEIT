@@ -80,15 +80,16 @@ test('evening reminders (normal level): streak saver at 19:30, last call at 21:3
   g.state.props.STREAK_me = JSON.stringify({ count: 4, freezes: 0, best: 4, through: '2026-10-12', frozeOn: '' });
   at(g, '2026-10-13T18:35:00Z');
   g.ctx.nagRun(); g.ctx.nagRun();
-  let mine = pushesTo(g, 'me-phone-token-0123456789');
+  const meals = () => pushesTo(g, 'me-phone-token-0123456789').filter(p => p.tab !== 'food');   // the 7pm tea nudge is separate
+  let mine = meals();
   assert.strictEqual(mine.length, 1);
-  assert.strictEqual(mine[0].title, 'Keep your streak');
-  assert.match(mine[0].body, /4-day|30 XP|streak/);
+  assert.strictEqual(mine[0].title, 'Keep it going?');
+  assert.match(mine[0].body, /4-day|4 days|small job/);
   at(g, '2026-10-13T20:35:00Z');
   g.ctx.nagRun();
-  mine = pushesTo(g, 'me-phone-token-0123456789');
+  mine = meals();
   assert.strictEqual(mine.length, 2);
-  assert.strictEqual(mine[1].title, 'Streak alert');
+  assert.strictEqual(mine[1].title, 'One small one?');
   at(g, '2026-10-13T22:00:00Z'); // 23:00: no streak nags, only the food check you asked for
   const before = g.state.pushes.length;
   g.ctx.nagRun();
@@ -248,7 +249,7 @@ test('the shared pet grows with lifetime joint days, never shrinks, and naps ins
   assert.strictEqual(pet({ total: 7, count: 3, todayDone: false }, 23 * 60).mood, 'sleepy');
   assert.strictEqual(pet({ total: 120, count: 0 }, 600).stage, 'mythic');
   // lifetime total survives a reset
-  g.state.props.STREAK_team = JSON.stringify({ count: 5, freezes: 0, best: 5, through: '2026-10-11', frozeOn: '' });
+  g.state.props.STREAK_team = JSON.stringify({ count: 5, freezes: 0, best: 5, through: '2026-10-11', frozeOn: '', graces: ['2026-10-18'] });
   g.ctx.updateStreaks_('2026-10-13');
   const st = JSON.parse(g.state.props.STREAK_team);
   assert.strictEqual(st.count, 0); assert.strictEqual(st.best, 5);

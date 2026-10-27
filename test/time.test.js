@@ -60,3 +60,40 @@ test('Privacy: Yaz never gets Dean\'s weight, food or health; no API keys reach 
     assert.doesNotMatch(s, /sk-ant-[A-Za-z0-9_-]{20,}|-----BEGIN PRIVATE KEY|AIza[0-9A-Za-z_-]{30,}/, f + ' has a key in it');
   });
 });
+
+test('DST change days: today and the weekday stay right on the server and on the phone (last Sunday of March and of October)', () => {
+  const F = require('../web/fmt.js');
+  const cases = [
+    ['2026-03-28T23:59:00Z', '2026-03-28', 6],   // 23:59 GMT Sat
+    ['2026-03-29T00:30:00Z', '2026-03-29', 0],   // 00:30 GMT Sun, clocks go forward at 1am
+    ['2026-03-29T22:59:00Z', '2026-03-29', 0],   // 23:59 BST Sun
+    ['2026-03-29T23:30:00Z', '2026-03-30', 1],   // 00:30 BST Mon
+    ['2026-10-24T23:30:00Z', '2026-10-25', 0],   // 00:30 BST Sun, clocks go back at 2am
+    ['2026-10-25T23:30:00Z', '2026-10-25', 0],   // 23:30 GMT Sun (a 25-hour day)
+    ['2026-10-26T00:05:00Z', '2026-10-26', 1],   // 00:05 GMT Mon
+    ['2026-10-27T07:00:00Z', '2026-10-27', 2]    // Tue morning: the day Home said Monday
+  ];
+  for (const [iso, ymd, dow] of cases) {
+    const ms = Date.parse(iso);
+    assert.strictEqual(F.ukYmd(ms), ymd, 'phone ' + iso);
+    assert.strictEqual(F.ukDow(ms), dow, 'phone weekday ' + iso);
+    const g = loadProject({ now: new Date(iso) });
+    g.ctx.setup();
+    assert.strictEqual(g.ctx.todayYmd_(), ymd, 'server ' + iso);
+    assert.strictEqual(g.ctx.dayOfWeek_(ymd), dow, 'server weekday ' + iso);
+    assert.strictEqual(plain(g.ctx.todayState(g.state.props.WEBAPP_KEY)).date, ymd, 'Today card ' + iso);
+  }
+  assert.match(F.ukLongDate(Date.parse('2026-10-27T07:00:00Z')), /^Tuesday,? 27 October$/);
+  assert.strictEqual(F.ukMinutes(Date.parse('2026-10-25T23:30:00Z')), 23 * 60 + 30);
+  assert.strictEqual(F.ukMinutes(Date.parse('2026-03-29T23:30:00Z')), 30);
+});
+
+test('The phone never takes its clock from a saved screen: a day-old copy can no longer put "today" back a day', () => {
+  const F = require('../web/fmt.js');
+  assert.strictEqual(F.clockOffset(-14 * 3600e3), 0, 'a screen saved last night is not a clock');
+  assert.strictEqual(F.clockOffset(1200), 1200);
+  assert.strictEqual(F.clockOffset('nonsense'), 0);
+  const src = require('fs').readFileSync(require('path').join(__dirname, '../web/app.js'), 'utf8');
+  assert.ok(!/S\.now - Date\.now\(\)/.test(src), 'no offset from the saved state');
+  assert.ok(!/toLocaleDateString\('en-GB', \{ weekday: 'long', day: 'numeric', month: 'long' \}\)/.test(src.slice(src.indexOf('function renderHome'), src.indexOf('function renderHome') + 800)), 'Home\'s date is in UK time');
+});

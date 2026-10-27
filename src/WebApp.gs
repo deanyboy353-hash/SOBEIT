@@ -18,7 +18,7 @@ function rpcTable_() {
     appState: appState, batch: batch, choresState: choresState, questDone: questDone, claimQuest: claimQuest, whatNow: whatNow,
     brainDump: brainDump, saveBrainDump: saveBrainDump, addQuest: addQuest, addShopping: addShopping, toggleShopping: toggleShopping,
     askToJoin: askToJoin, planChore: planChore, startChore: startChore, stepDone: stepDone, extendChore: extendChore,
-    finishChore: finishChore, parkThing: parkThing, clearLater: clearLater, highFive: highFive, lazyDay: lazyDay, aftersReport: aftersReport, setSplit: setSplit, setGoal: setGoal, saveMyWorkout: saveMyWorkout, deleteMyWorkout: deleteMyWorkout, swapExercise: swapExercise, editTemplate: editTemplate, resetTemplate: resetTemplate, clientError: clientError,
+    finishChore: finishChore, parkThing: parkThing, clearLater: clearLater, highFive: highFive, lazyDay: lazyDay, lazyTick: lazyTick, setEnergy: setEnergy, aftersReport: aftersReport, setSplit: setSplit, setGoal: setGoal, saveMyWorkout: saveMyWorkout, deleteMyWorkout: deleteMyWorkout, swapExercise: swapExercise, editTemplate: editTemplate, resetTemplate: resetTemplate, clientError: clientError,
     routineStep: routineStep, saveRoutine: saveRoutine, setupState: setupState, saveSetup: saveSetup, previewChores: previewChores, buildChores: buildChores, saveChore: saveChore, choreAction: choreAction, deleteRoutine: deleteRoutine, chatPing: chatPing, setDayOff: setDayOff, setDayOffLeave: setDayOffLeave, addWater: addWater, setTheme: setTheme, todayState: todayState, gymDone: gymDone,
     logWeightNow: logWeightNow, foodState: foodState, logPreset: logPreset, quickAdd: quickAdd, quickAddPhoto: quickAddPhoto, importWorkoutCsv: importWorkoutCsv, backupStatus: backupStatus, backupNow: backupNow, exportAll: exportAll, importBackup: importBackup, undoLast: undoLast,
     saveClaudeKey: saveClaudeKey, trainState: trainState, gymMemories: gymMemories, setTrainingMax: setTrainingMax, saveWorkout: saveWorkout,
@@ -67,7 +67,7 @@ function batch(key, items) {
 
 /** {fn, key, args} from the installable app → {ok, result} or {ok: false, error}. */
 function rpc_(body) {
-  try { ensureInstance_(body.key); } catch (e) { return json_({ ok: false, error: 'Setting up your app failed: ' + e.message }); }
+  try { ensureInstance_(body.key); } catch (e) { return json_({ ok: false, error: 'Couldn\'t set up your app: ' + e.message }); }
   var fn = rpcTable_()[body.fn];
   if (!fn) return json_({ ok: false, error: 'Unknown action.' });
   try {

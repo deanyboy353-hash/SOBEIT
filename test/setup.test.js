@@ -174,9 +174,9 @@ test('Reminders: the day\'s list at wake time, the minimum in gentle words, noth
   assert.match(list.title, /Today: 2 to win the day/);
   assert.ok(to('yaz-phone-token-0123456789').some(p => /Today/.test(p.title)));
   at(g, '2026-10-14T18:40:00Z'); g.ctx.heartbeat_();                   // 19:40, Dean hasn't hit his minimum
-  const nag = to('me-phone-token-0123456789').find(p => /streak|counts/i.test(p.title));
+  const nag = to('me-phone-token-0123456789').find(p => /Keep it going|Still time today/i.test(p.title));
   assert.ok(nag && /small jobs and today counts/.test(nag.body), JSON.stringify(nag));
-  assert.ok(!to('yaz-phone-token-0123456789').some(p => /streak|counts|ahead/i.test(p.title)), 'calm: no nags for Yaz');
+  assert.ok(!to('yaz-phone-token-0123456789').some(p => /streak|counts|ahead|Keep it going|Still time|on a roll/i.test(p.title)), 'calm: no nags for Yaz');
   const n = to('me-phone-token-0123456789').length;
   at(g, '2026-10-14T20:35:00Z'); g.ctx.heartbeat_();                   // 21:35, inside Dean's quiet hours
   assert.strictEqual(to('me-phone-token-0123456789').length, n);

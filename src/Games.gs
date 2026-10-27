@@ -163,7 +163,7 @@ function guessWord(key, guess) {
         var line = res === 'draw' ? 'A draw. ' + g.stake.text + ': you both owe each other.' : nk[win] + ' wins. ' + nk[lose] + ' owes: ' + g.stake.text.toLowerCase() + '.';
         PEOPLE.forEach(function (p) { push_(p, 'Word settled', line, 'play'); });
       } else {
-        push_(who === 'me' ? 'partner' : 'me', me.won ? n + ' got the word in ' + tries : n + ' missed today\'s word', me.won ? 'Your turn. Can you beat ' + tries + '/6?' : 'Can you get it?', 'play');
+        push_(who === 'me' ? 'partner' : 'me', me.won ? n + ' got the word in ' + tries : n + ' had a go at today\'s word', me.won ? 'Your turn. Can you beat ' + tries + '/6?' : 'Can you get it?', 'play');
       }
     } else if (me.guesses.length === 1) {
       push_(who === 'me' ? 'partner' : 'me', n + ' has started today\'s word', 'Race you.', 'play');

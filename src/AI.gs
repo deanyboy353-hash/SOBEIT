@@ -35,7 +35,7 @@ function dayContext_(who) {
   var lines = ['Date: ' + todayYmd_() + ' (' + DAY_NAMES[dayOfWeek_(todayYmd_())] + ')',
     g.lazy && g.lazy.today ? 'LAZY DAY: they chose a lazy day. Nothing to win or lose today and the streak is safe. Keep it relaxed: no chores, no targets, one gentle optional suggestion at most (a glass of water, some fresh air).' :
     w.won ? 'WIN THE DAY: ALREADY WON today (' + w.done + ' of ' + w.need + '). Do not suggest more chores or say anything still needs doing to win; say so briefly (no gushing) and suggest rest, fun or the non-chore things still ahead.' : 'Win the day: ' + (w.done || 0) + ' of ' + (w.need || 0) + ' so far.',
-    (g.lazy && g.lazy.missed && !g.lazy.missed.back ? 'They missed their minimum yesterday (' + g.lazy.missed.xp + ' XP went). Winning today gets it back. Mention it once, plainly, no guilt.\n' : '') +
+    (g.lazy && g.lazy.missed && !g.lazy.missed.back ? 'Yesterday was quiet (' + g.lazy.missed.xp + ' XP went). Winning today brings it back. Mention it at most once, as an invitation, never as a debt.\n' : '') +
     'Streak: ' + g.streak.count + ' days. XP today ' + g.xpToday + ' of ' + g.goal + '.',
     'Today\'s work plan: ' + (blockRows_(who, todayYmd_()).map(function (b) { return '[' + b.id + '] ' + clockMin_(b.start) + '-' + clockMin_(b.start + b.mins) + ' ' + b.task + ' (' + b.status + ')'; }).join('; ') || 'empty'),
     'Today\'s chores: ' + (q.board.map(function (x) { return x.name + (x.must ? ' [must-do]' : q.planned ? ' [bonus]' : '') + (x.doneToday ? ' (done)' : '') + ' ~' + x.minutes + 'min'; }).join('; ') || 'none') +
@@ -65,7 +65,9 @@ function dayContext_(who) {
 var AI_VOICE = 'You are the voice of Nudge, an app for someone with ADHD (and their partner) in Glenboig, Scotland. ' +
   'Voice: direct, British and quietly funny; dry humour, never corny. Short sentences. Start instructions with the action ("Put a wash on", not "Maybe you could..."). ' +
   'UK spelling and words, £, 24-hour or "3pm" times, dates like "Friday 16 October". Firm, never needy, never guilt-tripping, never preachy. ' +
-  'Exclamation marks only for a real win, and rarely. No emojis. Never say: awesome, amazing, crush it, you got this, let\'s go, yay, super, rockstar, level up. ';
+  'Exclamation marks only for a real win, and rarely. No emojis. Never say: awesome, amazing, crush it, you got this, let\'s go, yay, super, rockstar, level up. ' +
+  'Kind, never nagging: on a low day nothing should read as a list of failures. Phrase anything not done yet as an invitation, not a debt ("Fancy some food? Something with protein sets up the rest of the day.", ' +
+  'not "You\'ve eaten nothing yet, which wants fixing."). Never use: missed, behind, overdue, failed, wants fixing. Never mention a zero count. Warm but never patronising. ';
 
 /** The part of the day, the same way the app's header greets you: night (before 5am), morning, afternoon, evening (from 6pm). */
 function dayPart(min) { return min < 300 ? 'night' : min < 720 ? 'morning' : min < 1080 ? 'afternoon' : 'evening'; }

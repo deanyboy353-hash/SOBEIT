@@ -9,6 +9,8 @@
     if (w.won && !w.need) return { big: 'Free win', small: 'nothing due today', label: 'Free win today' };
     if (w.won) return { big: 'Won', small: w.extra ? '+' + w.extra + (w.by === 'xp' ? ' XP' : ' bonus') : 'today', label: 'Day won' };
     var left = w.need - w.done;
+    // nothing yet: say what wins it, never "0/30"
+    if (!w.done) return { big: String(w.need), small: w.by === 'xp' ? 'XP wins the day' : (w.need === 1 ? 'job wins' : 'jobs win') + ' the day', label: 'Win the day: ' + w.need + unit + ' wins it' };
     return { big: w.done + '/' + w.need, small: left + unit.replace(/s$/, left === 1 ? '' : 's') + ' to go', label: 'Win the day: ' + w.done + ' of ' + w.need };
   }
   /** "just now", "4 min ago", "2 h ago" */
@@ -92,7 +94,30 @@
     while (out.length < 1200) { var k = y + '-' + (m < 10 ? '0' : '') + m; if (k > toYm) break; out.push(k); if (++m > 12) { m = 1; y++; } }
     return out;
   }
-  var api = { BODY_NAMES: BODY_NAMES, memLevel: memLevel, memTop: memTop, memGrid: memGrid, memMonths: memMonths, briefSig: briefSig, briefBehind: briefBehind, winStep: winStep, homeOrder: homeOrder, HOME_DEFAULT: HOME_DEFAULT, winText: winText, ago: ago, briefDue: briefDue, briefSlot: briefSlot };
+  /**
+   * Today as the UK sees it, whatever the phone's own time zone: 'yyyy-MM-dd', the weekday (0 = Sunday) and a long label.
+   * Uses Europe/London, so the clocks going back or forward never put the app a day out.
+   */
+  /** The next small food step, by the time of day (minutes since midnight): shown instead of an empty "0 kcal". */
+  function mealNext(min) {
+    if (min < 11 * 60) return 'Breakfast next: something with 30 g protein.';
+    if (min < 16 * 60) return 'Lunch next: something with 30 g protein.';
+    if (min < 21 * 60) return 'Tea next: some protein and some veg.';
+    return 'Hungry? Yoghurt or a shake is plenty.';
+  }
+  var UK = 'Europe/London';
+  function ukParts(ms) {
+    var p = {}; new Intl.DateTimeFormat('en-GB', { timeZone: UK, year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+      .formatToParts(new Date(ms)).forEach(function (x) { p[x.type] = x.value; });
+    return p;
+  }
+  function ukYmd(ms) { var p = ukParts(ms); return p.year + '-' + p.month + '-' + p.day; }
+  function ukDow(ms) { return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(ukParts(ms).weekday); }
+  function ukMinutes(ms) { var p = ukParts(ms); return (+p.hour % 24) * 60 + +p.minute; }
+  function ukLongDate(ms) { return new Date(ms).toLocaleDateString('en-GB', { timeZone: UK, weekday: 'long', day: 'numeric', month: 'long' }); }
+  /** The clock correction to trust: only one measured against a fresh answer from the server, and never more than an hour out (a bigger gap is a stale screen, not a wrong clock). */
+  function clockOffset(saved) { var n = Number(saved); return isFinite(n) && Math.abs(n) < 36e5 ? n : 0; }
+  var api = { mealNext: mealNext, ukYmd: ukYmd, ukDow: ukDow, ukMinutes: ukMinutes, ukLongDate: ukLongDate, clockOffset: clockOffset, BODY_NAMES: BODY_NAMES, memLevel: memLevel, memTop: memTop, memGrid: memGrid, memMonths: memMonths, briefSig: briefSig, briefBehind: briefBehind, winStep: winStep, homeOrder: homeOrder, HOME_DEFAULT: HOME_DEFAULT, winText: winText, ago: ago, briefDue: briefDue, briefSlot: briefSlot };
   root.NudgeFmt = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -15,7 +15,9 @@
   if (load('api')) CFG = Object.assign({}, CFG, { api: load('api') });
   var S = window.LQ_BOOT || load('state-' + KEY.slice(0, 6)) || null;
   var ME = S ? S.who === 'me' : true;
-  var offset = S && S.now ? S.now - Date.now() : 0;
+  // the server's clock, measured only against a fresh answer: a saved screen's time is hours old, so it would put "today" back a day
+  var offset = NudgeFmt.clockOffset(load('clockOff'));
+  function setClock(st) { if (st && st.now) { offset = NudgeFmt.clockOffset(st.now - Date.now()); save('clockOff', offset); } }
   var busy = false, inflight = 0, current = 'home', updateOffered = false, touchedYet = false;
   ['pointerdown', 'keydown'].forEach(function (t) { document.addEventListener(t, function () { touchedYet = true; }, { capture: true, once: true }); });
 
@@ -70,7 +72,7 @@
     onState: function (st, more) {
       if (!st || !st.game) return;
       if (more || inflight || (document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))) { pendingState = st; return; }
-      var hadUndo = S && S.undo; S = st; ME = S.who === 'me'; offset = st.now - Date.now(); save('state-' + KEY.slice(0, 6), S); renderAll(); if (S.chat) startChat();
+      var hadUndo = S && S.undo; S = st; ME = S.who === 'me'; setClock(st); save('state-' + KEY.slice(0, 6), S); renderAll(); if (S.chat) startChat();
       if (st.undo && (!hadUndo || hadUndo.id !== st.undo.id) && Date.now() + offset - st.undo.at < 20000) offerUndo(st.undo);
     },
     onStatus: function (st) { syncState = st; drawSync(); }
@@ -116,6 +118,10 @@
   function esc(s) { return String(s === undefined || s === null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function fmt(n) { return Math.round(n).toLocaleString('en-GB'); }
   function now() { return Date.now() + offset; }
+  /** Today in the UK ('yyyy-MM-dd'), from the clock, never from a saved screen. */
+  function todayYmd() { return NudgeFmt.ukYmd(now()); }
+  /** The screen on show is from an earlier day (a saved copy, the phone asleep overnight): it needs fetching again. */
+  function staleDay() { return !!(S && S.today && S.today.date && S.today.date !== todayYmd()); }
   function clock(ms) { var s = Math.max(0, Math.round(ms / 1000)); return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); }
   function dayLabel(ymd) {
     if (!ymd) return '';
@@ -240,7 +246,7 @@
     var prev = S;
     S = res; ME = S.who === 'me';
     if (S.chat) startChat();
-    offset = res.now - Date.now();
+    setClock(res);
     save('state-' + KEY.slice(0, 6), S);
     var big = celebrate(prev, S);
     renderAll();
@@ -341,49 +347,62 @@
     if (W.lazy) return lazyCard();
     if (W.won && !open.length) {   // everything done: a small "Day won" line frees up the screen
       return '<section class="card spot win compact"><div class="row" style="gap:12px"><span class="wonbadge">' + icon('check') + '</span><div class="grow"><b>Day won</b><div class="small muted">' +
-        (P ? (P.won ? 'You both won · the pet is fed' : esc(n.other) + ': ' + P.done + ' of ' + P.need) + ' · ' : '') + g.streak.count + ' day' + (g.streak.count === 1 ? '' : 's') + ' in a row · ' + g.xpToday + ' XP today</div></div>' +
+        [P ? (P.won ? 'You both won · the pet is fed' : P.done ? esc(n.other) + ': ' + P.done + ' of ' + P.need : '') : '', g.streak.count ? g.streak.count + ' day' + (g.streak.count === 1 ? '' : 's') + ' in a row' : '', g.xpToday ? g.xpToday + ' XP today' : ''].filter(Boolean).join(' · ') + '</div></div>' +
         '<button class="btn ghost sm" type="button" data-goto="chores">Bonus' + icon('chevron', 's') + '</button></div></section>';
     }
     var h = '<section class="card spot today win' + (W.won ? ' won' : '') + '"><div class="between" style="margin-bottom:10px"><div class="eyebrow">Win the day</div><button class="btn ghost sm" type="button" data-goto="chores">All jobs' + icon('chevron', 's') + '</button></div>';
     h += '<div class="hero"><div class="ring" style="width:112px;height:112px">' + ring(W.need ? W.done / W.need : 1, 112, 10) +
       '<div class="t"><div><div class="num display-num" style="font-size:' + (t.big.length > 4 ? 19 : 30) + 'px">' + esc(t.big) + '</div><div class="tiny muted">' + esc(t.small) + '</div></div></div></div><div class="grow">';
-    if (P) h += '<div class="stat"><span>' + esc(n.other) + '</span><b>' + (P.won ? 'Won' : P.done + ' of ' + P.need) + '</b></div>';
-    h += '<div class="stat"><span class="row" style="gap:6px">' + flame(g.streak.count, 16) + 'Days won in a row</span><b>' + g.streak.count + '</b></div>' +
-      (S.solo ? '' : '<div class="stat"><span class="row" style="gap:6px">' + icon('heart', 's') + 'Both won</span><b>' + g.team.count + ' day' + (g.team.count === 1 ? '' : 's') + '</b></div>') +
-      '<div class="stat"><span>XP today</span><b>' + g.xpToday + '</b></div>' +
-      (S.empire ? '<button class="stat cashrow" type="button" data-goto="empire"><span class="row" style="gap:6px">' + icon('gift', 's') + 'Cash</span><b>' + money(S.empire.cash) + '</b></button>' : '') +
+    // a stat shows once it has something in it: no row of zeros on a quiet morning
+    if (P && (P.won || P.done)) h += '<div class="stat"><span>' + esc(n.other) + '</span><b>' + (P.won ? 'Won' : P.done + ' of ' + P.need) + '</b></div>';
+    h += (g.streak.count ? '<div class="stat"><span class="row" style="gap:6px">' + flame(g.streak.count, 16) + 'Days won in a row</span><b>' + g.streak.count + '</b></div>' : '') +
+      (S.solo || !g.team.count ? '' : '<div class="stat"><span class="row" style="gap:6px">' + icon('heart', 's') + 'Both won</span><b>' + g.team.count + ' day' + (g.team.count === 1 ? '' : 's') + '</b></div>') +
+      (g.xpToday ? '<div class="stat"><span>XP today</span><b>' + g.xpToday + '</b></div>' : '') +
+      (S.empire && S.empire.cash > 0 ? '<button class="stat cashrow" type="button" data-goto="empire"><span class="row" style="gap:6px">' + icon('gift', 's') + 'Cash</span><b>' + money(S.empire.cash) + '</b></button>' : '') +
       '<div class="bar" style="margin-top:8px"><i style="width:' + Math.round(g.level.into / g.level.need * 100) + '%"></i></div><div class="tiny muted" style="margin-top:4px">Level ' + g.level.level + ' · ' + (g.level.need - g.level.into) + ' XP to the next</div></div></div>';
     h += '<p class="small muted winhow">' + (W.won ? (W.both && P ? 'You\'ve both won today. The pet\'s fed and your joint streak grows.' : P ? 'You\'ve won today. When ' + esc(n.other) + ' wins too, the pet\'s fed.' : 'Won. Anything more is a bonus.') :
       W.by === 'jobs' ? 'Do any ' + W.need + ' job' + (W.need === 1 ? '' : 's') + ' today and the day is won.' : 'Earn ' + W.need + ' XP today to win: chores, the gym and food all count.') + '</p>';
     if (open.length) h += open.slice(0, 3).map(function (q) { return questRow(q); }).join('');
     else if (mine.length) h += '<p class="empty">All of today\'s jobs are done.</p>';
-    if (!W.won) h += lazyRow();
+    if (!W.won) h += lazyRow();   // lazy day mode is always one tap away too
     return h + '</section>';
   }
   /** The lazy-day button and how many are left (two a week, back on Monday). */
   function lazyRow() {
     var L = S.game.lazy; if (!L) return '';
     var late = new Date(now()).getHours() >= 20;
-    return '<div class="lazyrow' + (late && L.left ? ' nudge' : '') + '"><div class="grow"><div class="small">' + (late && L.left ? 'Not happening today? A lazy day keeps the streak.' : 'Lazy days left this week: ' + L.left + ' of ' + L.perWeek) + '</div>' +
-      (L.left ? '' : '<div class="tiny muted">None left. They reset on Monday.</div>') + '</div>' +
-      '<button class="btn line sm" type="button" data-lazy="today"' + (L.left ? '' : ' disabled') + '>' + icon('moon', 's') + 'Take a lazy day</button></div>';
+    return '<div class="lazyrow' + (late && L.left ? ' nudge' : '') + '"><div class="grow"><div class="small">' + (late && L.left ? 'Not happening today? Lazy day mode: three small things still win it.' : 'Low on energy? Three small things win the day.') + '</div>' +
+      (L.left ? '' : '<div class="tiny muted">Both used this week. They\'re back on Monday.</div>') + '</div>' +
+      '<button class="btn line sm" type="button" data-lazy="today"' + (L.left ? '' : ' disabled') + '>' + icon('moon', 's') + 'Lazy day mode</button></div>';
   }
-  /** A lazy day: neither won nor lost. One small optional thing instead of the minimum. */
+  /** Lazy day mode: three small things win the day; none of them is owed. Protein and a job tick themselves. */
   function lazyCard() {
-    var R = S.routines || {}, L = S.game.lazy, water = R.waterGoal && R.water < R.waterGoal;
-    return '<section class="card spot win lazy"><div class="row" style="gap:12px;align-items:flex-start"><span class="wonbadge soft">' + icon('moon') + '</span><div class="grow"><b>Lazy day</b>' +
-      '<div class="small muted">Streak on hold at ' + S.game.streak.count + '. Nothing to win, nothing to lose.</div>' +
-      '<div class="small" style="margin-top:8px"><b>Optional:</b> ' + (water ? 'have a glass of water. That\'s it.' : 'get some fresh air. Or don\'t.') + '</div>' +
-      '<div class="tiny muted" style="margin-top:6px">Lazy days left this week: ' + L.left + ' of ' + L.perWeek + '</div></div>' +
-      '<button class="btn ghost sm" type="button" data-lazy="undo">Undo</button></div></section>';
+    var L = S.game.lazy, set = L.set || [], won = S.game.win && S.game.win.won;
+    var h = '<section class="card spot win lazy' + (won ? ' won' : '') + '"><div class="row" style="gap:12px;align-items:flex-start"><span class="wonbadge' + (won ? '' : ' soft') + '">' + icon(won ? 'check' : 'moon') + '</span><div class="grow"><b>' + (won ? 'Day won, the lazy way' : 'Lazy day mode') + '</b>' +
+      '<div class="small muted">' + (won ? 'That counts. ' + (S.game.streak.count ? 'Streak ' + S.game.streak.count + '.' : '') : 'Do these three and the day is won. Anything else is a bonus.') + '</div></div>' +
+      '<button class="btn ghost sm" type="button" data-lazy="undo">Undo</button></div>';
+    h += set.map(function (x) {
+      return '<button type="button" class="lazyitem' + (x.done ? ' done' : '') + '" data-lazytick="' + esc(x.id) + '"' + (x.auto ? ' disabled' : '') + ' aria-pressed="' + x.done + '"><span class="check">' + (x.done ? icon('check', 's') : '') + '</span><span class="grow">' + esc(x.text) + (x.auto ? '<span class="tiny muted"> · logged</span>' : '') + '</span></button>';
+    }).join('');
+    return h + '</section>';
+  }
+  /** The morning check-in: how's your energy? Low suggests lazy day mode, never sets it. */
+  function energyCard() {
+    var L = S.game.lazy, W = winOf(); if (!L || W.lazy || W.won || NudgeFmt.ukMinutes(now()) >= 13 * 60) return '';
+    if (L.energy === 'low') return L.left ? '<section class="card quiet"><div class="between" style="gap:10px"><div class="small"><b>Low day? That\'s fine.</b> Lazy day mode: eat something with protein, one short job and a short walk, and the day is won.</div>' +
+      '<button class="btn soft sm" type="button" data-lazy="today">' + icon('moon', 's') + 'Lazy day mode</button></div></section>' : '';
+    if (L.energy) return '';
+    return '<section class="card quiet energy"><div class="small" style="margin-bottom:8px"><b>How\'s your energy?</b></div><div class="row" style="gap:8px">' +
+      [['low', 'Low'], ['ok', 'OK'], ['good', 'Good']].map(function (x) { return '<button class="btn line sm" type="button" data-energy="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div></section>';
   }
   /** The morning after a missed day: what it cost, how to get it back, and (until noon) the lazy-day way out. */
   function missedNote() {
     var L = S.game.lazy; if (!L) return '';
     var o = L.offerYesterday, m = L.missed, h = '';
     if (m && m.back) return '<div class="note">' + icon('check', 's') + 'Comeback: yesterday\'s ' + (m.xp ? m.xp + ' XP' : money(m.cash)) + ' is back.</div>';
-    if (m) h += '<div class="note"><b>Missed yesterday: −' + (m.xp ? m.xp + ' XP' : money(m.cash)) + '.</b> Win today to get it back.</div>';
-    if (o) h += '<section class="card quiet"><div class="between" style="gap:10px"><div class="small">Make yesterday a lazy day instead? ' + (o.streak ? 'The streak goes back to ' + o.streak + (o.xp ? ' and the ' + o.xp + ' XP comes back' : '') : o.xp ? 'The ' + o.xp + ' XP comes back' : 'It stays off the record') + '. Until noon.</div>' +
+    if (L.grace) h += '<div class="note">' + icon('moon', 's') + 'Yesterday was a rest. Your streak\'s paused at ' + L.grace.paused + ', not lost: that\'s this week\'s grace day.</div>';
+    if (m) h += '<div class="note">Fresh start today. Win it and yesterday\'s ' + (m.xp ? m.xp + ' XP' : money(m.cash)) + ' comes back.</div>';
+    if (o) h += '<section class="card quiet"><div class="between" style="gap:10px"><div class="small">Make yesterday a lazy day instead? ' + (o.streak ? 'The streak goes back to ' + o.streak + (o.xp ? ' and the ' + o.xp + ' XP comes back' : '') : 'The ' + (o.xp ? o.xp + ' XP' : money(o.cash)) + ' comes back') + '. Until noon.</div>' +
       '<button class="btn soft sm" type="button" data-lazy="yesterday">' + icon('moon', 's') + 'Use one</button></div></section>';
     return h;
   }
@@ -391,7 +410,7 @@
   /** The gym card's footer: main sessions this week against the target, and the optional Pump. */
   function gymExtras() {
     var tr = S.today.train; if (!tr) return '';
-    return '<div class="between" style="margin-top:10px;gap:8px;flex-wrap:wrap"><span class="small"><b>' + tr.week.done + ' of ' + tr.week.target + '</b> main sessions this week</span>' +
+    return '<div class="between" style="margin-top:10px;gap:8px;flex-wrap:wrap"><span class="small">' + (tr.week.done ? '<b>' + tr.week.done + ' of ' + (tr.week.label || tr.week.target) + '</b> sessions this week' + (tr.week.bonus ? ', bonus' : tr.week.hit ? ', done' : '') : tr.week.target ? (tr.week.label || tr.week.target) + ' sessions this week' : '') + '</span>' +
       '<span class="row" style="gap:6px"><button class="btn line sm" type="button" data-memories="open">' + icon('calendar', 's') + 'Memories</button><button class="btn soft sm" type="button" data-trainpump="1">' + icon('bolt', 's') + (tr.pump.doneToday ? 'Pump done today' : 'Pump: extra, +' + tr.pump.xp + ' XP') + '</button></span></div>';
   }
   function stageCard() {
@@ -413,7 +432,7 @@
     R.routines.forEach(function (r) {
       var ph = r.phase || (r.showNow && !r.finished ? 'open' : 'hidden');
       if (!r.steps.length || ph === 'hidden') return;
-      var ic = icon(ph && /evening|night|bed/i.test(r.name) ? 'moon' : 'sun'), count = r.done.length + '/' + r.steps.length;
+      var ic = icon(ph && /evening|night|bed/i.test(r.name) ? 'moon' : 'sun'), count = r.done.length ? r.done.length + '/' + r.steps.length : r.steps.length + ' step' + (r.steps.length === 1 ? '' : 's');
       if (ph === 'summary' && !routineOpen[r.name]) {
         h += '<button class="card rsummary" type="button" data-ropen="' + esc(r.name) + '" aria-expanded="false">' + ic + '<span class="grow">' + esc(r.name) + ' routine</span><span class="num">' + count + '</span>' + (r.finished ? icon('check', 's') : icon('chevron', 's')) + '</button>';
         return;
@@ -469,9 +488,8 @@
   function renderHome() {
     var g = S.game, n = names(), h = '', parts = {};
     function seg(id) { parts[id] = h; h = ''; }
-    var d = new Date(now());
     h += '<div class="top"><div><h1>' + greeting() + (n.me ? ', ' + esc(n.me) : '') + '</h1><div class="sub">' +
-      d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) + dayStatus() + '</div></div>' + meButton() + '</div>';
+      NudgeFmt.ukLongDate(now()) + (staleDay() ? ' · catching up with today' : dayStatus()) + '</div></div>' + meButton() + '</div>';
     if (MODE === 'gas' && S.fun && S.fun.appBase) h += '<a class="getapp" target="_top" href="' + esc(S.fun.appBase + '?key=' + KEY) + '">' + icon('download') + '<span class="grow"><b>Get the app</b><br><span class="small muted">Notifications, live games, faster</span></span>' + icon('chevron', 's') + '</a>';
     if (MODE === 'web' && S.push && S.push.configured && 'Notification' in window && 'serviceWorker' in navigator && (Notification.permission !== 'granted' || !S.push.devices || (load('pushErr') && !load('pushTok')))) {
       h += '<section class="card pushwarn"><div class="row" style="gap:10px;align-items:flex-start">' + icon('bell') + '<div class="grow"><b>Notifications are off on this ' + (/Android|iPhone|iPad/.test(navigator.userAgent) ? 'phone' : 'device') + '</b><div class="small">' +
@@ -481,7 +499,7 @@
       h += '<section class="card pushwarn"><b>Get notifications on iPhone</b><div class="small">Tap Share, then Add to Home Screen. Open Nudge from your home screen and turn notifications on there.</div></section>';
     }
     if (S.chores.invite) h += '<div class="note">' + esc(n.other) + ' wants company for chores. Pick a job in Chores.</div>';
-    h += missedNote();
+    h += missedNote() + energyCard();
 
     if (S.setup && !S.setup.done) h += '<section class="card tint"><b>Set up your chores</b><p class="small" style="margin:4px 0 10px">A few quick taps about you and your home, and Nudge plans each day for you: a small must-do minimum, the rest a bonus. About 5 minutes.</p><button class="btn primary wide" type="button" data-setup="run">' + (S.setup.built ? 'Finish my part of setup' : 'Start setup') + '</button></section>';
     seg('header');
@@ -492,7 +510,7 @@
     // brief
     maybeBrief();
     if (S.brief && S.brief.brief && S.brief.part !== briefSlotNow()) S.brief = null;    // written for an earlier slot: a fresh one is on its way
-    if (S.brief && S.brief.brief) h += '<section class="card tint"><div class="eyebrow" style="color:var(--lilac);display:flex;gap:6px;align-items:center">' + icon('sparkles', 's') + 'Today' + (S.brief.ts || S.brief.at ? '<span class="muted" style="font-weight:500"> · updated <span data-briefago>' + esc(S.brief.ts ? NudgeFmt.ago(S.brief.ts, now()) : 'at ' + S.brief.at) + '</span></span>' : '') + '</div><p class="brief' + (NudgeFmt.briefBehind(S.brief, S) ? ' behind' : '') + '" style="margin:8px 0 10px">' + (NudgeFmt.briefBehind(S.brief, S) && S.game.win && S.game.win.won ? 'Day won. Nice one. Updating your brief…' : esc(S.brief.brief)) + '</p>' +
+    if (S.brief && S.brief.brief) h += '<section class="card tint"><div class="eyebrow" style="color:var(--lilac);display:flex;gap:6px;align-items:center">' + icon('sparkles', 's') + 'Today' + (S.brief.ts || S.brief.at ? '<span class="muted" style="font-weight:500"> · updated <span data-briefago>' + esc(S.brief.ts ? NudgeFmt.ago(S.brief.ts, now()) : 'at ' + S.brief.at) + '</span></span>' : '') + '</div><p class="brief' + (NudgeFmt.briefBehind(S.brief, S) ? ' stale' : '') + '" style="margin:8px 0 10px">' + (NudgeFmt.briefBehind(S.brief, S) && S.game.win && S.game.win.won ? 'Day won. Nice one. Updating your brief…' : esc(S.brief.brief)) + '</p>' +
       (S.brief.first && !NudgeFmt.briefBehind(S.brief, S) ? '<div class="row small"><span class="chip lilac">First move</span><span>' + esc(S.brief.first) + '</span></div>' : '') + '</section>';
 
     seg('brief');
@@ -541,7 +559,7 @@
     if (S.routines.waterGoal) {
       var w = S.routines.water, wg = S.routines.waterGoal, drops = '';
       for (var i = 0; i < wg; i++) drops += '<i class="' + (i < w ? 'on' : '') + '"></i>';
-      h += '<div class="tile"><div class="k">' + icon('drop', 's') + 'Water</div><div class="drops">' + drops + '</div><div class="between"><span class="tiny muted num">' + w + ' of ' + wg + '</span><span class="row" style="gap:4px"><button class="iconbtn" style="width:34px;height:34px" type="button" data-water="-1" aria-label="One less">−</button><button class="iconbtn soft" style="width:34px;height:34px" type="button" data-water="1" aria-label="One more glass">' + icon('plus', 's') + '</button></span></div></div>';
+      h += '<div class="tile"><div class="k">' + icon('drop', 's') + 'Water</div><div class="drops">' + drops + '</div><div class="between"><span class="tiny muted num">' + (w ? w + ' of ' + wg : wg + ' glasses today') + '</span><span class="row" style="gap:4px"><button class="iconbtn" style="width:34px;height:34px" type="button" data-water="-1" aria-label="One less">−</button><button class="iconbtn soft" style="width:34px;height:34px" type="button" data-water="1" aria-label="One more glass">' + icon('plus', 's') + '</button></span></div></div>';
     }
     h += '</div>';
 
@@ -616,12 +634,12 @@
     if (playing) h += mb;
     if (q.planned) {
       var mustL = q.board.filter(function (x) { return x.must; }), bonusL = q.board.filter(function (x) { return !x.must; });
-      h += '<section class="card spot"><div class="head"><h3>' + (q.win ? 'Day won' : 'Win the day: ' + Math.min(q.doneCount, q.minimum) + ' of ' + q.minimum) + '</h3></div>' +
+      h += '<section class="card spot"><div class="head"><h3>' + (q.win ? 'Day won' : (q.doneCount ? 'Win the day: ' + Math.min(q.doneCount, q.minimum) + ' of ' + q.minimum : 'Win the day: any ' + q.minimum + ' job' + (q.minimum === 1 ? '' : 's'))) + '</h3></div>' +
         (q.minimum ? '<div class="minbar"><i style="width:' + Math.round(Math.min(1, q.doneCount / q.minimum) * 100) + '%"></i></div><p class="small muted" style="margin:6px 0 4px">Do ' + q.minimum + ' job' + (q.minimum === 1 ? '' : 's') + ' (any of them) and the day is won. These are quick ones:</p>' : '<p class="small muted">Nothing you have to do today. A free win.</p>') +
         mustL.map(function (x) { return questRow(x, { claim: true }); }).join('') + '</section>';
       h += '<section class="card"><div class="head"><h3>Bonus</h3><span class="muted small">only if you\'ve got energy' + (q.energy ? ' (yours peaks in the ' + esc(q.energy) + ')' : '') + '</span></div>' + (bonusL.length ? bonusL.map(function (x) { return questRow(x, { claim: true }); }).join('') : '<p class="empty">No bonus jobs today.</p>') + '</section>';
     } else
-    h += '<section class="card spot"><div class="head"><h3>Today</h3><span class="muted small num">' + q.board.filter(function (x) { return x.doneToday; }).length + '/' + q.board.length + '</span></div>' +
+    h += '<section class="card spot"><div class="head"><h3>Today</h3><span class="muted small num">' + (q.board.some(function (x) { return x.doneToday; }) ? q.board.filter(function (x) { return x.doneToday; }).length + '/' + q.board.length : '') + '</span></div>' +
       (q.board.length ? q.board.map(function (x) { return questRow(x, { claim: true }); }).join('') : '<p class="empty">Nothing due today. Enjoy it.</p>') + '</section>';
     if (q.more.length) h += '<section class="card"><details><summary class="small muted" style="cursor:pointer">' + (q.planned ? 'Other jobs (' + q.more.length + '): ' + esc(names().other) + '\'s, or coming up soon. Doing one counts.' : 'Also due (' + q.more.length + '), only if you feel like it') + '</summary><div style="margin-top:8px">' + q.more.map(function (x) { return questRow(x, { claim: true }); }).join('') + '</div></details></section>';
     h += together;
@@ -1214,7 +1232,7 @@
   /** Train tab: this month at a glance, and the way into every month. */
   function memoriesCard() {
     var M = S.train && S.train.memories; if (!M) return '';
-    var today = S.today ? S.today.date : ymdOf(new Date(now())), ym = today.slice(0, 7), n = memCount(M, ym);
+    var today = todayYmd(), ym = today.slice(0, 7), n = memCount(M, ym);
     return '<section class="card memcard"><div class="head"><div><h3>Memories</h3><div class="tiny muted">' + esc(monthName(ym)) + ': ' + n + ' day' + (n === 1 ? '' : 's') + ' trained</div></div>' +
       '<button class="btn soft sm" type="button" data-memories="open">' + icon('calendar', 's') + 'All memories</button></div>' + memMonth(ym, M, today) +
       '<p class="tiny muted" style="margin:8px 0 0">Tap a day for the workout. Highlighted: what you worked; the stronger the colour, the more sets.</p></section>';
@@ -1222,7 +1240,7 @@
   /** The Train tab's hero: Monday to Sunday, each day trained with its body; tap for All memories. */
   function memWeek() {
     var M = S.train && S.train.memories; if (!M) return '';
-    var today = S.today ? S.today.date : ymdOf(new Date(now())), mon = addDaysYmd(today, -((new Date(today + 'T12:00:00').getDay() + 6) % 7)), cells = '', n = 0;
+    var today = todayYmd(), mon = addDaysYmd(today, -((new Date(today + 'T12:00:00').getDay() + 6) % 7)), cells = '', n = 0;
     for (var i = 0; i < 7; i++) {
       var d = addDaysYmd(mon, i), x = M[d]; if (x) n++;
       cells += '<span class="memwk' + (x ? ' on' : '') + (d === today ? ' today' : '') + (d > today ? ' later' : '') + '"><span class="tiny">' + 'MTWTFSS'[i] + '</span>' + (x ? bodySvg(x.m) : '<i></i>') + '</span>';
@@ -1241,7 +1259,7 @@
   }
   function renderMemories(scrollEnd) {
     var box = el('memories'); if (!box) return;
-    var days = memData(), today = S.today ? S.today.date : ymdOf(new Date(now())), list = Object.keys(days).sort();
+    var days = memData(), today = todayYmd(), list = Object.keys(days).sort();
     var first = list.length ? list[0].slice(0, 7) : today.slice(0, 7), months = NudgeFmt.memMonths(first, today.slice(0, 7));
     var thisM = memCount(days, today.slice(0, 7)), prev = months.length > 1 ? memCount(days, months[months.length - 2]) : 0;
     var h = '<div class="memhead"><button class="iconbtn" type="button" data-memories="close" aria-label="Back">' + icon('back') + '</button><h2>All memories</h2><span style="width:40px"></span></div>' +
@@ -1299,7 +1317,7 @@
     var mig = sp.migration;
     return '<section class="card" id="trainingCard"><div class="head"><h3>Training</h3></div>' +
       '<p class="small" style="margin:0"><b>' + esc(sp.name) + '</b>: ' + esc(sp.order.map(function (x) { return x.name; }).join(', ')) + '. A rotation, not fixed days: the next session waits for you, and only a logged session moves it on.</p>' +
-      '<p class="small" style="margin:10px 0 0"><b>Presets</b>, any day: ' + esc((sp.presets || []).map(function (x) { return x.name; }).join(', ')) + '. What they work counts towards what goes next. ' + esc(sp.pump.name) + ' is an extra for bonus XP; the others count as your gym session. Target: ' + sp.week.target + ' sessions a week (' + sp.week.done + ' so far).</p>' +
+      '<p class="small" style="margin:10px 0 0"><b>Presets</b>, any day: ' + esc((sp.presets || []).map(function (x) { return x.name; }).join(', ')) + '. What they work counts towards what goes next. ' + esc(sp.pump.name) + ' is an extra for bonus XP; the others count as your gym session. Target: ' + (sp.week.label || sp.week.target) + ' sessions a week (' + sp.week.done + ' so far).</p>' +
       (mig ? '<p class="tiny muted" style="margin:8px 0 0">Moved to templates ' + esc(String(mig.at).slice(0, 10)) + ': gym data backed up first (' + mig.backup.rows + ' rows, "' + esc(mig.backup.sheet) + '" in your Nudge backups sheet). ' + mig.mapped + ' of ' + mig.sets + ' logged sets carry over to the templates' + (Object.keys(mig.renamed || {}).length ? ' (' + Object.keys(mig.renamed).length + ' old names matched up)' : '') + (mig.other && mig.other.length ? '; ' + mig.other.length + ' other exercises kept as they were' : '') + '.</p>' : '') + '</section>';
   }
   var trainLater = false;
@@ -1316,14 +1334,14 @@
     var d = draft(), h = '<div class="top"><div><h1>Train</h1><div class="sub">' + (t.today ? 'Today: ' + esc(t.today) : 'Next up: ' + esc(t.rotationNext || '') + '. Any day you get there.') + '</div></div><span class="row" style="gap:8px"><button class="iconbtn" type="button" data-memories="open" aria-label="All memories: every day you trained">' + icon('calendar') + '</button>' + meButton() + '</span></div>';
     // the split: its sessions, the next one (rested longest) marked; any session can be picked. Presets below: any day
     var presets = (sp && sp.presets) || [], preset = presets.filter(function (x) { return x.id === tsel; })[0];
-    if (sp) h += '<section class="card spot trainhero"><div class="between" style="margin-bottom:8px"><div class="eyebrow">' + esc(sp.name) + '</div><span class="tiny muted"><b>' + sp.week.done + ' of ' + sp.week.target + '</b> this week</span></div>' + memWeek() + '<div class="rotstrip" aria-label="Your training rotation">' + sp.order.map(function (o) { var cur = o.id === tsel; return '<button type="button" class="rot' + (cur ? ' on' : '') + (o.id === sp.next.id ? ' next' : '') + '" data-tsel="' + esc(o.id) + '" aria-pressed="' + cur + '">' + esc(o.name) + '</button>'; }).join('<span class="rotarr" aria-hidden="true">›</span>') + '</div>' +
+    if (sp) h += '<section class="card spot trainhero"><div class="between" style="margin-bottom:8px"><div class="eyebrow">' + esc(sp.name) + '</div><span class="tiny muted">' + (sp.week.done ? '<b>' + sp.week.done + ' of ' + (sp.week.label || sp.week.target) + '</b> this week' + (sp.week.bonus ? ', bonus' : sp.week.hit ? ', done' : '') : (sp.week.label || sp.week.target) + ' this week') + '</span></div>' + memWeek() + '<div class="rotstrip" aria-label="Your training rotation">' + sp.order.map(function (o) { var cur = o.id === tsel; return '<button type="button" class="rot' + (cur ? ' on' : '') + (o.id === sp.next.id ? ' next' : '') + '" data-tsel="' + esc(o.id) + '" aria-pressed="' + cur + '">' + esc(o.name) + '</button>'; }).join('<span class="rotarr" aria-hidden="true">›</span>') + '</div>' +
       '<div class="rotmeta"><span class="tiny muted">Next up: <b>' + esc(sp.next.name) + '</b>: whatever has rested longest goes next, so lower never follows lower.</span>' +
       (t.sessions.length ? '<label class="tiny rotpick">Other workout <select data-tselect="1" aria-label="Pick one of your own workouts"><option value="">Choose…</option>' + t.sessions.map(function (x) { return '<option value="' + esc(x) + '"' + (x === tsel ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select></label>' : '') + '</div>' +
       '<div class="eyebrow" style="margin:2px 0 8px">Presets, any day</div><div class="presets">' + presets.map(function (x) {
         return '<button type="button" class="chip' + (x.id === tsel ? ' on' : '') + '" data-tsel="' + esc(x.id) + '" aria-pressed="' + (x.id === tsel) + '">' + (x.extra ? icon('bolt', 's') : '') + esc(x.name) + (x.extra ? ' · +' + sp.pump.xp + ' XP' + (sp.pump.doneToday ? ', done' : '') : '') + '</button>';
       }).join('') + '</div></section>';
     h += '<div id="restSlot"></div>';
-    if (tsel === 'pump') h += '<div class="note">An extra session: bonus XP, and it never counts as missed. What it works counts towards what goes next.</div>';
+    if (tsel === 'pump') h += '<div class="note">An extra session: bonus XP, and it\'s never owed. What it works counts towards what goes next.</div>';
     else if (preset && !(sp.doneToday.length > 0)) h += '<div class="note">A preset: it counts as today\'s gym session, and what it works counts towards what goes next.</div>';
     else if (sp ? sp.doneToday.length > 0 : t.doneToday) h += '<div class="note">Today\'s workout is logged. Log another below if you did one.</div>';
     else {
@@ -1412,12 +1430,12 @@
     save(widKey, wid);
     var slow = setTimeout(function () { var b = el('finishWk'); if (b && b.disabled) { b.textContent = 'Saved on your phone · syncing'; toast('Your workout is safe on this phone. It\'ll reach your Sheet as soon as the connection does.'); } }, 6000);
     var started = load('wkstart-' + draftKey()) || 0;
-    call('saveWorkout', [tp ? tp.name : tsel, sets, { started: started, day: ymdOf(new Date(started || now())), template: tp ? tp.id : '', wid: wid }], function (res) {
+    call('saveWorkout', [tp ? tp.name : tsel, sets, { started: started, day: NudgeFmt.ukYmd(started || now()), template: tp ? tp.id : '', wid: wid }], function (res) {
       clearTimeout(slow); save(widKey, null);
       save(draftKey(), null); save('wkstart-' + draftKey(), null); if (tp) { save(taddKey(tp.id), null); save(setsKey(tp.id), null); save(skipKey(tp.id), null); } endRest(); armRest();
       apply(res.state);
       chime([660, 880, 1100, 1320]); buzz([60, 40, 60, 40, 150]);
-      var h = '<div class="center">' + icon('trophy', 'l') + '<h2 style="margin:8px 0">' + (res.duplicate ? 'Already saved' : res.extra ? 'Pump logged' : 'Workout logged') + '</h2>' + (res.duplicate ? '<p class="small" style="margin:0 0 8px">This workout was already in your Sheet, so it wasn\'t added twice.</p>' : '') + (res.extra ? '<p class="small" style="margin:0 0 8px">' + (res.bonus ? '+' + res.bonus + ' bonus XP. ' : 'Bonus XP already earned today. ') + 'It never counts as missed.</p>' : '') + (res.volume ? '<p class="muted" style="margin:0 0 10px">' + res.sets + ' sets · ' + fmt(res.volume) + ' kg lifted' + (res.minutes ? ' · ' + res.minutes + ' min' : '') + '</p>' : '') + '</div>';
+      var h = '<div class="center">' + icon('trophy', 'l') + '<h2 style="margin:8px 0">' + (res.duplicate ? 'Already saved' : res.extra ? 'Pump logged' : 'Workout logged') + '</h2>' + (res.duplicate ? '<p class="small" style="margin:0 0 8px">This workout was already in your Sheet, so it wasn\'t added twice.</p>' : '') + (res.extra ? '<p class="small" style="margin:0 0 8px">' + (res.bonus ? '+' + res.bonus + ' bonus XP. ' : 'Bonus XP already earned today. ') + 'It\'s never owed.</p>' : '') + (res.volume ? '<p class="muted" style="margin:0 0 10px">' + res.sets + ' sets · ' + fmt(res.volume) + ' kg lifted' + (res.minutes ? ' · ' + res.minutes + ' min' : '') + '</p>' : '') + '</div>';
       (res.changes || []).forEach(function (c) { h += '<section class="card tint">' + '<b>' + esc(c.lift) + '</b>: ' + c.reps + ' reps on the heavy set<br>' + (c.change ? 'Training max ' + c.from + ' → <b>' + c.to + ' kg</b>' : 'Training max stays at ' + c.from + ' kg. Go again next week.') + '</section>'; });
       (res.prs || []).slice(0, 3).forEach(function (r) { h += '<section class="card blush"><b>New record.</b> ' + esc(r.exercise) + ' ' + r.weight + ' kg × ' + r.reps + (r.e1rm ? ' (est. 1RM ' + Math.round(r.e1rm) + ' kg)' : '') + '</section>'; });
       openSheet(h + '<button class="btn primary wide" type="button" data-close>Done</button>');
@@ -1458,10 +1476,10 @@
     var F = S.food, t = F.targets, kcal = F.totals.kcal, prot = F.totals.protein;
     pending.forEach(function (p) { kcal += p.kcal; prot += p.protein; });
     var kl = t.kcal - kcal, pl = t.proteinMin - prot, scale = t.proteinMax * 1.15;
-    var h = '<div class="top"><div><h1>Food</h1><div class="sub">' + fmt(kcal) + ' kcal · ' + fmt(prot) + 'g protein so far</div></div>' + meButton() + '</div>';
-    h += '<section class="card spot"><div class="eyebrow">' + (t.goal ? esc(DAYTYPE[t.dayType] || 'Today') + ' · calories' : 'Calories') + '</div><div class="between" style="align-items:baseline"><div><span class="big">' + fmt(kcal) + '</span> <span class="of">/ ' + fmt(t.kcal) + '</span></div><div class="left ' + (kl >= 0 ? 'good' : 'warn') + '">' + (kl >= 0 ? fmt(kl) + ' left' : fmt(-kl) + ' over') + '</div></div>' +
+    var h = '<div class="top"><div><h1>Food</h1><div class="sub">' + (kcal || prot ? fmt(kcal) + ' kcal · ' + fmt(prot) + 'g protein so far' : esc(NudgeFmt.mealNext(NudgeFmt.ukMinutes(now())))) + '</div></div>' + meButton() + '</div>';
+    h += '<section class="card spot"><div class="eyebrow">' + (t.goal ? esc(DAYTYPE[t.dayType] || 'Today') + ' · calories' : 'Calories') + '</div><div class="between" style="align-items:baseline"><div>' + (kcal ? '<span class="big">' + fmt(kcal) + '</span> <span class="of">/ ' + fmt(t.kcal) + '</span>' : '<span class="big">' + fmt(t.kcal) + '</span> <span class="of">kcal today</span>') + '</div><div class="left ' + (kl >= 0 ? 'good' : 'warn') + '">' + (!kcal ? '' : kl >= 0 ? fmt(kl) + ' left' : fmt(-kl) + ' over') + '</div></div>' +
       '<div class="bar' + (kl < 0 ? ' over' : '') + '" style="margin:8px 0 16px"><i style="width:' + Math.min(100, kcal / t.kcal * 100) + '%"></i></div>' +
-      '<div class="eyebrow">Protein</div><div class="between" style="align-items:baseline"><div><span class="big">' + fmt(prot) + 'g</span> <span class="of">/ ' + t.proteinMin + '–' + t.proteinMax + 'g</span></div><div class="left ' + (pl > 0 ? '' : 'good') + '">' + (pl > 0 ? fmt(pl) + 'g to go' : prot > t.proteinMax ? 'Above range' : 'In range') + '</div></div>' +
+      '<div class="eyebrow">Protein</div><div class="between" style="align-items:baseline"><div>' + (prot ? '<span class="big">' + fmt(prot) + 'g</span> <span class="of">/ ' + t.proteinMin + '–' + t.proteinMax + 'g</span>' : '<span class="big">' + t.proteinMin + '–' + t.proteinMax + 'g</span> <span class="of">today</span>') + '</div><div class="left ' + (pl > 0 ? '' : 'good') + '">' + (!prot ? '' : pl > 0 ? fmt(pl) + 'g to go' : prot > t.proteinMax ? 'Above range' : 'In range') + '</div></div>' +
       '<div class="bar" style="margin-top:8px"><i style="width:' + Math.min(100, prot / scale * 100) + '%"></i><span class="zone" style="left:' + (t.proteinMin / scale * 100) + '%;width:' + ((t.proteinMax - t.proteinMin) / scale * 100) + '%"></span></div></section>';
     h += goalCard(false);
     h += '<section class="card"><form class="inline" id="quick" autocomplete="off"><input type="text" id="quickText" placeholder="2 protein weetabix and 200ml milk" aria-label="What did you eat?"' + (F.hasClaudeKey ? '' : ' disabled') + '><button class="btn primary" id="quickBtn" type="submit"' + (F.hasClaudeKey ? '' : ' disabled') + '>Add</button></form>' +
@@ -1489,14 +1507,15 @@
     var G = S.goal; if (!ME || !G) return '';
     var T = G.today, left = S.food ? T.kcal - Math.round(S.food.totals.kcal) : T.kcal;
     var Q = G.scale !== 'daily', C = G.consistency || { streak: 0, week: { on: 0, past: 0 }, paperKg: 0, days: [] };
-    var status = Q ? (C.streak >= 2 ? C.streak + ' days on plan in a row' : C.week.past ? C.week.on + ' of ' + C.week.past + ' days on plan this week' : 'Day one: follow today\'s numbers') : G.now === null ? 'Weigh in to start the trend.' : G.behind === null ? '' : G.behind > 0.2 ? kgs(G.behind) + ' kg behind the ' + G.minRate + ' kg/week line' + (G.push ? ': push week' : '') : G.behind < -0.2 ? kgs(-G.behind) + ' kg ahead of the line' : 'On the line';
+    var status = Q ? (C.streak >= 2 ? C.streak + ' days on plan in a row' : C.week.on ? C.week.on + ' of ' + C.week.past + ' days on plan this week' : NudgeFmt.mealNext(NudgeFmt.ukMinutes(now()))) : G.now === null ? 'Weigh in to start the trend.' : G.behind === null ? '' : G.behind > 0.2 ? kgs(G.behind) + ' kg off the ' + G.minRate + ' kg/week line' + (G.push ? ', so a push week' : '') : G.behind < -0.2 ? kgs(-G.behind) + ' kg ahead of the line' : 'On the line';
     if (compact) return '<section class="card goalmini" data-goto="food"><div class="between"><div class="eyebrow">Goal · ' + esc(G.milestone.kg ? kgs(G.milestone.kg) + ' kg by ' + G.milestone.name : 'at least ' + G.minRate + ' kg a week') + '</div><span class="tiny muted">' + esc(DAYTYPE[T.type]) + '</span></div>' +
       '<div class="between" style="margin-top:6px;align-items:baseline"><div><b class="num" style="font-size:22px">' + (left >= 0 ? fmt(left) : fmt(-left)) + '</b> <span class="small muted">kcal ' + (left >= 0 ? 'left' : 'over') + ' · ' + fmt(T.steps) + ' steps</span></div><span class="small ' + (!Q && G.behind > 0.2 ? 'warn' : 'muted') + '">' + (Q ? (C.paperKg > 0 ? '−' + kgs(C.paperKg) + ' kg on paper' : '') : G.now !== null ? 'Trend ' + kgs(G.now) + ' kg' : '') + '</span></div>' +
       (status ? '<div class="tiny ' + (!Q && G.behind > 0.2 ? 'warn' : 'muted') + '" style="margin-top:4px">' + esc(status) + '</div>' : '') + '</section>';
     var h = '<section class="card goal"><div class="head"><h3>Goal</h3><button class="btn ghost sm" type="button" id="goalEdit">Edit</button></div>';
     var planXmas = Math.round(G.minRate * Math.max(0, (Date.parse(G.milestone.date) - Date.parse(G.start)) / (7 * 864e5)) * 10) / 10;
-    if (Q) h += '<div class="gvtiles"><div class="gvtile"><b class="num">' + C.streak + '</b><span class="tiny muted">days on plan in a row</span></div><div class="gvtile"><b class="num">' + C.week.on + '<small> / ' + C.week.past + '</small></b><span class="tiny muted">this week so far</span></div>' +
-      '<div class="gvtile"><b class="num">' + (C.paperKg > 0 ? '−' + kgs(C.paperKg) : '0.0') + '</b><span class="tiny muted">kg on paper, from your logs</span></div><div class="gvtile"><b class="num">−' + kgs(planXmas) + '</b><span class="tiny muted">kg by ' + esc(G.milestone.name) + ' (the plan)</span></div></div>' +
+    // tiles only once they have something in them; until then, the next small step
+    if (Q) h += '<div class="gvtiles">' + (C.streak ? '<div class="gvtile"><b class="num">' + C.streak + '</b><span class="tiny muted">days on plan in a row</span></div>' : '') + (C.week.on ? '<div class="gvtile"><b class="num">' + C.week.on + '<small> / ' + C.week.past + '</small></b><span class="tiny muted">this week so far</span></div>' : '') +
+      (C.paperKg > 0 ? '<div class="gvtile"><b class="num">−' + kgs(C.paperKg) + '</b><span class="tiny muted">kg on paper, from your logs</span></div>' : '') + '<div class="gvtile"><b class="num">−' + kgs(planXmas) + '</b><span class="tiny muted">kg by ' + esc(G.milestone.name) + ' (the plan)</span></div></div>' +
       '<p class="small" style="margin:0 0 4px">The scale\'s optional. It swings 1 to 2 kg with water, salt and creatine, so progress here is counted from what you log. Hit the numbers and the weight follows.' + (G.lastWeigh ? ' <span class="muted">Last check-in weigh: ' + esc(shortDay(G.lastWeigh.date)) + '.</span>' : '') + '</p>';
     else h += '<div class="gvtiles"><div class="gvtile"><b class="num">' + kgs(G.now) + '</b><span class="tiny muted">trend, kg</span></div><div class="gvtile"><b class="num">' + (G.lost === null ? '–' : (G.lost >= 0 ? '−' : '+') + kgs(Math.abs(G.lost))) + '</b><span class="tiny muted">since ' + esc(shortDay(G.start).replace(/^\w+, /, '')) + '</span></div>' +
       '<div class="gvtile"><b class="num">' + kgs(G.milestone.kg) + '</b><span class="tiny muted">by ' + esc(G.milestone.name) + '</span></div><div class="gvtile"><b class="num">' + kgs(G.end.kg) + '</b><span class="tiny muted">by ' + esc(G.end.name) + '</span></div></div>';
@@ -1504,7 +1523,7 @@
     h += goalChart(G);
     h += '<div class="eyebrow" style="margin:12px 0 6px">This week · ' + fmt(T.weekly) + ' kcal</div><div class="gweek">' + T.days.map(function (d) {
       var isToday = d.ymd === S.today.date, st = (C.days.filter(function (x) { return x.ymd === d.ymd; })[0] || {}).status;
-      var mark = st === 'on' ? '<span class="tiny gon">on plan</span>' : st === 'over' ? '<span class="tiny muted">over</span>' : st === 'none' ? '<span class="tiny muted">not logged</span>' : '<span class="tiny muted">' + (d.type === 'social' ? 'social' : d.type) + '</span>';
+      var mark = st === 'on' ? '<span class="tiny gon">on plan</span>' : st === 'over' ? '<span class="tiny muted">over</span>' : st === 'none' ? '<span class="tiny muted">no log</span>' : '<span class="tiny muted">' + (d.type === 'social' ? 'social' : d.type) + '</span>';
       return '<div class="gday ' + d.type + (isToday ? ' now' : '') + (st === 'on' ? ' ok' : '') + '"><span class="tiny">' + DOW3[d.dow] + '</span><b class="num">' + fmt(isToday ? T.kcal : d.planned) + '</b>' + mark + '</div>';
     }).join('') + '</div>';
     h += '<p class="small" style="margin:10px 0 0">Today: <b>' + esc(DAYTYPE[T.type]) + '</b>, ' + fmt(T.kcal) + ' kcal' + (T.adjust ? ' (' + (T.adjust > 0 ? '+' : '−') + fmt(Math.abs(T.adjust)) + ' to even out the week)' : '') + ' and ' + fmt(T.steps) + ' steps' + (G.push ? '. Push week: 100 less a day and 2,000 more steps until the trend is back on pace' : '') + '.</p>';
@@ -1592,7 +1611,8 @@
   }
   /** The Us streak (weeks in a row) and the button that logs it: on Home and at the top of the chat. */
   function usLogRow(u) {
-    return '<div class="row us-line"><span class="small">' + icon('flame', 's') + ' <b>' + u.heat + '</b> week' + (u.heat === 1 ? '' : 's') + ' running · <b>' + u.week + '</b> this week' + (u.last === ymdOf(new Date(now())) ? ' · logged today' : '') + '</span>' +
+    var bits = [u.heat ? '<b>' + u.heat + '</b> week' + (u.heat === 1 ? '' : 's') + ' running' : '', u.week ? '<b>' + u.week + '</b> this week' : '', u.last === todayYmd() ? 'logged today' : ''].filter(Boolean);
+    return '<div class="row us-line"><span class="small">' + (bits.length ? icon('flame', 's') + ' ' + bits.join(' · ') : 'Time together counts: log it when you have some.') + '</span>' +
       '<button class="btn soft sm" type="button" data-fun="usLog">' + icon('heart', 's') + 'Log it · +20 XP each</button></div>';
   }
   /** The Us stats and badges, shown at the top of the chat. */
@@ -3318,7 +3338,9 @@
     var ds = t.dataset;
     if (ds.tab) { t.blur(); return showTab(ds.tab); }
     if (ds.goto) return showTab(ds.goto);
-    if (ds.lazy) return call('lazyDay', [ds.lazy], function (res) { apply(res, ds.lazy === 'undo' ? 'Lazy day cancelled.' : ds.lazy === 'yesterday' ? 'Yesterday\'s a lazy day now. Streak back.' : 'Lazy day. Streak\'s safe.'); });
+    if (ds.lazy) return call('lazyDay', [ds.lazy], function (res) { apply(res, ds.lazy === 'undo' ? 'Back to a normal day.' : ds.lazy === 'yesterday' ? 'Yesterday\'s a lazy day now. Streak back.' : 'Lazy day mode. Three small things and it\'s won.'); });
+    if (ds.lazytick) return call('lazyTick', [ds.lazytick], function (res) { apply(res); });
+    if (ds.energy) return call('setEnergy', [ds.energy], function (res) { apply(res, ds.energy === 'low' ? '' : ds.energy === 'good' ? 'Good. Here\'s today.' : 'Fair enough. One thing at a time.'); });
     // quick, optimistic taps
     if (ds.qtog) { var tq = questByName(ds.qtog); if (tq) togetherSheet(tq); return; }
     if (ds.qdone) return quick(function () {
@@ -3592,9 +3614,10 @@
     document.querySelectorAll('[data-due]').forEach(function (x) { x.textContent = dueLabel(+x.getAttribute('data-due')); });
   }, 1000);
   function refresh() {
-    if (!S || busy || inflight || parking || !el('sheetbg').hidden || document.visibilityState !== 'visible' || (box && box.pending().length)) return;
+    if (!S || busy || inflight || parking || document.visibilityState !== 'visible' || (box && box.pending().length)) return;
     if (document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
-    if (current === 'train' || current === 'food' || (current === 'play' && (recallGame || tempo))) return;
+    // a screen from an earlier day is always fetched again, whatever tab you're on (drafts and ticked sets are kept on the phone)
+    if (!staleDay() && (!el('sheetbg').hidden || current === 'train' || current === 'food' || (current === 'play' && (recallGame || tempo)))) return;
     rpc('appState', []).then(fresh(apply), function () {});
   }
   function refreshQuiet() { rpc('appState', []).then(fresh(apply), function () {}); }
@@ -3672,22 +3695,24 @@
   if (MODE === 'web' && 'serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').then(function (r) { swReg = r; if (window.Notification && Notification.permission === 'granted' && KEY) enablePush(true); }).catch(function () {});
   }
-  // A new version: each build has its own service worker. When it takes over (or a file changes), reload straight away if you
-  // haven't touched anything yet, else offer it, and take it anyway the next time the app comes back from the background
-  // (drafts, ticked sets and session tweaks are all saved on the phone, so nothing is lost).
+  // A new version: each build has its own service worker. It goes in by itself at the first quiet moment (nothing being
+  // typed, no sheet open), with no prompt and no second launch: drafts, ticked sets and session tweaks are all on the phone.
   var updatePending = false, hadSw = MODE === 'web' && 'serviceWorker' in navigator && !!navigator.serviceWorker.controller;
+  function quietNow() { return !document.querySelector('input:focus, textarea:focus, select:focus') && el('sheetbg').hidden && !(window.NudgeSetup && NudgeSetup.isOpen()); }
+  function takeUpdate() { try { sessionStorage.setItem('lq-autoreload', String(Date.now())); } catch (x) {} location.reload(); }
   function newVersion() {
     var last = 0; try { last = +sessionStorage.getItem('lq-autoreload') || 0; } catch (x) {}
     if (Date.now() - last < 60000) return;
-    if (performance.now() < 15000 && !touchedYet) { try { sessionStorage.setItem('lq-autoreload', String(Date.now())); } catch (x) {} location.reload(); return; }
+    if (quietNow()) return takeUpdate();
+    if (updatePending) return;
     updatePending = true;
-    if (!updateOffered) { updateOffered = true; setTimeout(function () { toast('A new version of Nudge is ready.', false, { label: 'Reload', fn: function () { location.reload(); } }); }, 1500); }
+    var wait = setInterval(function () { if (quietNow()) { clearInterval(wait); takeUpdate(); } }, 2000);
   }
   if (MODE === 'web' && 'serviceWorker' in navigator) {
     navigator.serviceWorker.addEventListener('controllerchange', function () { if (hadSw) newVersion(); hadSw = true; });
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState === 'hidden') return;
-      if (updatePending && !document.querySelector('input:focus, textarea:focus')) { try { sessionStorage.setItem('lq-autoreload', String(Date.now())); } catch (x) {} location.reload(); return; }
+      if (updatePending && quietNow()) return takeUpdate();
       if (swReg && swReg.update) swReg.update().catch(function () {});   // back from the background: look for a new version
     });
   }
@@ -3764,7 +3789,7 @@
   } else {
     el('tab-home').innerHTML = '<div class="skel" aria-label="Loading"><div class="sk h"></div><div class="sk c1"></div><div class="sk c2"></div><div class="sk c3"></div></div>';
     el('tab-home').hidden = false;
-    rpc('appState', []).then(function (res) { S = res; offset = res.now - Date.now(); save('state-' + KEY.slice(0, 6), S); boot(); }, function (e) {
+    rpc('appState', []).then(function (res) { S = res; setClock(res); save('state-' + KEY.slice(0, 6), S); boot(); }, function (e) {
       el('tab-home').innerHTML = '<div class="loading"><h2>Couldn\'t load</h2><p class="muted">' + esc(e.message) + '</p><button class="btn primary" type="button" onclick="location.reload()">Try again</button></div>';
     });
   }

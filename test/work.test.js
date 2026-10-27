@@ -125,7 +125,7 @@ test('Work reminders: up next, not started, time\'s up; quiet at night', () => {
   assert.ok(!mine(g).some((p, i, a) => i > 0 && /Up next/.test(p.title) && /Up next/.test(a[i - 1].title)), 'once');
   at(g, '2026-10-14T09:12:00Z');   // 10:12, not started
   g.ctx.nagRun();
-  assert.ok(/haven't started/.test(mine(g).pop().title));
+  assert.ok(/^Ready for /.test(mine(g).filter(p => p.tab === 'work').pop().title));
   at(g, '2026-10-14T10:02:00Z');   // 11:02
   g.ctx.nagRun();
   assert.ok(/Time's up: Write the report/.test(mine(g).pop().title));
