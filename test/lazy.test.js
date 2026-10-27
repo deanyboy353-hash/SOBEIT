@@ -56,7 +56,7 @@ test('a lazy day is neither won nor lost: the streak stays, nothing is taken, an
 test('missing the minimum: the streak resets, 10% of the day\'s potential goes (capped), shown next morning; winning today pays it back', () => {
   const { g, C, me } = ready();
   award(g, '2026-10-11', 400); C.addCash_('me', 'Starting money', 1000, 'start');   // plenty in the bank: level 3, well into it
-  streak(g, 'me', { count: 6, best: 6, through: '2026-10-11' });
+  streak(g, 'me', { count: 6, best: 6, through: '2026-10-11', graces: ['2026-10-18'] });   // this week's grace day already gone
   at(g, '2026-10-13T05:05:00Z');                        // Mon 12th was missed
   const xp0 = C.xpTotal_('me'), c0 = cash(C);
   C.dailyRun();
@@ -110,7 +110,7 @@ test('never below zero: no XP or cash to lose means nothing is taken, and a leve
 test('a missed day can be made a lazy day until noon the next morning: streak back, cost refunded', () => {
   const { g, C, me } = ready();
   award(g, '2026-10-11', 400); C.addCash_('me', 'Starting money', 1000, 'start');
-  streak(g, 'me', { count: 6, best: 6, through: '2026-10-11' });
+  streak(g, 'me', { count: 6, best: 6, through: '2026-10-11', graces: ['2026-10-18'] });   // this week's grace day already gone
   at(g, '2026-10-13T05:05:00Z');
   const xp0 = C.xpTotal_('me'), c0 = cash(C);
   C.dailyRun();
@@ -137,7 +137,8 @@ test('the morning offer ends at noon and needs a lazy day left in that week', ()
   C.dailyRun();
   assert.strictEqual(plain(C.appState(me)).game.lazy.offerYesterday, null, 'none left this week');
   assert.throws(() => C.lazyDay(me, 'yesterday'), /No lazy days left/);
-  // next week: Monday missed, offer until noon on Tuesday
+  // next week: Monday missed (with a streak to lose and the week's grace day gone), offer until noon on Tuesday
+  award(g, '2026-10-18', 400); streak(g, 'me', { count: 3, best: 3, through: '2026-10-18', graces: ['2026-10-25'] });
   at(g, '2026-10-20T05:05:00Z');
   C.dailyRun();
   at(g, '2026-10-20T10:30:00Z');                        // 11:30 BST
@@ -155,4 +156,65 @@ test('the pet only gets sleepy on a lazy or missed day', () => {
   const pet = plain(C.appState(me)).game.pet;
   assert.strictEqual(pet.mood, 'sleepy');
   assert.strictEqual(pet.days, 9, 'never shrinks');
+});
+
+test('a grace day a week: the first missed day pauses the streak at no cost, the second in the same week resets it; the joint streak gets its own', () => {
+  const { g, C, me } = ready();
+  award(g, '2026-10-11', 400);
+  streak(g, 'me', { count: 6, best: 6, through: '2026-10-11' });
+  streak(g, 'team', { count: 4, best: 4, total: 9, through: '2026-10-11' });
+  at(g, '2026-10-13T05:05:00Z');                        // Mon 12th slipped by
+  const xp0 = C.xpTotal_('me');
+  C.dailyRun();
+  assert.strictEqual(C.streakState_('me').count, 6, 'paused, not lost');
+  assert.strictEqual(C.streakState_('team').count, 4, 'the joint streak too');
+  assert.strictEqual(C.xpTotal_('me'), xp0, 'nothing taken');
+  const lz = plain(C.appState(me)).game.lazy;
+  assert.deepStrictEqual(lz.grace, { paused: 6 });
+  assert.strictEqual(lz.missed, null);
+  assert.strictEqual(lz.offerYesterday, null, 'nothing lost, nothing to offer');
+  award(g, '2026-10-13', 30);
+  at(g, '2026-10-15T05:05:00Z');                        // Tue won, Wed 14th slipped: the week's grace is gone
+  C.dailyRun();
+  assert.strictEqual(C.streakState_('me').count, 0);
+  assert.strictEqual(C.streakState_('me').best, 7);
+  at(g, '2026-10-21T05:05:00Z');                        // a new week: a new grace day
+  streak(g, 'me', Object.assign(C.streakState_('me'), { count: 2, through: '2026-10-19' }));
+  C.dailyRun();
+  assert.strictEqual(C.streakState_('me').count, 2);
+});
+
+test('lazy day mode: one tap from the energy check-in; eat some protein, one short job and a walk win the day, with the usual celebration', () => {
+  const { g, C, me } = ready('2026-10-12T07:30:00Z');
+  let s = plain(C.appState(me));
+  assert.strictEqual(s.game.lazy.energy, '');
+  s = plain(C.setEnergy(me, 'low'));
+  assert.strictEqual(s.game.lazy.energy, 'low');
+  assert.strictEqual(s.game.win.lazy, undefined, 'low only suggests it');
+  assert.throws(() => C.setEnergy(me, 'shattered'), /Low, OK or Good/);
+  s = plain(C.lazyDay(me, 'today'));
+  assert.deepStrictEqual(s.game.lazy.set.map(x => [x.id, x.done]), [['protein', false], ['chore', false], ['walk', false]]);
+  assert.strictEqual(s.game.win.won, false);
+  C.logPreset(me, 'Protein shake');
+  C.addXp_('me', 'Put a wash on', 5, 'quest');
+  g.state.cache = {};
+  s = plain(C.appState(me));
+  assert.deepStrictEqual(s.game.lazy.set.map(x => x.done), [true, true, false], 'protein and the job tick themselves');
+  s = plain(C.lazyTick(me, 'walk'));
+  assert.strictEqual(s.game.win.won, true, 'Day won');
+  assert.strictEqual(s.game.streak.todayDone, true);
+  assert.throws(() => C.lazyTick(me, 'nap'), /Not part/);
+  at(g, '2026-10-13T05:05:00Z');
+  C.dailyRun();
+  assert.strictEqual(C.streakState_('me').count, 1, 'a won lazy day grows the streak');
+  const src = require('fs').readFileSync(require('path').join(__dirname, '../web/app.js'), 'utf8');
+  assert.ok(/How\\'s your energy\?/.test(src) && /data-energy=/.test(src) && /data-lazytick=/.test(src));
+});
+
+test('weekly training target as a range: 3–4 means 3 counts as done and 4 is a bonus', () => {
+  const { C } = ready();
+  assert.deepStrictEqual(plain(C.weekRange(3, 4)), { done: 3, target: 4, min: 3, label: '3–4', hit: true, bonus: false });
+  assert.strictEqual(C.weekRange(4, 4).bonus, true);
+  assert.strictEqual(C.weekRange(2, 4).hit, false);
+  assert.strictEqual(C.weekRange(1, 2).label, '2');
 });

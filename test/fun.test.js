@@ -248,7 +248,7 @@ test('the shared pet grows with lifetime joint days, never shrinks, and naps ins
   assert.strictEqual(pet({ total: 7, count: 3, todayDone: false }, 23 * 60).mood, 'sleepy');
   assert.strictEqual(pet({ total: 120, count: 0 }, 600).stage, 'mythic');
   // lifetime total survives a reset
-  g.state.props.STREAK_team = JSON.stringify({ count: 5, freezes: 0, best: 5, through: '2026-10-11', frozeOn: '' });
+  g.state.props.STREAK_team = JSON.stringify({ count: 5, freezes: 0, best: 5, through: '2026-10-11', frozeOn: '', graces: ['2026-10-18'] });
   g.ctx.updateStreaks_('2026-10-13');
   const st = JSON.parse(g.state.props.STREAK_team);
   assert.strictEqual(st.count, 0); assert.strictEqual(st.best, 5);

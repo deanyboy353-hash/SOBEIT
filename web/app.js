@@ -364,33 +364,45 @@
       W.by === 'jobs' ? 'Do any ' + W.need + ' job' + (W.need === 1 ? '' : 's') + ' today and the day is won.' : 'Earn ' + W.need + ' XP today to win: chores, the gym and food all count.') + '</p>';
     if (open.length) h += open.slice(0, 3).map(function (q) { return questRow(q); }).join('');
     else if (mine.length) h += '<p class="empty">All of today\'s jobs are done.</p>';
-    if (!W.won) h += lazyRow();
+    if (!W.won) h += lazyRow();   // lazy day mode is always one tap away too
     return h + '</section>';
   }
   /** The lazy-day button and how many are left (two a week, back on Monday). */
   function lazyRow() {
     var L = S.game.lazy; if (!L) return '';
     var late = new Date(now()).getHours() >= 20;
-    return '<div class="lazyrow' + (late && L.left ? ' nudge' : '') + '"><div class="grow"><div class="small">' + (late && L.left ? 'Not happening today? A lazy day keeps the streak.' : 'Lazy days left this week: ' + L.left + ' of ' + L.perWeek) + '</div>' +
-      (L.left ? '' : '<div class="tiny muted">None left. They reset on Monday.</div>') + '</div>' +
-      '<button class="btn line sm" type="button" data-lazy="today"' + (L.left ? '' : ' disabled') + '>' + icon('moon', 's') + 'Take a lazy day</button></div>';
+    return '<div class="lazyrow' + (late && L.left ? ' nudge' : '') + '"><div class="grow"><div class="small">' + (late && L.left ? 'Not happening today? Lazy day mode: three small things still win it.' : 'Low on energy? Three small things win the day.') + '</div>' +
+      (L.left ? '' : '<div class="tiny muted">Both used this week. They\'re back on Monday.</div>') + '</div>' +
+      '<button class="btn line sm" type="button" data-lazy="today"' + (L.left ? '' : ' disabled') + '>' + icon('moon', 's') + 'Lazy day mode</button></div>';
   }
-  /** A lazy day: neither won nor lost. One small optional thing instead of the minimum. */
+  /** Lazy day mode: three small things win the day; none of them is owed. Protein and a job tick themselves. */
   function lazyCard() {
-    var R = S.routines || {}, L = S.game.lazy, water = R.waterGoal && R.water < R.waterGoal;
-    return '<section class="card spot win lazy"><div class="row" style="gap:12px;align-items:flex-start"><span class="wonbadge soft">' + icon('moon') + '</span><div class="grow"><b>Lazy day</b>' +
-      '<div class="small muted">' + (S.game.streak.count ? 'Streak on hold at ' + S.game.streak.count + '. ' : '') + 'Nothing to win, nothing to lose.</div>' +
-      '<div class="small" style="margin-top:8px"><b>Optional:</b> ' + (water ? 'have a glass of water. That\'s it.' : 'get some fresh air. Or don\'t.') + '</div>' +
-      '<div class="tiny muted" style="margin-top:6px">Lazy days left this week: ' + L.left + ' of ' + L.perWeek + '</div></div>' +
-      '<button class="btn ghost sm" type="button" data-lazy="undo">Undo</button></div></section>';
+    var L = S.game.lazy, set = L.set || [], won = S.game.win && S.game.win.won;
+    var h = '<section class="card spot win lazy' + (won ? ' won' : '') + '"><div class="row" style="gap:12px;align-items:flex-start"><span class="wonbadge' + (won ? '' : ' soft') + '">' + icon(won ? 'check' : 'moon') + '</span><div class="grow"><b>' + (won ? 'Day won, the lazy way' : 'Lazy day mode') + '</b>' +
+      '<div class="small muted">' + (won ? 'That counts. ' + (S.game.streak.count ? 'Streak ' + S.game.streak.count + '.' : '') : 'Do these three and the day is won. Anything else is a bonus.') + '</div></div>' +
+      '<button class="btn ghost sm" type="button" data-lazy="undo">Undo</button></div>';
+    h += set.map(function (x) {
+      return '<button type="button" class="lazyitem' + (x.done ? ' done' : '') + '" data-lazytick="' + esc(x.id) + '"' + (x.auto ? ' disabled' : '') + ' aria-pressed="' + x.done + '"><span class="check">' + (x.done ? icon('check', 's') : '') + '</span><span class="grow">' + esc(x.text) + (x.auto ? '<span class="tiny muted"> · logged</span>' : '') + '</span></button>';
+    }).join('');
+    return h + '</section>';
+  }
+  /** The morning check-in: how's your energy? Low suggests lazy day mode, never sets it. */
+  function energyCard() {
+    var L = S.game.lazy, W = winOf(); if (!L || W.lazy || W.won || NudgeFmt.ukMinutes(now()) >= 13 * 60) return '';
+    if (L.energy === 'low') return L.left ? '<section class="card quiet"><div class="between" style="gap:10px"><div class="small"><b>Low day? That\'s fine.</b> Lazy day mode: eat something with protein, one short job and a short walk, and the day is won.</div>' +
+      '<button class="btn soft sm" type="button" data-lazy="today">' + icon('moon', 's') + 'Lazy day mode</button></div></section>' : '';
+    if (L.energy) return '';
+    return '<section class="card quiet energy"><div class="small" style="margin-bottom:8px"><b>How\'s your energy?</b></div><div class="row" style="gap:8px">' +
+      [['low', 'Low'], ['ok', 'OK'], ['good', 'Good']].map(function (x) { return '<button class="btn line sm" type="button" data-energy="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div></section>';
   }
   /** The morning after a missed day: what it cost, how to get it back, and (until noon) the lazy-day way out. */
   function missedNote() {
     var L = S.game.lazy; if (!L) return '';
     var o = L.offerYesterday, m = L.missed, h = '';
     if (m && m.back) return '<div class="note">' + icon('check', 's') + 'Comeback: yesterday\'s ' + (m.xp ? m.xp + ' XP' : money(m.cash)) + ' is back.</div>';
-    if (m) h += '<div class="note"><b>Missed yesterday: −' + (m.xp ? m.xp + ' XP' : money(m.cash)) + '.</b> Win today to get it back.</div>';
-    if (o) h += '<section class="card quiet"><div class="between" style="gap:10px"><div class="small">Make yesterday a lazy day instead? ' + (o.streak ? 'The streak goes back to ' + o.streak + (o.xp ? ' and the ' + o.xp + ' XP comes back' : '') : o.xp ? 'The ' + o.xp + ' XP comes back' : 'It stays off the record') + '. Until noon.</div>' +
+    if (L.grace) h += '<div class="note">' + icon('moon', 's') + 'Yesterday was a rest. Your streak\'s paused at ' + L.grace.paused + ', not lost: that\'s this week\'s grace day.</div>';
+    if (m) h += '<div class="note">Fresh start today. Win it and yesterday\'s ' + (m.xp ? m.xp + ' XP' : money(m.cash)) + ' comes back.</div>';
+    if (o) h += '<section class="card quiet"><div class="between" style="gap:10px"><div class="small">Make yesterday a lazy day instead? ' + (o.streak ? 'The streak goes back to ' + o.streak + (o.xp ? ' and the ' + o.xp + ' XP comes back' : '') : 'The ' + (o.xp ? o.xp + ' XP' : money(o.cash)) + ' comes back') + '. Until noon.</div>' +
       '<button class="btn soft sm" type="button" data-lazy="yesterday">' + icon('moon', 's') + 'Use one</button></div></section>';
     return h;
   }
@@ -398,7 +410,7 @@
   /** The gym card's footer: main sessions this week against the target, and the optional Pump. */
   function gymExtras() {
     var tr = S.today.train; if (!tr) return '';
-    return '<div class="between" style="margin-top:10px;gap:8px;flex-wrap:wrap"><span class="small">' + (tr.week.done ? '<b>' + tr.week.done + ' of ' + tr.week.target + '</b> main sessions this week' : '') + '</span>' +
+    return '<div class="between" style="margin-top:10px;gap:8px;flex-wrap:wrap"><span class="small">' + (tr.week.done ? '<b>' + tr.week.done + ' of ' + (tr.week.label || tr.week.target) + '</b> sessions this week' + (tr.week.bonus ? ', bonus' : tr.week.hit ? ', done' : '') : tr.week.target ? (tr.week.label || tr.week.target) + ' sessions this week' : '') + '</span>' +
       '<span class="row" style="gap:6px"><button class="btn line sm" type="button" data-memories="open">' + icon('calendar', 's') + 'Memories</button><button class="btn soft sm" type="button" data-trainpump="1">' + icon('bolt', 's') + (tr.pump.doneToday ? 'Pump done today' : 'Pump: extra, +' + tr.pump.xp + ' XP') + '</button></span></div>';
   }
   function stageCard() {
@@ -487,7 +499,7 @@
       h += '<section class="card pushwarn"><b>Get notifications on iPhone</b><div class="small">Tap Share, then Add to Home Screen. Open Nudge from your home screen and turn notifications on there.</div></section>';
     }
     if (S.chores.invite) h += '<div class="note">' + esc(n.other) + ' wants company for chores. Pick a job in Chores.</div>';
-    h += missedNote();
+    h += missedNote() + energyCard();
 
     if (S.setup && !S.setup.done) h += '<section class="card tint"><b>Set up your chores</b><p class="small" style="margin:4px 0 10px">A few quick taps about you and your home, and Nudge plans each day for you: a small must-do minimum, the rest a bonus. About 5 minutes.</p><button class="btn primary wide" type="button" data-setup="run">' + (S.setup.built ? 'Finish my part of setup' : 'Start setup') + '</button></section>';
     seg('header');
@@ -1305,7 +1317,7 @@
     var mig = sp.migration;
     return '<section class="card" id="trainingCard"><div class="head"><h3>Training</h3></div>' +
       '<p class="small" style="margin:0"><b>' + esc(sp.name) + '</b>: ' + esc(sp.order.map(function (x) { return x.name; }).join(', ')) + '. A rotation, not fixed days: the next session waits for you, and only a logged session moves it on.</p>' +
-      '<p class="small" style="margin:10px 0 0"><b>Presets</b>, any day: ' + esc((sp.presets || []).map(function (x) { return x.name; }).join(', ')) + '. What they work counts towards what goes next. ' + esc(sp.pump.name) + ' is an extra for bonus XP; the others count as your gym session. Target: ' + sp.week.target + ' sessions a week (' + sp.week.done + ' so far).</p>' +
+      '<p class="small" style="margin:10px 0 0"><b>Presets</b>, any day: ' + esc((sp.presets || []).map(function (x) { return x.name; }).join(', ')) + '. What they work counts towards what goes next. ' + esc(sp.pump.name) + ' is an extra for bonus XP; the others count as your gym session. Target: ' + (sp.week.label || sp.week.target) + ' sessions a week (' + sp.week.done + ' so far).</p>' +
       (mig ? '<p class="tiny muted" style="margin:8px 0 0">Moved to templates ' + esc(String(mig.at).slice(0, 10)) + ': gym data backed up first (' + mig.backup.rows + ' rows, "' + esc(mig.backup.sheet) + '" in your Nudge backups sheet). ' + mig.mapped + ' of ' + mig.sets + ' logged sets carry over to the templates' + (Object.keys(mig.renamed || {}).length ? ' (' + Object.keys(mig.renamed).length + ' old names matched up)' : '') + (mig.other && mig.other.length ? '; ' + mig.other.length + ' other exercises kept as they were' : '') + '.</p>' : '') + '</section>';
   }
   var trainLater = false;
@@ -1322,7 +1334,7 @@
     var d = draft(), h = '<div class="top"><div><h1>Train</h1><div class="sub">' + (t.today ? 'Today: ' + esc(t.today) : 'Next up: ' + esc(t.rotationNext || '') + '. Any day you get there.') + '</div></div><span class="row" style="gap:8px"><button class="iconbtn" type="button" data-memories="open" aria-label="All memories: every day you trained">' + icon('calendar') + '</button>' + meButton() + '</span></div>';
     // the split: its sessions, the next one (rested longest) marked; any session can be picked. Presets below: any day
     var presets = (sp && sp.presets) || [], preset = presets.filter(function (x) { return x.id === tsel; })[0];
-    if (sp) h += '<section class="card spot trainhero"><div class="between" style="margin-bottom:8px"><div class="eyebrow">' + esc(sp.name) + '</div><span class="tiny muted"><b>' + sp.week.done + ' of ' + sp.week.target + '</b> this week</span></div>' + memWeek() + '<div class="rotstrip" aria-label="Your training rotation">' + sp.order.map(function (o) { var cur = o.id === tsel; return '<button type="button" class="rot' + (cur ? ' on' : '') + (o.id === sp.next.id ? ' next' : '') + '" data-tsel="' + esc(o.id) + '" aria-pressed="' + cur + '">' + esc(o.name) + '</button>'; }).join('<span class="rotarr" aria-hidden="true">›</span>') + '</div>' +
+    if (sp) h += '<section class="card spot trainhero"><div class="between" style="margin-bottom:8px"><div class="eyebrow">' + esc(sp.name) + '</div><span class="tiny muted">' + (sp.week.done ? '<b>' + sp.week.done + ' of ' + (sp.week.label || sp.week.target) + '</b> this week' + (sp.week.bonus ? ', bonus' : sp.week.hit ? ', done' : '') : (sp.week.label || sp.week.target) + ' this week') + '</span></div>' + memWeek() + '<div class="rotstrip" aria-label="Your training rotation">' + sp.order.map(function (o) { var cur = o.id === tsel; return '<button type="button" class="rot' + (cur ? ' on' : '') + (o.id === sp.next.id ? ' next' : '') + '" data-tsel="' + esc(o.id) + '" aria-pressed="' + cur + '">' + esc(o.name) + '</button>'; }).join('<span class="rotarr" aria-hidden="true">›</span>') + '</div>' +
       '<div class="rotmeta"><span class="tiny muted">Next up: <b>' + esc(sp.next.name) + '</b>: whatever has rested longest goes next, so lower never follows lower.</span>' +
       (t.sessions.length ? '<label class="tiny rotpick">Other workout <select data-tselect="1" aria-label="Pick one of your own workouts"><option value="">Choose…</option>' + t.sessions.map(function (x) { return '<option value="' + esc(x) + '"' + (x === tsel ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select></label>' : '') + '</div>' +
       '<div class="eyebrow" style="margin:2px 0 8px">Presets, any day</div><div class="presets">' + presets.map(function (x) {
@@ -3326,7 +3338,9 @@
     var ds = t.dataset;
     if (ds.tab) { t.blur(); return showTab(ds.tab); }
     if (ds.goto) return showTab(ds.goto);
-    if (ds.lazy) return call('lazyDay', [ds.lazy], function (res) { apply(res, ds.lazy === 'undo' ? 'Lazy day cancelled.' : ds.lazy === 'yesterday' ? 'Yesterday\'s a lazy day now. Streak back.' : 'Lazy day. Streak\'s safe.'); });
+    if (ds.lazy) return call('lazyDay', [ds.lazy], function (res) { apply(res, ds.lazy === 'undo' ? 'Back to a normal day.' : ds.lazy === 'yesterday' ? 'Yesterday\'s a lazy day now. Streak back.' : 'Lazy day mode. Three small things and it\'s won.'); });
+    if (ds.lazytick) return call('lazyTick', [ds.lazytick], function (res) { apply(res); });
+    if (ds.energy) return call('setEnergy', [ds.energy], function (res) { apply(res, ds.energy === 'low' ? '' : ds.energy === 'good' ? 'Good. Here\'s today.' : 'Fair enough. One thing at a time.'); });
     // quick, optimistic taps
     if (ds.qtog) { var tq = questByName(ds.qtog); if (tq) togetherSheet(tq); return; }
     if (ds.qdone) return quick(function () {

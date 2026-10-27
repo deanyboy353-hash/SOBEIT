@@ -279,12 +279,17 @@ function pickSession(order, parts, lastHit, lastDone, ymd) {
   return pick.id;
 }
 
-/** Main sessions this week (Monday to Sunday) towards the target. */
+/** Main sessions this week (Monday to Sunday) towards the target, as a range: 3–4 means 3 counts as done and 4 is a bonus. */
 function weekMain_(ymd) {
   var mon = addDays_(ymd, -((dayOfWeek_(ymd) + 6) % 7)), days = {};
   mainDone_(ymd).forEach(function (x) { if (x.date >= mon) days[x.date] = 1; });
-  var h = health_('me');
-  return { done: Object.keys(days).length, target: h.on === false ? 0 : Number(h.trainDays) || WEEK_TARGET };
+  var h = health_('me'), target = h.on === false ? 0 : Number(h.trainDays) || WEEK_TARGET;
+  return weekRange(Object.keys(days).length, target);
+}
+/** Pure: a weekly target as a range. Three or more: one under still counts ({ min: 3, target: 4 }); fewer stay as they are. */
+function weekRange(done, target) {
+  var min = target >= 3 ? target - 1 : target;
+  return { done: done, target: target, min: min, label: min === target ? String(target) : min + '–' + target, hit: target > 0 && done >= min, bonus: target > 0 && done >= target && min < target };
 }
 
 /** What the Train tab and the gym card need about the split. */
