@@ -54,23 +54,21 @@ function hhmm_(v) {
 // ---------- reminders (every 10 minutes) ----------
 
 var STREAK_LINES = [
-  'Your {n}-day streak ends at midnight. {x} XP keeps it.',
-  'Five minutes now keeps the {n}-day streak.',
-  'Streak: {n} days. {x} XP to go.'
+  'Fancy one small job? It keeps the {n}-day streak going.',
+  'Five minutes and the {n}-day streak carries on.',
+  '{n} days running. One small job keeps it that way.'
 ];
 var PUSHY_LINES = [
-  '{x} XP to go today. One chore does it.',
-  'Still {x} XP short. Pick the smallest job.',
-  'Quick one: {x} XP and the day counts.',
-  'Ten minutes. That\'s all it takes. {x} XP to go.',
-  '{other}: {ox} XP today. You: {mx}.',
-  '{n}-day streak. {x} XP keeps it.',
-  'Not happening today? Take a lazy day in the app. Otherwise, {x} XP.'
+  'One small job would win today. The smallest one counts.',
+  'Got ten minutes? Pick the easiest job.',
+  'A quick one and the day\'s won.',
+  'Low on energy? Lazy day mode: three small things and it\'s won.',
+  '{n} days running. Fancy keeping it going?'
 ];
 var LATE_LINES = [
-  'Last call for the {n}-day streak. Dishes count.',
-  'Getting late. {x} XP keeps the {n}-day streak, or take a lazy day.',
-  'One small job and the {n}-day streak stays.'
+  'Still time for one small job. Dishes count.',
+  'Fancy a quick one? Or switch to lazy day mode.',
+  'One small job and the {n}-day streak carries on.'
 ];
 
 /** Inside someone's quiet hours (from setup)? [start, end] in minutes; may wrap midnight. */
@@ -111,19 +109,19 @@ function heartbeat_() {
       var calm = setupOn_() && profile_(who).motivation === 'calm';   // "just a calm list": the morning list only, no streak or race nags
       var pushy = nagLevel_(who) === 'aggressive' && !gentle && !calm;
       var small = setupOn_() ? (function () { var pl = cpToday_()[who]; return 'Your ' + (pl.minimum === 1 ? 'one small job' : pl.minimum + ' small jobs') + ' and today counts' + (pl.must.length ? ': ' + pl.must.join(', ') : '') + '.'; })() : 'Two small jobs and today counts.';
-      if (!pushy && !calm && m >= 19 * 60 + 30 && behind) once(who, 'streak', st.count ? 'Keep your streak' : 'Today still counts', gentle ? small : fill(st.count ? STREAK_LINES[Math.floor(r() * STREAK_LINES.length)] : small), 'chores');
-      if (!pushy && !gentle && !calm && m >= 21 * 60 + 30 && behind && st.count) once(who, 'late', 'Streak alert', fill(LATE_LINES[Math.floor(r() * LATE_LINES.length)]), 'chores');
-      // Duolingo level: from 6pm, every half hour until today's goal is hit.
+      if (!pushy && !calm && m >= 19 * 60 + 30 && behind) once(who, 'streak', st.count ? 'Keep it going?' : 'Still time today', gentle ? small : fill(st.count ? STREAK_LINES[Math.floor(r() * STREAK_LINES.length)] : small), 'chores');
+      if (!pushy && !gentle && !calm && m >= 21 * 60 + 30 && behind && st.count) once(who, 'late', 'One small one?', fill(LATE_LINES[Math.floor(r() * LATE_LINES.length)]), 'chores');
+      // the persistent setting: from 6pm, once an hour until today's goal is hit, always as an invitation
       if (pushy && m >= 18 * 60 && behind) {
-        var slot = Math.floor(m / 30), pool = PUSHY_LINES.filter(function (l) { return (st.count || l.indexOf('{n}') === -1) && (oxp > xp || l.indexOf('{ox}') === -1); });
+        var slot = Math.floor(m / 60), pool = PUSHY_LINES.filter(function (l) { return st.count || l.indexOf('{n}') === -1; });
         if (sent[who].indexOf('streak-' + slot) === -1 && !quietFor_(who, m)) {
           sent[who].push('streak-' + slot);
-          push_(who, st.count ? 'Streak check' : 'Today still counts', fill(pool[slot % pool.length]), 'chores', false, { persist: true, tag: 'streak' });
+          push_(who, st.count ? 'Keep it going?' : 'Still time today', fill(pool[slot % pool.length]), 'chores', false, { tag: 'streak' });
         }
       }
-      if (!calm && m >= 17 * 60 && xpOn_(other, ymd) >= xp + 20) once(who, 'ahead', nk[other] + ' is ahead today', nk[other] + ' has ' + (xpOn_(other, ymd) - xp) + ' more XP than you today. Just saying.', 'home');
+      if (!calm && m >= 17 * 60 && xpOn_(other, ymd) >= xp + 20) once(who, 'ahead', nk[other] + '\'s on a roll today', 'Fancy joining in? One small job counts.', 'home');
       var theirs = g.word[other], mine = g.word[who];
-      if (m >= 20 * 60 && theirs && theirs.done && !(mine && mine.done)) once(who, 'word', 'Your move', nk[other] + (theirs.won ? ' got the word in ' + theirs.guesses.length + '.' : ' missed today\'s word.') + ' Can you do better?', 'play');
+      if (m >= 20 * 60 && theirs && theirs.done && !(mine && mine.done)) once(who, 'word', 'Your move', nk[other] + (theirs.won ? ' got the word in ' + theirs.guesses.length + '.' : ' had a go at today\'s word.') + ' Can you do better?', 'play');
     });
   }
   if (JSON.stringify(sent) !== before) setProp_('REMINDED', JSON.stringify(sent));

@@ -290,7 +290,7 @@ function workNags_() {
       if (!(b.pings & 1) && b.status === 'planned' && b.start - now <= 5 && b.start - now >= 0) {
         r = 1; title = 'Up next at ' + formatClock(b.start); body = b.task + ' (' + b.mins + ' min). Start it on time for +3 XP.';
       } else if (!(b.pings & 2) && b.status === 'planned' && now >= b.start + 10 && now < b.start + b.mins && level !== 'gentle') {
-        r = 2; title = 'You haven\'t started ' + b.task; body = 'It was meant to start at ' + formatClock(b.start) + '. Start it now, or move it.';
+        r = 2; title = 'Ready for ' + b.task + '?'; body = 'It was down for ' + formatClock(b.start) + '. Start it now, or move it to later.';
       } else if (!(b.pings & 4) && now >= b.start + b.mins && now < b.start + b.mins + 60 && b.kind !== 'break') {
         r = 4; title = 'Time\'s up: ' + b.task; body = b.status === 'active' ? 'Done? Tick it off for your XP. Running over? Push the rest of the day back.' : 'Did it happen? Tick it off, or skip it.';
       }

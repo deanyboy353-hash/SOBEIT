@@ -49,7 +49,7 @@ test('Tone: none of the banned words in the app, notifications or prompts; excla
 test('Every Claude prompt carries the voice: British, direct, short, no emojis, no banned words', () => {
   const ai = fs.readFileSync(path.join(root, 'src/AI.gs'), 'utf8');
   const voice = ai.match(/var AI_VOICE = ([\s\S]*?);\n/)[1];
-  ['British', 'direct', 'Start instructions with the action', 'UK spelling', '£', 'Friday 16 October', 'guilt', 'No emojis', 'awesome'].forEach(w => assert.ok(voice.includes(w), w));
+  ['British', 'direct', 'invitation, not a debt', 'Start instructions with the action', 'UK spelling', '£', 'Friday 16 October', 'guilt', 'No emojis', 'awesome'].forEach(w => assert.ok(voice.includes(w), w));
   ['makeBrief_', 'function ask(', 'function mealIdeas', 'weeklyReviewAI_'].forEach(fn => {
     const body = ai.slice(ai.indexOf(fn), ai.indexOf('\n}\n', ai.indexOf(fn)));
     assert.match(body, /AI_VOICE/, fn + ' uses the voice');
@@ -77,4 +77,22 @@ test('A full evening of reminders: firm, never needy; no emoji, no guilt lines',
     assert.doesNotMatch(t, BANNED, t);
     assert.doesNotMatch(t, /misses you|trusted you|nervous|needs you|ignoring|annoyed|won't do itself|don't seem to be working/i, t);
   });
+});
+
+test('Kind words: no reminder, summary, notification or empty state says missed, behind, overdue, failed or "wants fixing"', () => {
+  const UNKIND = /\b(missed|behind|overdue|failed|fail|wants fixing|you haven't|you didn't|still no)\b/i;
+  const hits = [];
+  uiFiles().forEach(f => {
+    const src = fs.readFileSync(path.join(root, f), 'utf8');
+    src.split('\n').forEach((line, i) => {
+      if (/^\s*(\/\/|\*|\/\*)/.test(line)) return;                       // comments
+      (line.match(/'(?:[^'\\\n]|\\.)*'/g) || []).forEach(str => {
+        str = str.replace(/\\'/g, "'");
+        if (!/ /.test(str)) return;                                        // a code value ('missed'), not a sentence
+        if (/Never use:|which wants fixing\./.test(str)) return;          // the AI voice's own list of what not to say
+        if (UNKIND.test(str)) hits.push(f + ':' + (i + 1) + ' ' + str.slice(0, 90));
+      });
+    });
+  });
+  assert.deepStrictEqual(hits, []);
 });

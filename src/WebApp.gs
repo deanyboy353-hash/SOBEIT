@@ -67,7 +67,7 @@ function batch(key, items) {
 
 /** {fn, key, args} from the installable app → {ok, result} or {ok: false, error}. */
 function rpc_(body) {
-  try { ensureInstance_(body.key); } catch (e) { return json_({ ok: false, error: 'Setting up your app failed: ' + e.message }); }
+  try { ensureInstance_(body.key); } catch (e) { return json_({ ok: false, error: 'Couldn\'t set up your app: ' + e.message }); }
   var fn = rpcTable_()[body.fn];
   if (!fn) return json_({ ok: false, error: 'Unknown action.' });
   try {

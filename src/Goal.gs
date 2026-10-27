@@ -227,11 +227,9 @@ function setGoal(key, ch) {
 // ---------- reminders ----------
 
 var GOAL_EVENING = [
-  'Log tonight\'s food: {left}. {why}',
-  'Three things logged makes today count. {left}.',
-  'Rough numbers beat no numbers. {left}.',
-  '{goal}. Log what you ate.',
-  'Nothing logged since earlier. {left}. {why}'
+  'Got a minute to log today? {left}. {why}',
+  'A rough guess is plenty. {left}.',
+  'Log what you can remember and call it done. {left}.'
 ];
 
 /**
@@ -244,22 +242,18 @@ function goalAlerts(c) {
   var why = c.why ? 'Why: ' + c.why + '.' : c.goalLine + '.';
   var fill = function (s) { return s.replace('{left}', left).replace('{why}', why).replace('{goal}', c.goalLine); };
   if (c.scale === 'daily' && !c.weighed && !c.weighDay && at(c.wake + 20)) out.push({ id: 'gweigh', title: 'Weigh in', body: 'Loo, scales, then log it. The trend needs the daily numbers. ' + c.goalLine + '.', tab: 'home' });
-  if (c.scale === 'daily' && !c.weighed && at(c.wake + 150)) out.push({ id: 'gweigh2', title: 'Still no weigh-in', body: 'Ten seconds. Scales, then log it on Home.', tab: 'home' });
+  if (c.scale === 'daily' && !c.weighed && at(c.wake + 150)) out.push({ id: 'gweigh2', title: 'Weigh-in, if you fancy it', body: 'Ten seconds: scales, then log it on Home.', tab: 'home' });
   // the scale is optional: after a consistent fortnight, one gentle Sunday suggestion
   if (c.checkin && !c.weighed && c.dow === 0 && at(c.wake + 45)) out.push({ id: 'gcheckin', title: 'Good time for a check-in weigh', body: c.checkinLine, tab: 'home' });
   if (c.t.type === 'social' && at(c.wake + 30)) out.push({ id: 'gsocial', title: 'Social day: up to ' + c.t.kcal.toLocaleString('en-GB') + ' kcal', body: 'Protein early, a pint of water between drinks, and log it all anyway. A logged social day is a planned one.', tab: 'food' });
   if (c.socialYesterday && at(c.wake + 30)) out.push({ id: 'gback', title: 'Back on plan: ' + c.t.kcal.toLocaleString('en-GB') + ' kcal', body: 'Yesterday was the social day. Today counts double for the trend. ' + why, tab: 'food' });
   if (c.weekLine && c.dow === 1 && at(c.wake + 60)) out.push({ id: 'gweek', title: 'Week check', body: c.weekLine, tab: 'food' });
-  if (c.behindLine && c.dow === 4 && at(12 * 60)) out.push({ id: 'gbehind', title: c.scale === 'daily' ? 'Behind pace' : 'Back on it today', body: c.behindLine, tab: 'food' });
-  if (c.entries === 0 && at(10 * 60 + 30)) out.push({ id: 'gbreak', title: 'Breakfast logged?', body: c.t.kcal.toLocaleString('en-GB') + ' kcal and ' + c.proteinMin + 'g protein today. Start with protein.', tab: 'food' });
-  if (c.entries <= 1 && at(14 * 60)) out.push({ id: 'glunch', title: 'Lunch logged?', body: fill('{left}. Log it while you remember.'), tab: 'food' });
-  if (c.kcal > c.t.kcal + 100 && c.m >= 12 * 60) out.push({ id: 'gover', title: (c.kcal - c.t.kcal) + ' kcal over today', body: 'One day doesn\'t undo a week: it\'s spread over the next few days. Stop here, log the rest honestly. A 30-minute walk is about 150.', tab: 'food' });
-  if (c.steps !== null && c.steps !== undefined && c.steps < c.t.steps * 0.6 && at(18 * 60)) out.push({ id: 'gsteps', title: (c.t.steps - c.steps).toLocaleString('en-GB') + ' steps to go', body: 'A 25-minute walk is about 3,000. ' + c.goalLine + '.', tab: 'health' });
-  // from 8pm, every half hour until three things are logged (quiet hours still apply)
-  if (c.entries < 3 && c.m >= 20 * 60 && c.m < 22 * 60 + 30) {
-    var slot = Math.floor(c.m / 30);
-    out.push({ id: 'geve-' + slot, title: c.entries ? 'Only ' + c.entries + ' thing' + (c.entries === 1 ? '' : 's') + ' logged today' : 'Nothing logged today', body: fill(GOAL_EVENING[slot % GOAL_EVENING.length]), tab: 'food', persist: true });
-  }
+  if (c.behindLine && c.dow === 4 && at(12 * 60)) out.push({ id: 'gbehind', title: 'A fresh go today', body: c.behindLine, tab: 'food' });
+  // breakfast, lunch and tea are the meal nudges in Alerts.gs (10–11, 2–3pm, 7–8pm)
+  if (c.kcal > c.t.kcal + 100 && c.m >= 12 * 60) out.push({ id: 'gover', title: 'A bigger day today', body: 'One day doesn\'t undo a week: it spreads over the next few. Log the rest as it comes. A walk after tea is a nice extra.', tab: 'food' });
+  if (c.steps !== null && c.steps !== undefined && c.steps < c.t.steps * 0.6 && at(18 * 60)) out.push({ id: 'gsteps', title: 'Fancy a walk?', body: (c.t.steps - c.steps).toLocaleString('en-GB') + ' more steps would hit today\'s number. A 25-minute walk is about 3,000.', tab: 'health' });
+  // once, at half eight, if fewer than three things are logged: an invitation, not a countdown
+  if (c.entries < 3 && at(20 * 60 + 30)) out.push({ id: 'geve', title: c.entries ? 'Anything else to log?' : 'Fancy logging today?', body: fill(GOAL_EVENING[c.dow % GOAL_EVENING.length]), tab: 'food' });
   return out;
 }
 
@@ -297,17 +291,17 @@ function weekLine_(gs) {
   if (gs.scale !== 'daily') {
     if (!lw.logged) return 'New week: ' + kc + ' kcal to spend, ' + gs.socialName + ' is the social day. Log everything, even the rough days.';
     return 'Last week: ' + lw.on + ' of 7 days on plan' + (lw.paperKg > 0 ? ', about ' + lw.paperKg + ' kg off on paper' : '') + '. ' +
-      (lw.on <= 3 ? 'That week\'s done. This one starts from zero: ' : 'Same again: ') + kc + ' kcal this week.';
+      (lw.on <= 3 ? 'That week\'s done. This one\'s a fresh start: ' : 'Same again: ') + kc + ' kcal this week.';
   }
   if (gs.recent === null || gs.now === null) return 'New week: ' + kc + ' kcal to spend, ' + gs.socialName + ' is the social day. Weigh in daily so the trend can work.';
   return 'Trend ' + gs.now + ' kg, ' + (gs.recent >= 0 ? 'down ' + gs.recent : 'up ' + (-gs.recent)) + ' kg a week lately. ' +
-    (gs.behind <= 0 ? 'On pace for ' + gs.milestone.kg + ' kg by ' + gs.milestone.name + '.' : gs.behind + ' kg behind the line: push week, ' + gs.today.kcal.toLocaleString('en-GB') + ' kcal and ' + gs.today.steps.toLocaleString('en-GB') + ' steps.') +
+    (gs.behind <= 0 ? 'On pace for ' + gs.milestone.kg + ' kg by ' + gs.milestone.name + '.' : gs.behind + ' kg off the line, so this is a push week: ' + gs.today.kcal.toLocaleString('en-GB') + ' kcal and ' + gs.today.steps.toLocaleString('en-GB') + ' steps.') +
     ' This week: ' + kc + ' kcal.';
 }
-/** Thursday's nudge: a slipping week (quiet scale) or behind the line (daily scale); '' when there's nothing to say. */
+/** Thursday's nudge, as an invitation: a slipping week (quiet scale) or off the line (daily scale); '' when there's nothing to say. */
 function behindLine_(gs) {
   var C = gs.consistency, today = gs.today.kcal.toLocaleString('en-GB');
-  if (gs.scale !== 'daily') return C.week.past >= 2 && C.week.on < C.week.past - 1 ? 'This week so far: ' + C.week.on + ' of ' + C.week.past + ' days on plan. Nothing to make up, just make today a clean one: ' + today + ' kcal.' + (gs.why ? ' ' + gs.why + '.' : '') : '';
+  if (gs.scale !== 'daily') return C.week.past >= 2 && C.week.on < C.week.past - 1 ? 'Nothing to make up. Today\'s a clean slate: ' + today + ' kcal.' + (gs.why ? ' ' + gs.why + '.' : '') : '';
   if (!(gs.behind > 0.2)) return '';
-  return gs.behind + ' kg behind the ' + gs.minRate + ' kg-a-week line. Today: ' + today + ' kcal and ' + gs.today.steps.toLocaleString('en-GB') + ' steps gets it back.' + (gs.why ? ' Why: ' + gs.why + '.' : '');
+  return 'The trend\'s ' + gs.behind + ' kg off the ' + gs.minRate + ' kg-a-week line. Today: ' + today + ' kcal and ' + gs.today.steps.toLocaleString('en-GB') + ' steps nudges it back.' + (gs.why ? ' Why: ' + gs.why + '.' : '');
 }

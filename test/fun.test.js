@@ -80,15 +80,16 @@ test('evening reminders (normal level): streak saver at 19:30, last call at 21:3
   g.state.props.STREAK_me = JSON.stringify({ count: 4, freezes: 0, best: 4, through: '2026-10-12', frozeOn: '' });
   at(g, '2026-10-13T18:35:00Z');
   g.ctx.nagRun(); g.ctx.nagRun();
-  let mine = pushesTo(g, 'me-phone-token-0123456789');
+  const meals = () => pushesTo(g, 'me-phone-token-0123456789').filter(p => p.tab !== 'food');   // the 7pm tea nudge is separate
+  let mine = meals();
   assert.strictEqual(mine.length, 1);
-  assert.strictEqual(mine[0].title, 'Keep your streak');
-  assert.match(mine[0].body, /4-day|30 XP|streak/);
+  assert.strictEqual(mine[0].title, 'Keep it going?');
+  assert.match(mine[0].body, /4-day|4 days|small job/);
   at(g, '2026-10-13T20:35:00Z');
   g.ctx.nagRun();
-  mine = pushesTo(g, 'me-phone-token-0123456789');
+  mine = meals();
   assert.strictEqual(mine.length, 2);
-  assert.strictEqual(mine[1].title, 'Streak alert');
+  assert.strictEqual(mine[1].title, 'One small one?');
   at(g, '2026-10-13T22:00:00Z'); // 23:00: no streak nags, only the food check you asked for
   const before = g.state.pushes.length;
   g.ctx.nagRun();

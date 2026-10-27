@@ -65,7 +65,7 @@ test('a deadline nags until done: before, at, and every 5 minutes after, quiet a
   assert.strictEqual(res.state.deadlines.length, 1);
   assert.strictEqual(g.tab('Deadlines').rows()[1][4], '2026-10-14 15:00', 'due time kept as text');
   const id = res.state.deadlines[0].id;
-  const run = iso => { at(g, iso); g.ctx.nagRun(); return mine(g).filter(p => /Coming up|Due now|Overdue/.test(p.title)).length; };
+  const run = iso => { at(g, iso); g.ctx.nagRun(); return mine(g).filter(p => /Coming up|Due now|Still open/.test(p.title)).length; };
   assert.strictEqual(run('2026-10-14T12:00:00Z'), 0);     // 13:00, two hours to go
   assert.strictEqual(run('2026-10-14T13:01:00Z'), 1);     // 14:01, an hour to go
   assert.strictEqual(run('2026-10-14T13:31:00Z'), 2);     // half an hour
@@ -77,7 +77,7 @@ test('a deadline nags until done: before, at, and every 5 minutes after, quiet a
   assert.strictEqual(run('2026-10-14T14:06:00Z'), 6);
   assert.strictEqual(run('2026-10-14T14:11:00Z'), 7);
   assert.match(mine(g).at(-1).body, /Do X at work/);
-  assert.strictEqual(mine(g).at(-1).title, 'Overdue');
+  assert.strictEqual(mine(g).at(-1).title, 'Still open');
   const n = mine(g).at(-1).note;
   assert.ok(n.requireInteraction && n.renotify, 'stays on screen and buzzes again');
   assert.strictEqual(n.tag, 'deadline-' + id);
@@ -116,23 +116,24 @@ test('deadline buttons: done on time, +30 minutes, park it (with XP penalties)',
   assert.throws(() => g.ctx.deadlineAction(me, id, 'explode'), /Unknown action/);
 });
 
-test('Duolingo level: from 6pm, a streak nag every half hour until the goal is hit', () => {
+test('Persistent level: from 6pm, one kind nudge an hour until the goal is hit', () => {
   const { g, me } = ready();
   delete g.state.props.EXTRAS_OFF;
   g.ctx.setSetting_('Double XP', 'FALSE');
   withPush(g);
-  const count = () => mine(g).filter(p => /streak|Today still counts/i.test(p.title)).length;
+  const count = () => mine(g).filter(p => /Keep it going|Still time today/i.test(p.title)).length;
   at(g, '2026-10-14T16:50:00Z'); g.ctx.nagRun(); assert.strictEqual(count(), 0);
   at(g, '2026-10-14T17:02:00Z'); g.ctx.nagRun(); g.ctx.nagRun(); assert.strictEqual(count(), 1);
-  at(g, '2026-10-14T17:31:00Z'); g.ctx.nagRun(); assert.strictEqual(count(), 2);
-  assert.ok(mine(g).at(-1).note.requireInteraction, 'streak nags stay on screen too');
-  assert.doesNotMatch(mine(g).at(-1).body, /0-day/);
-  // Yaz is on the normal level: no half-hourly nags
-  assert.strictEqual(g.state.pushes.filter(p => p.token === 'yaz-phone-token-0123456789' && /streak|Today still counts/i.test(p.title)).length, 0);
+  at(g, '2026-10-14T17:31:00Z'); g.ctx.nagRun(); assert.strictEqual(count(), 1, 'not every half hour');
+  at(g, '2026-10-14T17:59:00Z'); g.ctx.nagRun(); assert.strictEqual(count(), 1);
+  assert.ok(!mine(g).at(-1).note || !mine(g).at(-1).note.requireInteraction, 'a nudge, not a notification that sticks');
+  assert.doesNotMatch(mine(g).at(-1).body, /0-day|missed|behind/);
+  // Yaz is on the normal level: no hourly nudges
+  assert.strictEqual(g.state.pushes.filter(p => p.token === 'yaz-phone-token-0123456789' && /Keep it going|Still time today/i.test(p.title)).length, 0);
   // hitting the goal stops them
   const q = g.ctx.appState(me).quests.board.filter(x => x.who !== 'partner');
   q.forEach(x => g.ctx.questDone(me, x.name));
-  at(g, '2026-10-14T18:01:00Z'); g.ctx.nagRun(); assert.strictEqual(count(), 2);
+  at(g, '2026-10-14T18:01:00Z'); g.ctx.nagRun(); assert.strictEqual(count(), 1);
 });
 
 test('Ask can set a deadline', () => {

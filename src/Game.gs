@@ -123,8 +123,8 @@ function missPenalty_(who, ymd, plan, goal) {
   var lv = levelFor(xpTotal_(who));
   var xp = Math.min(MISS_CAP, Math.max(1, Math.round(potential * MISS_SHARE)), lv.into);
   var cash = Math.min(xp * CASH_PER_XP, Math.max(0, cashBreakdown_(who).total));
-  if (xp > 0) { appendRow_('xp', { 'Date': ymd, 'Time': now_('HH:mm'), 'Who': who, 'What': 'Missed the minimum', 'XP': -xp, 'Kind': 'penalty' }); xpCache_ = null; }
-  if (cash > 0) addCash_(who, 'Missed the minimum (' + ymd + ')', -cash, 'penalty');
+  if (xp > 0) { appendRow_('xp', { 'Date': ymd, 'Time': now_('HH:mm'), 'Who': who, 'What': 'Quiet day', 'XP': -xp, 'Kind': 'penalty' }); xpCache_ = null; }
+  if (cash > 0) addCash_(who, 'Quiet day (' + ymd + ')', -cash, 'penalty');
   return { date: ymd, xp: xp, cash: cash, back: false };
 }
 
@@ -212,8 +212,8 @@ function lazyDay(key, which) {
         if (st.lostOn === y && dayResult_(id, y, dailyGoal_()) !== 'missed') { st.count = st.lostCount; st.best = Math.max(st.best, st.count); delete st.lostOn; delete st.lostCount; }
         var p = st.penalty;
         if (p && p.date === y && !p.back) {
-          if (p.xp) { appendRow_('xp', { 'Date': y, 'Time': now_('HH:mm'), 'Who': who, 'What': 'Lazy day: missed-day cost returned', 'XP': p.xp, 'Kind': 'penalty' }); xpCache_ = null; }
-          if (p.cash) addCash_(who, 'Lazy day: missed-day cost returned', p.cash, 'penalty');
+          if (p.xp) { appendRow_('xp', { 'Date': y, 'Time': now_('HH:mm'), 'Who': who, 'What': 'Lazy day: quiet-day cost returned', 'XP': p.xp, 'Kind': 'penalty' }); xpCache_ = null; }
+          if (p.cash) addCash_(who, 'Lazy day: quiet-day cost returned', p.cash, 'penalty');
           delete st.penalty;
         }
         saveStreak_(id, st);

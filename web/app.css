@@ -913,7 +913,7 @@ body.chat-open { overflow: hidden; }
 .lazyitem.done .grow { color: var(--muted); }
 .lazyitem:disabled { opacity: 1; }
 .lazyrow .btn { flex: none; }
-.brief.behind { opacity: .7; }
+.brief.stale { opacity: .7; }
 /* iPhone: taps on bubbles need a pointer to count as clicks; the status line; no zoom on focus */
 .cmsg, .cbub { cursor: pointer; -webkit-touch-callout: none; }
 .chat-conn { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--raised); border-bottom: 1px solid var(--line); }
