@@ -55,3 +55,14 @@ test('heartbeat sends each alert once a day, even at 11pm after the old reminder
   assert.match(sent[0].title, /Fancy logging today\?/);
   assert.strictEqual(sent[0].tab, 'food');
 });
+
+test('the breakfast nudge goes only if nothing has been logged since midnight', () => {
+  const g = loadProject({ now: new Date('2026-10-13T08:00:00Z') });   // 09:00 BST
+  g.ctx.setup();
+  g.state.props.FCM_SA = JSON.stringify({ client_email: 'sa@x.iam.gserviceaccount.com', private_key: 'k', project_id: 'life-quest' });
+  g.ctx.registerDevice(g.state.props.WEBAPP_KEY, 'me-phone-token-0123456789', 'Pixel');
+  g.ctx.logPreset(g.state.props.WEBAPP_KEY, 'Protein shake');
+  g.state.now = new Date('2026-10-13T09:10:00Z'); g.ctx.resetRun_(); g.state.cache = {};   // 10:10
+  g.ctx.heartbeat_();
+  assert.ok(!g.state.pushes.some(p => /Breakfast/.test(p.title)), 'already had breakfast');
+});

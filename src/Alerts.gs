@@ -43,7 +43,7 @@ function alertsHeartbeat_(ymd, m, sent) {
     c.weighDay = t.weighDay; c.weighed = t.weighedToday;
     c.wake = cellClock_(cfg.settings['Wake time']); if (c.wake === null) c.wake = parseClock('08:30');
     var entries = foodEntries_(ymd), tot = sumFood_(entries), tg = foodTargets_(cfg.settings);
-    var lastAt = entries.reduce(function (a, e) { var t = parseClock(String(e.time || '')); return t !== null && (a === null || t > a) ? t : a; }, null);
+    var lastAt = entries.reduce(function (a, e) { var t = parseClock(hhmm_(e.time).replace(/^'/, '')); return t !== null && (a === null || t > a) ? t : a; }, null);
     c.food = { entries: entries.length, kcal: Math.round(tot.kcal), protein: Math.round(tot.protein), kcalTarget: tg.kcal, proteinMin: tg.proteinMin, lastAt: lastAt };
     c.foodAt = cellClock_(cfg.settings['Evening food check']); if (c.foodAt === null) c.foodAt = parseClock('23:00');
   } catch (e) { log_('WARN', 'Alerts: ' + e); }

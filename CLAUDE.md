@@ -35,6 +35,13 @@ The DJ game is **not here**: it's **Afters**, its own project (`afters`, next to
 - `foodTargets_` takes today's kcal from the goal (`goalCached_`); `S.goal` for the Goal card (Food tab) and the Home card (`goal`, after Win the day).
 - Reminders: `goalAlerts` (pure) via `goalHeartbeat_` from `heartbeat_`, once each, outside quiet hours: weigh-in, social day, back on plan, breakfast, lunch, over budget, steps at 6pm, every 30 min from 8pm until 3 things are logged, Monday week check, Thursday behind-pace. Every one carries the goal line or your why.
 
+## Kind by default (fix/kinder-nudge)
+- Today: the phone works out the day in UK time (`NudgeFmt.ukYmd/ukDow/ukLongDate`) and takes its clock correction only from a fresh server answer (`setClock`, saved as `clockOff`, ignored if over an hour), never from a saved screen. A screen from an earlier day (`staleDay()`) is fetched again on any tab. New versions reload by themselves at the first quiet moment (`newVersion`/`quietNow`).
+- No headline zeros: a count shows once it has something in it (Win the day says "30 XP wins the day"; Food shows today's targets and `NudgeFmt.mealNext`).
+- Lazy day mode: the morning energy check-in (`setEnergy`, `ENERGY_<who>`; Low suggests it, never sets it) and Lazy day mode on the Win card. Its set (`LAZY_SET`, `lazySet_`, `lazyTick`, `LAZYSET_<who>`): protein (ticks itself from the Food log) and one job (from chores done), and a walk (a tap). All three = Day won (`winState_`, `dayResult_`), same celebration, the streak grows.
+- Grace day: the first missed day in a Monday–Sunday week pauses a streak at no cost (`st.graces`, `graceUsed_`), each person and the joint streak; Home says so (`lazy.grace`). Training target as a range (`weekRange`: 4 a week = 3–4, 3 done, 4 a bonus).
+- Words: invitations, never debts. `test/tone.test.js` fails on missed / behind / overdue / failed / wants fixing in any sentence; `AI_VOICE` says the same. Meal nudges at 10–11, 2–3pm, 7–8pm (`MEAL_NUDGES` in Alerts.gs), only if nothing's logged for that meal. The persistent level nudges hourly at most; the goal's evening reminder is once at 20:30.
+
 ## The Afters link (keep it this small)
 - In: `aftersReport(key, {id, day, minutes, lessons})` (`src/Afters.gs`): practice XP (1 per 2 min, max 30/day), +10 per lesson once, `grantAch_(who, 'booth1')` (gold headphones). Reports are idempotent by id.
 - Out: the Mix practice card (`mixPracticeCard`/`aftersUrl` in `app.js`) opens Afters with `#menu&link=<base64 {api,key}>`.
