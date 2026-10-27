@@ -347,17 +347,18 @@
     if (W.lazy) return lazyCard();
     if (W.won && !open.length) {   // everything done: a small "Day won" line frees up the screen
       return '<section class="card spot win compact"><div class="row" style="gap:12px"><span class="wonbadge">' + icon('check') + '</span><div class="grow"><b>Day won</b><div class="small muted">' +
-        (P ? (P.won ? 'You both won · the pet is fed' : esc(n.other) + ': ' + P.done + ' of ' + P.need) + ' · ' : '') + g.streak.count + ' day' + (g.streak.count === 1 ? '' : 's') + ' in a row · ' + g.xpToday + ' XP today</div></div>' +
+        [P ? (P.won ? 'You both won · the pet is fed' : P.done ? esc(n.other) + ': ' + P.done + ' of ' + P.need : '') : '', g.streak.count ? g.streak.count + ' day' + (g.streak.count === 1 ? '' : 's') + ' in a row' : '', g.xpToday ? g.xpToday + ' XP today' : ''].filter(Boolean).join(' · ') + '</div></div>' +
         '<button class="btn ghost sm" type="button" data-goto="chores">Bonus' + icon('chevron', 's') + '</button></div></section>';
     }
     var h = '<section class="card spot today win' + (W.won ? ' won' : '') + '"><div class="between" style="margin-bottom:10px"><div class="eyebrow">Win the day</div><button class="btn ghost sm" type="button" data-goto="chores">All jobs' + icon('chevron', 's') + '</button></div>';
     h += '<div class="hero"><div class="ring" style="width:112px;height:112px">' + ring(W.need ? W.done / W.need : 1, 112, 10) +
       '<div class="t"><div><div class="num display-num" style="font-size:' + (t.big.length > 4 ? 19 : 30) + 'px">' + esc(t.big) + '</div><div class="tiny muted">' + esc(t.small) + '</div></div></div></div><div class="grow">';
-    if (P) h += '<div class="stat"><span>' + esc(n.other) + '</span><b>' + (P.won ? 'Won' : P.done + ' of ' + P.need) + '</b></div>';
-    h += '<div class="stat"><span class="row" style="gap:6px">' + flame(g.streak.count, 16) + 'Days won in a row</span><b>' + g.streak.count + '</b></div>' +
-      (S.solo ? '' : '<div class="stat"><span class="row" style="gap:6px">' + icon('heart', 's') + 'Both won</span><b>' + g.team.count + ' day' + (g.team.count === 1 ? '' : 's') + '</b></div>') +
-      '<div class="stat"><span>XP today</span><b>' + g.xpToday + '</b></div>' +
-      (S.empire ? '<button class="stat cashrow" type="button" data-goto="empire"><span class="row" style="gap:6px">' + icon('gift', 's') + 'Cash</span><b>' + money(S.empire.cash) + '</b></button>' : '') +
+    // a stat shows once it has something in it: no row of zeros on a quiet morning
+    if (P && (P.won || P.done)) h += '<div class="stat"><span>' + esc(n.other) + '</span><b>' + (P.won ? 'Won' : P.done + ' of ' + P.need) + '</b></div>';
+    h += (g.streak.count ? '<div class="stat"><span class="row" style="gap:6px">' + flame(g.streak.count, 16) + 'Days won in a row</span><b>' + g.streak.count + '</b></div>' : '') +
+      (S.solo || !g.team.count ? '' : '<div class="stat"><span class="row" style="gap:6px">' + icon('heart', 's') + 'Both won</span><b>' + g.team.count + ' day' + (g.team.count === 1 ? '' : 's') + '</b></div>') +
+      (g.xpToday ? '<div class="stat"><span>XP today</span><b>' + g.xpToday + '</b></div>' : '') +
+      (S.empire && S.empire.cash > 0 ? '<button class="stat cashrow" type="button" data-goto="empire"><span class="row" style="gap:6px">' + icon('gift', 's') + 'Cash</span><b>' + money(S.empire.cash) + '</b></button>' : '') +
       '<div class="bar" style="margin-top:8px"><i style="width:' + Math.round(g.level.into / g.level.need * 100) + '%"></i></div><div class="tiny muted" style="margin-top:4px">Level ' + g.level.level + ' · ' + (g.level.need - g.level.into) + ' XP to the next</div></div></div>';
     h += '<p class="small muted winhow">' + (W.won ? (W.both && P ? 'You\'ve both won today. The pet\'s fed and your joint streak grows.' : P ? 'You\'ve won today. When ' + esc(n.other) + ' wins too, the pet\'s fed.' : 'Won. Anything more is a bonus.') :
       W.by === 'jobs' ? 'Do any ' + W.need + ' job' + (W.need === 1 ? '' : 's') + ' today and the day is won.' : 'Earn ' + W.need + ' XP today to win: chores, the gym and food all count.') + '</p>';
@@ -378,7 +379,7 @@
   function lazyCard() {
     var R = S.routines || {}, L = S.game.lazy, water = R.waterGoal && R.water < R.waterGoal;
     return '<section class="card spot win lazy"><div class="row" style="gap:12px;align-items:flex-start"><span class="wonbadge soft">' + icon('moon') + '</span><div class="grow"><b>Lazy day</b>' +
-      '<div class="small muted">Streak on hold at ' + S.game.streak.count + '. Nothing to win, nothing to lose.</div>' +
+      '<div class="small muted">' + (S.game.streak.count ? 'Streak on hold at ' + S.game.streak.count + '. ' : '') + 'Nothing to win, nothing to lose.</div>' +
       '<div class="small" style="margin-top:8px"><b>Optional:</b> ' + (water ? 'have a glass of water. That\'s it.' : 'get some fresh air. Or don\'t.') + '</div>' +
       '<div class="tiny muted" style="margin-top:6px">Lazy days left this week: ' + L.left + ' of ' + L.perWeek + '</div></div>' +
       '<button class="btn ghost sm" type="button" data-lazy="undo">Undo</button></div></section>';
@@ -397,7 +398,7 @@
   /** The gym card's footer: main sessions this week against the target, and the optional Pump. */
   function gymExtras() {
     var tr = S.today.train; if (!tr) return '';
-    return '<div class="between" style="margin-top:10px;gap:8px;flex-wrap:wrap"><span class="small"><b>' + tr.week.done + ' of ' + tr.week.target + '</b> main sessions this week</span>' +
+    return '<div class="between" style="margin-top:10px;gap:8px;flex-wrap:wrap"><span class="small">' + (tr.week.done ? '<b>' + tr.week.done + ' of ' + tr.week.target + '</b> main sessions this week' : '') + '</span>' +
       '<span class="row" style="gap:6px"><button class="btn line sm" type="button" data-memories="open">' + icon('calendar', 's') + 'Memories</button><button class="btn soft sm" type="button" data-trainpump="1">' + icon('bolt', 's') + (tr.pump.doneToday ? 'Pump done today' : 'Pump: extra, +' + tr.pump.xp + ' XP') + '</button></span></div>';
   }
   function stageCard() {
@@ -419,7 +420,7 @@
     R.routines.forEach(function (r) {
       var ph = r.phase || (r.showNow && !r.finished ? 'open' : 'hidden');
       if (!r.steps.length || ph === 'hidden') return;
-      var ic = icon(ph && /evening|night|bed/i.test(r.name) ? 'moon' : 'sun'), count = r.done.length + '/' + r.steps.length;
+      var ic = icon(ph && /evening|night|bed/i.test(r.name) ? 'moon' : 'sun'), count = r.done.length ? r.done.length + '/' + r.steps.length : r.steps.length + ' step' + (r.steps.length === 1 ? '' : 's');
       if (ph === 'summary' && !routineOpen[r.name]) {
         h += '<button class="card rsummary" type="button" data-ropen="' + esc(r.name) + '" aria-expanded="false">' + ic + '<span class="grow">' + esc(r.name) + ' routine</span><span class="num">' + count + '</span>' + (r.finished ? icon('check', 's') : icon('chevron', 's')) + '</button>';
         return;
@@ -546,7 +547,7 @@
     if (S.routines.waterGoal) {
       var w = S.routines.water, wg = S.routines.waterGoal, drops = '';
       for (var i = 0; i < wg; i++) drops += '<i class="' + (i < w ? 'on' : '') + '"></i>';
-      h += '<div class="tile"><div class="k">' + icon('drop', 's') + 'Water</div><div class="drops">' + drops + '</div><div class="between"><span class="tiny muted num">' + w + ' of ' + wg + '</span><span class="row" style="gap:4px"><button class="iconbtn" style="width:34px;height:34px" type="button" data-water="-1" aria-label="One less">−</button><button class="iconbtn soft" style="width:34px;height:34px" type="button" data-water="1" aria-label="One more glass">' + icon('plus', 's') + '</button></span></div></div>';
+      h += '<div class="tile"><div class="k">' + icon('drop', 's') + 'Water</div><div class="drops">' + drops + '</div><div class="between"><span class="tiny muted num">' + (w ? w + ' of ' + wg : wg + ' glasses today') + '</span><span class="row" style="gap:4px"><button class="iconbtn" style="width:34px;height:34px" type="button" data-water="-1" aria-label="One less">−</button><button class="iconbtn soft" style="width:34px;height:34px" type="button" data-water="1" aria-label="One more glass">' + icon('plus', 's') + '</button></span></div></div>';
     }
     h += '</div>';
 
@@ -621,12 +622,12 @@
     if (playing) h += mb;
     if (q.planned) {
       var mustL = q.board.filter(function (x) { return x.must; }), bonusL = q.board.filter(function (x) { return !x.must; });
-      h += '<section class="card spot"><div class="head"><h3>' + (q.win ? 'Day won' : 'Win the day: ' + Math.min(q.doneCount, q.minimum) + ' of ' + q.minimum) + '</h3></div>' +
+      h += '<section class="card spot"><div class="head"><h3>' + (q.win ? 'Day won' : (q.doneCount ? 'Win the day: ' + Math.min(q.doneCount, q.minimum) + ' of ' + q.minimum : 'Win the day: any ' + q.minimum + ' job' + (q.minimum === 1 ? '' : 's'))) + '</h3></div>' +
         (q.minimum ? '<div class="minbar"><i style="width:' + Math.round(Math.min(1, q.doneCount / q.minimum) * 100) + '%"></i></div><p class="small muted" style="margin:6px 0 4px">Do ' + q.minimum + ' job' + (q.minimum === 1 ? '' : 's') + ' (any of them) and the day is won. These are quick ones:</p>' : '<p class="small muted">Nothing you have to do today. A free win.</p>') +
         mustL.map(function (x) { return questRow(x, { claim: true }); }).join('') + '</section>';
       h += '<section class="card"><div class="head"><h3>Bonus</h3><span class="muted small">only if you\'ve got energy' + (q.energy ? ' (yours peaks in the ' + esc(q.energy) + ')' : '') + '</span></div>' + (bonusL.length ? bonusL.map(function (x) { return questRow(x, { claim: true }); }).join('') : '<p class="empty">No bonus jobs today.</p>') + '</section>';
     } else
-    h += '<section class="card spot"><div class="head"><h3>Today</h3><span class="muted small num">' + q.board.filter(function (x) { return x.doneToday; }).length + '/' + q.board.length + '</span></div>' +
+    h += '<section class="card spot"><div class="head"><h3>Today</h3><span class="muted small num">' + (q.board.some(function (x) { return x.doneToday; }) ? q.board.filter(function (x) { return x.doneToday; }).length + '/' + q.board.length : '') + '</span></div>' +
       (q.board.length ? q.board.map(function (x) { return questRow(x, { claim: true }); }).join('') : '<p class="empty">Nothing due today. Enjoy it.</p>') + '</section>';
     if (q.more.length) h += '<section class="card"><details><summary class="small muted" style="cursor:pointer">' + (q.planned ? 'Other jobs (' + q.more.length + '): ' + esc(names().other) + '\'s, or coming up soon. Doing one counts.' : 'Also due (' + q.more.length + '), only if you feel like it') + '</summary><div style="margin-top:8px">' + q.more.map(function (x) { return questRow(x, { claim: true }); }).join('') + '</div></details></section>';
     h += together;
@@ -1463,10 +1464,10 @@
     var F = S.food, t = F.targets, kcal = F.totals.kcal, prot = F.totals.protein;
     pending.forEach(function (p) { kcal += p.kcal; prot += p.protein; });
     var kl = t.kcal - kcal, pl = t.proteinMin - prot, scale = t.proteinMax * 1.15;
-    var h = '<div class="top"><div><h1>Food</h1><div class="sub">' + fmt(kcal) + ' kcal · ' + fmt(prot) + 'g protein so far</div></div>' + meButton() + '</div>';
-    h += '<section class="card spot"><div class="eyebrow">' + (t.goal ? esc(DAYTYPE[t.dayType] || 'Today') + ' · calories' : 'Calories') + '</div><div class="between" style="align-items:baseline"><div><span class="big">' + fmt(kcal) + '</span> <span class="of">/ ' + fmt(t.kcal) + '</span></div><div class="left ' + (kl >= 0 ? 'good' : 'warn') + '">' + (kl >= 0 ? fmt(kl) + ' left' : fmt(-kl) + ' over') + '</div></div>' +
+    var h = '<div class="top"><div><h1>Food</h1><div class="sub">' + (kcal || prot ? fmt(kcal) + ' kcal · ' + fmt(prot) + 'g protein so far' : esc(NudgeFmt.mealNext(NudgeFmt.ukMinutes(now())))) + '</div></div>' + meButton() + '</div>';
+    h += '<section class="card spot"><div class="eyebrow">' + (t.goal ? esc(DAYTYPE[t.dayType] || 'Today') + ' · calories' : 'Calories') + '</div><div class="between" style="align-items:baseline"><div>' + (kcal ? '<span class="big">' + fmt(kcal) + '</span> <span class="of">/ ' + fmt(t.kcal) + '</span>' : '<span class="big">' + fmt(t.kcal) + '</span> <span class="of">kcal today</span>') + '</div><div class="left ' + (kl >= 0 ? 'good' : 'warn') + '">' + (!kcal ? '' : kl >= 0 ? fmt(kl) + ' left' : fmt(-kl) + ' over') + '</div></div>' +
       '<div class="bar' + (kl < 0 ? ' over' : '') + '" style="margin:8px 0 16px"><i style="width:' + Math.min(100, kcal / t.kcal * 100) + '%"></i></div>' +
-      '<div class="eyebrow">Protein</div><div class="between" style="align-items:baseline"><div><span class="big">' + fmt(prot) + 'g</span> <span class="of">/ ' + t.proteinMin + '–' + t.proteinMax + 'g</span></div><div class="left ' + (pl > 0 ? '' : 'good') + '">' + (pl > 0 ? fmt(pl) + 'g to go' : prot > t.proteinMax ? 'Above range' : 'In range') + '</div></div>' +
+      '<div class="eyebrow">Protein</div><div class="between" style="align-items:baseline"><div>' + (prot ? '<span class="big">' + fmt(prot) + 'g</span> <span class="of">/ ' + t.proteinMin + '–' + t.proteinMax + 'g</span>' : '<span class="big">' + t.proteinMin + '–' + t.proteinMax + 'g</span> <span class="of">today</span>') + '</div><div class="left ' + (pl > 0 ? '' : 'good') + '">' + (!prot ? '' : pl > 0 ? fmt(pl) + 'g to go' : prot > t.proteinMax ? 'Above range' : 'In range') + '</div></div>' +
       '<div class="bar" style="margin-top:8px"><i style="width:' + Math.min(100, prot / scale * 100) + '%"></i><span class="zone" style="left:' + (t.proteinMin / scale * 100) + '%;width:' + ((t.proteinMax - t.proteinMin) / scale * 100) + '%"></span></div></section>';
     h += goalCard(false);
     h += '<section class="card"><form class="inline" id="quick" autocomplete="off"><input type="text" id="quickText" placeholder="2 protein weetabix and 200ml milk" aria-label="What did you eat?"' + (F.hasClaudeKey ? '' : ' disabled') + '><button class="btn primary" id="quickBtn" type="submit"' + (F.hasClaudeKey ? '' : ' disabled') + '>Add</button></form>' +
@@ -1494,14 +1495,15 @@
     var G = S.goal; if (!ME || !G) return '';
     var T = G.today, left = S.food ? T.kcal - Math.round(S.food.totals.kcal) : T.kcal;
     var Q = G.scale !== 'daily', C = G.consistency || { streak: 0, week: { on: 0, past: 0 }, paperKg: 0, days: [] };
-    var status = Q ? (C.streak >= 2 ? C.streak + ' days on plan in a row' : C.week.past ? C.week.on + ' of ' + C.week.past + ' days on plan this week' : 'Day one: follow today\'s numbers') : G.now === null ? 'Weigh in to start the trend.' : G.behind === null ? '' : G.behind > 0.2 ? kgs(G.behind) + ' kg behind the ' + G.minRate + ' kg/week line' + (G.push ? ': push week' : '') : G.behind < -0.2 ? kgs(-G.behind) + ' kg ahead of the line' : 'On the line';
+    var status = Q ? (C.streak >= 2 ? C.streak + ' days on plan in a row' : C.week.on ? C.week.on + ' of ' + C.week.past + ' days on plan this week' : NudgeFmt.mealNext(NudgeFmt.ukMinutes(now()))) : G.now === null ? 'Weigh in to start the trend.' : G.behind === null ? '' : G.behind > 0.2 ? kgs(G.behind) + ' kg behind the ' + G.minRate + ' kg/week line' + (G.push ? ': push week' : '') : G.behind < -0.2 ? kgs(-G.behind) + ' kg ahead of the line' : 'On the line';
     if (compact) return '<section class="card goalmini" data-goto="food"><div class="between"><div class="eyebrow">Goal · ' + esc(G.milestone.kg ? kgs(G.milestone.kg) + ' kg by ' + G.milestone.name : 'at least ' + G.minRate + ' kg a week') + '</div><span class="tiny muted">' + esc(DAYTYPE[T.type]) + '</span></div>' +
       '<div class="between" style="margin-top:6px;align-items:baseline"><div><b class="num" style="font-size:22px">' + (left >= 0 ? fmt(left) : fmt(-left)) + '</b> <span class="small muted">kcal ' + (left >= 0 ? 'left' : 'over') + ' · ' + fmt(T.steps) + ' steps</span></div><span class="small ' + (!Q && G.behind > 0.2 ? 'warn' : 'muted') + '">' + (Q ? (C.paperKg > 0 ? '−' + kgs(C.paperKg) + ' kg on paper' : '') : G.now !== null ? 'Trend ' + kgs(G.now) + ' kg' : '') + '</span></div>' +
       (status ? '<div class="tiny ' + (!Q && G.behind > 0.2 ? 'warn' : 'muted') + '" style="margin-top:4px">' + esc(status) + '</div>' : '') + '</section>';
     var h = '<section class="card goal"><div class="head"><h3>Goal</h3><button class="btn ghost sm" type="button" id="goalEdit">Edit</button></div>';
     var planXmas = Math.round(G.minRate * Math.max(0, (Date.parse(G.milestone.date) - Date.parse(G.start)) / (7 * 864e5)) * 10) / 10;
-    if (Q) h += '<div class="gvtiles"><div class="gvtile"><b class="num">' + C.streak + '</b><span class="tiny muted">days on plan in a row</span></div><div class="gvtile"><b class="num">' + C.week.on + '<small> / ' + C.week.past + '</small></b><span class="tiny muted">this week so far</span></div>' +
-      '<div class="gvtile"><b class="num">' + (C.paperKg > 0 ? '−' + kgs(C.paperKg) : '0.0') + '</b><span class="tiny muted">kg on paper, from your logs</span></div><div class="gvtile"><b class="num">−' + kgs(planXmas) + '</b><span class="tiny muted">kg by ' + esc(G.milestone.name) + ' (the plan)</span></div></div>' +
+    // tiles only once they have something in them; until then, the next small step
+    if (Q) h += '<div class="gvtiles">' + (C.streak ? '<div class="gvtile"><b class="num">' + C.streak + '</b><span class="tiny muted">days on plan in a row</span></div>' : '') + (C.week.on ? '<div class="gvtile"><b class="num">' + C.week.on + '<small> / ' + C.week.past + '</small></b><span class="tiny muted">this week so far</span></div>' : '') +
+      (C.paperKg > 0 ? '<div class="gvtile"><b class="num">−' + kgs(C.paperKg) + '</b><span class="tiny muted">kg on paper, from your logs</span></div>' : '') + '<div class="gvtile"><b class="num">−' + kgs(planXmas) + '</b><span class="tiny muted">kg by ' + esc(G.milestone.name) + ' (the plan)</span></div></div>' +
       '<p class="small" style="margin:0 0 4px">The scale\'s optional. It swings 1 to 2 kg with water, salt and creatine, so progress here is counted from what you log. Hit the numbers and the weight follows.' + (G.lastWeigh ? ' <span class="muted">Last check-in weigh: ' + esc(shortDay(G.lastWeigh.date)) + '.</span>' : '') + '</p>';
     else h += '<div class="gvtiles"><div class="gvtile"><b class="num">' + kgs(G.now) + '</b><span class="tiny muted">trend, kg</span></div><div class="gvtile"><b class="num">' + (G.lost === null ? '–' : (G.lost >= 0 ? '−' : '+') + kgs(Math.abs(G.lost))) + '</b><span class="tiny muted">since ' + esc(shortDay(G.start).replace(/^\w+, /, '')) + '</span></div>' +
       '<div class="gvtile"><b class="num">' + kgs(G.milestone.kg) + '</b><span class="tiny muted">by ' + esc(G.milestone.name) + '</span></div><div class="gvtile"><b class="num">' + kgs(G.end.kg) + '</b><span class="tiny muted">by ' + esc(G.end.name) + '</span></div></div>';
@@ -1509,7 +1511,7 @@
     h += goalChart(G);
     h += '<div class="eyebrow" style="margin:12px 0 6px">This week · ' + fmt(T.weekly) + ' kcal</div><div class="gweek">' + T.days.map(function (d) {
       var isToday = d.ymd === S.today.date, st = (C.days.filter(function (x) { return x.ymd === d.ymd; })[0] || {}).status;
-      var mark = st === 'on' ? '<span class="tiny gon">on plan</span>' : st === 'over' ? '<span class="tiny muted">over</span>' : st === 'none' ? '<span class="tiny muted">not logged</span>' : '<span class="tiny muted">' + (d.type === 'social' ? 'social' : d.type) + '</span>';
+      var mark = st === 'on' ? '<span class="tiny gon">on plan</span>' : st === 'over' ? '<span class="tiny muted">over</span>' : st === 'none' ? '<span class="tiny muted">no log</span>' : '<span class="tiny muted">' + (d.type === 'social' ? 'social' : d.type) + '</span>';
       return '<div class="gday ' + d.type + (isToday ? ' now' : '') + (st === 'on' ? ' ok' : '') + '"><span class="tiny">' + DOW3[d.dow] + '</span><b class="num">' + fmt(isToday ? T.kcal : d.planned) + '</b>' + mark + '</div>';
     }).join('') + '</div>';
     h += '<p class="small" style="margin:10px 0 0">Today: <b>' + esc(DAYTYPE[T.type]) + '</b>, ' + fmt(T.kcal) + ' kcal' + (T.adjust ? ' (' + (T.adjust > 0 ? '+' : '−') + fmt(Math.abs(T.adjust)) + ' to even out the week)' : '') + ' and ' + fmt(T.steps) + ' steps' + (G.push ? '. Push week: 100 less a day and 2,000 more steps until the trend is back on pace' : '') + '.</p>';
@@ -1597,7 +1599,8 @@
   }
   /** The Us streak (weeks in a row) and the button that logs it: on Home and at the top of the chat. */
   function usLogRow(u) {
-    return '<div class="row us-line"><span class="small">' + icon('flame', 's') + ' <b>' + u.heat + '</b> week' + (u.heat === 1 ? '' : 's') + ' running · <b>' + u.week + '</b> this week' + (u.last === ymdOf(new Date(now())) ? ' · logged today' : '') + '</span>' +
+    var bits = [u.heat ? '<b>' + u.heat + '</b> week' + (u.heat === 1 ? '' : 's') + ' running' : '', u.week ? '<b>' + u.week + '</b> this week' : '', u.last === todayYmd() ? 'logged today' : ''].filter(Boolean);
+    return '<div class="row us-line"><span class="small">' + (bits.length ? icon('flame', 's') + ' ' + bits.join(' · ') : 'Time together counts: log it when you have some.') + '</span>' +
       '<button class="btn soft sm" type="button" data-fun="usLog">' + icon('heart', 's') + 'Log it · +20 XP each</button></div>';
   }
   /** The Us stats and badges, shown at the top of the chat. */

@@ -141,3 +141,17 @@ test('Brief: at most four a day (morning, midday, after work, evening) plus one 
   assert.strictEqual(F.ago(0, 125 * 60000), '2 h ago');
 });
 
+
+test('A fresh morning never headlines a zero: Win the day says what wins it, and the next food step stands in for "0 kcal"', () => {
+  const F = require('../web/fmt.js');
+  assert.deepStrictEqual(F.winText({ by: 'xp', done: 0, need: 30 }).big, '30');
+  assert.strictEqual(F.winText({ by: 'xp', done: 0, need: 30 }).small, 'XP wins the day');
+  assert.strictEqual(F.winText({ by: 'jobs', done: 0, need: 2 }).small, 'jobs win the day');
+  assert.strictEqual(F.winText({ by: 'jobs', done: 1, need: 2 }).big, '1/2');
+  assert.match(F.mealNext(8 * 60), /^Breakfast next: something with 30 g protein/);
+  assert.match(F.mealNext(13 * 60), /^Lunch next/);
+  assert.match(F.mealNext(19 * 60), /^Tea next/);
+  const src = require('fs').readFileSync(require('path').join(__dirname, '../web/app.js'), 'utf8');
+  assert.ok(!/'Day one: follow today/.test(src));
+  assert.ok(/g\.streak\.count \? '<div class="stat"/.test(src), 'the streak row shows only once it has something in it');
+});
