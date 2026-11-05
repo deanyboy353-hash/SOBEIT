@@ -1,0 +1,11 @@
+{
+  "api": "https://script.google.com/macros/s/AKfycbyGglsy-_DOdaCn7DFhNyD8JH89jGapkUXUHdWp-JmdpuupiMPPEp6gm8e23x-yOVbsYQ/exec",
+  "firebase": {
+    "apiKey": "AIzaSyBLkY165WQYl9DGHdrhA5eVMg_-dKsFBlI",
+    "authDomain": "life-quest-5c52d.firebaseapp.com",
+    "projectId": "life-quest-5c52d",
+    "storageBucket": "life-quest-5c52d.firebasestorage.app",
+    "messagingSenderId": "455029348703",
+    "appId": "1:455029348703:web:d90f780c2ddfc60f5f3eea"
+  }
+}

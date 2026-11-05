@@ -1,0 +1,69 @@
+/**
+ * Today.gs: the app's Today tab. Today's gym session (with a Gym done
+ * button) and a weigh-in box. Both do the same as ticking the matching
+ * Google Task, and they tick that task too, so nothing is logged twice.
+ */
+
+function todayState_() {
+  var ymd = todayYmd_();
+  var cfg = readConfig_();
+  var dow = dayOfWeek_(ymd);
+  var session = todaySession_(ymd, cfg);
+  var gym = null;
+  if (session) {
+    var r = findRow_('gym', 'Date', ymd);
+    var row = r ? readRow_('gym', r) : {};
+    gym = {
+      session: session,
+      travel: String(row['Travel'] || ''),
+      leaveAt: hhmm_(row['Leave at']),
+      bus: String(row['Bus'] || ''), window: String(row['Gym window'] || ''), homeBy: hhmm_(row['Home by']), plan: String(row['Plan'] || ''),
+      weather: String(row['Weather'] || ''),
+      dayOff: dayOffWork_('me', ymd, cfg), leaveAround: hhmm_(cfg.settings['Day off: leave around']) || '12:00', noDaytime: /only cover after work/.test(String(row['Plan'] || '')),
+      done: /^Done/.test(String(row['Status'] || '')),
+      exercises: sessionExercises_(session, cfg).map(function (ex) {
+        return { exercise: String(ex.exercise), sets: String(ex.sets), reps: String(ex.reps), rpe: String(ex.rpe), rest: String(ex.rest), notes: String(ex.notes || '') };
+      })
+    };
+  }
+  var weights = rowsBetween_('weight', addDays_(ymd, -90), ymd).filter(function (w) { return w['Weight (kg)'] !== ''; });
+  var last = weights[weights.length - 1];
+  var si = splitInfo_(ymd);
+  return {
+    date: ymd,
+    day: DAY_NAMES[dow],
+    gym: gym,
+    // the gym card shows the next session whatever day it is, the week's main sessions, and the optional Pump
+    train: { next: si.next, split: si.name, week: si.week, pump: si.pump, doneToday: si.doneToday.length > 0 },
+    weighDay: parseDays(cfg.settings['Weigh-in days']).indexOf(dow) !== -1 && !scaleQuiet_(),   // the goal's scale-optional mode: no weigh-in days
+    weighedToday: !!last && last['Date'] === ymd,
+    lastWeight: last ? { date: String(last['Date']), kg: Number(last['Weight (kg)']), change: last['Change (kg)'] } : null
+  };
+}
+
+// ---- called from the page ----
+
+function todayState(key) {
+  requireKey_(key);
+  return todayState_();
+}
+
+function gymDone(key) {
+  requireKey_(key);
+  return withLock_(function () {
+    var ymd = todayYmd_();
+    markGymDone_(ymd);
+    return todayState_();
+  });
+}
+
+function logWeightNow(key, text) {
+  requireKey_(key);
+  var w = parseWeight(text, readConfig_().settings['Weight unit'] || 'kg');
+  if (!w) throw new Error("Couldn't read a weight from that. Try 82.4, 13st 2 or 185 lb.");
+  return withLock_(function () {
+    var ymd = todayYmd_();
+    logWeight_(ymd, now_('HH:mm'), w);
+    return todayState_();
+  });
+}

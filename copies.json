@@ -1,0 +1,8 @@
+{
+  "_about": "Separate copies of Nudge (own Sheet, own data, own server). To update one after changing src/: copy src/ to a folder, put this scriptId in its .clasp.json, `clasp pull` once to fetch its private Instance.gs, then `clasp push --force` and `clasp update-deployment <deploymentId>`.",
+  "dylz": {
+    "scriptId": "12mjdbahbssC_-HlTbRcTg9JcxRbjOe3qBMJvCEYocGBXzyo0Bizso1Gi",
+    "sheetId": "1EINy1elxaqiAglZxxNAumNU4ic7d3iLIkaJkWjvSbxk",
+    "deploymentId": "AKfycbxoIRIN9EJ-FEmrNLo9-EiHLnwI74m43gQ3bmg6L4F2tPqS2rFBHWu2F8eLGi49n0eaHw"
+  }
+}

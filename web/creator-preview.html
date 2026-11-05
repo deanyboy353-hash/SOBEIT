@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Character preview</title>
+<link rel="stylesheet" href="app.css">
+<style>
+  body { margin: 0; background: radial-gradient(120% 90% at 50% 0%, #3a1f4f, #0b0710 70%); color: #f6f0ff; font: 14px/1.4 Manrope, system-ui, sans-serif; }
+  .row { display: flex; gap: 10px; padding: 12px; flex-wrap: wrap; }
+  .c { width: 230px; } .c .ps2-host { width: 230px; height: 400px; border-radius: 18px; overflow: hidden; background: linear-gradient(180deg, #5a2f63 0%, #c4605a 55%, #f0a868 100%); }
+  .c b { display: block; margin: 6px 4px 0; } .c small { display: block; margin: 0 4px; opacity: .75; }
+</style></head><body>
+<div class="row" id="row"></div><div class="row" id="faces" style="padding-top:0"></div>
+<script src="three.min.js"></script>
+<script src="ps2char.js"></script>
+<script>
+  // five very different original characters
+  var looks = [
+    { v: 2, name: 'Night-bus skater', frame: 'm', build: 'slim', height: 1.03, skin: '#e0ac85', stance: 'relaxed',
+      face: { shape: 'long', eyes: 'sleepy', eyeC: '#3f7cc0', brows: 'thin', nose: 'long', mouth: 'smirk', facial: 'stubble', glasses: 'none' },
+      hair: { style: 'mullet', c: '#d8b06a' }, top: { style: 'hoodie', c1: '#2fe0d6', c2: '#111111', graphic: 'eye' },
+      bottom: { style: 'cargos', fit: 'baggy', c1: '#5b5f46' }, shoes: { style: 'skate', c1: '#111111', c2: '#f2f2f2' }, acc: ['beanie', 'chain'], accC: '#c62828', tattoo: 'none' },
+    { v: 2, name: 'Runway headliner', frame: 'f', build: 'avg', height: 1.06, skin: '#5e3a24', stance: 'hip',
+      face: { shape: 'heart', eyes: 'lashes', eyeC: '#2a1a10', brows: 'arched', nose: 'button', mouth: 'full', facial: 'none', glasses: 'none', lips: '#d6236e' },
+      hair: { style: 'bigvolume', c: '#ff3fa4' }, top: { style: 'sequin', c1: '#f0c96a', c2: '#ffffff', graphic: 'none' },
+      bottom: { style: 'mini', fit: 'skinny', c1: '#111111' }, shoes: { style: 'platforms', c1: '#ff3fa4', c2: '#f0c96a' }, acc: ['bigjewels', 'earrings'], accC: '#f0c96a', metallic: true, tattoo: 'none' },
+    { v: 2, name: 'Corner-shop legend', frame: 'm', build: 'heavy', height: 0.95, skin: '#8d5a3b', stance: 'wide',
+      face: { shape: 'round', eyes: 'round', eyeC: '#2a1a10', brows: 'thick', nose: 'wide', mouth: 'grin', facial: 'beard', glasses: 'square' },
+      hair: { style: 'buzz', c: '#1b1410' }, top: { style: 'hawaii', c1: '#e76f51', c2: '#ffb000', graphic: 'none' },
+      bottom: { style: 'shorts', fit: 'regular', c1: '#d6c8a8' }, shoes: { style: 'retro', c1: '#f2f2f2', c2: '#2b3a67' }, acc: ['cap'], accC: '#2b3a67', tattoo: 'band' },
+    { v: 2, name: 'Track-day sprinter', frame: 'f', build: 'muscular', height: 1, skin: '#c68a62', stance: 'relaxed',
+      face: { shape: 'oval', eyes: 'almond', eyeC: '#6b8e23', brows: 'straight', nose: 'small', mouth: 'smile', facial: 'none', glasses: 'visor' },
+      hair: { style: 'braids', c: '#2e1d14' }, top: { style: 'track', c1: '#8f5bff', c2: '#f2f2f2', graphic: 'none' },
+      bottom: { style: 'trackies', fit: 'regular', c1: '#8f5bff', c2: '#f2f2f2' }, shoes: { style: 'retro', c1: '#f2f2f2', c2: '#8f5bff' }, acc: ['headphones'], accC: '#ff3fa4', tattoo: 'none' },
+    { v: 2, name: 'Basement DJ', frame: 'm', build: 'muscular', height: 1.04, skin: '#f6d7c3', stance: 'relaxed',
+      face: { shape: 'square', eyes: 'narrow', eyeC: '#7d8a96', brows: 'straight', nose: 'small', mouth: 'neutral', facial: 'goatee', glasses: 'shades' },
+      hair: { style: 'mohawk', c: '#8f5bff' }, top: { style: 'leather', c1: '#111111', c2: '#ff3fa4', graphic: 'bolt' },
+      bottom: { style: 'jeans', fit: 'skinny', c1: '#1e2533' }, shoes: { style: 'boots', c1: '#1a1a1a', c2: '#c62828' }, acc: ['gloves', 'earrings'], accC: '#e6e6e6', tattoo: 'sleeve' }
+  ];
+  var q = new URLSearchParams(location.search), ps2 = q.get('ps2') === '1', poseName = q.get('pose') || 'idle';
+  window.TRIS = [];
+  looks.forEach(function (L) {
+    var c = document.createElement('div'); c.className = 'c';
+    c.innerHTML = '<div class="ps2-host"></div><b>' + L.name + '</b><small></small>';
+    document.getElementById('row').appendChild(c);
+    var st = PS2Char.stage(c.querySelector(".ps2-host"), [L], { capture: true, still: true, ps2: ps2, pose: poseName, dist: 5.0, camY: 0.98, yaw: 0.35, floor: '#3a1f2a', sky: '#ffd2a6', rim: '#b08cff' });
+    c.querySelector('small').textContent = st.tris[0] + ' triangles';
+    window.TRIS.push(st.tris[0]);
+  });
+  looks.forEach(function (L) { var im = new Image(); im.src = PS2Char.portrait(L, 96); im.width = 96; im.height = 96; im.style.cssText = 'border-radius:50%;background:radial-gradient(#5a2f63,#22142e);margin-right:42px'; document.getElementById('faces').appendChild(im); });
+  window.DONE = true;
+</script></body></html>

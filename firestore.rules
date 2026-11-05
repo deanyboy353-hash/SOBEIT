@@ -1,0 +1,43 @@
+rules_version = '2';
+// Nudge: the couple chat and live updates. Everything lives under /rooms/{room}, where {room} is a long random
+// secret the server hands only to your two phones. The secret itself is stored in /secrets, which no phone can read.
+// A request that doesn't name the exact room is refused, and nobody can list rooms, so the chat can only be
+// read by the two of you. Nothing else in this database is open.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function roomOk(room) {
+      return room == get(/databases/$(database)/documents/secrets/chat).data.room;
+    }
+    function who(v) { return v == 'me' || v == 'partner'; }
+
+    match /secrets/{doc} { allow read, write: if false; }
+
+    match /rooms/{room} {
+      allow read, write: if false;     // the room itself is never listed or read
+
+      // messages: create as yourself; afterwards only receipts, reactions and "deleted" may change; delete for both
+      match /msgs/{id} {
+        allow read: if roomOk(room);
+        allow create: if roomOk(room)
+          && who(request.resource.data.from)
+          && request.resource.data.type in ['text', 'photo', 'voice', 'wink', 'tonight', 'reply', 'dice', 'nudge']
+          && request.resource.data.get('text', '').size() <= 4000
+          && request.resource.data.keys().hasOnly(['from', 'type', 'text', 'media', 'replyTo', 'reactions', 'at', 'deliveredAt', 'readAt', 'expiresAt', 'meta', 'dur']);
+        allow update: if roomOk(room)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'deliveredAt', 'readAt', 'meta']);
+        allow delete: if roomOk(room);
+      }
+      // photos and voice notes (small, stored next to the message)
+      match /media/{id} {
+        allow read, delete: if roomOk(room);
+        allow create: if roomOk(room) && request.resource.data.data.size() < 900000 && who(request.resource.data.from);
+        allow update: if false;
+      }
+      // online / last seen / typing, and live scores, one document each
+      match /presence/{p} { allow read: if roomOk(room); allow write: if roomOk(room) && who(p); }
+      match /live/{p} { allow read: if roomOk(room); allow write: if roomOk(room) && who(p); }
+      match /meta/{doc} { allow read, write: if roomOk(room); }
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}
