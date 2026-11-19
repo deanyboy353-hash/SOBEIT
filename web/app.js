@@ -62,7 +62,7 @@
   // ---------- the outbox: saves never make you wait ----------
   // Reads, AI and big uploads go straight to the server; every other change is saved on the phone first and sent in batches.
   var DIRECT = { appState: 1, gamesState: 1, workState: 1, setupState: 1, previewChores: 1, healthDay: 1, backupStatus: 1, exportAll: 1, getBrief: 1, whatNow: 1, mealIdeas: 1,
-    healthInsight: 1, trainState: 1, foodState: 1, choresState: 1, quickAdd: 1, quickAddPhoto: 1, ask: 1, brainDump: 1, importBackup: 1, importHealth: 1, importWorkoutCsv: 1, registerDevice: 1,
+    healthInsight: 1, trainState: 1, foodState: 1, choresState: 1, quickAdd: 1, quickAddPhoto: 1, ask: 1, logWorkoutText: 1, brainDump: 1, importBackup: 1, importHealth: 1, importWorkoutCsv: 1, registerDevice: 1,
     testPush: 1, saveClaudeKey: 1, backupNow: 1, guessWord: 1, submitTarget: 1, submitRecall: 1, submitTempo: 1, undoAction: 1, undoLast: 1, addDeadline: 1, chatPing: 1 };
   var syncState = { pending: 0, failing: 0, offline: false }, syncShownAt = 0;
   var box = window.NudgeOutbox ? NudgeOutbox.create({
@@ -1291,6 +1291,26 @@
   }
   function closeMemories() { var b = el('memories'); if (b) b.remove(); document.body.classList.remove('mem-open'); }
   /** One day: the body big, what it worked, and each workout's exercises with the best set. */
+  /** Log a workout after the fact, in words: "Monday did Lower A, bench PR 90 x 8". */
+  function pastCard() {
+    if (!ME) return '';
+    return '<section class="card past"><div class="head"><h3>Log a past workout</h3></div>' +
+      '<p class="small muted" style="margin:0 0 8px">Say the day and the session. Anything you don\'t list goes in at your last weights; mention a PR and it goes in too. It can also move a workout to the right day or fix one logged as the wrong session.</p>' +
+      '<form id="pastForm" autocomplete="off"><textarea id="pastText" rows="3" placeholder="Monday did Lower A. Thursday was Upper A, bench PR 90 x 8." aria-label="Which workout, which day"></textarea>' +
+      '<button class="btn primary" type="submit" id="pastBtn" style="margin-top:8px">Log it</button></form></section>';
+  }
+  document.addEventListener('submit', function (ev) {
+    if (ev.target.id !== 'pastForm') return;
+    ev.preventDefault();
+    var txt = el('pastText').value.trim(), b = el('pastBtn'); if (!txt) return el('pastText').focus();
+    b.disabled = true; b.textContent = 'Reading it…';
+    call('logWorkoutText', [txt], function (res) {
+      apply(res.state);
+      openSheet('<h2 style="margin:0 0 8px">Past workouts</h2>' + (res.reply ? '<p>' + esc(res.reply) + '</p>' : '') +
+        (res.done && res.done.length ? '<ul class="small">' + res.done.map(function (d) { return '<li>' + esc(d) + '</li>'; }).join('') + '</ul>' : '<p class="small muted">Nothing changed.</p>') +
+        '<button class="btn primary wide" type="button" data-close>Done</button>');
+    }, function () { var b2 = el('pastBtn'); if (b2) { b2.disabled = false; b2.textContent = 'Log it'; } });
+  });
   function memDaySheet(d) {
     var x = memData()[d]; if (!x) return;
     var top = NudgeFmt.memTop(x.m), mins = x.w.reduce(function (a, w) { return a + (w.min || 0); }, 0);
@@ -1371,7 +1391,7 @@
     h += '<button class="btn primary big wide" type="button" id="finishWk"' + (count ? '' : ' disabled') + '>Finish workout · ' + count + ' set' + (count === 1 ? '' : 's') + '</button>';
     if (!tp && (load(custKeys(tsel)[0]) || load(custKeys(tsel)[1]))) h += '<p class="center" style="margin:10px 0 0"><button class="linkbtn small muted" type="button" id="resetCust">Undo my changes to ' + esc(tsel) + '</button></p>';
     if (tp) h += '<p class="center" style="margin:10px 0 0"><button class="linkbtn small muted" type="button" id="saveNewBtn">Save this session as a new workout</button> · <button class="linkbtn small muted" type="button" data-tpledit="' + esc(tp.id) + '">Edit ' + esc(tp.name) + '</button>' + (tp.edited || tp.swaps ? ' · <button class="linkbtn small muted" type="button" data-tplreset="' + esc(tp.id) + '">Reset to default</button>' : '') + '</p>';
-    h += memoriesCard();
+    h += memoriesCard() + pastCard();
     h += visitsCard();
     h += liftChart();
     var pr = t.progress;

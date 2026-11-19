@@ -106,7 +106,7 @@ var ASK_SCHEMA = {
       items: {
         type: 'object',
         properties: {
-          type: { type: 'string', enum: ['add_shopping', 'add_todo', 'add_deadline', 'add_chore', 'park', 'start_job', 'log_food', 'add_block', 'remove_block', 'move_block'] },
+          type: { type: 'string', enum: ['add_shopping', 'add_todo', 'add_deadline', 'add_chore', 'park', 'start_job', 'log_food', 'log_workout', 'add_block', 'remove_block', 'move_block'] },
           text: { type: 'string', description: 'The item, to-do, chore name, note, job, or food eaten. For add_deadline: the task with its time, like "Send the invoice by 3pm". For add_block: the work block with its time and length if known, like "Emails 3pm 30m". For remove_block and move_block: the block\'s name' },
           block_id: { type: 'string', description: 'For remove_block and move_block: the [id] of the block from today\'s work plan. Empty otherwise' },
           start: { type: 'string', description: 'For move_block: the new start time as HH:MM (24h). Empty to keep it' },
@@ -132,11 +132,11 @@ function ask(key, text) {
   var res = callClaudeJson_(AI_VOICE +
     'You can act in the app with actions: add_shopping (one per item), add_todo (a one-off task with no time), add_deadline (a task with a time it must be done by: the app will nag until it is done), add_chore (a repeating household job; pick a rhythm), ' +
     'add_block, remove_block and move_block (change today\'s work plan: "clear my afternoon", "move lunch to 1:30", "add emails at 3 for half an hour"; use the [id] from the plan), ' +
-    'park (a note or worry for later), start_job (suggest one job to start now on a timer), log_food (only for ' + (who === 'me' ? 'food they say they ate' : 'nothing: never use it') + '). ' +
+    'park (a note or worry for later), log_workout (only for ' + (who === 'me' ? 'gym sessions on past days, or fixing ones logged on the wrong day or as the wrong session: put their words in text' : 'nothing: never use it') + '), start_job (suggest one job to start now on a timer), log_food (only for ' + (who === 'me' ? 'food they say they ate' : 'nothing: never use it') + '). ' +
     'Only act when they ask or clearly want it. If they are overwhelmed, pick ONE small thing and offer start_job.',
     'Today:\n' + dayContext_(who) + (convo ? '\n\nEarlier:\n' + convo : '') + '\n\nNow they say: ' + text, ASK_SCHEMA, claudeModel_(), 12000);
   var done = [];
-  var startJob = null;
+  var startJob = null, pastAsked = false;
   withLock_(function () {
     (res.actions || []).slice(0, 10).forEach(function (a) {
       var t = String(a.text || '').trim().slice(0, 120);
@@ -173,6 +173,9 @@ function ask(key, text) {
           if (up['Start (min)'] !== undefined) up['Pings'] = 0;
           if (Object.keys(up).length) { updateRow_('blocks', blockRow_(bl.id), up); var ns = up['Start (min)'] !== undefined ? up['Start (min)'] : bl.start, nm = up['Mins'] || bl.mins; done.push('Moved ' + bl.task + ' to ' + clockMin_(ns) + '–' + clockMin_(ns + nm)); }
         }
+      } else if (a.type === 'log_workout' && who === 'me' && !pastAsked) {
+        pastAsked = true;   // one plan from the whole message, however many actions name it
+        try { done = done.concat(pastFromText_(who, text, false).done); } catch (e) { done.push('Couldn\'t log that workout: ' + e.message); }
       } else if (a.type === 'log_food' && who === 'me') {
         try { var items = estimateFood_(t, readPresets_(), claudeModel_()); addFood_(items, 'ask: ' + t); done.push('Logged ' + items.map(function (i) { return i.name; }).join(', ')); } catch (e) { done.push('Couldn\'t log that food: ' + e.message); }
       }
