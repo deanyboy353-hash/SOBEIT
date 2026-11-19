@@ -55,6 +55,8 @@ test('Dean\'s two lost sessions: Monday 16 Nov as listed, Thursday 12 Nov at his
   C.appState(me);
   assert.strictEqual(g.tab('Workout log').rows().length, n, 'the flag was set: nothing added twice');
   assert.ok(JSON.parse(g.state.props.PAST_NOV_V1).lines.length === 2);
+  assert.match(plain(C.fixPastWorkouts())[0], /^Already done on /, 'the editor\'s Run button: safe twice');
+  assert.strictEqual(g.tab('Workout log').rows().length, n);
 });
 
 test('a session the lag logged on the wrong day or as the Pump is put right, never doubled', () => {

@@ -310,6 +310,18 @@ var PAST_NOV_2026 = [
       { name: 'Leg extension', sets: [{ weight: 52, reps: 10, type: '' }, { weight: 52, reps: 10, type: '' }, { weight: 52, reps: 10, type: '' }] }] },
   { date: '2026-11-12', template: 'ul-ua', fill_rest: true, prs: [{ exercise: 'Bench press', weight: 90, reps: 8 }], exercises: [] }
 ];
+/**
+ * For the Apps Script editor's Run button (it hides names ending in _): settles the two sessions once and
+ * prints what it did. Safe to run again: the second time it only prints the first run's lines.
+ */
+function fixPastWorkouts() {
+  var done = JSON.parse(prop_('PAST_NOV_V1') || 'null');
+  var lines = done && done.lines ? ['Already done on ' + done.at + ':'].concat(done.lines) : ensurePastNov_();
+  lines.forEach(function (l) { console.log(l); });
+  try { clearStateCache_(); } catch (e) { /* older copy without the state cache */ }
+  return lines;
+}
+
 /** Once: settle those two, the results in the feed and kept in PAST_NOV_V1. */
 function ensurePastNov_() {
   var out = [];
